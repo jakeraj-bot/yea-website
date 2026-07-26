@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load enrollment_extras %}
+
+{% block title %}Enrollment application — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Enrollment application</h1>
+    <p class="lead">Complete all steps online. You can print your submitted application for your records.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    {% include "enrollment/includes/step_progress.html" %}
+
+    <form method="post" class="apply-form" novalidate>
+      {% csrf_token %}
+      {% block step_content %}{% endblock %}
+
+      <div class="apply-actions">
+        {% if prev_step %}
+        <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">Back</a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Continue</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% block extra_js %}{% endblock %}
+{% endblock %}

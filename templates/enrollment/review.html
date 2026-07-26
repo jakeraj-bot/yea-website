@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load enrollment_extras %}
+
+{% block title %}Review application — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Review your application</h1>
+    <p class="lead">Check your information before submitting. Each child will be submitted as a separate application.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    {% include "enrollment/includes/step_progress.html" %}
+
+    <div class="review-summary">
+      <h2>Family contact</h2>
+      <p>{{ data.family_name }} · {{ data.primary_email }}</p>
+      <p>{{ data.home_address }}</p>
+      <p>{{ data.primary_first_name }} {{ data.primary_last_name }}</p>
+
+      {% for child in data.children %}
+      <hr>
+      <h2>Child {{ forloop.counter }}: {{ child.student_first_name }} {{ child.student_last_name }}</h2>
+      <p><strong>{{ child.program|program_label }}</strong> — {{ child.program_location|location_label }}</p>
+      {% if child.program_location == "dale_ave" %}
+        <ul class="drop-in-details-list">
+          <li>Bus transportation from the Dale Ave area to School 18 is included</li>
+        </ul>
+      {% endif %}
+      <p>Grade: {{ child.student_grade }} · School: {{ child.student_school }}</p>
+      <p>Payment plan: {{ child.payment_plan|title }} · {{ child.payment_method|title }}</p>
+      <p>Policies signed for this child.</p>
+      {% endfor %}
+
+      <p class="form-note">By submitting, you confirm that all information provided is accurate.</p>
+    </div>
+
+    <form method="post" class="apply-actions">
+      {% csrf_token %}
+      <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='add_child' %}">Back</a>
+      <button type="submit" class="btn btn-primary">Submit application{{ data.children|length|pluralize }}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

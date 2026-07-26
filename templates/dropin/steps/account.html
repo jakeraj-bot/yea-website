@@ -1,0 +1,21 @@
+{% extends "dropin/register_base.html" %}
+
+{% block dropin_content %}
+<h2>{{ step_titles.account }}</h2>
+<form method="post" class="apply-form" novalidate>
+  {% csrf_token %}
+  <div class="form-grid">
+    {% for field in form %}
+    <div class="form-group {% if field.name == 'password1' or field.name == 'password2' %}form-group-full{% endif %}">
+      {{ field.label_tag }}
+      {{ field }}
+      {{ field.errors }}
+      {% if field.help_text %}<p class="form-help">{{ field.help_text }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="apply-actions">
+    <button type="submit" class="btn btn-primary">Continue</button>
+  </div>
+</form>
+{% endblock %}

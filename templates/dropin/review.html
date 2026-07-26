@@ -1,0 +1,34 @@
+{% extends "dropin/register_base.html" %}
+
+{% block dropin_content %}
+<h2>Review &amp; submit</h2>
+<div class="review-summary">
+  <h3>Family</h3>
+  <p>{{ session_data.family_name }} · {{ session_data.primary_email }}</p>
+  <p>{{ session_data.home_address }}</p>
+  <p>{{ session_data.primary_first_name }} {{ session_data.primary_last_name }} · {{ session_data.primary_phone }}</p>
+
+  <h3>Child</h3>
+  <p>{{ session_data.child.first_name }} {{ session_data.child.last_name }} · Grade {{ session_data.child.grade }}</p>
+
+  <h3>Emergency contacts</h3>
+  <ul>
+    {% for contact in session_data.emergency_contacts %}
+    <li>{{ contact.first_name }} {{ contact.last_name }} · {{ contact.phone }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Policies</h3>
+  <p>All program policies signed (one-time).</p>
+</div>
+
+<p class="form-note">After you submit, our staff will review your registration. You can book drop-in days once approved.</p>
+
+<form method="post" class="apply-form">
+  {% csrf_token %}
+  <div class="apply-actions">
+    <a class="btn btn-secondary" href="{% url 'dropin_register' step=prev_step %}">Back</a>
+    <button type="submit" class="btn btn-primary">Submit registration</button>
+  </div>
+</form>
+{% endblock %}

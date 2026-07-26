@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Book drop-in — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Book a drop-in day</h1>
+    <p class="lead">Choose program, location, and date. All YEA locations offer drop-in for their program.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <form method="post" class="apply-form" id="dropin-book-form" novalidate>
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for field in form %}
+        <div class="form-group form-group-full">
+          {{ field.label_tag }}
+          {{ field }}
+          {{ field.errors }}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="drop-in-box drop-in-box-list">
+        <h3>Drop-in details</h3>
+        <ul class="drop-in-details-list">
+          <li><strong>After-school:</strong> ${{ fees.after_school }}/day</li>
+          <li><strong>Sign up by:</strong> {{ deadlines.after_school }}</li>
+          <li><strong>Summer camp:</strong> ${{ fees.summer_camp }}/day</li>
+          <li><strong>Sign up by:</strong> {{ deadlines.summer_camp }}</li>
+        </ul>
+      </div>
+      <div class="apply-actions">
+        <a class="btn btn-secondary" href="{% url 'dropin_dashboard' %}">Back</a>
+        <button type="submit" name="action" value="book" class="btn btn-primary">Continue to payment</button>
+        {% if show_waitlist %}
+        <button type="submit" name="action" value="waitlist" class="btn btn-secondary">Join waitlist instead</button>
+        {% endif %}
+      </div>
+      {% if show_waitlist %}
+      <p class="form-note">This day is full. Join the waitlist to be contacted in order if a spot opens up from a cancellation.</p>
+      {% endif %}
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dropin-book.js' %}?v=1"></script>
+{% endblock %}

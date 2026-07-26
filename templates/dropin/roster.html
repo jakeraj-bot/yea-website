@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Drop-in daily roster — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Drop-in daily roster</h1>
+    <p class="lead">Staff only — view and print who is booked for a day.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <form method="get" class="apply-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="date">Date</label>
+          <input type="date" name="date" id="date" value="{{ care_date|date:'Y-m-d' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="program">Program</label>
+          <select name="program" id="program">
+            {% for value, label in program_choices %}
+            <option value="{{ value }}" {% if program == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="location">Location</label>
+          <select name="location" id="location">
+            {% for value, label in location_choices %}
+            <option value="{{ value }}" {% if location == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="apply-actions">
+        <button type="submit" class="btn btn-primary">View roster</button>
+        {% if care_date %}
+        <a class="btn btn-secondary" href="?date={{ care_date|date:'Y-m-d' }}&program={{ program }}&location={{ location }}&print=1" target="_blank" rel="noopener">Print roster</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if care_date %}
+    <div class="highlight-box">
+      <p><strong>{{ care_date|date:"l, F j, Y" }}</strong> · {{ program_label }} · {{ location_label }}</p>
+      {% if capacity %}
+      <p>Capacity: {{ capacity.max_slots }} · Booked: {{ bookings|length }} · Spots left: {{ spots_left }}</p>
+      {% endif %}
+      {% if spots_left == 0 %}
+      <p><strong>Day is full.</strong> Waitlist active — {{ waitlist_count }} famil{{ waitlist_count|pluralize:"y,ies" }} waiting in order of request. Contact the next family on the list if someone cancels.</p>
+      {% elif waitlist_count %}
+      <p>Waitlist: {{ waitlist_count }} (shown below in request order)</p>
+      {% endif %}
+    </div>
+
+    <h2>Booked children</h2>
+    {% if bookings %}
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Child</th>
+          <th>Grade</th>
+          <th>Allergies / medical</th>
+          <th>Parent</th>
+          <th>Phone</th>
+          <th>Emergency contact</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in bookings %}
+        <tr>
+          <td>{{ booking.child.first_name }} {{ booking.child.last_name }}</td>
+          <td>{{ booking.child.get_grade_display }}</td>
+          <td>
+            {% if booking.profile.no_known_allergies %}None known{% else %}{{ booking.profile.allergies|default:"—" }}{% endif %}
+            {% if booking.profile.requires_epipen_plan %} · EpiPen plan{% endif %}
+          </td>
+          <td>{{ booking.profile.primary_first_name }} {{ booking.profile.primary_last_name }}</td>
+          <td>{{ booking.profile.primary_phone }}</td>
+          <td>
+            {% with ec=booking.profile.emergency_contacts.first %}
+            {% if ec %}{{ ec.first_name }} {{ ec.last_name }} · {{ ec.phone }}{% else %}—{% endif %}
+            {% endwith %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No paid bookings for this day.</p>
+    {% endif %}
+
+    <h2>Waitlist (request order)</h2>
+    {% if waitlist %}
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Requested</th>
+          <th>Child</th>
+          <th>Parent</th>
+          <th>Phone</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in waitlist %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ entry.created_at|date:"M j, g:i A" }}</td>
+          <td>{{ entry.child.first_name }} {{ entry.child.last_name }}</td>
+          <td>{{ entry.profile.primary_first_name }} {{ entry.profile.primary_last_name }}</td>
+          <td>{{ entry.profile.primary_phone }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No one on the waitlist.</p>
+    {% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

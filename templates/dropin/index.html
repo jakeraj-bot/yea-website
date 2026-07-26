@@ -1,0 +1,36 @@
+{% extends "dropin/register_base.html" %}
+
+{% block dropin_hero_title %}Drop-in care{% endblock %}
+{% block dropin_hero_lead %}Need care for a day? Register once, get approved, then book individual days online.{% endblock %}
+
+{% block dropin_content %}
+<div class="drop-in-box drop-in-box-list" style="margin-top:0">
+  <h3>Pricing &amp; signup deadlines</h3>
+  <ul class="drop-in-details-list">
+    <li><strong>After-school drop-in:</strong> ${{ fees.after_school }} per day</li>
+    <li><strong>Sign up by:</strong> {{ deadlines.after_school }}</li>
+    <li><strong>Summer camp drop-in:</strong> ${{ fees.summer_camp }} per day</li>
+    <li><strong>Sign up by:</strong> {{ deadlines.summer_camp }}</li>
+  </ul>
+</div>
+
+<h2>Locations</h2>
+<ul class="drop-in-details-list">
+  <li><strong>After-school drop-in:</strong> School 18, School 26, Dale Ave (bus to School 18)</li>
+  <li><strong>Summer camp drop-in:</strong> Caldwell University</li>
+  <li>Drop-in is available at all YEA locations for the matching program</li>
+</ul>
+
+<h2>How it works</h2>
+<ol class="drop-in-details-list drop-in-details-list-ordered">
+  <li><strong>Register once</strong> — family info, emergency contact, medical questions, policies (one time)</li>
+  <li><strong>Create your login</strong> — username and password for your parent account</li>
+  <li><strong>Staff review</strong> — our team approves your registration before your first booking</li>
+  <li><strong>Book a day</strong> — log in, pick date and location, pay online when space is available</li>
+</ol>
+
+<p>
+  <a class="btn btn-primary" href="{% url 'dropin_register' %}">Register for drop-in</a>
+  <a class="btn btn-secondary" href="{% url 'dropin_login' %}">Parent login</a>
+</p>
+{% endblock %}

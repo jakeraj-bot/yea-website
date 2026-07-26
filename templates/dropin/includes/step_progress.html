@@ -1,0 +1,12 @@
+{% load enrollment_extras %}
+<nav class="apply-progress" aria-label="Registration steps">
+  <ol>
+    {% for s in step_order %}
+    {% if s != "review" %}
+    <li class="{% if s == step %}active{% elif forloop.counter0 < step_index %}done{% endif %}">
+      <span>{{ forloop.counter }}</span> {{ step_titles|get_item:s }}
+    </li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+</nav>

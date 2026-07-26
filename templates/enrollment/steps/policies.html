@@ -1,0 +1,38 @@
+{% extends "enrollment/apply_base.html" %}
+{% load enrollment_extras %}
+
+{% block step_content %}
+{% include "enrollment/includes/child_heading.html" %}
+<h2>{{ step_titles|get_item:step }}</h2>
+<p>Read each policy below, then sign and date for <strong>this child</strong>. You can also open any policy in a new tab for easier reading.</p>
+
+{% for policy in policies %}
+<section class="policy-sign-block" id="policy-{{ policy.slug }}">
+  <div class="policy-sign-header">
+    <h3>{{ policy.title }}</h3>
+    <a href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
+  </div>
+  <div class="policy-read-box">
+    {% for para in policy.paragraphs %}
+    <p>{{ para }}</p>
+    {% endfor %}
+  </div>
+
+  <div class="form-grid policy-sign-fields">
+    {% for field in form %}
+    {% if field.name|policy_field:policy.slug %}
+    <div class="form-group{% if field.field.widget.input_type == 'radio' %} form-group-full{% endif %}">
+      {% if field.field.widget.input_type == 'radio' %}
+      <span class="form-label">{{ field.label }}</span>{{ field }}
+      {% else %}
+      {{ field.label_tag }}{{ field }}
+      {% endif %}
+      {{ field.errors }}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <p class="form-note">{{ policy.acknowledgment }}</p>
+</section>
+{% endfor %}
+{% endblock %}

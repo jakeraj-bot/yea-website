@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Apply — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Enrollment application</h1>
+    <p class="lead">One application for all locations. Full online application coming soon.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <p>When the application is live, you will be able to:</p>
+    <ul>
+      <li>Choose your program (after-school or summer camp)</li>
+      <li>Select your location (School 18, School 26, Dale Ave, or Caldwell University for summer camp)</li>
+      <li>Dale Ave families: children are bussed to the School 18 building (separate program)</li>
+      <li>Complete child and guardian information in one form</li>
+    </ul>
+    <p>For enrollment questions now, please contact us:</p>
+    <p>
+      <a class="btn btn-primary" href="{% url 'contact' %}">Contact us</a>
+      <a class="btn btn-secondary" href="mailto:info@yeanj.org">Email info@yeanj.org</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dale Ave — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <span class="badge">Now enrolling</span>
+    <h1>Dale Ave</h1>
+    <p class="lead">Paterson · After-school · Ages 2½–13</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo">
+      <img src="{% static featured_photo %}" alt="Dale Ave program at Youth Education Academy">
+    </div>
+
+    <div class="highlight-box drop-in-box-list">
+      <h3>Bus to School 18</h3>
+      {% include "includes/dale_ave_bus_info.html" %}
+    </div>
+
+    <h2>Programs offered</h2>
+    <ul>
+      <li>After-school program</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <ul class="drop-in-details-list">
+      <li><strong>Director:</strong> Llajaira Nieves</li>
+      <li><strong>Email:</strong> <a href="mailto:Llajairan@yeanj.org">Llajairan@yeanj.org</a></li>
+      <li><strong>Phone:</strong> <a href="tel:9735533224">973-553-3224</a></li>
+    </ul>
+
+    <h2>Hours</h2>
+    <ul class="drop-in-details-list">
+      <li>After-school: 3:00pm – 6:00pm</li>
+      <li>Starts Sept 8, 2026</li>
+    </ul>
+
+    <h2>Photos</h2>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+
+    <p>
+      <a class="btn btn-primary" href="{% url 'apply' %}">Apply now</a>
+      <a class="btn btn-secondary" href="{% url 'school_18' %}">View School 18</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

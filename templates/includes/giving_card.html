@@ -1,0 +1,65 @@
+<article class="giving-card giving-card--{{ card.accent }}" id="{{ card.id }}">
+  <h3>{{ card.title }}</h3>
+  <p>{{ card.description }}</p>
+
+  <form class="giving-form" method="post" action="{% url 'donate_checkout' %}">
+    {% csrf_token %}
+    <input type="hidden" name="giving_id" value="{{ card.id }}">
+
+    {% if card.type == "fixed_with_plans" %}
+    <p class="giving-total"><strong>${{ card.total|floatformat:0 }}</strong> total</p>
+    <div class="form-group">
+      <label for="plan-{{ card.id }}">Payment schedule</label>
+      <select id="plan-{{ card.id }}" name="plan" required>
+        {% for plan in card.plans %}
+        <option value="{{ plan.id }}">{{ plan.label }} — ${{ plan.amount|floatformat:0 }}{% if plan.id != "full" %} each{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% elif card.type == "suggested_amounts" %}
+    <div class="form-group">
+      <span class="form-label">Choose an amount</span>
+      <div class="amount-buttons" role="group" aria-label="Suggested amounts">
+        {% for amount in card.amounts %}
+        <label class="amount-button">
+          <input type="radio" name="amount" value="{{ amount }}" {% if forloop.first %}required{% endif %}>
+          <span>${{ amount }}</span>
+        </label>
+        {% endfor %}
+        <label class="amount-button amount-button--custom">
+          <input type="radio" name="amount" value="custom">
+          <span>Other</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group giving-custom-amount" hidden>
+      <label for="custom-{{ card.id }}">Custom amount (min ${{ min_gift }})</label>
+      <input type="number" id="custom-{{ card.id }}" name="custom_amount" min="{{ min_gift }}" step="1" placeholder="{{ min_gift }}">
+    </div>
+
+    {% elif card.type == "custom_amount" %}
+    <div class="form-group">
+      <label for="amount-{{ card.id }}">Gift amount (min ${{ min_gift }})</label>
+      <input type="number" id="amount-{{ card.id }}" name="amount" min="{{ min_gift }}" step="1" required placeholder="{{ min_gift }}">
+    </div>
+    {% if card.allow_recurring %}
+    <div class="form-group form-check">
+      <label>
+        <input type="checkbox" name="recurring" value="monthly">
+        Make this a monthly gift
+      </label>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="form-group form-check">
+      <label>
+        <input type="checkbox" name="cover_fees" value="1" checked>
+        I'll cover processing fees so YEA receives the full amount
+      </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Give now</button>
+  </form>
+</article>

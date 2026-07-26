@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Drop-in dashboard — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Drop-in dashboard</h1>
+    <p class="lead">Welcome, {{ profile.primary_first_name }}.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    {% if profile.status == "pending" %}
+    <div class="highlight-box">
+      <p>Your registration is <strong>pending staff review</strong>. You cannot book drop-in days until we approve your application. We'll email you at {{ profile.primary_email }} when you're approved.</p>
+    </div>
+    {% elif profile.status == "rejected" %}
+    <div class="highlight-box">
+      <p>Your registration was not approved. Please <a href="{% url 'contact' %}">contact us</a> for help.</p>
+    </div>
+    {% else %}
+    <p>
+      <a class="btn btn-primary" href="{% url 'dropin_book' %}">Book a drop-in day</a>
+    </p>
+    <p class="form-note">Drop-in locations:</p>
+    <ul class="drop-in-details-list">
+      <li>School 18, School 26, Dale Ave (after-school)</li>
+      <li>Caldwell University (summer camp)</li>
+    </ul>
+    {% endif %}
+
+      <div class="drop-in-box drop-in-box-list">
+        <h3>Reminder</h3>
+        <ul class="drop-in-details-list">
+          <li><strong>After-school:</strong> ${{ fees.after_school }}/day</li>
+          <li><strong>Deadline:</strong> {{ deadlines.after_school }}</li>
+          <li><strong>Summer camp:</strong> ${{ fees.summer_camp }}/day</li>
+          <li><strong>Deadline:</strong> {{ deadlines.summer_camp }}</li>
+          <li><strong>Locations:</strong> School 18, School 26, Dale Ave, Caldwell University (summer camp)</li>
+        </ul>
+      </div>
+
+    <h2>Your bookings</h2>
+    {% if bookings %}
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Child</th>
+          <th>Program</th>
+          <th>Location</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in bookings %}
+        <tr>
+          <td>{{ booking.date|date:"M j, Y" }}</td>
+          <td>{{ booking.child.first_name }} {{ booking.child.last_name }}</td>
+          <td>{{ booking.get_program_display }}</td>
+          <td>{{ booking.get_location_display }}</td>
+          <td>{{ booking.get_status_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No bookings yet.</p>
+    {% endif %}
+
+    <p class="text-link-row">
+      <a href="{% url 'dropin_logout' %}">Log out</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

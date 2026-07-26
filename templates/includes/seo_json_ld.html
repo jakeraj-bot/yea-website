@@ -1,0 +1,56 @@
+{% load static %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "Youth Education Academy",
+  "alternateName": "YEA",
+  "url": "{{ site_url }}",
+  "logo": "{{ site_url }}{% static 'images/yea-logo.png' %}",
+  "email": "info@yeanj.org",
+  "telephone": "+1-609-357-8608",
+  "description": "Nonprofit after-school and summer camp programs for children ages 2½–13 in Paterson, NJ and at Caldwell University.",
+  "areaServed": [
+    {"@type": "City", "name": "Paterson", "addressRegion": "NJ"},
+    {"@type": "AdministrativeArea", "name": "Passaic County", "addressRegion": "NJ"},
+    {"@type": "City", "name": "Caldwell", "addressRegion": "NJ"}
+  ],
+  "location": [
+    {
+      "@type": "Place",
+      "name": "School 18 — After-School",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "51 East 18th St",
+        "addressLocality": "Paterson",
+        "addressRegion": "NJ",
+        "postalCode": "07524",
+        "addressCountry": "US"
+      }
+    },
+    {
+      "@type": "Place",
+      "name": "School 26 — After-School",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "1 East 32nd Street",
+        "addressLocality": "Paterson",
+        "addressRegion": "NJ",
+        "postalCode": "07514",
+        "addressCountry": "US"
+      }
+    },
+    {
+      "@type": "Place",
+      "name": "Caldwell University — Summer Camp",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Caldwell",
+        "addressRegion": "NJ",
+        "addressCountry": "US"
+      }
+    }
+  ],
+  "sameAs": []
+}
+</script>

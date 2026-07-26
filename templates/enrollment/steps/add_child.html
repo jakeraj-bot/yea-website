@@ -1,0 +1,16 @@
+{% extends "enrollment/apply_base.html" %}
+{% load enrollment_extras %}
+
+{% block step_content %}
+{% include "enrollment/includes/child_heading.html" %}
+<h2>{{ step_titles|get_item:step }}</h2>
+<p class="form-note">Each child may have a different program, location, billing, emergency contacts, and policy signatures.</p>
+
+<div class="form-grid">
+  <div class="form-group form-group-full">
+    {{ form.add_another.label_tag }}
+    {{ form.add_another }}
+    {{ form.add_another.errors }}
+  </div>
+</div>
+{% endblock %}

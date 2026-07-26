@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}School 26 — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <span class="badge">Now enrolling</span>
+    <h1>School 26</h1>
+    <p class="lead">Paterson · After-school · Ages 2½–13 · Opening fall 2026</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo page-featured-photo--placeholder">
+      {% include "includes/photo_placeholder.html" with title="School 26" %}
+    </div>
+
+    <h2>Programs offered</h2>
+    <ul>
+      <li>After-school program</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <ul class="drop-in-details-list">
+      <li><strong>Email:</strong> <a href="mailto:info@yeanj.org">info@yeanj.org</a></li>
+      <li><strong>Phone:</strong> <a href="tel:6093578608">609-357-8608</a></li>
+    </ul>
+
+    <h2>Address</h2>
+    <p>1 East 32nd Street, Paterson, NJ 07514</p>
+
+    <h2>Hours</h2>
+    <ul class="drop-in-details-list">
+      <li>After-school: 3:00pm – 6:00pm</li>
+    </ul>
+
+    <p>
+      <a class="btn btn-primary" href="{% url 'apply' %}">Apply now</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

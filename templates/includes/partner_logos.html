@@ -1,0 +1,22 @@
+{% load static %}
+<div class="partners-grid">
+  {% for partner in partners %}
+  {% if partner.url %}
+  <a class="partner-logo" href="{{ partner.url }}" target="_blank" rel="noopener noreferrer">
+  {% else %}
+  <div class="partner-logo">
+  {% endif %}
+    {% if partner.logo %}
+    <img src="{% static partner.logo %}" alt="{{ partner.name }} logo" loading="lazy">
+    {% else %}
+    <div class="partner-logo-placeholder">
+      <span>{{ partner.name }}</span>
+    </div>
+    {% endif %}
+  {% if partner.url %}
+  </a>
+  {% else %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>

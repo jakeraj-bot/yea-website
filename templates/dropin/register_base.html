@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Drop-in care — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>{% block dropin_hero_title %}Drop-in care{% endblock %}</h1>
+    <p class="lead">{% block dropin_hero_lead %}Register once, then sign up day-by-day when you need care.{% endblock %}</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    {% if step_order %}
+      {% include "dropin/includes/step_progress.html" %}
+    {% endif %}
+    {% block dropin_content %}{% endblock %}
+  </div>
+</section>
+{% block extra_js %}{% endblock %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Meet the Staff — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Meet the staff</h1>
+    <p class="lead">The people behind every "<span class="yea-acronym"><span class="yea-y">Y</span><span class="yea-e">E</span><span class="yea-a">A</span></span>" moment.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="staff-grid">
+      {% for member in staff %}
+      <article class="staff-card staff-card--{% cycle 'blue' 'green' 'orange' 'purple' 'teal' %}">
+        <div class="staff-card-photo">
+          {% include "includes/staff_photo_placeholder.html" %}
+        </div>
+        <div class="staff-card-body">
+          <h3>{{ member.name }}</h3>
+          <p class="staff-title">{{ member.title }}</p>
+          <p>{{ member.focus }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

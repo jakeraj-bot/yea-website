@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Youth Education Academy — After-School & Summer Programs{% endblock %}
+{% block meta_description %}After-school program in Paterson, NJ at School 18, School 26, and Dale Ave. Summer camp at Caldwell University. Ages 2½–13. Enroll with Youth Education Academy.{% endblock %}
+{% block og_title %}Youth Education Academy — Paterson After-School & Summer Camp{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-inner">
+    <div>
+      <h1>Making a "<span class="yea-acronym"><span class="yea-y">Y</span><span class="yea-e">E</span><span class="yea-a">A</span></span>" of a difference in every community we serve.</h1>
+      <p class="lead">Safe, engaging after-school and summer programs for children 2½–13 — through school and community partnerships.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{% url 'after_school' %}">View programs</a>
+        <a class="btn btn-secondary" href="{% url 'partnerships' %}">Partner with us</a>
+      </div>
+    </div>
+    <div class="hero-photo">
+      <img src="{% static 'images/site/hero.jpg' %}" alt="Children at Youth Education Academy summer camp">
+    </div>
+  </div>
+</section>
+
+<section class="trust-bar">
+  <div class="container">
+    <ul class="trust-items">
+      <li><span class="trust-dot"></span> 501(c)(3) nonprofit</li>
+      <li><span class="trust-dot"></span> Ages 2½–13</li>
+      <li><span class="trust-dot"></span> After-school starts Sept 8, 2026</li>
+      <li><span class="trust-dot"></span> Summer camp July 6 – Aug 14, 2026</li>
+      <li><span class="trust-dot"></span> Drop-in care available</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-header center">
+      <p class="section-label">Our purpose</p>
+      <h2>Mission &amp; vision</h2>
+    </div>
+    <div class="mission-grid">
+      <article class="mission-card">
+        <h3>Our mission</h3>
+        <p>To support students and families through impactful, district-aligned afterschool programs, tutoring, and enrichment opportunities.</p>
+      </article>
+      <article class="mission-card vision">
+        <h3>Our vision</h3>
+        <p>To create positive pathways for youth by offering safe, engaging environments where education and experiential learning can empower communities to succeed.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section-soft">
+  <div class="container">
+    <div class="section-header center">
+      <p class="section-label">Programs</p>
+      <h2>What we offer</h2>
+      <p>Year-round support for families through school and community partnerships.</p>
+    </div>
+    <div class="card-grid card-grid-2">
+      <article class="card card-accent">
+        <div class="card-image">
+          <img src="{% static 'images/site/programs/after-school.jpg' %}" alt="After-school program">
+        </div>
+        <span class="date-badge">Starts September 8, 2026</span>
+        <h3>After-school program</h3>
+        <p>Homework help, STEAM, arts, and sports for children 2½–13 at our Paterson school sites.</p>
+        <a class="btn btn-secondary" href="{% url 'after_school' %}">Learn more</a>
+      </article>
+      <article class="card card-accent blue">
+        <div class="card-image">
+          <img src="{% static 'images/site/programs/summer-camp.jpg' %}" alt="Summer camp at Caldwell University">
+        </div>
+        <span class="date-badge">July 6 – August 14, 2026</span>
+        <h3>Summer camp</h3>
+        <p>Themed weeks and hands-on activities — held at Caldwell University.</p>
+        <a class="btn btn-secondary" href="{% url 'summer_camp' %}">Learn more</a>
+      </article>
+    </div>
+    <div class="drop-in-box drop-in-box-list">
+      <h3>Drop-in services</h3>
+      {% include "includes/dropin_details.html" %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-header center">
+      <p class="section-label">Locations</p>
+      <h2>Find your site</h2>
+    </div>
+    <div class="card-grid">
+      <article class="card card-accent orange">
+        <div class="card-image card-image-focus-top">
+          <img src="{% static school_18_photo %}" alt="School 18 after-school program">
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>School 18</h3>
+        <p>After-school at School 18. Starts Sept 8, 2026.</p>
+        <a class="btn btn-secondary" href="{% url 'school_18' %}">View School 18</a>
+      </article>
+      <article class="card card-accent">
+        <div class="card-image card-image-focus-top">
+          <img src="{% static dale_ave_photo %}" alt="Dale Ave after-school program">
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>Dale Ave</h3>
+        <ul class="drop-in-details-list card-details-list">
+          <li>Separate program from School 18</li>
+          <li>Bus to School 18 building</li>
+          <li>Starts Sept 8, 2026</li>
+        </ul>
+        <a class="btn btn-secondary" href="{% url 'dale_ave' %}">View Dale Ave</a>
+      </article>
+      <article class="card card-accent green">
+        <div class="card-image card-image-placeholder">
+          {% include "includes/photo_placeholder.html" with compact=True title="School 26" %}
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>School 26</h3>
+        <ul class="drop-in-details-list card-details-list">
+          <li>1 East 32nd Street, Paterson, NJ 07514</li>
+          <li>Starts Sept 8, 2026</li>
+        </ul>
+        <a class="btn btn-secondary" href="{% url 'school_26' %}">View School 26</a>
+      </article>
+      <article class="card card-accent blue">
+        <div class="card-image">
+          <img src="{% static 'images/site/locations/caldwell.jpg' %}" alt="Caldwell University summer camp">
+        </div>
+        <p class="card-meta">Summer camp · July 6 – Aug 14, 2026</p>
+        <h3>Caldwell University</h3>
+        <p>Seasonal summer programming on the Caldwell University campus.</p>
+        <a class="btn btn-secondary" href="{% url 'caldwell' %}">Camp details</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section-soft">
+  <div class="container">
+    <div class="section-header center">
+      <p class="section-label">Activities</p>
+      <h2>Engaging activities that inspire</h2>
+      <p>Hands-on learning across academics, creativity, and play.</p>
+    </div>
+    <div class="activity-grid">
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/homework.jpg' %}" alt="Homework help and tutoring">
+        </div>
+        <h3>Homework help &amp; tutoring</h3>
+        <p>Dedicated time and support to complete assignments and strengthen academic skills.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/stem.jpg' %}" alt="STEM and robotics">
+        </div>
+        <h3>STEM explorations</h3>
+        <p>Hands-on science, technology, engineering, and math projects that spark curiosity.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/arts.jpg' %}" alt="Creative arts and crafts">
+        </div>
+        <h3>Creative arts</h3>
+        <p>Painting, crafts, and performing arts that let students express themselves.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/sports.jpg' %}" alt="Sports and recreation">
+        </div>
+        <h3>Sports &amp; recreation</h3>
+        <p>Fun, organized games that promote teamwork, fitness, and healthy competition.</p>
+      </article>
+    </div>
+    <p class="text-link-row">
+      <a href="{% url 'after_school' %}">See all program activities →</a>
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-header center">
+      <p class="section-label">Gallery</p>
+      <h2>Life at {% include "includes/yea_acronym.html" %}</h2>
+    </div>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+  </div>
+</section>
+
+<section class="section section-soft">
+  <div class="container">
+    <div class="section-header">
+      <p class="section-label">Why {% include "includes/yea_acronym.html" %}</p>
+      <h2>Why families &amp; partners choose us</h2>
+    </div>
+    <ul class="feature-list">
+      <li>
+        <h3>Year-round programming</h3>
+        <p>After-school during the school year, summer camp in season.</p>
+      </li>
+      <li>
+        <h3>Holistic learning</h3>
+        <p>Academics, STEAM, arts, sports, and enrichment.</p>
+      </li>
+      <li>
+        <h3>Safe environment</h3>
+        <p>Dedicated staff and structured daily routines.</p>
+      </li>
+      <li>
+        <h3>Flexible for families</h3>
+        <p>Drop-in services when you need care for a day or at the last minute.</p>
+      </li>
+    </ul>
+    <p class="text-link-row">
+      <a href="{% url 'our_story' %}">About us</a>
+      <a href="{% url 'partnerships' %}">Partner with us</a>
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="callout callout-warm">
+      <h2>Support our mission</h2>
+      <p>As a 501(c)(3) nonprofit, community gifts help keep programs accessible and support growth into new communities.</p>
+      <a class="btn btn-primary" href="{% url 'donate' %}">Donate</a>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="container">
+    <h2>Ready to get started?</h2>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="{% url 'after_school' %}">Find your program</a>
+      <a class="btn btn-secondary" href="{% url 'apply' %}">Apply now</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

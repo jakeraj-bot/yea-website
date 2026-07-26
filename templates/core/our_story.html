@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Our Story — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Our story</h1>
+    <p class="lead">Where every child in our community finds the support they need to truly thrive.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo">
+      <img src="{% static 'images/site/our-story.jpg' %}?v=2" alt="Youth Education Academy students and staff on a museum field trip">
+    </div>
+
+    <h2>Making a "<span class="yea-acronym"><span class="yea-y">Y</span><span class="yea-e">E</span><span class="yea-a">A</span></span>" of a difference</h2>
+    <p>At Youth Education Academy, we <strong>inspire</strong> curiosity and a love for learning through dynamic after-school and summer programs that spark creativity and critical thinking. We <strong>empower</strong> youth with the tools, skills, and confidence they need to excel. We help every student set and reach their goals, ensuring they <strong>achieve</strong> success not only in school, but in life.</p>
+
+    <h2>It takes a village</h2>
+    <p>We know that raising confident, capable, and resilient children is a team effort. That's why we partner with families, schools, and communities to provide the support, guidance, and opportunities every child deserves. Through academic enrichment, hands-on learning, and mentorship, we become an extension of your village.</p>
+
+    <h2>Our mission</h2>
+    <p>To support students and families through impactful, district-aligned afterschool programs, tutoring, and enrichment opportunities.</p>
+
+    <h2>Our vision</h2>
+    <p>To create positive pathways for youth by offering safe, engaging environments where education and experiential learning can empower communities to succeed.</p>
+
+    <h2>Core values</h2>
+    <ul>
+      <li><strong>Growth</strong> — Personal development, emotional maturity, and social confidence.</li>
+      <li><strong>Curiosity</strong> — Sparking questioning minds that stay active in lifelong learning.</li>
+      <li><strong>Resilience</strong> — Strength through challenges, learning to adapt and keep moving forward.</li>
+      <li><strong>Excellence</strong> — High standards with consistent guidance to help every learner grow.</li>
+    </ul>
+
+    <h2>Our founders</h2>
+    <p>Youth Education Academy was built by leaders who believe every community deserves access to safe, enriching programs for children and families.</p>
+    <div class="founders-grid">
+      {% for founder in founders %}
+      <article class="founder-card founder-card--{% if forloop.first %}orange{% else %}blue{% endif %}">
+        <div class="staff-card-photo">
+          {% include "includes/staff_photo_placeholder.html" %}
+        </div>
+        <div class="staff-card-body">
+          <h3>{{ founder.name }}</h3>
+          <p class="staff-title">{{ founder.title }}</p>
+          <p>{{ founder.bio }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    <h2>Meet our team</h2>
+    <p>From site directors to counselors and outreach, our staff bring heart, expertise, and dedication to every program we run.</p>
+    <p><a class="btn btn-primary" href="{% url 'meet_the_staff' %}">Meet the staff</a></p>
+  </div>
+</section>
+{% endblock %}

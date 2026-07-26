@@ -1,0 +1,3 @@
+{% if step != "family" and step != "review" %}
+<p class="form-note form-note-child"><strong>Child {{ child_number }}</strong>{% if child_count > 1 %} — {{ child_count }} child{{ child_count|pluralize }} added so far{% endif %}</p>
+{% endif %}

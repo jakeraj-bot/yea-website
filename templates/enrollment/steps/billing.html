@@ -1,0 +1,46 @@
+{% extends "enrollment/apply_base.html" %}
+{% load enrollment_extras %}
+
+{% block step_content %}
+{% include "enrollment/includes/child_heading.html" %}
+<h2>{{ step_titles|get_item:step }}</h2>
+
+<h3>Billing information for this child</h3>
+<p class="form-note">Payments are made through the EZChildTracking portal. We do not accept cash.</p>
+<div class="form-grid">
+  {% for field in form %}
+  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+    {% if field.field.widget.input_type == 'checkbox' %}
+    <label>{{ field }} {{ field.label }}</label>
+    {% else %}
+    {{ field.label_tag }}{{ field }}
+    {% endif %}
+    {{ field.errors }}
+  </div>
+  {% endfor %}
+</div>
+
+<h3>Emergency contacts</h3>
+<p class="form-note"><strong>Note:</strong> Two (2) emergency contacts are required.</p>
+{{ emergency_formset.management_form }}
+{% for contact_form in emergency_formset %}
+<fieldset class="emergency-contact-block">
+  <legend>Emergency contact #{{ forloop.counter }}</legend>
+  <div class="form-grid">
+    {% for field in contact_form %}
+    <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+      {% if field.field.widget.input_type == 'checkbox' %}
+      <label>{{ field }} {{ field.label }}</label>
+      {% else %}
+      {{ field.label_tag }}{{ field }}
+      {% endif %}
+      {{ field.errors }}
+    </div>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endfor %}
+{% if emergency_formset.non_form_errors %}
+<div class="form-errors">{{ emergency_formset.non_form_errors }}</div>
+{% endif %}
+{% endblock %}

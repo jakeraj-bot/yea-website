@@ -1,0 +1,8 @@
+{% load static %}
+<div class="photo-gallery">
+  {% for photo in photos %}
+  <div class="gallery-item">
+    <img src="{% static photo %}" alt="Youth Education Academy program photo" loading="lazy">
+  </div>
+  {% endfor %}
+</div>

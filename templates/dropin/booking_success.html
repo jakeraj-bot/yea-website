@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Booking confirmed — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>{% if booking.status == "paid" %}Drop-in booked{% else %}Payment processing{% endif %}</h1>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    {% if booking.status == "paid" %}
+    <p>You're all set for <strong>{{ booking.date|date:"l, F j, Y" }}</strong>.</p>
+    <ul>
+      <li><strong>Child:</strong> {{ booking.child.first_name }} {{ booking.child.last_name }}</li>
+      <li><strong>Program:</strong> {{ booking.get_program_display }}</li>
+      <li><strong>Location:</strong> {{ booking.get_location_display }}</li>
+    </ul>
+    {% else %}
+    <p>We're confirming your payment. Check your dashboard in a moment.</p>
+    {% endif %}
+    <p>
+      <a class="btn btn-primary" href="{% url 'dropin_dashboard' %}">Back to dashboard</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

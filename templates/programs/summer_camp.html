@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Summer Camp — Caldwell University | Youth Education Academy{% endblock %}
+{% block meta_description %}Summer camp at Caldwell University, NJ. July 6 – August 14, 2026. Ages 2½–13. Extended day available. Enroll with Youth Education Academy.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Summer camp</h1>
+    <p class="lead">Make summer unforgettable with hands-on activities, themed weeks, and enrichment — at Caldwell University.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo">
+      <img src="{% static 'images/site/programs/summer-camp.jpg' %}" alt="Summer camp at Caldwell University">
+    </div>
+
+    <p>Our summer camp features themed weeks, outdoor adventures, field trips, and activities designed for learning, friendships, and fun.</p>
+
+    <h2>2026 camp details</h2>
+    <ul>
+      <li><strong>Dates:</strong> July 6 – August 14, 2026</li>
+      <li><strong>Ages:</strong> 2½ – 13</li>
+      <li><strong>Hours:</strong> Monday – Friday, 8:00am – 3:00pm</li>
+      <li><strong>Extended day:</strong> 3:00pm – 5:00pm (optional add-on)</li>
+    </ul>
+
+    <h2>Camp location</h2>
+    <p>Summer camp is held on the campus of <strong>Caldwell University</strong> through our community partnership.</p>
+    <p><a class="btn btn-secondary" href="{% url 'caldwell' %}">Caldwell University camp details</a></p>
+
+    <h2>Photos</h2>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+
+    <p style="margin-top:2rem;">
+      <a class="btn btn-primary" href="{% url 'apply' %}">Apply for summer camp</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

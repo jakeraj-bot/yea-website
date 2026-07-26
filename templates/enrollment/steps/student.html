@@ -1,0 +1,40 @@
+{% extends "enrollment/apply_base.html" %}
+{% load enrollment_extras %}
+
+{% block step_content %}
+{% include "enrollment/includes/child_heading.html" %}
+<h2>{{ step_titles|get_item:step }}</h2>
+<h3>Student information</h3>
+<div class="form-grid">
+  {% for field in form %}
+  {% if field.name|slice:":8" == "student_" %}
+  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+    {% if field.field.widget.input_type == 'checkbox' %}
+    <label>{{ field }} {{ field.label }}</label>
+    {% else %}
+    {{ field.label_tag }}{{ field }}
+    {% endif %}
+    {{ field.errors }}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<h3>Student medical information</h3>
+<div class="form-grid">
+  {% for field in form %}
+  {% if field.name|slice:":8" != "student_" %}
+  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}{% if field.name == 'health_statement' %} form-group-full{% endif %}">
+    {% if field.field.widget.input_type == 'checkbox' %}
+    <label>{{ field }} {{ field.label }}</label>
+    {% elif field.field.widget.input_type == 'radio' %}
+    <span class="form-label">{{ field.label }}</span>{{ field }}
+    {% else %}
+    {{ field.label_tag }}{{ field }}
+    {% endif %}
+    {{ field.errors }}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

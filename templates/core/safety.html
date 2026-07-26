@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Safety & Policies — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Safety &amp; policies</h1>
+    <p class="lead">Your child's safety and well-being are our top priorities.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <h2>Our commitment</h2>
+    <p>Youth Education Academy maintains a safe, structured environment where children can learn, play, and grow with confidence.</p>
+
+    <h2>Staff screening</h2>
+    <p>All staff undergo background checks and training appropriate to their roles before working with children.</p>
+
+    <h2>Check-in &amp; check-out</h2>
+    <p>We follow clear procedures for dropping off and picking up children to ensure every student is accounted for.</p>
+
+    <h2>Supervision</h2>
+    <p>Programs are staffed to maintain appropriate supervision ratios and a supportive environment at all times.</p>
+
+    <p>Questions about our policies? <a href="{% url 'contact' %}">Contact us</a>.</p>
+  </div>
+</section>
+{% endblock %}

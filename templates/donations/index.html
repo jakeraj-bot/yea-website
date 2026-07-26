@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Donate — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Support our mission</h1>
+    <p class="lead">Youth Education Academy is a 501(c)(3) nonprofit. Your gift helps keep programs accessible and supports growth into new communities.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <h2>Why give</h2>
+    <p>Community support helps us provide enriching after-school and summer programs for children and families who need them most.</p>
+
+    <h2>Where your gift goes</h2>
+    <ul>
+      <li>Scholarships and accessible programming for families</li>
+      <li>Program supplies, enrichment materials, and activities</li>
+      <li>Staff support and program quality</li>
+      <li>Expanding into new school and community partnerships</li>
+    </ul>
+
+    <h2>Choose how to give</h2>
+    {% if donation_success %}
+    <div class="form-success"><p><strong>Thank you!</strong> Your donation was received.</p></div>
+    {% endif %}
+    {% if donation_canceled %}<p class="form-note">Checkout was canceled. You can try again anytime.</p>{% endif %}
+    {% if not stripe_configured %}<p class="form-note">Online giving will activate once Stripe keys are added to your <code>.env</code> file.</p>{% endif %}
+    {% if messages %}
+    {% for message in messages %}<div class="form-errors">{{ message }}</div>{% endfor %}
+    {% endif %}
+
+    <div class="giving-grid">
+      {% for card in giving_cards %}
+      {% include "includes/giving_card.html" with card=card min_gift=min_gift %}
+      {% endfor %}
+    </div>
+
+    <h2>Community in action</h2>
+    <p>Partners like Bank of America help us provide school supplies and resources for the families we serve.</p>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+
+    <p class="form-note">Contributions to Youth Education Academy, a 501(c)(3) nonprofit organization, may be tax-deductible to the extent allowed by law.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/donate.js' %}?v=1"></script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load enrollment_extras %}
+
+{% block title %}Application submitted — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Thank you!</h1>
+    <p class="lead">We received {{ applications|length }} application{{ applications|length|pluralize }} for your family.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <p>Each child is reviewed as a separate application in our system, linked to the same family information.</p>
+    <ul>
+      {% for app in applications %}
+      <li>
+        <strong>{{ app.student_first_name }} {{ app.student_last_name }}</strong> —
+        {{ app.program|program_label }} at {{ app.program_location|location_label }}
+        <br><span class="form-note">Reference: {{ app.reference }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p>We will contact you at <strong>{{ applications.0.primary_email }}</strong> with next steps.</p>
+    <p>
+      <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Partnerships — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Partner with us</h1>
+    <p class="lead">We collaborate with schools, universities, libraries, and community organizations to bring programs where families need them.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <h2>Who we partner with</h2>
+    <ul>
+      <li>K–12 schools and school districts</li>
+      <li>Universities and colleges</li>
+      <li>Libraries and community centers</li>
+      <li>Municipalities and nonprofit organizations</li>
+    </ul>
+
+    <h2>What we offer</h2>
+    <ul>
+      <li>After-school programming</li>
+      <li>Summer camp</li>
+      <li>Enrichment and experiential learning</li>
+    </ul>
+
+    <h2>Why partner with {% include "includes/yea_acronym.html" %}</h2>
+    <p>Our leadership brings deep experience in youth programming, district-aligned services, and grant-funded educational initiatives. We work hand-in-hand with partners to deliver safe, engaging, compliant programs that support families and communities.</p>
+
+    <h2>Our partners</h2>
+    <p>We're proud to work alongside schools, universities, and community organizations that help us serve families across Northern New Jersey.</p>
+    {% include "includes/partner_logos.html" with partners=partners %}
+
+    <h2>Current footprint</h2>
+    <ul>
+      <li>School 18 — Paterson (after-school)</li>
+      <li>School 26 — Paterson (after-school)</li>
+      <li>Caldwell University — summer camp partnership</li>
+    </ul>
+
+    <h2>Partner spotlight: Caldwell University</h2>
+    <div class="page-featured-photo page-featured-photo--narrow">
+      <img src="{% static 'images/site/locations/caldwell.jpg' %}" alt="Summer camp partnership at Caldwell University">
+    </div>
+    <p>Youth Education Academy is proud to partner with Caldwell University to host our <strong>summer camp</strong> on their campus. This partnership gives families access to a vibrant university setting for seasonal programming rooted in exploration, creativity, and learning.</p>
+    <p><a href="{% url 'caldwell' %}">Learn about summer camp at Caldwell University →</a></p>
+
+    <h2>How to get started</h2>
+    <ol>
+      <li>Reach out to discuss your community's needs</li>
+      <li>We scope program options together</li>
+      <li>We launch a partnership tailored to your site and families</li>
+    </ol>
+
+    <p>
+      <a class="btn btn-primary" href="{% url 'contact' %}">Become a partner</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

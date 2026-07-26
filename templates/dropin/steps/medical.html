@@ -1,0 +1,25 @@
+{% extends "dropin/register_base.html" %}
+
+{% block dropin_content %}
+<h2>{{ step_titles.medical }}</h2>
+<form method="post" class="apply-form" novalidate>
+  {% csrf_token %}
+  <div class="form-grid">
+    {% for field in form %}
+    <div class="form-group {% if field.name in 'allergies medical_condition_explain health_statement' or field.field.widget.input_type == 'checkbox' %}form-group-full{% endif %} {% if field.field.widget.input_type == 'checkbox' %}form-check{% endif %}">
+      {% if field.field.widget.input_type == 'checkbox' %}
+      <label>{{ field }} {{ field.label }}</label>
+      {% else %}
+      {{ field.label_tag }}
+      {{ field }}
+      {% endif %}
+      {{ field.errors }}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="apply-actions">
+    <a class="btn btn-secondary" href="{% url 'dropin_register' step=prev_step %}">Back</a>
+    <button type="submit" class="btn btn-primary">Continue</button>
+  </div>
+</form>
+{% endblock %}

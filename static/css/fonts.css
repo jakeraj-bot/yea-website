@@ -1,0 +1,44 @@
+/*
+ * Biome — licensed font files in static/fonts/biome/
+ * Fallback: Comfortaa (Google Fonts) if a weight is missing
+ */
+
+@font-face {
+  font-family: "Biome";
+  src: url("../fonts/biome/Biome-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Biome";
+  src: url("../fonts/biome/Biome-Light-Italic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Biome";
+  src: url("../fonts/biome/Biome-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Biome";
+  src: url("../fonts/biome/Biome-Regular.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Biome";
+  src: url("../fonts/biome/Biome-Regular.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

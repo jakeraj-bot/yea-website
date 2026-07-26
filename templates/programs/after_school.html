@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}After-School Program — Paterson, NJ | Youth Education Academy{% endblock %}
+{% block meta_description %}After-school program in Paterson, NJ at School 18, School 26, and Dale Ave. Ages 2½–13. Starts Sept 8, 2026. Apply online with Youth Education Academy.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <span class="date-badge">Starts September 8, 2026</span>
+    <h1>After-school program</h1>
+    <p class="lead">Homework help, STEAM, arts, and sports for children 2½–13 — meaningful enrichment after the school day ends at our Paterson school sites.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo">
+      <img src="{% static 'images/site/programs/after-school.jpg' %}" alt="Students in the after-school program">
+    </div>
+
+    <p>Our after-school program keeps learning fun and engaging long after the school day ends. We partner with schools and families to provide a safe, structured environment where children build skills, friendships, and confidence.</p>
+
+    <div class="program-facts">
+      <div class="program-fact">
+        <strong>Ages</strong>
+        <span>2½ – 13 years</span>
+      </div>
+      <div class="program-fact">
+        <strong>Hours</strong>
+        <span>3:00pm – 6:00pm</span>
+      </div>
+      <div class="program-fact">
+        <strong>Starts</strong>
+        <span>September 8, 2026</span>
+      </div>
+      <div class="program-fact">
+        <strong>Sites</strong>
+        <span>School 18 &amp; School 26, Paterson</span>
+      </div>
+    </div>
+
+    <h2>What we offer</h2>
+    <ul>
+      <li>Homework help and tutoring</li>
+      <li>STEM explorations</li>
+      <li>Creative arts</li>
+      <li>Sports and recreation</li>
+      <li>Leadership and life skills</li>
+      <li>Field trips and enrichment experiences</li>
+    </ul>
+
+    <h2>Activities</h2>
+    <p>Hands-on learning across academics, creativity, and play.</p>
+    <div class="activity-grid">
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/homework.jpg' %}" alt="Homework help and tutoring">
+        </div>
+        <h3>Homework help &amp; tutoring</h3>
+        <p>Dedicated time and support to complete assignments and strengthen academic skills.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/stem.jpg' %}" alt="STEM and robotics">
+        </div>
+        <h3>STEM explorations</h3>
+        <p>Hands-on science, technology, engineering, and math projects that spark curiosity.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/arts.jpg' %}" alt="Creative arts and crafts">
+        </div>
+        <h3>Creative arts</h3>
+        <p>Painting, crafts, and performing arts that let students express themselves.</p>
+      </article>
+      <article class="activity-card">
+        <div class="activity-image">
+          <img src="{% static 'images/site/activities/sports.jpg' %}" alt="Sports and recreation">
+        </div>
+        <h3>Sports &amp; recreation</h3>
+        <p>Fun, organized games that promote teamwork, fitness, and healthy competition.</p>
+      </article>
+    </div>
+
+    <div class="drop-in-box drop-in-box-list">
+      <h3>Drop-in services</h3>
+      {% include "includes/dropin_details.html" %}
+    </div>
+
+    <h2>Locations</h2>
+    <p>After-school programming is available at both Paterson sites. Summer camp is held separately at Caldwell University.</p>
+    <div class="card-grid card-grid-2">
+      <article class="card card-accent orange">
+        <div class="card-image card-image-focus-top">
+          <img src="{% static school_18_photo %}" alt="School 18 after-school program">
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>School 18</h3>
+        <p>After-school at School 18. Starts Sept 8, 2026.</p>
+        <a class="btn btn-secondary" href="{% url 'school_18' %}">View School 18</a>
+      </article>
+      <article class="card card-accent">
+        <div class="card-image card-image-focus-top">
+          <img src="{% static dale_ave_photo %}" alt="Dale Ave after-school program">
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>Dale Ave</h3>
+        <ul class="drop-in-details-list card-details-list">
+          <li>Separate program from School 18</li>
+          <li>Bus to School 18 building</li>
+          <li>Starts Sept 8, 2026</li>
+        </ul>
+        <a class="btn btn-secondary" href="{% url 'dale_ave' %}">View Dale Ave</a>
+      </article>
+      <article class="card card-accent green">
+        <div class="card-image card-image-placeholder">
+          {% include "includes/photo_placeholder.html" with compact=True title="School 26" %}
+        </div>
+        <span class="badge">Now enrolling</span>
+        <p class="card-meta">Paterson · After-school</p>
+        <h3>School 26</h3>
+        <ul class="drop-in-details-list card-details-list">
+          <li>1 East 32nd Street, Paterson, NJ 07514</li>
+          <li>Starts Sept 8, 2026</li>
+        </ul>
+        <a class="btn btn-secondary" href="{% url 'school_26' %}">View School 26</a>
+      </article>
+    </div>
+
+    <h2>Photos</h2>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+
+    <p class="text-link-row">
+      Looking for summer? <a href="{% url 'summer_camp' %}">View summer camp at Caldwell University →</a>
+    </p>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="container">
+    <h2>Ready to enroll?</h2>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="{% url 'apply' %}">Apply now</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Youth Education Academy{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Youth Education Academy — nonprofit after-school and summer camp in Paterson, NJ and Caldwell University. Ages 2½–13. Enroll today.{% endblock %}">
+  <link rel="canonical" href="{% block canonical_url %}{{ site_url }}{{ request.path }}{% endblock %}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Youth Education Academy">
+  <meta property="og:title" content="{% block og_title %}Youth Education Academy{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Nonprofit after-school and summer camp in Paterson, NJ and Caldwell University for ages 2½–13.{% endblock %}">
+  <meta property="og:url" content="{{ site_url }}{{ request.path }}">
+  <meta property="og:image" content="{{ site_url }}{% static 'images/yea-logo.png' %}">
+  <meta name="twitter:card" content="summary">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20">
+  {% include "includes/seo_json_ld.html" %}
+</head>
+<body>
+  <div class="rainbow-bar" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="{% url 'home' %}">
+        <img src="{% static 'images/yea-logo.png' %}" alt="">
+        <span class="logo-name">Youth Education Academy</span>
+      </a>
+      <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li class="has-dropdown">
+            <a class="nav-link nav-programs" href="{% url 'after_school' %}">Programs</a>
+            <ul class="dropdown">
+              <li><a href="{% url 'after_school' %}">After-School Program</a></li>
+              <li><a href="{% url 'summer_camp' %}">Summer Camp</a></li>
+              <li><a href="{% url 'dropin_index' %}">Drop-in Care</a></li>
+              <li><a href="{% url 'school_18' %}">School 18</a></li>
+              <li><a href="{% url 'school_26' %}">School 26</a></li>
+              <li><a href="{% url 'dale_ave' %}">Dale Ave</a></li>
+              <li><a href="{% url 'caldwell' %}">Caldwell University</a></li>
+            </ul>
+          </li>
+          <li class="has-dropdown">
+            <a class="nav-link nav-about" href="{% url 'our_story' %}">About</a>
+            <ul class="dropdown">
+              <li><a href="{% url 'our_story' %}">Our Story</a></li>
+              <li><a href="{% url 'meet_the_staff' %}">Meet the Staff</a></li>
+            </ul>
+          </li>
+          <li><a class="nav-link nav-partnerships" href="{% url 'partnerships' %}">Partnerships</a></li>
+          <li><a class="nav-link nav-donate" href="{% url 'donate' %}">Donate</a></li>
+          <li><a class="nav-link nav-contact" href="{% url 'contact' %}">Contact</a></li>
+        </ul>
+        <a class="btn btn-primary btn-nav" href="{% url 'apply' %}">Apply</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="footer-logo">
+          <img src="{% static 'images/yea-logo.png' %}" alt="Youth Education Academy">
+        </div>
+        <p class="footer-tagline">Inspire · Empower · Achieve</p>
+        <p class="footer-nonprofit">501(c)(3) nonprofit organization</p>
+      </div>
+      <div>
+        <p class="footer-heading">Programs</p>
+        <ul class="footer-links">
+          <li><a href="{% url 'after_school' %}">After-School</a></li>
+          <li><a href="{% url 'summer_camp' %}">Summer Camp</a></li>
+          <li><a href="{% url 'school_18' %}">School 18</a></li>
+          <li><a href="{% url 'school_26' %}">School 26</a></li>
+          <li><a href="{% url 'dale_ave' %}">Dale Ave</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-heading">Connect</p>
+        <ul class="footer-links">
+          <li><a href="mailto:info@yeanj.org">info@yeanj.org</a></li>
+          <li><a href="tel:6093578608">609-357-8608</a></li>
+          <li><a href="{% url 'contact' %}">Contact form</a></li>
+          <li><a href="{% url 'donate' %}">Donate</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>&copy; {% now "Y" %} Youth Education Academy. All rights reserved.</p>
+      <p class="footer-staff-link"><a href="/admin/">Staff admin</a></p>
+    </div>
+  </footer>
+
+  <script src="{% static 'js/site.js' %}?v=3"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

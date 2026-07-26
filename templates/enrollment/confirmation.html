@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Application submitted — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Application submitted</h1>
+    <p class="lead">Thank you! We received your enrollment application.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="form-success">
+      <p><strong>{{ application.student_first_name }} {{ application.student_last_name }}</strong> — reference <code>{{ application.reference }}</code></p>
+      <p>Our team will review your application and follow up by email at <strong>{{ application.primary_email }}</strong>.</p>
+    </div>
+    <p>
+      <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

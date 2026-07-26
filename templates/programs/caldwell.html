@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Summer Camp at Caldwell University — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Summer camp at Caldwell University</h1>
+    <p class="lead">Seasonal summer programming on the Caldwell University campus.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-featured-photo">
+      <img src="{% static 'images/site/locations/caldwell.jpg' %}" alt="Summer camp at Caldwell University">
+    </div>
+
+    <p>Our summer camp is held on the campus of <strong>Caldwell University</strong> — combining {% include "includes/yea_acronym.html" %}'s engaging programming with a welcoming university environment.</p>
+
+    <h2>What to expect</h2>
+    <ul>
+      <li>Themed weeks and hands-on activities</li>
+      <li>Outdoor adventures and enrichment</li>
+      <li>Friendships, fun, and learning</li>
+    </ul>
+
+    <h2>2026 camp details</h2>
+    <ul>
+      <li><strong>Dates:</strong> July 6 – August 14, 2026</li>
+      <li><strong>Ages:</strong> 2½ – 13</li>
+      <li><strong>Hours:</strong> Monday – Friday, 8:00am – 3:00pm</li>
+      <li><strong>Extended day:</strong> 3:00pm – 5:00pm (optional add-on)</li>
+    </ul>
+
+    <h2>Photos</h2>
+    {% include "includes/photo_gallery.html" with photos=gallery_photos %}
+
+    <p>
+      <a class="btn btn-primary" href="{% url 'apply' %}">Apply for summer camp</a>
+      <a class="btn btn-secondary" href="{% url 'partnerships' %}">About our partnership</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

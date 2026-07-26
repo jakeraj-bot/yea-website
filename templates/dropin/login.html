@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Drop-in login — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Parent login</h1>
+    <p class="lead">Sign in to book drop-in days for your child.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <form method="post" class="apply-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="apply-actions">
+        <button type="submit" class="btn btn-primary">Log in</button>
+        <a class="btn btn-secondary" href="{% url 'dropin_register' %}">New registration</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

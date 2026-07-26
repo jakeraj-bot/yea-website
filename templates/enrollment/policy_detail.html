@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ policy.title }} — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>{{ policy.title }}</h1>
+    <p class="lead">Youth Education Academy — 2026–2027 after-school program</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container policy-document">
+    {% for para in policy.paragraphs %}
+    <p>{{ para }}</p>
+    {% endfor %}
+
+    <div class="policy-sign-footer">
+      <p><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+      <p>Parent/Guardian signature: __________________________ Date: ______________</p>
+    </div>
+
+    <p><a href="{% url 'apply' %}">← Back to application</a></p>
+  </div>
+</section>
+{% endblock %}
