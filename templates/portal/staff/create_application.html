@@ -1,0 +1,86 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='applications' %}">Applications</a> / Create</p>
+    <h1>Create application</h1>
+    <p class="lead">Walk-in, phone, or paper — staff enters on behalf of the family.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <p class="form-note">Parent receives email to complete policies and medical info in their portal after you submit.</p>
+    <form class="portal-form-grid card portal-panel" method="post" action="{% url 'portal_staff_create_application' %}">
+      {% csrf_token %}
+      <div class="form-group portal-form-full">
+        <label for="program-label">Program session</label>
+        <input id="program-label" type="text" class="portal-input portal-input-readonly" value="{{ active_program|default:'After-School 2026–27' }} — {{ staff_unit }}" readonly>
+      </div>
+      <div class="form-group">
+        <label for="family-name">Family name</label>
+        <input id="family-name" name="family_name" type="text" class="portal-input" placeholder="Last name" required>
+      </div>
+      <div class="form-group">
+        <label for="parent-name">Primary parent name</label>
+        <input id="parent-name" name="primary_parent_name" type="text" class="portal-input" placeholder="Full name" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" class="portal-input" placeholder="parent@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" class="portal-input" placeholder="609-555-0100">
+      </div>
+      <div class="form-group portal-form-full">
+        <label for="address">Home address</label>
+        <input id="address" name="home_address" type="text" class="portal-input" placeholder="Street, city, state, zip">
+      </div>
+      <div class="form-group">
+        <label for="child-first">Child first name</label>
+        <input id="child-first" name="student_first_name" type="text" class="portal-input" required>
+      </div>
+      <div class="form-group">
+        <label for="child-last">Child last name</label>
+        <input id="child-last" name="student_last_name" type="text" class="portal-input" required>
+      </div>
+      <div class="form-group">
+        <label for="dob">Date of birth</label>
+        <input id="dob" name="student_dob" type="date" class="portal-input" required>
+      </div>
+      <div class="form-group">
+        <label for="grade">Grade</label>
+        <select id="grade" name="grade" class="portal-select">
+          <option value="pre_k">Pre-K</option>
+          <option value="kindergarten">Kindergarten</option>
+          <option value="1">1st</option>
+          <option value="2">2nd</option>
+          <option value="3">3rd</option>
+          <option value="4" selected>4th</option>
+          <option value="5">5th</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="returning">Returning member?</label>
+        <select id="returning" name="returning_member" class="portal-select">
+          <option value="no">No — membership fee applies</option>
+          <option value="yes">Yes — enrolled last fall</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="payment">Payment method</label>
+        <select id="payment" name="payment_method" class="portal-select">
+          <option value="private_pay">Private pay</option>
+          <option value="4cs">4Cs</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="portal-form-actions portal-form-full">
+        <button type="submit" name="action" value="submit" class="btn btn-primary">Save &amp; send to parent</button>
+        <button type="submit" name="action" value="draft" class="btn btn-secondary">Save as draft</button>
+        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='applications' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+<h2>Program</h2>
+<dl class="portal-dl portal-dl-2col">
+  <dt>Program</dt><dd>{{ application.program }}</dd>
+  <dt>Location</dt><dd>{{ application.location }}</dd>
+</dl>
+<h2>Student</h2>
+<dl class="portal-dl portal-dl-2col">
+  <dt>Child</dt><dd>{{ application.child_name }}</dd>
+  <dt>Date of birth</dt><dd>{{ application.student_dob }}</dd>
+  <dt>Grade</dt><dd>{{ application.grade }}</dd>
+</dl>
+<h2>Family &amp; guardians</h2>
+<dl class="portal-dl portal-dl-2col">
+  <dt>Family name</dt><dd>{{ application.family_name }}</dd>
+  <dt>Home address</dt><dd>{{ application.home_address }}</dd>
+  <dt>Primary parent</dt><dd>{{ application.primary_parent }}</dd>
+  <dt>Email</dt><dd>{{ application.primary_email }}</dd>
+  <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
+</dl>
+<h2>Billing preferences</h2>
+<dl class="portal-dl portal-dl-2col">
+  <dt>Payment method</dt><dd>{{ application.payment_method }}</dd>
+  <dt>Payment plan</dt><dd>{{ application.payment_plan }}</dd>
+  <dt>Membership fee ($20)</dt><dd>{{ application.membership_fee_agreed }}</dd>
+</dl>
+{% if application.emergency_contacts %}
+<h2>Emergency contacts</h2>
+<ul class="portal-link-list">
+  {% for c in application.emergency_contacts %}
+  <li>{{ c.name }} — {{ c.phone }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+<h2>Policies</h2>
+<p>{{ application.policies_signed }} policies signed electronically at submission.</p>

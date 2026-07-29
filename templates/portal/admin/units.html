@@ -1,0 +1,115 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Units &amp; locations</h1>
+    <p class="lead">Add, edit, or retire program locations.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='units' %}?add=1">+ Add unit</a>
+    </div>
+
+    {% if show_add_unit or editing_unit %}
+    <div class="portal-panel card portal-program-form">
+      <h2>{% if editing_unit %}Edit unit{% else %}New unit{% endif %}</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_unit_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        {% if editing_unit %}<input type="hidden" name="unit_id" value="{{ editing_unit.pk }}">{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="unit-name">Unit name</label>
+          <input id="unit-name" name="name" type="text" class="portal-input" placeholder="School 18" value="{{ editing_unit.name|default:'' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="unit-type">Program type</label>
+          <select id="unit-type" name="program_type" class="portal-select">
+            <option value="after_school" {% if editing_unit.program_type == 'after_school' %}selected{% endif %}>After-school</option>
+            <option value="summer_camp" {% if editing_unit.program_type == 'summer_camp' %}selected{% endif %}>Summer camp</option>
+            <option value="drop_in" {% if editing_unit.program_type == 'drop_in' %}selected{% endif %}>Drop-in center</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="unit-capacity">Capacity</label>
+          <input id="unit-capacity" name="capacity" type="number" class="portal-input" value="{{ editing_unit.capacity|default:'' }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="unit-address">Street address</label>
+          <input id="unit-address" name="address" type="text" class="portal-input" value="{{ editing_unit.address|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="unit-city">City / ZIP</label>
+          <input id="unit-city" name="city" type="text" class="portal-input" value="{{ editing_unit.city|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="unit-phone">Phone</label>
+          <input id="unit-phone" name="phone" type="tel" class="portal-input" value="{{ editing_unit.phone|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="unit-manager">Site manager</label>
+          <input id="unit-manager" name="manager" type="text" class="portal-input" value="{{ editing_unit.manager|default:'' }}">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save unit</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='units' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-unit-cards">
+      {% for unit in units %}
+      <article class="card portal-unit-card">
+        <div class="portal-unit-card-header">
+          <h2>{{ unit.name }}</h2>
+          {% if unit.active %}
+          <span class="portal-status portal-status-active">Active</span>
+          {% else %}
+          <span class="portal-status">Inactive</span>
+          {% endif %}
+        </div>
+        <dl class="portal-dl">
+          <dt>Type</dt>
+          <dd>{{ unit.program_type|title|cut:"_" }}</dd>
+          <dt>Address</dt>
+          <dd>{{ unit.address }}<br>{{ unit.city }}</dd>
+          <dt>Manager</dt>
+          <dd>{{ unit.manager }} · {{ unit.phone }}</dd>
+          <dt>Enrollment</dt>
+          <dd>
+            {{ unit.enrolled }} / {{ unit.capacity }}
+            <div class="portal-capacity-bar" aria-hidden="true">
+              <span class="portal-capacity-fill" style="width: {% widthratio unit.enrolled unit.capacity 100 %}%;"></span>
+            </div>
+          </dd>
+        </dl>
+        <div class="portal-unit-card-actions">
+          <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='units' %}?edit={{ unit.pk }}">Edit</a>
+          {% if portal_live %}
+          <form method="post" action="{% url 'portal_admin_unit_action' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="unit_id" value="{{ unit.pk }}">
+            <input type="hidden" name="action" value="{% if unit.active %}deactivate{% else %}activate{% endif %}">
+            <button type="submit" class="btn btn-secondary btn-sm{% if unit.active %} portal-btn-danger{% endif %}">{% if unit.active %}Deactivate{% else %}Reactivate{% endif %}</button>
+          </form>
+          {% if unit.can_delete %}
+          <form method="post" action="{% url 'portal_admin_unit_action' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="unit_id" value="{{ unit.pk }}">
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Permanently delete {{ unit.name }}? This cannot be undone.');">Delete</button>
+          </form>
+          {% elif unit.delete_blockers %}
+          <span class="form-note" title="Remove {{ unit.delete_blockers|join:', ' }} first">Delete unavailable</span>
+          {% endif %}
+          {% else %}
+          <button type="button" class="btn btn-secondary btn-sm portal-btn-danger" disabled>Deactivate</button>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

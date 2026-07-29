@@ -1,12 +1,16 @@
 {% load enrollment_extras %}
-<nav class="apply-progress" aria-label="Application steps">
-  <ol>
-    {% for s in step_order %}
-    {% if s != "review" %}
-    <li class="{% if s == step %}active{% elif forloop.counter0 < step_index %}done{% endif %}">
-      <span>{{ forloop.counter }}</span> {{ step_titles|get_item:s }}
-    </li>
+<nav class="portal-family-tabs apply-step-tabs apply-step-tabs-colorful apply-step-tabs-scroll" aria-label="Application steps">
+  {% for s in step_order %}
+  {% with tab_index=forloop.counter0 %}
+    {% if tab_index <= max_step_index %}
+    <a
+      class="portal-family-tab apply-step-tab apply-step-tab--{{ s }}{% if s == step %} is-active{% elif tab_index < step_index %} is-complete{% endif %}"
+      href="{% url 'enrollment_apply' step=s %}"
+      {% if s == step %}aria-current="step"{% endif %}
+    >{{ step_tab_labels|get_item:s }}</a>
+    {% else %}
+    <span class="portal-family-tab apply-step-tab apply-step-tab--{{ s }} is-disabled" aria-disabled="true">{{ step_tab_labels|get_item:s }}</span>
     {% endif %}
-    {% endfor %}
-  </ol>
+  {% endwith %}
+  {% endfor %}
 </nav>

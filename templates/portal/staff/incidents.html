@@ -1,0 +1,161 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Incidents &amp; accidents</h1>
+    <p class="lead">{{ staff_unit }} — log injuries, behavior notes, and medication events.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">+ Log incident</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_incidents_print' %}">Print log (PDF)</a>
+    </div>
+
+    {% if show_log_incident %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Log new incident</h2>
+      <p class="form-note">Complete during or right after the event. Parent notification is tracked separately.</p>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_staff_incident_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="inc-date">Date</label>
+          <input id="inc-date" name="date" type="date" class="portal-input" value="2026-09-12" required>
+        </div>
+        <div class="form-group">
+          <label for="inc-time">Time</label>
+          <input id="inc-time" name="time" type="time" class="portal-input" value="15:45">
+        </div>
+        <div class="form-group">
+          <label for="inc-child">Child</label>
+          <select id="inc-child" name="child_name" class="portal-select" required>
+            {% for child in incident_children %}
+            <option>{{ child }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="inc-type">Type</label>
+          <select id="inc-type" name="incident_type" class="portal-select" required>
+            {% for type in incident_types %}
+            <option>{{ type }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="inc-severity">Severity</label>
+          <select id="inc-severity" name="severity" class="portal-select" required>
+            {% for level in incident_severity_options %}
+            <option>{{ level }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="inc-location">Location</label>
+          <input id="inc-location" name="location" type="text" class="portal-input" placeholder="Playground, gym, cafeteria…">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="inc-summary">Short summary</label>
+          <input id="inc-summary" name="summary" type="text" class="portal-input" placeholder="One line for the log table" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="inc-details">What happened?</label>
+          <textarea id="inc-details" name="details" class="portal-input portal-textarea" rows="4" placeholder="Describe the incident, first aid given, and who was present."></textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="inc-followup">Follow-up plan</label>
+          <textarea id="inc-followup" name="follow_up" class="portal-input portal-textarea" rows="2" placeholder="Monitoring, parent call, referral, etc."></textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Parent notified?</label>
+          <div class="portal-checkbox-row">
+            <label><input type="radio" name="parent_notified" value="yes"> Yes — record time below</label>
+            <label><input type="radio" name="parent_notified" value="no" checked> Not yet</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="inc-notified-time">Notification time</label>
+          <input id="inc-notified-time" name="parent_notified_time" type="time" class="portal-input">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">Save incident</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Save incident</button>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='incidents' %}">Cancel</a>
+        </div>
+        {% if not portal_live %}
+        <p class="form-note portal-form-full">Save is disabled in preview mode — the form shows what staff will fill out when live.</p>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}
+
+    {% if viewing_incident %}
+    <div class="portal-panel card">
+      <h2>{{ viewing_incident.child }} — {{ viewing_incident.type }}</h2>
+      <p class="form-note">{{ viewing_incident.date }} · {{ viewing_incident.time }} · {{ viewing_incident.location }} · Reported by {{ viewing_incident.staff_reported }}</p>
+      <dl class="portal-dl portal-dl-inline">
+        <dt>Severity</dt><dd>{{ viewing_incident.severity }}</dd>
+        <dt>Parent notified</dt><dd>{% if viewing_incident.parent_notified %}Yes · {{ viewing_incident.parent_notified_time }}{% else %}No{% endif %}</dd>
+      </dl>
+      <p><strong>Summary:</strong> {{ viewing_incident.summary }}</p>
+      <p>{{ viewing_incident.details }}</p>
+      <p><strong>Follow-up:</strong> {{ viewing_incident.follow_up }}</p>
+      <div class="portal-toolbar" style="margin-top: 1rem;">
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_incidents_print' %}?incident={{ viewing_incident.id }}">Print this incident</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_incidents_print' %}?child={{ viewing_incident.child|urlencode }}">Print all for {{ viewing_incident.child }}</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='incidents' %}">Close</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Child</th>
+            <th>Type</th>
+            <th>Summary</th>
+            <th>Severity</th>
+            <th>Parent notified</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for incident in incidents %}
+          <tr>
+            <td>{{ incident.date }} {{ incident.time }}</td>
+            <td><strong>{{ incident.child }}</strong></td>
+            <td>{{ incident.type }}</td>
+            <td>{{ incident.summary }}</td>
+            <td>{{ incident.severity }}</td>
+            <td>{% if incident.parent_notified %}Yes · {{ incident.parent_notified_time }}{% else %}No{% endif %}</td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='incidents' %}?view={{ incident.id }}">View</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_incidents_print' %}?incident={{ incident.id }}">Print</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="portal-profile-grid" style="margin-top: 1.5rem;">
+      {% for incident in incidents|slice:":2" %}
+      <article class="card">
+        <h2>{{ incident.child }} — {{ incident.type }}</h2>
+        <p class="form-note">{{ incident.date }} · {{ incident.location }} · Reported by {{ incident.staff_reported }}</p>
+        <p>{{ incident.details }}</p>
+        <p><strong>Follow-up:</strong> {{ incident.follow_up }}</p>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='incidents' %}?view={{ incident.id }}">View full record</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_incidents_print' %}?incident={{ incident.id }}">Print</a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

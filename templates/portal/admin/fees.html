@@ -1,0 +1,160 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Fees &amp; billing rules</h1>
+    <p class="lead">Membership, late fees — defaults org-wide with per-account overrides.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if portal_live %}
+    <div class="portal-callout card">
+      <p>Fee rule templates are shown for reference. Automated fee posting from these rules is planned — use <a href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a> to post charges today.</p>
+    </div>
+    {% endif %}
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a>
+    </div>
+
+    <div class="portal-fee-rules">
+      {% for rule in fee_rules %}
+      <article class="card portal-fee-rule-card">
+        <div class="portal-unit-card-header">
+          <h2>{{ rule.name }}</h2>
+          <strong class="portal-fee-amount">{{ rule.display }}</strong>
+        </div>
+        <dl class="portal-dl portal-dl-2col">
+          <dt>Frequency</dt>
+          <dd>{{ rule.frequency }}</dd>
+          <dt>Period</dt>
+          <dd>{{ rule.period }}</dd>
+        </dl>
+        <p class="form-note">{{ rule.notes }}</p>
+        {% if portal_live and rule.pk %}
+        <details class="portal-fee-edit-details">
+          <summary class="btn btn-secondary btn-sm">Edit rule</summary>
+          <form method="post" action="{% url 'portal_admin_fee_save' %}" class="portal-fee-edit-form">
+            {% csrf_token %}
+            <input type="hidden" name="fee_id" value="{{ rule.pk }}">
+            <div class="form-group portal-form-full">
+              <label>Name</label>
+              <input name="name" class="portal-input" value="{{ rule.name }}">
+            </div>
+            <div class="form-group">
+              <label>Amount</label>
+              <input name="amount" class="portal-input" value="{{ rule.amount }}" placeholder="25.00">
+            </div>
+            <div class="form-group">
+              <label>Display label</label>
+              <input name="display" class="portal-input" value="{{ rule.display }}" placeholder="$25.00">
+            </div>
+            <div class="form-group portal-form-full">
+              <label>Frequency</label>
+              <input name="frequency" class="portal-input" value="{{ rule.frequency }}">
+            </div>
+            <div class="form-group portal-form-full">
+              <label>Period</label>
+              <input name="period" class="portal-input" value="{{ rule.period }}">
+            </div>
+            <div class="form-group portal-form-full">
+              <label>Notes</label>
+              <textarea name="notes" class="portal-input portal-textarea" rows="2">{{ rule.notes }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Save rule</button>
+          </form>
+        </details>
+        {% else %}
+        <button type="button" class="btn btn-secondary btn-sm" disabled>Edit rule</button>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+
+    <div class="portal-profile-grid" style="margin-top: 1.5rem;">
+      <section class="card">
+        <h2>Charge types staff can post</h2>
+        <ul class="portal-link-list">
+          {% for charge_type in billing_charge_types %}
+          <li>{{ charge_type.label }}</li>
+          {% endfor %}
+        </ul>
+        <p class="form-note">Staff add charges from <a href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>.</p>
+      </section>
+      <section class="card">
+        <h2>Payment plans</h2>
+        {% if portal_live %}
+        <ul class="portal-link-list">
+          {% for plan in payment_plans %}
+          <li>{{ plan.name }} {% if not plan.is_active %}(inactive){% endif %}
+            <form method="post" action="{% url 'portal_admin_payment_plan_delete' %}" style="display:inline;">
+              {% csrf_token %}<input type="hidden" name="plan_id" value="{{ plan.pk }}">
+              <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="{% url 'portal_admin_payment_plan_save' %}" class="portal-form-grid" style="margin-top:0.75rem;">
+          {% csrf_token %}
+          <input name="name" class="portal-input" placeholder="New plan name">
+          <input name="interval" class="portal-input" placeholder="weekly / monthly">
+          <button type="submit" class="btn btn-secondary btn-sm">Add plan</button>
+        </form>
+        {% else %}
+        <ul class="portal-link-list"><li>Weekly</li><li>Bi-weekly</li><li>Monthly</li></ul>
+        {% endif %}
+      </section>
+      <section class="card">
+        <h2>Online card payments</h2>
+        {% if portal_live %}
+        {% for fee in processing_fees %}
+        <p><strong>{{ fee.name }}</strong> — {{ fee.percent }}% + ${{ fee.flat_amount }}</p>
+        {% endfor %}
+        <form method="post" action="{% url 'portal_admin_processing_fee_save' %}" class="portal-form-grid">
+          {% csrf_token %}
+          <input name="name" class="portal-input" placeholder="Fee name">
+          <input name="percent" class="portal-input" placeholder="2.90">
+          <input name="flat_amount" class="portal-input" placeholder="0.30">
+          <button type="submit" class="btn btn-secondary btn-sm">Add / update fee</button>
+        </form>
+        {% else %}
+        <p>Parents pay the <strong>Stripe processing fee (2.9% + $0.30)</strong> on card payments.</p>
+        {% endif %}
+      </section>
+      <section class="card">
+        <h2>Tax statements</h2>
+        {% if portal_live and tax_settings %}
+        <form method="post" action="{% url 'portal_admin_tax_settings_save' %}">
+          {% csrf_token %}
+          <label class="portal-check-label"><input type="checkbox" name="require_zero_balance" {% if tax_settings.require_zero_balance %}checked{% endif %}> Require $0 balance before download</label><br>
+          <label class="portal-check-label"><input type="checkbox" name="parents_enabled" {% if tax_settings.parents_enabled %}checked{% endif %}> Parents can access tax statements</label>
+          <p class="form-note">Staff who can view tax statements:</p>
+          {% for staff in tax_staff_options %}
+          <label class="portal-check-label"><input type="checkbox" name="staff_can_view" value="{{ staff.pk }}" {% if staff.pk in tax_settings.staff_can_view %}checked{% endif %}> {{ staff.display_name }}</label><br>
+          {% endfor %}
+          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.5rem;">Save tax settings</button>
+        </form>
+        {% else %}
+        <p>Require <strong>$0 balance</strong> before parents can download year-end tax PDFs.</p>
+        {% endif %}
+      </section>
+      <section class="card">
+        <h2>Who can do what</h2>
+        <p>Configure per user in <a href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>:</p>
+        <ul class="portal-link-list">
+          <li><strong>Add charge</strong> — all staff (default)</li>
+          <li><strong>Delete charge</strong> — directors &amp; admin</li>
+          <li><strong>Add credit</strong> — admin only (default)</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Scholarships</h2>
+        <p>Full rate is charged each cycle; a discount line reduces what the family owes.</p>
+        <p><a href="{% url 'portal_admin_page' page='scholarships' %}">Assign scholarships per child →</a></p>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

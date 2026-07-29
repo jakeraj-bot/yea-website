@@ -24,8 +24,21 @@
       {% endfor %}
     </ul>
     <p>We will contact you at <strong>{{ applications.0.primary_email }}</strong> with next steps.</p>
+
+    <div class="card card-accent" style="margin:1.5rem 0;padding:1rem 1.25rem;">
+      <h2 style="margin-top:0;">Your parent portal</h2>
+      {% if user.is_authenticated %}
+      <p>You're signed in. Track application status, billing, and your family profile anytime.</p>
+      <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}">View applications in portal</a>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='dashboard' %}">Go to dashboard</a>
+      {% else %}
+      <p>Sign in to your parent portal to track status and manage your account.</p>
+      <a class="btn btn-primary" href="{% url 'portal_parent_login' %}">Sign in to parent portal</a>
+      {% endif %}
+    </div>
+
     <p>
-      <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+      <a class="btn btn-secondary" href="{% url 'home' %}">Return home</a>
       <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
     </p>
   </div>

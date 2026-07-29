@@ -1,0 +1,63 @@
+<section class="card {% if alerts or child.enrollment_status %}portal-medical-card{% endif %}">
+  <div class="portal-medical-card-header">
+    <h2>{{ child_name }}</h2>
+    {% if child.enrollment_status %}
+    <span class="portal-status portal-status-{{ child.enrollment_status|slugify }}">{{ child.enrollment_status }}</span>
+    {% elif alerts %}
+    <div class="portal-medical-card-badges">
+      {% include "portal/staff/includes/medical_badges.html" with alerts=alerts size="lg" %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if child.enrollment_status %}
+  <div class="portal-medical-alert-banner">
+    <strong>Enrollment application on file</strong> — child is not on the roster until staff approves the application.
+    {% if child.application_ref %}
+    <br><a href="{% url 'portal_staff_application_detail' app_slug=child.application_ref %}">Review application</a>
+    {% endif %}
+  </div>
+  {% elif alerts %}
+  <div class="portal-medical-alert-banner">
+    <strong>Medical alerts on file</strong> — review before snack, activity, or field trips.
+  </div>
+  {% endif %}
+
+  <dl class="portal-dl">
+    {% if child.dob %}<dt>DOB</dt><dd>{{ child.dob }}</dd>{% endif %}
+    {% if child.grade %}<dt>Grade</dt><dd>{{ child.grade }}</dd>{% endif %}
+    {% if child.program %}<dt>Program</dt><dd>{{ child.program }}</dd>{% endif %}
+    {% if child.billing_type %}<dt>Billing</dt><dd>{{ child.billing_type }}</dd>{% endif %}
+    <dt>Allergies</dt><dd>{% if medical.allergies %}{{ medical.allergies }}{% else %}—{% endif %}</dd>
+    <dt>Medications</dt><dd>{% if medical.medications %}{{ medical.medications }}{% else %}—{% endif %}</dd>
+    {% if medical.doctor_name %}
+    <dt>Doctor</dt><dd>{{ medical.doctor_name }}{% if medical.doctor_phone %} · {{ medical.doctor_phone }}{% endif %}</dd>
+    {% endif %}
+    {% if medical.plans_on_file %}
+    <dt>Plans on file</dt>
+    <dd>
+      <ul class="portal-inline-list">
+        {% for plan in medical.plans_on_file %}
+        <li>{{ plan }}</li>
+        {% endfor %}
+      </ul>
+    </dd>
+    {% endif %}
+    {% if medical.staff_notes %}
+    <dt>Staff notes</dt><dd>{{ medical.staff_notes }}</dd>
+    {% endif %}
+  </dl>
+
+  {% if alerts %}
+  <ul class="portal-medical-detail-list">
+    {% for alert in alerts %}
+    <li>
+      <span class="portal-med-icon portal-med-icon-{{ alert.key }} portal-med-icon-inline" aria-hidden="true">
+        <span class="portal-med-icon-symbol">{{ alert.symbol }}</span>
+      </span>
+      <span><strong>{{ alert.label }}</strong>{% if alert.detail %} — {{ alert.detail }}{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>

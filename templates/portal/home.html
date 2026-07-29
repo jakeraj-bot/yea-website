@@ -1,0 +1,34 @@
+{% extends "portal/base.html" %}
+
+{% block portal_content %}
+<section class="page-hero portal-hero">
+  <div class="container">
+    <h1>Member Portal</h1>
+    <p class="lead">One place for families and staff — applications, billing, attendance, and drop-in care.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <p class="form-note">Design preview — choose a role to explore all portal screens. Every link is wired for click-through review.</p>
+    <div class="card-grid card-grid-3 portal-role-cards">
+      <article class="card card-accent">
+        <h2>Parent</h2>
+        <p>Applications, policies, running balance, payments, drop-in booking.</p>
+        <a class="btn btn-primary" href="{% url 'portal_parent_page' page='dashboard' %}?pay=private-pay">Preview parent portal</a>
+      </article>
+      <article class="card card-accent orange">
+        <h2>Staff (unit)</h2>
+        <p>Check-in, applications, family billing, 4Cs for your location.</p>
+        <a class="btn btn-primary" href="{% url 'portal_staff_page' page='dashboard' %}">Preview staff portal</a>
+      </article>
+      <article class="card card-accent blue">
+        <h2>Portal admin</h2>
+        <p>All units, programs, agencies, fees, check-in toggles.</p>
+        <a class="btn btn-primary" href="{% url 'portal_admin_page' page='dashboard' %}">Preview admin portal</a>
+      </article>
+    </div>
+    <p class="portal-login-note">Login and security will be added in the next build phase. Website admin stays at <a href="/admin/">/admin/</a>.</p>
+  </div>
+</section>
+{% endblock %}

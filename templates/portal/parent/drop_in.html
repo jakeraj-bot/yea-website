@@ -1,0 +1,203 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Drop-in care</h1>
+    <p class="lead">Book individual days — same login as the rest of your portal.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if drop_in.status == 'pending' %}
+    <div class="portal-callout card portal-callout-warning">
+      <p><strong>Registration pending staff review.</strong> You cannot book drop-in days until we approve your registration. We'll email you when you're approved.</p>
+    </div>
+    {% elif drop_in.status == 'not_registered' %}
+    <div class="portal-callout card">
+      <p><strong>Register for drop-in care</strong> to book individual days using your portal login.</p>
+      {% if portal_live and parent_authenticated %}
+      <form method="post" action="{% url 'portal_parent_dropin_register' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Register for drop-in</button>
+      </form>
+      {% endif %}
+    </div>
+    {% elif drop_in.status == 'approved' %}
+    <div class="portal-toolbar">
+      <button type="button" class="btn btn-primary" id="book-dropin-btn">+ Book a drop-in day</button>
+      <span class="portal-status portal-status-active">{{ drop_in.status_label }}</span>
+    </div>
+    {% endif %}
+
+    <div class="portal-stat-row">
+      <div class="portal-stat card">
+        <span class="portal-stat-label">After-school drop-in</span>
+        <strong class="portal-stat-value">${{ drop_in.fees.after_school }}/day</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Summer camp drop-in</span>
+        <strong class="portal-stat-value">${{ drop_in.fees.summer_camp }}/day</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Upcoming bookings</span>
+        <strong class="portal-stat-value">{{ drop_in.bookings|length }}</strong>
+      </div>
+    </div>
+
+    <div class="portal-profile-grid">
+      <section class="card">
+        <h2>How drop-in works</h2>
+        <ol class="portal-link-list portal-ordered-list">
+          <li>Register once (family info, emergency contact, medical, policies)</li>
+          <li>Staff approves your registration before first booking</li>
+          <li>Pick date, child, location, and pay online when space is available</li>
+          <li>Join the waitlist if the day is full — we contact families in order</li>
+        </ol>
+      </section>
+      <section class="card">
+        <h2>Sign-up deadlines</h2>
+        <dl class="portal-dl">
+          <dt>After-school</dt><dd>{{ drop_in.deadlines.after_school }}</dd>
+          <dt>Summer camp</dt><dd>{{ drop_in.deadlines.summer_camp }}</dd>
+        </dl>
+        <h3>Locations</h3>
+        <ul class="portal-link-list">
+          {% for loc in drop_in.locations %}
+          <li>{{ loc }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    <h2>Your bookings</h2>
+    {% if drop_in.bookings %}
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Child</th>
+            <th>Program</th>
+            <th>Location</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in drop_in.bookings %}
+          <tr>
+            <td>{{ booking.date }}</td>
+            <td>{{ booking.child }}</td>
+            <td>{{ booking.program }}</td>
+            <td>{{ booking.location }}</td>
+            <td>${{ booking.amount }}</td>
+            <td><span class="portal-status portal-status-{{ booking.status|slugify }}">{{ booking.status }}</span></td>
+            <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}">Receipt</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="form-note">No bookings yet — click <strong>Book a drop-in day</strong> when you're ready.</p>
+    {% endif %}
+
+    {% if drop_in.waitlist %}
+    <h2>Waitlist</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Date</th><th>Child</th><th>Program</th><th>Location</th><th>Requested</th></tr>
+        </thead>
+        <tbody>
+          {% for entry in drop_in.waitlist %}
+          <tr>
+            <td>{{ entry.date }}</td>
+            <td>{{ entry.child }}</td>
+            <td>{{ entry.program }}</td>
+            <td>{{ entry.location }}</td>
+            <td>{{ entry.requested }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note">If a spot opens from a cancellation, we'll contact waitlisted families in order.</p>
+    {% endif %}
+
+    <div class="portal-panel card" id="book-dropin-panel" hidden>
+      <h2>Book a drop-in day</h2>
+      <form class="portal-form-grid" id="book-dropin-form" {% if portal_live and parent_authenticated %}method="post" action="{% url 'portal_parent_dropin_book' %}"{% else %}action="{% url 'portal_parent_payment' %}{{ parent_pay_query }}" method="get"{% endif %}>
+        {% if portal_live and parent_authenticated %}{% csrf_token %}{% else %}
+        <input type="hidden" name="source" value="dropin">
+        <input type="hidden" name="amount" id="di-amount" value="{{ drop_in.fees.after_school }}">
+        <input type="hidden" name="program_label" id="di-program-label" value="After-school drop-in">
+        {% endif %}
+        <div class="form-group">
+          <label for="di-child">Child</label>
+          <select id="di-child" name="child" class="portal-select" required>
+            {% for child in parent_preview.profile.children %}
+            <option>{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="di-program">Program</label>
+          <select id="di-program" name="program" class="portal-select" required>
+            <option value="after-school">After-school drop-in — ${{ drop_in.fees.after_school }}</option>
+            <option value="summer">Summer camp drop-in — ${{ drop_in.fees.summer_camp }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="di-location">Location</label>
+          <select id="di-location" name="location" class="portal-select" required>
+            <option>School 18</option>
+            <option>School 26</option>
+            <option>Dale Ave</option>
+            <option>Caldwell University</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="di-date">Date</label>
+          <input id="di-date" name="date" type="date" class="portal-input" required>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Continue to payment</button>
+          <button type="button" class="btn btn-secondary" id="cancel-dropin-book">Cancel</button>
+        </div>
+        <p class="form-note portal-form-full">{% if portal_live and parent_authenticated %}We check availability before payment. Full days join the waitlist automatically.{% elif show_dev_hints %}Preview flow — booking details carry to payment review.{% endif %}</p>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var btn = document.getElementById("book-dropin-btn");
+  var panel = document.getElementById("book-dropin-panel");
+  var cancel = document.getElementById("cancel-dropin-book");
+  if (btn && panel) {
+    btn.addEventListener("click", function () {
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  if (cancel && panel) cancel.addEventListener("click", function () { panel.hidden = true; });
+
+  var programSelect = document.getElementById("di-program");
+  var amountInput = document.getElementById("di-amount");
+  var programLabelInput = document.getElementById("di-program-label");
+  var fees = { "after-school": "{{ drop_in.fees.after_school }}", summer: "{{ drop_in.fees.summer_camp }}" };
+  var labels = { "after-school": "After-school drop-in", summer: "Summer camp drop-in" };
+  if (programSelect && amountInput) {
+    programSelect.addEventListener("change", function () {
+      amountInput.value = fees[programSelect.value] || fees["after-school"];
+      if (programLabelInput) programLabelInput.value = labels[programSelect.value] || labels["after-school"];
+    });
+  }
+})();
+</script>
+{% endblock %}

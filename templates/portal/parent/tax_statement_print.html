@@ -1,0 +1,43 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-print-header">
+  <div class="container">
+    <h1>Tax statement — {{ tax_statement.tax_year }}</h1>
+    <p class="lead">{{ tax_statement.family_name }} · Generated {{ tax_statement.generated }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='tax-statements' %}">Back</a>
+    </div>
+    <article class="card">
+      <p>Youth Education Academy — qualifying program payments for tax year {{ tax_statement.tax_year }}.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Date</th><th>Reference</th><th>Description</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            {% for row in tax_statement.rows %}
+            <tr>
+              <td>{{ row.date }}</td>
+              <td>{{ row.reference }}</td>
+              <td>{{ row.description }}</td>
+              <td>${{ row.amount }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No qualifying payments recorded for this tax year.</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr><td colspan="3"><strong>Total qualifying payments</strong></td><td><strong>${{ tax_statement.total }}</strong></td></tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="form-note">This statement is for your records. Consult your tax advisor for deductibility.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

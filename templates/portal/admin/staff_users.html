@@ -1,0 +1,151 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Staff access</h1>
+    <p class="lead">Create and manage staff portal accounts — only admins can invite new logins.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <p>Staff portal accounts are created here by organization admin only. Staff cannot self-register. Billing permissions are configured separately in <a href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>.</p>
+    </div>
+
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='staff' %}?add=1">+ Create staff account</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>
+    </div>
+
+    {% if show_add_staff %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Create staff portal account</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_staff_invite' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="staff-name">Full name</label>
+          <input id="staff-name" name="name" type="text" class="portal-input" required>
+        </div>
+        <div class="form-group">
+          <label for="staff-email">Email</label>
+          <input id="staff-email" name="email" type="email" class="portal-input" required>
+        </div>
+        <div class="form-group">
+          <label for="staff-role">Role</label>
+          <select id="staff-role" name="role" class="portal-select">
+            {% for role in portal_staff_roles %}
+            <option>{{ role }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" id="staff-primary-unit-group">
+          <label for="staff-unit">Primary unit</label>
+          <select id="staff-unit" name="unit_slug" class="portal-select">
+            {% for unit in units %}
+            <option value="{{ unit.slug }}">{{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group portal-form-full" id="staff-units-group">
+          <label>Unit access (select all that apply)</label>
+          <div class="portal-checkbox-grid">
+            {% for unit in units %}
+            <label class="portal-check-label"><input type="checkbox" name="unit_slugs" value="{{ unit.slug }}"> {{ unit.name }}</label>
+            {% endfor %}
+          </div>
+          <p class="form-note">Portal admin gets all units automatically. Other roles can access multiple locations.</p>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Create account</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if editing_staff %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Edit staff — {{ editing_staff.name }}</h2>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_admin_staff_edit' %}">
+        {% csrf_token %}
+        <input type="hidden" name="staff_id" value="{{ editing_staff.id }}">
+        <div class="form-group">
+          <label>Full name</label>
+          <input name="name" type="text" class="portal-input" value="{{ editing_staff.name }}">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input name="email" type="email" class="portal-input" value="{{ editing_staff.email }}">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role" class="portal-select">
+            {% for role in portal_staff_roles %}
+            <option {% if editing_staff.role == role %}selected{% endif %}>{{ role }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="is_active" class="portal-select">
+            <option value="1" {% if editing_staff.status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="0" {% if editing_staff.status != 'Active' %}selected{% endif %}>Inactive</option>
+          </select>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-panel card" style="margin-bottom:1.5rem;">
+      <h2>Custom roles</h2>
+      <p class="form-note">Add roles like Accountant or Site coordinator, then set default permissions in Billing permissions.</p>
+      <form method="post" action="{% url 'portal_admin_staff_role_create' %}" class="portal-form-grid" style="align-items:end;">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="new-role">New role name</label>
+          <input id="new-role" name="role_name" type="text" class="portal-input" placeholder="Accountant">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn-secondary"{% if not portal_live %} disabled{% endif %}>Add role</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Units</th>
+            <th>Status</th>
+            <th>Last login</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in portal_staff_users %}
+          <tr>
+            <td><strong>{{ user.name }}</strong></td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.units }}</td>
+            <td><span class="portal-status portal-status-active">{{ user.status }}</span></td>
+            <td>{{ user.last_login }}</td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='staff' %}?edit={{ user.id }}">Edit</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

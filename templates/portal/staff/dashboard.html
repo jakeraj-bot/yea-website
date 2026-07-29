@@ -1,0 +1,46 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Today — {{ staff_unit }}</h1>
+    <p class="lead">{{ attendance.date_display }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-stat-row portal-stat-row--colorful">
+      <div class="portal-stat card"><span class="portal-stat-label">Present now</span><strong class="portal-stat-value portal-stat-present">{{ attendance.summary.present }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Not arrived</span><strong class="portal-stat-value">{{ attendance.summary.not_arrived }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Absent</span><strong class="portal-stat-value">{{ attendance.summary.absent }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Open applications</span><strong class="portal-stat-value">{{ application_count }}</strong></div>
+    </div>
+
+    {% if alerts %}
+    <div class="portal-alerts card">
+      <h2>Needs attention</h2>
+      <ul class="portal-alert-list">
+        {% for alert in alerts %}
+        <li>
+          {% if alert.link_name == 'portal_staff_family_billing' %}
+          <a href="{% url alert.link_name family_slug=alert.link_kw.family_slug %}">{{ alert.text }}</a>
+          {% elif alert.link_arg %}
+          <a href="{% url alert.link_name page=alert.link_arg %}">{{ alert.text }}</a>
+          {% else %}
+          {{ alert.text }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="portal-quick-actions">
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='attendance' %}">Attendance roster</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='messages' %}">Team messages{% if messages_unread_count %} ({{ messages_unread_count }}){% endif %}</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">Log incident</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='applications' %}">Applications</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='families' %}">Families</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

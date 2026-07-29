@@ -1,4 +1,5 @@
 from django import template
+from django.forms import RadioSelect
 
 register = template.Library()
 
@@ -34,3 +35,13 @@ def program_label(value):
 @register.filter
 def location_label(value):
     return dict(EnrollmentApplication.LOCATION_CHOICES).get(value, value)
+
+
+@register.filter
+def is_radio_select(field):
+    return isinstance(field.field.widget, RadioSelect)
+
+
+@register.inclusion_tag("enrollment/includes/apply_field.html")
+def apply_field(field, full=False):
+    return {"field": field, "full": full}

@@ -1,0 +1,79 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}</p>
+    <h1>{{ profile.family_name }} family</h1>
+    <p class="lead">Incidents &amp; accidents for children in this household</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/staff/includes/family_tabs.html" %}
+
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">+ Log incident</a>
+      {% if family_incidents %}
+      {% for entry in incident_print_children %}
+      <a class="btn btn-secondary" href="{% url 'portal_staff_incidents_print' %}?child={{ entry.child|urlencode }}">Print {{ entry.child }}</a>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    {% if family_incidents %}
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Child</th>
+            <th>Type</th>
+            <th>Summary</th>
+            <th>Severity</th>
+            <th>Parent notified</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for incident in family_incidents %}
+          <tr>
+            <td>{{ incident.date }} {{ incident.time }}</td>
+            <td><strong>{{ incident.child }}</strong></td>
+            <td>{{ incident.type }}</td>
+            <td>{{ incident.summary }}</td>
+            <td>{{ incident.severity }}</td>
+            <td>{% if incident.parent_notified %}Yes · {{ incident.parent_notified_time }}{% else %}No{% endif %}</td>
+            <td class="portal-table-actions">
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='incidents' %}?view={{ incident.id }}">View</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_incidents_print' %}?incident={{ incident.id }}">Print</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="portal-profile-grid" style="margin-top: 1.5rem;">
+      {% for incident in family_incidents|slice:":3" %}
+      <article class="card">
+        <h2>{{ incident.child }} — {{ incident.type }}</h2>
+        <p class="form-note">{{ incident.date }} · {{ incident.location }} · Reported by {{ incident.staff_reported }}</p>
+        <p>{{ incident.details }}</p>
+        <p><strong>Follow-up:</strong> {{ incident.follow_up }}</p>
+        <div class="portal-table-actions">
+          <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='incidents' %}?view={{ incident.id }}">View full record</a>
+          <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_incidents_print' %}?incident={{ incident.id }}">Print</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card">
+      <h2>No incidents on file</h2>
+      <p class="form-note">Nothing logged for this family yet. Use <strong>Log incident</strong> when an injury, behavior note, or medication event occurs.</p>
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">Log incident</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

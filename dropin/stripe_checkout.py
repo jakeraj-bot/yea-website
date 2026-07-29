@@ -1,15 +1,15 @@
-from django.conf import settings
+from core.stripe_config import member_stripe, member_stripe_configured
 
 from . import constants
 
 
 def create_dropin_checkout_session(request, booking):
-    import stripe
+    if not member_stripe_configured():
+        raise RuntimeError(
+            "Member Stripe is not configured yet. Add MEMBER_STRIPE_SECRET_KEY to your .env file."
+        )
 
-    if not settings.STRIPE_SECRET_KEY:
-        raise RuntimeError("Stripe is not configured yet. Add STRIPE_SECRET_KEY to your .env file.")
-
-    stripe.api_key = settings.STRIPE_SECRET_KEY
+    stripe = member_stripe()
     fee = constants.FEE_DOLLARS[booking.program]
     program_label = dict(constants.PROGRAM_CHOICES)[booking.program]
     location_label = dict(constants.LOCATION_CHOICES)[booking.location]
@@ -45,12 +45,10 @@ def create_dropin_checkout_session(request, booking):
 
 
 def confirm_booking_payment(booking):
-    import stripe
-
-    if not booking.stripe_session_id or not settings.STRIPE_SECRET_KEY:
+    if not booking.stripe_session_id or not member_stripe_configured():
         return False
 
-    stripe.api_key = settings.STRIPE_SECRET_KEY
+    stripe = member_stripe()
     session = stripe.checkout.Session.retrieve(booking.stripe_session_id)
     if session.payment_status == "paid" and booking.status != booking.STATUS_PAID:
         from django.utils import timezone

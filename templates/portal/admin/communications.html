@@ -1,0 +1,331 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Parent communications</h1>
+    <p class="lead">Design what parents see when they log in — plus email newsletters by location.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='communications' %}?add=announcement">+ New announcement</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}?add=newsletter">+ New newsletter</a>
+      {% if portal_live %}
+      <span class="portal-toolbar-label">View parent portal:</span>
+      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='jacobs' %}" target="_blank" rel="noopener">Jacobs</a>
+      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='martinez' %}" target="_blank" rel="noopener">Martinez</a>
+      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='williams' %}" target="_blank" rel="noopener">Williams</a>
+      {% else %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_parent_preview' family_slug='jacobs' %}" target="_blank" rel="noopener">Preview parent portal</a>
+      {% endif %}
+    </div>
+
+    {% if show_add_announcement %}
+    <div class="portal-panel card portal-program-form">
+      <h2>New announcement</h2>
+      <p class="form-note">Shows as a banner on the parent dashboard. You can also send by email.</p>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_announcement_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="ann-title">Title</label>
+          <input id="ann-title" name="title" type="text" class="portal-input" placeholder="After-school starts Monday…" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="ann-body">Message</label>
+          <div class="portal-rich-toolbar" data-rich-toolbar="ann-body-rich">
+            <button type="button" data-cmd="bold"><strong>B</strong></button>
+            <button type="button" data-cmd="italic"><em>I</em></button>
+            <button type="button" data-cmd="underline"><u>U</u></button>
+            <button type="button" data-cmd="fontSize" data-val="4">Large</button>
+            <button type="button" data-cmd="fontSize" data-val="2">Small</button>
+            <button type="button" data-cmd="foreColor" data-val="#1565c0">Blue</button>
+            <button type="button" data-cmd="foreColor" data-val="#2e7d32">Green</button>
+            <button type="button" data-cmd="foreColor" data-val="#c62828">Red</button>
+          </div>
+          <div id="ann-body-rich" class="portal-rich-editor" contenteditable="true">{% if editing_announcement %}{{ editing_announcement.body }}{% endif %}</div>
+          <textarea id="ann-body" name="body" class="portal-input portal-textarea" rows="3" hidden></textarea>
+          <input type="hidden" name="body_html" value="">
+        </div>
+        <div class="form-group">
+          <label for="ann-unit">Unit</label>
+          <select id="ann-unit" name="audience" class="portal-select">
+            <option>All units</option>
+            {% for unit in units %}
+            <option>All parents · {{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ann-style">Banner style</label>
+          <select id="ann-style" name="style" class="portal-select">
+            <option value="info">Info (blue)</option>
+            <option value="success">Success (green)</option>
+            <option value="promo">Promo (purple)</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Channels</label>
+          <div class="portal-checkbox-row">
+            <label><input type="checkbox" name="channel_banner" value="1" checked> Portal banner</label>
+            <label><input type="checkbox" name="channel_email" value="1"> Email blast</label>
+          </div>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" name="status" value="Draft" class="btn btn-primary">Save draft</button>
+          <button type="submit" name="status" value="Published" class="btn btn-secondary">Publish now</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Save draft</button>
+          <button type="button" class="btn btn-secondary" disabled>Publish now</button>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if editing_announcement %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Edit announcement</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_announcement_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <input type="hidden" name="legacy_id" value="{{ editing_announcement.id }}">
+        <div class="form-group portal-form-full">
+          <label for="edit-ann-title">Title</label>
+          <input id="edit-ann-title" name="title" type="text" class="portal-input" value="{{ editing_announcement.title }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="edit-ann-body">Message</label>
+          <textarea id="edit-ann-body" name="body" class="portal-input portal-textarea" rows="3">{{ editing_announcement.body }}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-ann-unit">Unit</label>
+          <select id="edit-ann-unit" name="audience" class="portal-select">
+            <option selected>{{ editing_announcement.audience }}</option>
+            {% for unit in units %}
+            {% if unit.name != editing_announcement.unit %}
+            <option>All parents · {{ unit.name }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-ann-status">Status</label>
+          <select id="edit-ann-status" name="status" class="portal-select">
+            <option {% if editing_announcement.status == "Published" %}selected{% endif %}>Published</option>
+            <option {% if editing_announcement.status == "Draft" %}selected{% endif %}>Draft</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Channels</label>
+          <div class="portal-checkbox-row">
+            <label><input type="checkbox" name="channel_banner" value="1" {% if "Portal banner" in editing_announcement.channels %}checked{% endif %}> Portal banner</label>
+            <label><input type="checkbox" name="channel_email" value="1" {% if "Email" in editing_announcement.channels %}checked{% endif %}> Email blast</label>
+          </div>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Save changes</button>
+          {% if editing_announcement.status == "Draft" %}
+          <button type="button" class="btn btn-secondary" disabled>Publish</button>
+          {% endif %}
+          {% endif %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if show_add_newsletter or editing_newsletter %}
+    <div class="portal-panel card portal-program-form">
+      <h2>{% if editing_newsletter %}Edit newsletter{% else %}New newsletter{% endif %}</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_newsletter_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        {% if editing_newsletter %}<input type="hidden" name="legacy_id" value="{{ editing_newsletter.id }}">{% endif %}
+        <div class="form-group">
+          <label for="nl-template">Template</label>
+          <select id="nl-template" name="template_id" class="portal-select">
+            {% for template in newsletter_templates %}
+            <option value="{{ template.id }}" {% if editing_newsletter and editing_newsletter.template_id == template.id %}selected{% endif %}>{{ template.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="nl-unit">Unit</label>
+          <select id="nl-unit" class="portal-select" disabled>
+            {% for unit in units %}
+            <option {% if editing_newsletter and editing_newsletter.unit == unit.name %}selected{% endif %}>{{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="nl-internal-title">Internal name</label>
+          <input id="nl-internal-title" name="title" type="text" class="portal-input" placeholder="School 18 — Week of Sep 8" value="{{ editing_newsletter.title|default:'' }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="nl-subject">Email subject line</label>
+          <input id="nl-subject" name="subject" type="text" class="portal-input" placeholder="This week at School 18" value="{{ editing_newsletter.subject|default:'' }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Newsletter sections (with images &amp; copy)</label>
+          <textarea name="section_1_title" class="portal-input" rows="1" placeholder="Section 1 heading — e.g. This week's highlights"></textarea>
+          <textarea name="section_1_body" class="portal-input portal-textarea" rows="3" placeholder="Section 1 body text"></textarea>
+          <input name="section_1_image" type="url" class="portal-input" placeholder="Image URL (optional)">
+          <textarea name="section_2_title" class="portal-input" rows="1" placeholder="Section 2 heading"></textarea>
+          <textarea name="section_2_body" class="portal-input portal-textarea" rows="3" placeholder="Section 2 body text"></textarea>
+          <input name="section_2_image" type="url" class="portal-input" placeholder="Image URL (optional)">
+          <p class="form-note">Sections are saved with the newsletter for a richer, multi-block layout.</p>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="nl-body">Email body (plain fallback)</label>
+          <textarea id="nl-body" name="body" class="portal-input portal-textarea" rows="4" placeholder="Write your newsletter…">{{ editing_newsletter.body|default:'' }}</textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" name="status" value="Draft" class="btn btn-primary">Save draft</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Save draft</button>
+          {% endif %}
+          {% if editing_newsletter %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}?send={{ editing_newsletter.id }}">Send to parents…</a>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if sending_newsletter %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Send newsletter</h2>
+      <p class="form-note"><strong>{{ sending_newsletter.title }}</strong> · {{ sending_newsletter.unit }} · Subject: {{ sending_newsletter.subject }}</p>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_newsletter_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <input type="hidden" name="legacy_id" value="{{ sending_newsletter.id }}">
+        <input type="hidden" name="title" value="{{ sending_newsletter.title }}">
+        <input type="hidden" name="template_id" value="{{ sending_newsletter.template_id }}">
+        <input type="hidden" name="subject" value="{{ sending_newsletter.subject }}">
+        <input type="hidden" name="body" value="{{ sending_newsletter.body }}">
+        <input type="hidden" name="recipients_label" value="{{ sending_newsletter.recipients }}">
+        <div class="form-group">
+          <label for="send-audience">Audience</label>
+          <select id="send-audience" class="portal-select" disabled>
+            <option>All enrolled families at {{ sending_newsletter.unit }}</option>
+            <option>Active billing accounts only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="send-when">Send</label>
+          <select id="send-when" class="portal-select" disabled>
+            <option>Immediately</option>
+            <option>Schedule for later</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="send-test">Test email (optional)</label>
+          <input id="send-test" type="email" class="portal-input" placeholder="you@yeanj.org" disabled>
+          <p class="form-note">Email delivery is still demo — this marks the newsletter as sent in the database.</p>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" name="status" value="Sent" class="btn btn-primary">Mark as sent</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Send newsletter</button>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}?edit={{ sending_newsletter.id }}">Back to edit</a>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-profile-grid">
+      <section class="card portal-profile-full">
+        <h2>Published &amp; draft announcements</h2>
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead>
+              <tr><th>Title</th><th>Audience</th><th>Channels</th><th>Status</th><th>Posted</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for item in announcements %}
+              <tr>
+                <td><strong>{{ item.title }}</strong></td>
+                <td>{{ item.audience }}</td>
+                <td>{{ item.channels|join:", " }}</td>
+                <td>{{ item.status }}</td>
+                <td>{{ item.posted }}</td>
+                <td class="portal-table-actions">
+                  <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='communications' %}?edit={{ item.id }}">Edit</a>
+                  {% if portal_live %}
+                  <form method="post" action="{% url 'portal_admin_announcement_delete' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="legacy_id" value="{{ item.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this announcement?');">Delete</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Dashboard banner preview</h2>
+        <div class="portal-parent-announcement portal-parent-announcement-info">
+          <strong>{{ announcements.0.title }}</strong>
+          <p>{{ announcements.0.body }}</p>
+        </div>
+        <p class="form-note">You control colors, layout, and whether the banner shows per unit or payment type.</p>
+      </section>
+
+      <section class="card portal-profile-full">
+        <h2>Newsletters</h2>
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead>
+              <tr><th>Name</th><th>Unit</th><th>Status</th><th>Sent</th><th>Recipients</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for newsletter in newsletters %}
+              <tr>
+                <td><strong>{{ newsletter.title }}</strong></td>
+                <td>{{ newsletter.unit }}</td>
+                <td>{{ newsletter.status }}</td>
+                <td>{{ newsletter.sent }}</td>
+                <td>{{ newsletter.recipients }}</td>
+                <td class="portal-table-actions">
+                  <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='communications' %}?edit={{ newsletter.id }}">Edit</a>
+                  {% if newsletter.status == "Draft" %}
+                  <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_page' page='communications' %}?send={{ newsletter.id }}">Send</a>
+                  {% endif %}
+                  {% if portal_live %}
+                  <form method="post" action="{% url 'portal_admin_newsletter_delete' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="legacy_id" value="{{ newsletter.id }}">
+                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this newsletter?');">Delete</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <h3 class="portal-subheading">Templates</h3>
+        <ul class="portal-link-list">
+          {% for template in newsletter_templates %}
+          <li><strong>{{ template.name }}</strong> — {{ template.description }}</li>
+          {% endfor %}
+        </ul>
+        <p class="form-note">Phase 1: email only. SMS broadcasts are Phase 2 if budget allows.</p>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

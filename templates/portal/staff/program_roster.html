@@ -1,0 +1,51 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='programs' %}">Programs</a> / {{ program.name }}</p>
+    <h1>{{ program.name }}</h1>
+    <p class="lead">{{ staff_unit }} · {{ program.dates }} · {{ roster|length }} children shown</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Child name A–Z" filter_options="All active,Pending membership,4Cs,Private pay" search_placeholder="Child or family" %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Medical</th>
+            <th>Family</th>
+            <th>Grade</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in roster %}
+          <tr>
+            <td><strong>{{ row.child }}</strong></td>
+            <td class="portal-medical-cell">{% medical_badges row.child %}</td>
+            <td>{{ row.family }}</td>
+            <td>{{ row.grade }}</td>
+            <td><span class="portal-status portal-status-{{ row.status|slugify }}">{{ row.status }}</span></td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}">Profile</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-secondary" onclick="window.print()">Export roster PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Today's attendance</a>
+    </p>
+
+    {% include "portal/staff/includes/medical_legend.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container"><h1>NJ licensing forms</h1><p class="lead">Auto-filled PDFs from enrollment and attendance data.</p></div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-reports-grid">
+      {% for form in licensing_forms %}
+      <article class="card portal-report-card">
+        <h2>{{ form.name }}</h2>
+        <p>{{ form.description }}</p>
+        {% if form.slug == 'incidents' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_incidents_print' %}">Preview &amp; print</a>
+        {% elif form.slug == 'attendance' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_report' %}">Preview &amp; print</a>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-sm" disabled>Generate PDF</button>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

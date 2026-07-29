@@ -1,0 +1,69 @@
+{% if form.errors or form.non_field_errors %}
+<div class="apply-error-banner" role="alert" id="apply-error-banner">
+  <p class="apply-error-banner-title">Please complete the required items below</p>
+  <ul class="apply-error-list">
+    {% for field in form %}
+      {% if field.errors %}
+        {% for error in field.errors %}
+        <li><span class="apply-error-field">{{ field.label }}</span> — {{ error }}</li>
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+    {% for error in form.non_field_errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+
+    {% if emergency_formset %}
+      {% for error in emergency_formset.non_form_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+      {% for contact_form in emergency_formset %}
+        {% for field in contact_form %}
+          {% if field.errors %}
+            {% for error in field.errors %}
+            <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    {% endif %}
+  </ul>
+</div>
+{% elif emergency_formset %}
+  {% if emergency_formset.non_form_errors %}
+  <div class="apply-error-banner" role="alert" id="apply-error-banner">
+    <p class="apply-error-banner-title">Please complete the required items below</p>
+    <ul class="apply-error-list">
+      {% for error in emergency_formset.non_form_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+      {% for contact_form in emergency_formset %}
+        {% for field in contact_form %}
+          {% if field.errors %}
+            {% for error in field.errors %}
+            <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+    {% for contact_form in emergency_formset %}
+      {% if contact_form.errors %}
+      <div class="apply-error-banner" role="alert" id="apply-error-banner">
+        <p class="apply-error-banner-title">Please complete the required items below</p>
+        <ul class="apply-error-list">
+          {% for field in contact_form %}
+            {% if field.errors %}
+              {% for error in field.errors %}
+              <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endif %}

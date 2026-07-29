@@ -1,0 +1,79 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Blank sign-out sheet</p>
+    <h1>Sign-out sheet — blank</h1>
+    <p class="lead">Parent signature &amp; pickup time for {{ sheet_date_display }}</p>
+  </div>
+</section>
+<section class="page-content portal-blank-report">
+  <div class="container">
+    {% include "portal/staff/includes/report_date_toolbar.html" %}
+
+    <div class="portal-medical-report-sheet card portal-blank-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Daily sign-out sheet</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ unit }}</strong> · {{ program }}<br>
+            <span class="portal-blank-sheet-date">Date: {{ sheet_date_display }}</span>
+            · {{ enrolled_count }} enrolled
+          </p>
+        </div>
+      </header>
+
+      <div class="portal-blank-sheet-instructions">
+        <p><strong>Instructions:</strong> When a child is picked up, record the time and obtain the signature of the parent or authorized pickup person listed on file.</p>
+      </div>
+
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-blank-sheet-table portal-blank-sheet-table--signout">
+          <thead>
+            <tr>
+              <th class="portal-blank-col-name">Child name</th>
+              <th class="portal-blank-col-time">Check-out time</th>
+              <th class="portal-blank-col-sig-wide">Parent / authorized pickup — signature</th>
+              <th class="portal-blank-col-rel">Relationship</th>
+              <th class="portal-blank-col-init">Staff initials</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in enrolled_rows %}
+            <tr class="portal-blank-sheet-row">
+              <td>
+                <strong>{{ row.child }}</strong>
+                {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
+              </td>
+              <td><span class="portal-blank-line portal-blank-line--time" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--sig" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--rel" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--short" aria-hidden="true">&nbsp;</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="portal-blank-sheet-empty">No active enrollments found for this unit.</td>
+            </tr>
+            {% endfor %}
+            {% for i in extra_blank_rows %}
+            <tr class="portal-blank-sheet-row portal-blank-sheet-row--spare">
+              <td><span class="portal-blank-line" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--time" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--sig" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--rel" aria-hidden="true">&nbsp;</span></td>
+              <td><span class="portal-blank-line portal-blank-line--short" aria-hidden="true">&nbsp;</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="portal-medical-report-footer">
+        <p>Only release children to adults authorized on the family pickup list. Photo ID may be required.</p>
+      </footer>
+    </div>
+  </div>
+</section>
+{% endblock %}

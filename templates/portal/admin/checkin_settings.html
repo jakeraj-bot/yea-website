@@ -1,0 +1,90 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Check-in options</h1>
+    <p class="lead">Enable or disable check-in methods organization-wide.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if show_dev_hints %}
+    <div class="portal-callout card portal-callout-muted">
+      <p>Check-in mode toggles are preview-only. Staff attendance check-in/out is live at each unit.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-callout card">
+      <p>Staff check-in is the default at every unit. Additional modes can be turned on when hardware and training are ready — all units inherit these settings.</p>
+    </div>
+
+    <ul class="portal-checkin-list portal-checkin-list-detailed">
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_checkin_save' %}{% else %}#{% endif %}">
+      {% if portal_live %}{% csrf_token %}{% endif %}
+      {% for mode in checkin_modes %}
+      <li class="card">
+        <label class="portal-checkin-row portal-checkin-row-detailed">
+          <input type="checkbox" name="enabled_{{ mode.key }}" {% if mode.enabled %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+          <span>
+            <strong>{{ mode.label }}</strong>
+            <span class="form-note portal-checkin-desc">{{ mode.description }}</span>
+          </span>
+        </label>
+        {% if mode.enabled %}
+        <span class="portal-status portal-status-active">Enabled</span>
+        {% else %}
+        <span class="portal-status">Disabled</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+      <div class="portal-toolbar" style="margin-top:1rem;">
+        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save check-in settings</button>
+      </div>
+      </form>
+    </ul>
+
+    <section class="card" style="margin-top: 1.5rem;">
+      <h2>Per-unit override (future)</h2>
+      <p class="form-note">Some locations may enable barcode check-in before others. Override toggles will appear here when multi-mode rollout begins.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th>Staff check-in</th>
+              <th>Barcode</th>
+              <th>Parent kiosk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>School 18</td>
+              <td><span class="portal-mode-pill is-on">On</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+            </tr>
+            <tr>
+              <td>School 26</td>
+              <td><span class="portal-mode-pill is-on">On</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+            </tr>
+            <tr>
+              <td>Dale Ave</td>
+              <td><span class="portal-mode-pill is-on">On</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+            </tr>
+            <tr>
+              <td>Caldwell University</td>
+              <td><span class="portal-mode-pill is-on">On</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+              <td><span class="portal-mode-pill is-off">Off</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

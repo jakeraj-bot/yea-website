@@ -2,39 +2,48 @@
 {% load enrollment_extras %}
 
 {% block step_content %}
-{% include "enrollment/includes/child_heading.html" %}
-<h2>{{ step_titles|get_item:step }}</h2>
-<h3>Student information</h3>
-<div class="form-grid">
-  {% for field in form %}
-  {% if field.name|slice:":8" == "student_" %}
-  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
-    {% if field.field.widget.input_type == 'checkbox' %}
-    <label>{{ field }} {{ field.label }}</label>
-    {% else %}
-    {{ field.label_tag }}{{ field }}
-    {% endif %}
-    {{ field.errors }}
-  </div>
-  {% endif %}
-  {% endfor %}
-</div>
+<div class="apply-tabbed-sections" data-apply-tabs>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="Student sections" role="tablist">
+    <a class="portal-family-tab is-active" href="#student-info" role="tab" data-tab-target="apply-tab-student-info" aria-selected="true">Student info</a>
+    <a class="portal-family-tab" href="#medical-info" role="tab" data-tab-target="apply-tab-medical-info" aria-selected="false">Medical info</a>
+  </nav>
 
-<h3>Student medical information</h3>
-<div class="form-grid">
-  {% for field in form %}
-  {% if field.name|slice:":8" != "student_" %}
-  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}{% if field.name == 'health_statement' %} form-group-full{% endif %}">
-    {% if field.field.widget.input_type == 'checkbox' %}
-    <label>{{ field }} {{ field.label }}</label>
-    {% elif field.field.widget.input_type == 'radio' %}
-    <span class="form-label">{{ field.label }}</span>{{ field }}
-    {% else %}
-    {{ field.label_tag }}{{ field }}
-    {% endif %}
-    {{ field.errors }}
+  <div class="apply-tab-panels">
+    <div class="apply-tab-panel is-active" id="apply-tab-student-info" role="tabpanel" data-tab-panel="apply-tab-student-info">
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Student information</h3>
+          <p class="apply-section-desc">Details about the child you are enrolling.</p>
+        </header>
+        <div class="form-grid">
+          {% for field in form %}
+            {% if field.name|slice:":8" == "student_" %}
+              {% apply_field field %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="apply-tab-panel" id="apply-tab-medical-info" role="tabpanel" data-tab-panel="apply-tab-medical-info" hidden>
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Medical information</h3>
+          <p class="apply-section-desc">Health statement is required. Other medical fields are optional unless they apply to your child.</p>
+        </header>
+        <div class="form-grid">
+          {% for field in form %}
+            {% if field.name|slice:":8" != "student_" %}
+              {% if field.field.widget.input_type == "checkbox" or field|is_radio_select or field.name == "health_statement" or field.name == "medical_condition_explain" %}
+                {% apply_field field full=True %}
+              {% else %}
+                {% apply_field field %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </div>
   </div>
-  {% endif %}
-  {% endfor %}
 </div>
 {% endblock %}

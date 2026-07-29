@@ -1,0 +1,38 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Tax statements</h1>
+    <p class="lead">Year {{ tax_settings.tax_year }} — available from {{ tax_settings.available_from }}.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if tax_settings.require_zero_balance %}
+    <div class="portal-callout card">
+      <p>Tax statements are available when your family account has a <strong>$0.00 balance</strong>. Admin can change this rule in portal settings.</p>
+    </div>
+    {% endif %}
+
+    {% if tax_eligibility.eligible %}
+    <section class="card">
+      <h2>Download {{ tax_settings.tax_year }} statement</h2>
+      <p>Current balance: <strong>${{ tax_eligibility.balance }}</strong></p>
+      {% if portal_live and parent_authenticated %}
+      <a class="btn btn-primary" href="{% url 'portal_parent_tax_statement_print' %}">Download / print statement</a>
+      {% else %}
+      <button type="button" class="btn btn-primary" disabled>Download PDF (preview)</button>
+      {% endif %}
+      <p class="form-note">Shows total qualifying payments for the program year — for your tax records.</p>
+    </section>
+    {% else %}
+    <section class="card portal-callout-warning">
+      <h2>Statement not available yet</h2>
+      <p>Current balance: <strong>${{ tax_eligibility.balance }}</strong></p>
+      <p>{{ tax_eligibility.reason }}</p>
+      <a class="btn btn-primary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Go to billing</a>
+    </section>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

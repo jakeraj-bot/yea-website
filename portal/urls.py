@@ -1,0 +1,342 @@
+from django.urls import path
+
+from . import auth_views, views, views_actions
+
+urlpatterns = [
+    path("", views.portal_home, name="portal_home"),
+    path("login/", auth_views.parent_login, name="portal_parent_login"),
+    path("staff/login/", auth_views.staff_login, name="portal_staff_login"),
+    path("staff/logout/", auth_views.staff_logout, name="portal_staff_logout"),
+    path("staff/unit/switch/", views.staff_unit_switch, name="portal_staff_unit_switch"),
+    path("signup/", auth_views.parent_signup, name="portal_parent_signup"),
+    path("logout/", auth_views.parent_logout, name="portal_parent_logout"),
+    # Parent — specific routes before catch-all page slug
+    path("parent/payment/", views.parent_payment, name="portal_parent_payment"),
+    path(
+        "parent/payment/preview/",
+        views.parent_payment_preview,
+        name="portal_parent_payment_preview",
+    ),
+    path(
+        "parent/payment/complete/",
+        views.parent_payment_complete,
+        name="portal_parent_payment_complete",
+    ),
+    path(
+        "parent/payment/success/",
+        views.parent_payment_success,
+        name="portal_parent_payment_success",
+    ),
+    path(
+        "parent/payment/checkout/",
+        views_actions.parent_payment_checkout,
+        name="portal_parent_payment_checkout",
+    ),
+    path(
+        "parent/card/setup/",
+        views_actions.parent_card_setup,
+        name="portal_parent_card_setup",
+    ),
+    path(
+        "parent/profile-photo/",
+        views_actions.parent_profile_photo_upload,
+        name="portal_parent_profile_photo_upload",
+    ),
+    path(
+        "parent/profile-photo/remove/",
+        views_actions.parent_profile_photo_remove,
+        name="portal_parent_profile_photo_remove",
+    ),
+    path(
+        "parent/application/print/",
+        views.parent_application_print,
+        name="portal_parent_application_print",
+    ),
+    path(
+        "parent/policies/print/",
+        views.parent_policies_print,
+        name="portal_parent_policies_print",
+    ),
+    path(
+        "parent/receipts/print/",
+        views.parent_receipts_print,
+        name="portal_parent_receipts_print",
+    ),
+    path(
+        "parent/tax-statements/print/",
+        views.parent_tax_statement_print,
+        name="portal_parent_tax_statement_print",
+    ),
+    path(
+        "parent/profile/save/",
+        views_actions.parent_profile_save,
+        name="portal_parent_profile_save",
+    ),
+    path(
+        "parent/account/update/",
+        views_actions.parent_account_update,
+        name="portal_parent_account_update",
+    ),
+    path(
+        "parent/policies/sign/",
+        views_actions.parent_policy_sign,
+        name="portal_parent_policy_sign",
+    ),
+    path(
+        "parent/drop-in/register/",
+        views_actions.parent_dropin_register,
+        name="portal_parent_dropin_register",
+    ),
+    path(
+        "parent/drop-in/book/",
+        views_actions.parent_dropin_book,
+        name="portal_parent_dropin_book",
+    ),
+    path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
+    # Staff — reports and detail routes before catch-all
+    path(
+        "staff/reports/pickup/",
+        views.staff_pickup_report,
+        name="portal_staff_pickup_report",
+    ),
+    path(
+        "staff/reports/medical/",
+        views.staff_medical_report,
+        name="portal_staff_medical_report",
+    ),
+    path(
+        "staff/reports/attendance/",
+        views.staff_attendance_report,
+        name="portal_staff_attendance_report",
+    ),
+    path(
+        "staff/reports/weekly-attendance/",
+        views.staff_weekly_attendance_report,
+        name="portal_staff_weekly_attendance_report",
+    ),
+    path(
+        "staff/reports/attendance-blank-daily/",
+        views.staff_attendance_blank_daily,
+        name="portal_staff_attendance_blank_daily",
+    ),
+    path(
+        "staff/reports/attendance-blank-weekly/",
+        views.staff_attendance_blank_weekly,
+        name="portal_staff_attendance_blank_weekly",
+    ),
+    path(
+        "staff/reports/signout-blank/",
+        views.staff_signout_blank,
+        name="portal_staff_signout_blank",
+    ),
+    path(
+        "staff/reports/balances-export/",
+        views.staff_balances_export,
+        name="portal_staff_balances_export",
+    ),
+    path(
+        "staff/reports/agency-copay-export/",
+        views.staff_agency_copay_export,
+        name="portal_staff_agency_copay_export",
+    ),
+    path(
+        "staff/agency/action/",
+        views_actions.staff_agency_action,
+        name="portal_staff_agency_action",
+    ),
+    path(
+        "staff/member-policies/print/",
+        views.staff_member_policies_print,
+        name="portal_staff_member_policies_print",
+    ),
+    path(
+        "staff/incidents/print/",
+        views.staff_incidents_print,
+        name="portal_staff_incidents_print",
+    ),
+    path(
+        "staff/incidents/save/",
+        views_actions.staff_incident_save,
+        name="portal_staff_incident_save",
+    ),
+    path(
+        "staff/attendance/check-in/",
+        views.staff_attendance_checkin,
+        name="portal_staff_attendance_checkin",
+    ),
+    path(
+        "staff/attendance/check-out/",
+        views.staff_attendance_checkout,
+        name="portal_staff_attendance_checkout",
+    ),
+    path(
+        "staff/attendance/absent/",
+        views.staff_attendance_absent,
+        name="portal_staff_attendance_absent",
+    ),
+    path(
+        "staff/attendance/undo-absent/",
+        views.staff_attendance_undo_absent,
+        name="portal_staff_attendance_undo_absent",
+    ),
+    path(
+        "staff/attendance/bulk-check-in/",
+        views.staff_attendance_bulk_checkin,
+        name="portal_staff_attendance_bulk_checkin",
+    ),
+    path(
+        "staff/attendance/bulk-check-out/",
+        views.staff_attendance_bulk_checkout,
+        name="portal_staff_attendance_bulk_checkout",
+    ),
+    path("support/create/", views_actions.support_ticket_create, name="portal_support_ticket_create"),
+    path("support/reply/", views_actions.support_ticket_reply, name="portal_support_ticket_reply"),
+    path("messages/send/", views_actions.team_message_send, name="portal_team_message_send"),
+    path(
+        "admin/announcement/save/",
+        views_actions.admin_announcement_save,
+        name="portal_admin_announcement_save",
+    ),
+    path(
+        "admin/announcement/delete/",
+        views_actions.admin_announcement_delete,
+        name="portal_admin_announcement_delete",
+    ),
+    path(
+        "admin/newsletter/save/",
+        views_actions.admin_newsletter_save,
+        name="portal_admin_newsletter_save",
+    ),
+    path(
+        "admin/billing-permissions/save/",
+        views_actions.admin_billing_permissions,
+        name="portal_admin_billing_permissions",
+    ),
+    path(
+        "admin/staff/invite/",
+        views_actions.admin_staff_invite,
+        name="portal_admin_staff_invite",
+    ),
+    path(
+        "admin/profile-change/",
+        views_actions.admin_profile_change_action,
+        name="portal_admin_profile_change",
+    ),
+    path("admin/unit/save/", views_actions.admin_unit_save, name="portal_admin_unit_save"),
+    path("admin/unit/action/", views_actions.admin_unit_action, name="portal_admin_unit_action"),
+    path("admin/program/save/", views_actions.admin_program_save, name="portal_admin_program_save"),
+    path("admin/program/delete/", views_actions.admin_program_delete, name="portal_admin_program_delete"),
+    path("admin/agency/save/", views_actions.admin_agency_save, name="portal_admin_agency_save"),
+    path("admin/scholarship/save/", views_actions.admin_scholarship_save, name="portal_admin_scholarship_save"),
+    path("admin/fee/save/", views_actions.admin_fee_save, name="portal_admin_fee_save"),
+    path("admin/payment-plan/save/", views_actions.admin_payment_plan_save, name="portal_admin_payment_plan_save"),
+    path("admin/payment-plan/delete/", views_actions.admin_payment_plan_delete, name="portal_admin_payment_plan_delete"),
+    path("admin/processing-fee/save/", views_actions.admin_processing_fee_save, name="portal_admin_processing_fee_save"),
+    path("admin/processing-fee/delete/", views_actions.admin_processing_fee_delete, name="portal_admin_processing_fee_delete"),
+    path("admin/tax-settings/save/", views_actions.admin_tax_settings_save, name="portal_admin_tax_settings_save"),
+    path("admin/checkin/save/", views_actions.admin_checkin_save, name="portal_admin_checkin_save"),
+    path("admin/staff/edit/", views_actions.admin_staff_edit, name="portal_admin_staff_edit"),
+    path("admin/staff/role/", views_actions.admin_staff_role_create, name="portal_admin_staff_role_create"),
+    path("admin/default-rule/save/", views_actions.admin_default_rule_save, name="portal_admin_default_rule_save"),
+    path("admin/waive-charge/", views_actions.admin_waive_charge, name="portal_admin_waive_charge"),
+    path("admin/policy/create/", views_actions.admin_policy_create, name="portal_admin_policy_create"),
+    path("admin/newsletter/delete/", views_actions.admin_newsletter_delete, name="portal_admin_newsletter_delete"),
+    path(
+        "admin/parent-preview/<slug:family_slug>/",
+        views.admin_parent_preview,
+        name="portal_admin_parent_preview",
+    ),
+    path(
+        "admin/parent-preview/<slug:family_slug>/<slug:page>/",
+        views.admin_parent_preview,
+        name="portal_admin_parent_preview_page",
+    ),
+    path(
+        "staff/agency/billing/<slug:family_slug>/",
+        views.staff_agency_billing,
+        name="portal_staff_agency_billing",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/policies/",
+        views.staff_family_policies,
+        name="portal_staff_family_policies",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/billing/",
+        views.staff_family_billing,
+        name="portal_staff_family_billing",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/billing/action/",
+        views_actions.staff_billing_action,
+        name="portal_staff_billing_action",
+    ),
+    path(
+        "staff/application/create/",
+        views_actions.staff_create_application,
+        name="portal_staff_create_application",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/pickup/",
+        views.staff_family_pickup,
+        name="portal_staff_family_pickup",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/incidents/",
+        views.staff_family_incidents,
+        name="portal_staff_family_incidents",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/",
+        views.staff_family_detail,
+        name="portal_staff_family_detail",
+    ),
+    path(
+        "staff/application/<slug:app_slug>/review/",
+        views_actions.staff_application_review,
+        name="portal_staff_application_review",
+    ),
+    path(
+        "staff/application/<slug:app_slug>/print/",
+        views.staff_application_print,
+        name="portal_staff_application_print",
+    ),
+    path(
+        "staff/application/<slug:app_slug>/",
+        views.staff_application_detail,
+        name="portal_staff_application_detail",
+    ),
+    path(
+        "staff/program/<slug:program_slug>/roster/",
+        views.staff_program_roster,
+        name="portal_staff_program_roster",
+    ),
+    path("staff/<slug:page>/", views.staff_page, name="portal_staff_page"),
+    # Admin — detail and report routes before catch-all
+    path(
+        "admin/family/<slug:family_slug>/billing/",
+        views.admin_family_billing,
+        name="portal_admin_family_billing",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/policies/",
+        views.admin_family_policies,
+        name="portal_admin_family_policies",
+    ),
+    path(
+        "admin/member-policies/print/",
+        views.admin_member_policies_print,
+        name="portal_admin_member_policies_print",
+    ),
+    path(
+        "admin/reports/enrollment/",
+        views.admin_enrollment_report,
+        name="portal_admin_enrollment_report",
+    ),
+    path(
+        "admin/reports/financial/",
+        views.admin_financial_report,
+        name="portal_admin_financial_report",
+    ),
+    path("admin/<slug:page>/", views.admin_page, name="portal_admin_page"),
+]

@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title|default:"Portal" }} — YEA Portal{% endblock %}</title>
+  {% if preview_mode or staging_site %}
+  <meta name="robots" content="noindex, nofollow">
+  {% endif %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=36">
+</head>
+<body class="portal-body portal-area-{{ portal_area|default:'public' }}">
+  <div class="rainbow-bar" aria-hidden="true"></div>
+
+  {% if show_dev_hints %}
+  {% include "portal/includes/preview_banner.html" %}
+  {% endif %}
+  {% if admin_support_preview %}
+  <div class="portal-preview-banner portal-callout-warning" style="margin:0;border-radius:0;text-align:center;padding:0.5rem 1rem;">
+    <strong>Admin parent view</strong> — {{ preview_family_name|default:"Family" }} · Card numbers masked · Read-only troubleshooting
+  </div>
+  {% endif %}
+
+  <header class="site-header portal-header">
+    <div class="container header-inner">
+      <a class="logo" href="{% url 'portal_home' %}">
+        <img src="{% static 'images/yea-logo.png' %}" alt="">
+        <span class="logo-name">YEA Portal</span>
+      </a>
+      <div class="portal-header-meta">
+        {% if portal_area == 'staff' %}
+        <span class="portal-badge portal-badge-staff">{{ staff_unit|default:"Your unit" }}</span>
+        {% if staff_units|length > 1 %}
+        <form method="post" action="{% url 'portal_staff_unit_switch' %}" class="portal-unit-switch-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <label class="visually-hidden" for="staff-unit-switch">Unit</label>
+          <select id="staff-unit-switch" name="unit_slug" class="portal-select portal-select-sm" onchange="this.form.submit()">
+            {% for u in staff_units %}
+            <option value="{{ u.slug }}"{% if u.slug == staff_unit_slug %} selected{% endif %}>{{ u.name }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+        {% if staff_authenticated %}
+        <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_staff_logout' %}">Sign out</a>
+        {% else %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_login' %}">Staff sign in</a>
+        {% endif %}
+        {% elif portal_area == 'admin' %}
+        <span class="portal-badge portal-badge-admin">Organization admin</span>
+        {% elif portal_area == 'parent' %}
+        <div class="portal-header-parent">
+          <div class="portal-avatar portal-avatar-sm" aria-hidden="true">
+            {% if parent_avatar.photo_url %}
+            <img src="{{ parent_avatar.photo_url }}" alt="">
+            {% else %}
+            <span class="portal-avatar-initials">{{ parent_avatar.initials }}</span>
+            {% endif %}
+          </div>
+          <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
+          {% if parent_authenticated %}
+          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">Sign out</a>
+          {% endif %}
+        </div>
+        {% endif %}
+        <a class="portal-back-link" href="{% url 'portal_home' %}">← All portals</a>
+        <a class="portal-back-link" href="{% url 'home' %}">Public site</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="portal-shell">
+    {% if portal_area != 'public' %}
+    {% include "portal/includes/sidebar.html" %}
+    {% endif %}
+
+    <main class="portal-main">
+      {% include "portal/includes/back_nav.html" %}
+      {% if messages %}
+      <div class="container portal-flash-messages">
+        {% for message in messages %}
+        <div class="portal-flash portal-flash-{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block portal_content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{% static 'js/site.js' %}?v=3"></script>
+  <script src="{% static 'js/portal.js' %}?v=2"></script>
+  <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
+  {% if portal_area == 'staff' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
+  {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

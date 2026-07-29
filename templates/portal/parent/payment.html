@@ -1,0 +1,212 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    {% if is_dropin_payment %}
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a> / Pay for drop-in</p>
+    <h1>Pay for drop-in</h1>
+    <p class="lead">{{ dropin.child }} · {{ dropin.program }} · {{ dropin.location }}{% if dropin.date %} · {{ dropin.date }}{% endif %}</p>
+    {% else %}
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing</a> / Pay balance</p>
+    <h1>Pay balance</h1>
+    <p class="lead">{{ parent_preview.family_name }} family · balance due ${{ billing.running_balance }}</p>
+    {% endif %}
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if is_dropin_payment %}
+    <div class="portal-callout card portal-callout-warning">
+      <p><strong>Drop-in payment only — ${{ dropin.fee }}</strong></p>
+      <p>Your family account balance is <strong>${{ billing.running_balance }}</strong>. That balance is separate — this checkout is only for the drop-in day you booked. Paying here does not clear your program balance.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-profile-grid">
+      <section class="card portal-profile-full">
+        <h2>{% if is_dropin_payment %}Drop-in payment{% else %}Choose payment amount{% endif %}</h2>
+        <form id="parent-payment-form" class="portal-form-grid" method="get" action="{% url 'portal_parent_payment_preview' %}">
+          {% if is_dropin_payment %}
+          <input type="hidden" name="source" value="dropin">
+          <input type="hidden" name="child" value="{{ dropin.child }}">
+          <input type="hidden" name="program_label" value="{{ dropin.program }}">
+          <input type="hidden" name="location" value="{{ dropin.location }}">
+          <input type="hidden" name="date" value="{{ dropin.date }}">
+          <input type="hidden" name="amount" value="{{ dropin.fee }}">
+          <div class="form-group portal-form-full">
+            <label>Drop-in fee</label>
+            <p class="portal-balance-total" style="font-size:1.5rem;">${{ dropin.fee }}</p>
+            <p class="form-note">One-day drop-in rate for {{ dropin.program|lower }}.</p>
+          </div>
+          {% else %}
+          <div class="form-group portal-form-full">
+            <label>How much would you like to pay?</label>
+            <div class="portal-payment-amount-options">
+              <label class="portal-payment-amount-option">
+                <input type="radio" name="amount_choice" value="full" checked data-amount="{{ billing.running_balance }}">
+                Pay full balance — <strong>${{ billing.running_balance }}</strong>
+              </label>
+              <label class="portal-payment-amount-option">
+                <input type="radio" name="amount_choice" value="custom">
+                Pay a different amount (partial or extra for account credit)
+              </label>
+            </div>
+          </div>
+          <div class="form-group" id="custom-amount-wrap" hidden>
+            <label for="pay-amount">Payment amount</label>
+            <div class="portal-input-prefix">
+              <span>$</span>
+              <input id="pay-amount" name="amount" type="number" min="1" step="0.01" class="portal-input" value="{{ payment_amount|default:billing.running_balance }}">
+            </div>
+            <p class="form-note" id="credit-note" hidden></p>
+          </div>
+          {% endif %}
+
+          <div class="form-group portal-form-full">
+            <label for="pay-method">Payment method</label>
+            <select id="pay-method" name="method" class="portal-select">
+              {% if account.payment_methods %}
+              {% for pm in account.payment_methods %}
+              <option value="{{ pm.label }}" {% if pm.default %}selected{% endif %}>{{ pm.label }}</option>
+              {% endfor %}
+              {% else %}
+              <option value="Visa ending 4242">Visa ending 4242</option>
+              {% endif %}
+              <option value="__add_card__">+ Add new card</option>
+            </select>
+          </div>
+
+          <div class="portal-panel card portal-form-full" id="add-card-panel" hidden>
+            <h3>Add card</h3>
+            <div class="portal-form-grid">
+              <div class="form-group portal-form-full"><label for="card-name">Name on card</label><input id="card-name" type="text" class="portal-input"></div>
+              <div class="form-group portal-form-full"><label for="card-number">Card number</label><input id="card-number" type="text" class="portal-input" placeholder="4242 4242 4242 4242"></div>
+              <div class="form-group"><label for="card-exp">Expiration</label><input id="card-exp" type="text" class="portal-input" placeholder="MM/YY"></div>
+              <div class="form-group"><label for="card-cvc">CVC</label><input id="card-cvc" type="text" class="portal-input" placeholder="123"></div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="save-card-btn">Save card for this payment</button>
+          </div>
+
+          <div class="portal-callout card portal-form-full">
+            <dl class="portal-dl portal-payment-summary">
+              <dt>{% if is_dropin_payment %}Drop-in fee{% else %}Program fees (this payment){% endif %}</dt>
+              <dd id="summary-subtotal">${{ payment_totals.subtotal }}</dd>
+              <dt>{{ stripe_fee.label }}</dt>
+              <dd id="summary-fee">${{ payment_totals.fee }}</dd>
+              <dt><strong>Total charged to card</strong></dt>
+              <dd><strong id="summary-total">${{ payment_totals.total }}</strong></dd>
+            </dl>
+            <p class="form-note">{{ stripe_fee.note }}</p>
+          </div>
+
+          <div class="portal-form-actions portal-form-full">
+            <button type="submit" class="btn btn-primary">Continue to review</button>
+            <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        {% if is_dropin_payment %}
+        <h2>Booking summary</h2>
+        <dl class="portal-dl">
+          <dt>Child</dt><dd>{{ dropin.child }}</dd>
+          <dt>Program</dt><dd>{{ dropin.program }}</dd>
+          <dt>Location</dt><dd>{{ dropin.location }}</dd>
+          {% if dropin.date %}<dt>Date</dt><dd>{{ dropin.date }}</dd>{% endif %}
+          <dt>Drop-in fee</dt><dd><strong>${{ dropin.fee }}</strong></dd>
+        </dl>
+        <p class="form-note">Account balance (${{ billing.running_balance }}) is shown for reference only.</p>
+        {% else %}
+        <h2>Balance by child</h2>
+        <ul class="portal-link-list">
+          {% for child in billing.children %}
+          <li><strong>{{ child.name }}</strong> — ${{ child.balance }} due</li>
+          {% endfor %}
+        </ul>
+        <p class="form-note">Paying more than your balance adds a credit to your family account for future charges.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% if not is_dropin_payment %}
+<script>
+(function () {
+  var balance = parseFloat("{{ billing.running_balance }}");
+  var form = document.getElementById("parent-payment-form");
+  var customWrap = document.getElementById("custom-amount-wrap");
+  var amountInput = document.getElementById("pay-amount");
+  var creditNote = document.getElementById("credit-note");
+  var methodSelect = document.getElementById("pay-method");
+  var addCardPanel = document.getElementById("add-card-panel");
+  var saveCardBtn = document.getElementById("save-card-btn");
+
+  function selectedAmount() {
+    var choice = form.querySelector('input[name="amount_choice"]:checked');
+    if (choice && choice.value === "full") return balance;
+    return parseFloat(amountInput.value || "0");
+  }
+
+  function updateCreditNote() {
+    var amount = selectedAmount();
+    if (amount > balance) {
+      creditNote.hidden = false;
+      creditNote.textContent = "You will have a $" + (amount - balance).toFixed(2) + " account credit after this payment.";
+    } else {
+      creditNote.hidden = true;
+    }
+  }
+
+  form.querySelectorAll('input[name="amount_choice"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      customWrap.hidden = radio.value !== "custom";
+      if (radio.value === "full") amountInput.value = balance.toFixed(2);
+      updateCreditNote();
+    });
+  });
+
+  if (amountInput) amountInput.addEventListener("input", updateCreditNote);
+
+  if (methodSelect) {
+    methodSelect.addEventListener("change", function () {
+      addCardPanel.hidden = methodSelect.value !== "__add_card__";
+    });
+  }
+
+  if (saveCardBtn) {
+    saveCardBtn.addEventListener("click", function () {
+      var last4 = (document.getElementById("card-number").value.replace(/\D/g, "").slice(-4) || "4242");
+      var opt = document.createElement("option");
+      opt.value = "Visa ending " + last4;
+      opt.textContent = "Visa ending " + last4;
+      opt.selected = true;
+      methodSelect.insertBefore(opt, methodSelect.querySelector('option[value="__add_card__"]'));
+      methodSelect.value = opt.value;
+      addCardPanel.hidden = true;
+      window.portalPreviewToast("Card saved for this payment preview.");
+    });
+  }
+
+  form.addEventListener("submit", function () {
+    amountInput.value = selectedAmount().toFixed(2);
+  });
+})();
+</script>
+{% else %}
+<script>
+(function () {
+  var methodSelect = document.getElementById("pay-method");
+  var addCardPanel = document.getElementById("add-card-panel");
+  if (methodSelect) {
+    methodSelect.addEventListener("change", function () {
+      addCardPanel.hidden = methodSelect.value !== "__add_card__";
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

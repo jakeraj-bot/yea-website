@@ -1,0 +1,20 @@
+{% if alerts %}
+<span class="portal-medical-badges portal-medical-badges-{{ size|default:'md' }}">
+  {% for alert in alerts %}
+  <span
+    class="portal-med-icon portal-med-icon-{{ alert.key }}"
+    tabindex="0"
+    role="button"
+    aria-describedby="{{ alert.tip_id }}"
+  >
+    <span class="portal-med-icon-symbol" aria-hidden="true">{{ alert.symbol }}</span>
+    <span class="portal-med-tooltip" id="{{ alert.tip_id }}" role="tooltip">
+      <strong class="portal-med-tooltip-label">{{ alert.label }}</strong>
+      {% if alert.detail %}<span class="portal-med-tooltip-detail">{{ alert.detail }}</span>{% endif %}
+    </span>
+  </span>
+  {% endfor %}
+</span>
+{% else %}
+<span class="portal-medical-none" aria-hidden="true">—</span>
+{% endif %}

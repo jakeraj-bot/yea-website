@@ -123,8 +123,8 @@ class StudentStepForm(forms.Form):
     student_grade = forms.ChoiceField(choices=EnrollmentApplication.GRADE_CHOICES, label="Grade")
     student_school = forms.CharField(max_length=120, label="School")
 
-    doctor_name = forms.CharField(max_length=120, required=False, label="Doctor's name")
-    doctor_phone = forms.CharField(max_length=30, required=False, label="Doctor's phone #")
+    doctor_name = forms.CharField(max_length=120, label="Doctor's name")
+    doctor_phone = forms.CharField(max_length=30, label="Doctor's phone #")
     insurance_provider = forms.CharField(max_length=120, required=False, label="Insurance provider")
     insurance_policy_group = forms.CharField(max_length=120, required=False, label="Policy/Group #")
     insurance_member_id = forms.CharField(max_length=120, required=False, label="Member ID #")
@@ -135,17 +135,16 @@ class StudentStepForm(forms.Form):
     requires_asthma_plan = forms.BooleanField(required=False, label="Child requires an Asthma Action Plan")
     requires_epipen_plan = forms.BooleanField(required=False, label="Child requires an EpiPen Plan")
     has_disability = forms.ChoiceField(
-        choices=[("", "---------")] + EnrollmentApplication.YES_NO, required=False, label="Disability?"
+        choices=EnrollmentApplication.YES_NO, label="Disability?"
     )
     has_special_needs = forms.ChoiceField(
-        choices=[("", "---------")] + EnrollmentApplication.YES_NO, required=False, label="Special needs?"
+        choices=EnrollmentApplication.YES_NO, label="Special needs?"
     )
     requires_medication = forms.ChoiceField(
-        choices=[("", "---------")] + EnrollmentApplication.YES_NO, required=False, label="Medication?"
+        choices=EnrollmentApplication.YES_NO, label="Medication?"
     )
     has_medical_condition = forms.ChoiceField(
-        choices=[("", "---------")] + EnrollmentApplication.YES_NO,
-        required=False,
+        choices=EnrollmentApplication.YES_NO,
         label="Medical condition?",
     )
     medical_condition_explain = forms.CharField(
@@ -156,6 +155,34 @@ class StudentStepForm(forms.Form):
         widget=forms.RadioSelect,
         label="Health statement (check one only)",
     )
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("doctor_name"):
+            self.add_error("doctor_name", "Doctor's name is required.")
+        if not cleaned.get("doctor_phone"):
+            self.add_error("doctor_phone", "Doctor's phone is required.")
+
+        if cleaned.get("no_insurance"):
+            pass
+        else:
+            for field in ("insurance_provider", "insurance_policy_group", "insurance_member_id"):
+                if not cleaned.get(field):
+                    self.add_error(field, "Required unless “No insurance” is checked.")
+
+        if cleaned.get("no_known_allergies"):
+            pass
+        elif not cleaned.get("allergies"):
+            self.add_error("allergies", "Required unless “No known allergies” is checked.")
+
+        for field in ("has_disability", "has_special_needs", "requires_medication", "has_medical_condition"):
+            if not cleaned.get(field):
+                self.add_error(field, "Please select Yes or No.")
+
+        if cleaned.get("has_medical_condition") == "yes" and not cleaned.get("medical_condition_explain"):
+            self.add_error("medical_condition_explain", "Please explain the medical condition.")
+
+        return cleaned
 
 
 class EmergencyContactForm(forms.Form):
@@ -193,10 +220,10 @@ class BillingStepForm(forms.Form):
         label="Date", widget=forms.DateInput(attrs={"type": "date"})
     )
     four_cs_signature = forms.CharField(
-        max_length=120, required=False, label="4Cs signature (type full name, if applicable)"
+        max_length=120, label="4Cs signature (type full name)"
     )
     four_cs_signed_date = forms.DateField(
-        required=False, label="4Cs date", widget=forms.DateInput(attrs={"type": "date"})
+        label="4Cs date", widget=forms.DateInput(attrs={"type": "date"})
     )
 
 
@@ -245,6 +272,40 @@ class AddChildStepForm(forms.Form):
     )
 
 
+class PortalAccountForm(forms.Form):
+    username = forms.CharField(
+        max_length=150,
+        label="Username",
+        widget=forms.TextInput(attrs={"placeholder": "Choose a username for your portal login"}),
+    )
+    password1 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(attrs={"placeholder": "At least 8 characters"}),
+    )
+    password2 = forms.CharField(
+        label="Confirm password",
+        widget=forms.PasswordInput,
+    )
+
+    def clean_username(self):
+        from django.contrib.auth import get_user_model
+
+        username = self.cleaned_data["username"].strip()
+        if get_user_model().objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("That username is taken — choose another.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Passwords do not match.")
+        if password1 and len(password1) < 8:
+            raise forms.ValidationError("Password must be at least 8 characters.")
+        return cleaned
+
+
 STEP_FORMS = {
     "family": FamilyStepForm,
     "program": ProgramStepForm,
@@ -262,6 +323,16 @@ STEP_TITLES = {
     "policies": "Policies & signatures",
     "add_child": "Add another child?",
     "review": "Review & submit",
+}
+
+STEP_TAB_LABELS = {
+    "family": "Family",
+    "program": "Program",
+    "student": "Student",
+    "billing": "Billing",
+    "policies": "Policies",
+    "add_child": "Add child",
+    "review": "Review",
 }
 
 STEP_ORDER = ["family", "program", "student", "billing", "policies", "add_child", "review"]

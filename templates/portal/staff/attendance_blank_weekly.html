@@ -1,0 +1,82 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Blank weekly attendance</p>
+    <h1>Weekly attendance — blank sheet</h1>
+    <p class="lead">Week of {{ week_range_display }}</p>
+  </div>
+</section>
+<section class="page-content portal-blank-report">
+  <div class="container">
+    {% include "portal/staff/includes/report_date_toolbar.html" with date_label="Any day this week" %}
+
+    <div class="portal-medical-report-sheet card portal-blank-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Weekly attendance sheet</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ unit }}</strong> · {{ program }}<br>
+            <span class="portal-blank-sheet-date">Week: {{ week_start_display }} — {{ week_end_display }}</span>
+            · {{ enrolled_count }} enrolled
+          </p>
+        </div>
+      </header>
+
+      <div class="portal-blank-sheet-fields portal-no-print">
+        <p class="form-note">Enrolled children are listed automatically. Mark present (✓) or note times by hand for each day.</p>
+      </div>
+
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-blank-sheet-table portal-blank-sheet-table--weekly">
+          <thead>
+            <tr>
+              <th class="portal-blank-col-name">Child name</th>
+              {% for day in week_days %}
+              <th class="portal-blank-col-day">
+                <span class="portal-blank-day-label">{{ day.label }}</span>
+                <span class="portal-blank-day-date">{{ day.date_short }}</span>
+              </th>
+              {% endfor %}
+              <th class="portal-blank-col-total">Total days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in enrolled_rows %}
+            <tr class="portal-blank-sheet-row">
+              <td>
+                <strong>{{ row.child }}</strong>
+                {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
+              </td>
+              {% for day in week_days %}
+              <td><span class="portal-blank-line portal-blank-line--day" aria-hidden="true">&nbsp;</span></td>
+              {% endfor %}
+              <td><span class="portal-blank-line portal-blank-line--short" aria-hidden="true">&nbsp;</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="portal-blank-sheet-empty">No active enrollments found for this unit.</td>
+            </tr>
+            {% endfor %}
+            {% for i in extra_blank_rows %}
+            <tr class="portal-blank-sheet-row portal-blank-sheet-row--spare">
+              <td><span class="portal-blank-line" aria-hidden="true">&nbsp;</span></td>
+              {% for day in week_days %}
+              <td><span class="portal-blank-line portal-blank-line--day" aria-hidden="true">&nbsp;</span></td>
+              {% endfor %}
+              <td><span class="portal-blank-line portal-blank-line--short" aria-hidden="true">&nbsp;</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="portal-medical-report-footer">
+        <p>Week runs Monday–Friday. Use one sheet per program group or classroom.</p>
+      </footer>
+    </div>
+  </div>
+</section>
+{% endblock %}

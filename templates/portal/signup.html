@@ -1,0 +1,45 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Create parent account</h1>
+    <p class="lead">Register to access billing, payments, and your family profile.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:36rem;">
+    <section class="card">
+      <form method="post" class="portal-form-grid">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="portal-callout card portal-callout-warning portal-form-full">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        {% for field in form %}
+        <div class="form-group portal-form-full">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="form-note" style="color:var(--danger);">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Create account</button>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_login' %}">Already have an account? Log in</a>
+        </div>
+      </form>
+      <p class="form-note" style="margin-top:1rem;">Already enrolled with YEA? Use the same email you gave us so staff can match your family record later.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll(".portal-form-grid input").forEach(function (input) {
+    input.classList.add("portal-input");
+  });
+})();
+</script>
+{% endblock %}

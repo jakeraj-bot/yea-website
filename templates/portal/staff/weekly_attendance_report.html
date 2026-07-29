@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Weekly attendance</p>
+    <h1>Weekly attendance summary</h1>
+    <p class="lead">Week of {{ attendance.date_display }} · {{ attendance.unit }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back</a>
+    </div>
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Weekly attendance summary</h2>
+          <p class="portal-medical-report-meta">{{ attendance.unit }} · Mon–Fri totals per child</p>
+        </div>
+      </header>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              {% if weekly_rows and week_days %}
+                {% for day in week_days %}
+                <th>{{ day.strftime:"D" }}<br><span class="form-note">{{ day.strftime:"b j" }}</span></th>
+                {% endfor %}
+              {% else %}
+                <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>
+              {% endif %}
+              <th>Total days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if weekly_rows %}
+              {% for row in weekly_rows %}
+              <tr>
+                <td><strong>{{ row.child }}</strong></td>
+                {% for present in row.days %}
+                <td>{% if present %}✓{% else %}—{% endif %}</td>
+                {% endfor %}
+                <td>{{ row.total }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              {% for row in roster %}
+              <tr>
+                <td><strong>{{ row.child }}</strong></td>
+                <td>{% if row.check_in %}✓{% else %}—{% endif %}</td>
+                <td>—</td><td>—</td><td>—</td><td>—</td>
+                <td>{% if row.check_in %}1{% else %}0{% endif %}</td>
+              </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

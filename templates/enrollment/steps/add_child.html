@@ -2,15 +2,13 @@
 {% load enrollment_extras %}
 
 {% block step_content %}
-{% include "enrollment/includes/child_heading.html" %}
-<h2>{{ step_titles|get_item:step }}</h2>
-<p class="form-note">Each child may have a different program, location, billing, emergency contacts, and policy signatures.</p>
-
-<div class="form-grid">
-  <div class="form-group form-group-full">
-    {{ form.add_another.label_tag }}
-    {{ form.add_another }}
-    {{ form.add_another.errors }}
+<section class="apply-section">
+  <header class="apply-section-header">
+    <h3 class="apply-section-title">Add another child? {% include "enrollment/includes/required_mark.html" %}</h3>
+    <p class="apply-section-desc">Choose whether to enroll another child in this same application.</p>
+  </header>
+  <div class="form-grid">
+    {% apply_field form.add_another full=True %}
   </div>
-</div>
+</section>
 {% endblock %}

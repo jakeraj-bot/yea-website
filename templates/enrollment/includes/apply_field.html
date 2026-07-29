@@ -1,0 +1,25 @@
+{% load enrollment_extras %}
+<div class="form-group{% if full %} form-group-full{% endif %}{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}{% if field.field.required %} is-required{% endif %}">
+  {% if field.field.widget.input_type == 'checkbox' %}
+  <label class="form-check-label" for="{{ field.id_for_label }}">
+    {{ field }}
+    <span class="form-check-text">
+      {{ field.label }}{% if field.field.required %}{% include "enrollment/includes/required_mark.html" %}{% endif %}
+    </span>
+  </label>
+  {% elif field|is_radio_select %}
+  <span class="form-label">
+    {{ field.label }}{% if field.field.required %}{% include "enrollment/includes/required_mark.html" %}{% endif %}
+  </span>
+  <div class="option-list">{{ field }}</div>
+  {% else %}
+  <label for="{{ field.id_for_label }}">
+    {{ field.label }}{% if field.field.required %}{% include "enrollment/includes/required_mark.html" %}{% endif %}
+  </label>
+  {{ field }}
+  {% endif %}
+  {% if field.help_text %}
+  <p class="field-help">{{ field.help_text }}</p>
+  {% endif %}
+  {{ field.errors }}
+</div>

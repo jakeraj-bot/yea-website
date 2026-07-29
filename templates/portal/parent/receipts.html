@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Receipts</h1>
+    <p class="lead">Payment history and downloadable receipts for your family.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">View billing &amp; balance</a>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}">Print all receipts</a>
+    </div>
+
+    {% if receipt_previews %}
+    <h2>Sample receipt preview</h2>
+    <p class="form-note">This is how a completed program payment receipt will look — with YEA office address and your child's program location.</p>
+    {% include "portal/parent/includes/paper_receipt.html" with receipt=receipt_previews.0 %}
+    {% endif %}
+
+    {% if receipts %}
+    <h2>Payment history</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Child</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Payment method</th>
+            <th>Reference</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for receipt in receipts %}
+          <tr>
+            <td>{{ receipt.date }}</td>
+            <td>{{ receipt.child }}</td>
+            <td>{{ receipt.description }}</td>
+            <td>${{ receipt.amount }}</td>
+            <td>{{ receipt.method }}</td>
+            <td><code class="portal-ref-code">{{ receipt.reference }}</code></td>
+            <td>
+              {% if "RCPT" in receipt.reference %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}&amp;ref={{ receipt.reference }}">View receipt</a>
+              {% else %}
+              <span class="form-note">Invoice — not paid yet</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note">Receipts are also emailed when enabled in <a href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a>.</p>
+    {% else %}
+    <div class="card">
+      <p>No receipts yet — payments will appear here after you pay online.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container"><h1>Programs — {{ staff_unit }}</h1><p class="lead">Enrolled children by program session at your location.</p></div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Program</th><th>Dates</th><th>Enrolled here</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for program in programs %}
+          <tr>
+            <td><strong>{{ program.name }}</strong></td>
+            <td>{{ program.dates }}</td>
+            <td>{{ program.enrolled }} children</td>
+            <td>
+              <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_program_roster' program_slug='after-school-2026-27' %}">View roster</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='attendance' %}">Attendance</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note">Programs are created in Portal admin and assigned to multiple units. Each unit sees its own roster.</p>
+  </div>
+</section>
+{% endblock %}

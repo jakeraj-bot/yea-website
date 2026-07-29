@@ -1,0 +1,14 @@
+<div class="portal-medical-legend card">
+  <h3 class="portal-medical-legend-title">Medical icons</h3>
+  <p class="form-note">Hover any icon to see what it means. Full medical info on the family profile.</p>
+  <ul class="portal-medical-legend-list">
+    {% for key, item in medical_alert_types.items %}
+    <li>
+      <span class="portal-med-icon portal-med-icon-{{ key }}" role="img" aria-label="{{ item.label }}">
+        <span class="portal-med-icon-symbol" aria-hidden="true">{{ item.symbol }}</span>
+      </span>
+      <span>{{ item.label }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

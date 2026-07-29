@@ -1,0 +1,172 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Billing &amp; balance</h1>
+    <p class="lead">{{ billing.payment_type }} · running balance, charges, and payments — per child.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if billing.payment_type_note %}
+    <div class="portal-callout card">
+      <p>{{ billing.payment_type_note }}</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-balance-banner card card-accent">
+      <div>
+        <span class="portal-stat-label">Family running balance</span>
+        <p class="portal-balance-total">${{ billing.running_balance }}</p>
+        <span class="portal-payment-badge portal-payment-badge-{{ billing.payment_type|slugify }}">{{ billing.payment_type }}</span>
+      </div>
+      <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">Pay balance</a>
+    </div>
+
+    <section class="card portal-profile-full">
+      <div class="portal-toolbar">
+        <h2 style="margin:0;">Payment methods</h2>
+        <button type="button" class="btn btn-primary btn-sm" id="billing-add-card-btn">+ Add card</button>
+      </div>
+      {% if account.payment_methods %}
+      <ul class="portal-payment-method-list">
+        {% for pm in account.payment_methods %}
+        <li class="portal-payment-method card">
+          <div>
+            <strong>{{ pm.label }}</strong>
+            {% if pm.expires %}<span class="form-note">Expires {{ pm.expires }}</span>{% endif %}
+            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">Default</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="form-note">No card on file — add one for online payments or autopay.</p>
+      {% endif %}
+      <div class="portal-panel card" id="billing-add-card-panel" hidden style="margin-top:1rem;">
+        <h3>Add card</h3>
+        <div class="portal-form-grid">
+          <div class="form-group portal-form-full">
+            <label for="billing-card-name">Name on card</label>
+            <input id="billing-card-name" type="text" class="portal-input">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="billing-card-number">Card number</label>
+            <input id="billing-card-number" type="text" class="portal-input" placeholder="4242 4242 4242 4242">
+          </div>
+          <div class="form-group">
+            <label for="billing-card-exp">Expiration</label>
+            <input id="billing-card-exp" type="text" class="portal-input" placeholder="MM/YY">
+          </div>
+          <div class="form-group">
+            <label for="billing-card-cvc">CVC</label>
+            <input id="billing-card-cvc" type="text" class="portal-input" placeholder="123">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="billing-save-card-btn">Save card</button>
+      </div>
+    </section>
+
+    <h2>Balance by child</h2>
+    <div class="portal-child-billing-grid">
+      {% for child in billing.children %}
+      <article class="card {% if child.type == 'Scholarship' %}card-accent purple{% endif %}">
+        <h3>{{ child.name }}</h3>
+        <span class="portal-payment-badge portal-payment-badge-sm">{{ child.type|default:"Private pay" }}</span>
+        <dl class="portal-dl">
+          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
+          {% if child.full_rate %}
+          <dt>Full program rate</dt><dd>${{ child.full_rate }}</dd>
+          <dt>Scholarship discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
+          <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
+          <dt>You pay</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
+          {% elif child.amount %}
+          <dt>Amount</dt><dd>{{ child.amount }}</dd>
+          {% endif %}
+          <dt>Balance due</dt><dd>${{ child.balance }}</dd>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
+
+    <h2>Charges &amp; payments</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Child</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in billing.ledger %}
+          <tr>
+            <td>{{ row.date }}</td>
+            <td>{{ row.child }}</td>
+            <td>
+              {% if row.type == 'discount' %}
+              <span class="portal-ledger-type portal-ledger-type-discount">Discount</span>
+              {% else %}
+              {{ row.type|title }}
+              {% endif %}
+            </td>
+            <td>{{ row.description }}</td>
+            <td class="{% if row.type == 'payment' or row.type == 'discount' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
+              {% if row.type == 'payment' or row.type == 'discount' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if billing.payment_type == '4Cs' %}
+    <div class="portal-callout card portal-callout-muted">
+      <p><strong>4Cs agency payments</strong> between {{ billing.agency_name|default:"your agency" }} and YEA are handled separately by staff. You are only responsible for membership and your copay shown above.</p>
+    </div>
+    {% endif %}
+
+    <p class="form-note">Online payments use saved cards via Stripe. Pay any amount — overpayments become account credit. <a href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a> require $0 balance.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var addBtn = document.getElementById("billing-add-card-btn");
+  var panel = document.getElementById("billing-add-card-panel");
+  var saveBtn = document.getElementById("billing-save-card-btn");
+  if (addBtn && panel) addBtn.addEventListener("click", function () { panel.hidden = !panel.hidden; });
+  if (saveBtn) saveBtn.addEventListener("click", function () {
+    var cardNumber = (document.getElementById("billing-card-number")?.value || "").replace(/\s/g, "");
+    if (!cardNumber) {
+      window.portalPreviewToast("Enter a card number.");
+      return;
+    }
+    var last4 = cardNumber.slice(-4);
+    var cardName = (document.getElementById("billing-card-name")?.value || "").trim();
+    if (window.PortalPendingReview) {
+      var pending = window.PortalPendingReview.create({
+        storageKey: "yea-account-pending-{{ parent_preview_key|default:'private-pay' }}",
+        bannerId: "account-pending-banner",
+        panelId: "account-pending-panel",
+        tableBodySelector: "#account-pending-table tbody",
+      });
+      pending.upsert({
+        label: "Payment method — Add card",
+        oldValue: "Not on file",
+        newValue: (cardName ? cardName + " — " : "") + "Card ending " + last4,
+        targetId: "",
+        kind: "field",
+      });
+    }
+    panel.hidden = true;
+    window.portalPreviewToast("Card saved — pending staff review. See Account settings for details.");
+  });
+})();
+</script>
+{% endblock %}

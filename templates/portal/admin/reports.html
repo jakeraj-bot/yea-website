@@ -1,0 +1,35 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Organization reports</h1>
+    <p class="lead">Cross-unit financial, enrollment, and compliance reports.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <p>Unit staff generate daily operational reports from their <a href="{% url 'portal_staff_page' page='reports' %}">Reports &amp; PDFs</a> page. Admin reports here span all locations.</p>
+    </div>
+
+    <div class="portal-reports-grid">
+      {% for report in reports %}
+      <article class="card portal-report-card">
+        <h2>{{ report.name }}</h2>
+        <p>{{ report.description }}</p>
+        <p class="form-note">Format: {{ report.format }}</p>
+        {% if report.slug == 'enrollment' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_enrollment_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'financial' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_financial_report' %}">Preview &amp; print</a>
+        {% elif report.link_name and report.link_arg %}
+        <a class="btn btn-primary btn-sm" href="{% url report.link_name page=report.link_arg %}">Open in portal</a>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-sm" disabled>Generate</button>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

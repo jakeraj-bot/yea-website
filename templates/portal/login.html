@@ -1,0 +1,54 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Parent login</h1>
+    <p class="lead">Sign in to view billing, pay your balance, and manage your family account.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <form method="post" class="portal-form-grid">
+        {% csrf_token %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+        {% if form.non_field_errors %}
+        <div class="portal-callout card portal-callout-warning portal-form-full">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+          {% if form.username.errors %}<p class="form-note" style="color:var(--danger);">{{ form.username.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="{{ form.password.id_for_label }}">Password</label>
+          {{ form.password }}
+          {% if form.password.errors %}<p class="form-note" style="color:var(--danger);">{{ form.password.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Log in</button>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_signup' %}">Create account</a>
+          <a class="btn btn-secondary" href="{% url 'portal_home' %}">All portals</a>
+        </div>
+      </form>
+      {% if show_dev_hints %}
+      <p class="form-note" style="margin-top:1rem;">New here? Click <strong>Create account</strong> above. Demo logins from <code>seed_portal</code>: <strong>jakeraj</strong> / <strong>JacobsFamily2026!</strong></p>
+      {% else %}
+      <p class="form-note" style="margin-top:1rem;">New here? Click <strong>Create account</strong> above, or contact YEA if you need help accessing your account.</p>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll("#id_username, #id_password").forEach(function (input) {
+    input.classList.add("portal-input");
+  });
+})();
+</script>
+{% endblock %}

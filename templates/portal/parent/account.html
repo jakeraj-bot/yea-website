@@ -1,0 +1,354 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Account settings</h1>
+    <p class="lead">Login, payment methods, autopay, and notification preferences.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container portal-profile-grid">
+    <div class="portal-callout card portal-callout-warning portal-profile-full" id="account-pending-banner" hidden role="status">
+      <p><strong>Changes pending staff review</strong> — your account updates were submitted. You'll see pending values below with a <span class="portal-pending-badge">Pending review</span> badge until staff confirms.</p>
+    </div>
+
+    <section class="card portal-profile-full" id="account-pending-panel" hidden>
+      <h2>Pending review</h2>
+      <p class="form-note">These account changes are waiting for staff approval.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table" id="account-pending-table">
+          <thead><tr><th>Field</th><th>Current (approved)</th><th>Your change</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card portal-profile-full">
+      <h2>Profile photo</h2>
+      <div class="portal-profile-photo-row">
+        <div class="portal-avatar portal-avatar-lg" aria-hidden="true">
+          {% if parent_avatar.photo_url %}
+          <img src="{{ parent_avatar.photo_url }}" alt="">
+          {% else %}
+          <span class="portal-avatar-initials">{{ parent_avatar.initials }}</span>
+          {% endif %}
+        </div>
+        <div class="portal-profile-photo-actions">
+          {% if parent_can_manage_photo %}
+          <form method="post" action="{% url 'portal_parent_profile_photo_upload' %}" enctype="multipart/form-data" class="portal-form-grid">
+            {% csrf_token %}
+            <div class="form-group portal-form-full">
+              <label for="profile-photo-input">Upload a photo</label>
+              <input id="profile-photo-input" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif" class="portal-input">
+              <p class="form-note">Optional — JPG, PNG, WebP, or GIF up to 5 MB. Shown in your sidebar and header.</p>
+            </div>
+            <div class="portal-form-actions portal-form-full">
+              <button type="submit" class="btn btn-primary btn-sm">Save photo</button>
+            </div>
+          </form>
+          {% if parent_avatar.photo_url %}
+          <form method="post" action="{% url 'portal_parent_profile_photo_remove' %}" style="margin-top:0.75rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary btn-sm">Remove photo</button>
+          </form>
+          {% endif %}
+          {% else %}
+          <p class="form-note">Sign in to your parent account to add a profile photo.</p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="card portal-profile-full">
+      <h2>Login &amp; security</h2>
+      {% if parent_authenticated %}
+      <p class="form-note">Signed in as <strong>{{ account.username }}</strong>{% if parent_stripe_enabled %} · Stripe checkout enabled{% endif %}.</p>
+      {% endif %}
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Email (login)</dt><dd id="account-email-display">{{ account.login_email }}</dd>
+        <dt>Username</dt><dd>{{ account.username }}</dd>
+        <dt>Password</dt>
+        <dd class="portal-password-row">
+          <span id="password-display" class="portal-password-masked">••••••••••••</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="toggle-password-display" aria-pressed="false">Show password</button>
+        </dd>
+        <dt>Last login</dt><dd>{{ account.last_login }}</dd>
+      </dl>
+      <p class="form-note">Show password helps if you forgot what you set — only visible to you while logged in.</p>
+      <div class="portal-form-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-password-panel">Change password</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-email-panel">Change email</button>
+      </div>
+      <div class="portal-panel card" id="change-password-panel" hidden style="margin-top:1rem;">
+        <h3>Change password</h3>
+        <form class="portal-form-grid portal-account-form" id="change-password-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
+          {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="password">{% endif %}
+          <div class="form-group portal-form-full"><label>Current password</label><input type="password" name="current_password" class="portal-input" id="current-password-input"></div>
+          <div class="form-group"><label>New password</label><input type="password" name="new_password" class="portal-input" id="new-password-input"></div>
+          <div class="form-group"><label>Confirm new password</label><input type="password" name="confirm_password" class="portal-input" id="confirm-password-input"></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Update password</button></div>
+        </form>
+      </div>
+      <div class="portal-panel card" id="change-email-panel" hidden style="margin-top:1rem;">
+        <h3>Change email</h3>
+        <form class="portal-form-grid portal-account-form" id="change-email-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
+          {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="email">{% endif %}
+          <div class="form-group portal-form-full">
+            <label>New email</label>
+            <input type="email" name="email" class="portal-input" value="{{ account.login_email }}" data-label="Login email" data-target="account-email-display" data-original="{{ account.login_email }}">
+          </div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save email</button></div>
+        </form>
+      </div>
+      {% if parent_authenticated %}
+      <div class="portal-form-actions" style="margin-top:1rem;">
+        <a class="btn btn-secondary" href="{% url 'portal_parent_logout' %}">Sign out</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Autopay</h2>
+      <p class="portal-autopay-status" id="autopay-status-text">
+        {% if account.autopay_enabled %}
+        <strong>Autopay is on.</strong> <span id="autopay-charge-day-display">{{ account.autopay_day }}</span>.
+        {% else %}
+        <strong>Autopay is off</strong> — you pay manually or in person.
+        {% endif %}
+      </p>
+      <button type="button" class="btn btn-secondary btn-sm" id="toggle-autopay-btn">{% if account.autopay_enabled %}Manage autopay{% else %}Turn on autopay{% endif %}</button>
+      <div class="portal-panel card" id="autopay-panel" hidden style="margin-top:1rem;">
+        <form class="portal-form-grid portal-account-form" id="autopay-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
+          {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="settings">{% endif %}
+          <div class="form-group portal-form-full">
+            <label class="portal-check-label">
+              <input type="checkbox" id="autopay-enabled-input" name="autopay_enabled" {% if account.autopay_enabled %}checked{% endif %} data-label="Autopay" data-original="{% if account.autopay_enabled %}On{% else %}Off{% endif %}">
+              Enable autopay on balance due dates
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="autopay-charge-day-input">Charge day</label>
+            <select class="portal-select" id="autopay-charge-day-input" name="autopay_day" data-label="Autopay charge day" data-target="autopay-charge-day-display" data-original="{{ account.autopay_day|default:'Monday each week' }}">
+              <option {% if account.autopay_day == 'Monday each week' or not account.autopay_day %}selected{% endif %}>Monday each week</option>
+              <option {% if account.autopay_day == 'Friday before each billing week' %}selected{% endif %}>Friday before each billing week</option>
+              <option {% if account.autopay_day == '1st of month' %}selected{% endif %}>1st of month</option>
+            </select>
+          </div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save autopay</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Payment methods</h2>
+      <ul class="portal-payment-method-list" id="payment-method-list">
+        {% for pm in account.payment_methods %}
+        <li class="portal-payment-method card" data-card-label="{{ pm.label }}">
+          <div>
+            <strong id="display-card-{{ forloop.counter0 }}">{{ pm.label }}</strong>
+            {% if pm.expires %}<span class="form-note">Expires {{ pm.expires }}</span>{% endif %}
+            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">Default</span>{% endif %}
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm portal-remove-card-btn" data-card-label="{{ pm.label }}">Remove</button>
+        </li>
+        {% empty %}
+        <li class="form-note" id="no-cards-note">No card on file — add one for autopay or online payments.</li>
+        {% endfor %}
+      </ul>
+      <button type="button" class="btn btn-primary btn-sm" data-preview-panel="account-add-card-panel">+ Add payment method</button>
+      {% if parent_stripe_enabled %}
+      <form method="post" action="{% url 'portal_parent_card_setup' %}" style="display:inline;margin-left:0.5rem;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary btn-sm">Add card with Stripe</button>
+      </form>
+      {% endif %}
+      <div class="portal-panel card" id="account-add-card-panel" hidden style="margin-top:1rem;">
+        <form class="portal-form-grid portal-account-form" id="add-card-form">
+          <div class="form-group portal-form-full"><label>Name on card</label><input type="text" class="portal-input" id="add-card-name"></div>
+          <div class="form-group portal-form-full"><label>Card number</label><input type="text" class="portal-input" id="add-card-number" placeholder="4242 4242 4242 4242"></div>
+          <div class="form-group"><label>Expiration</label><input type="text" class="portal-input" id="add-card-exp" placeholder="MM/YY"></div>
+          <div class="form-group"><label>CVC</label><input type="text" class="portal-input" id="add-card-cvc"></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save card</button></div>
+        </form>
+      </div>
+      <p class="form-note">Cards are stored securely via Stripe.</p>
+    </section>
+
+    <section class="card portal-profile-full">
+      <h2>Notifications</h2>
+        <form class="portal-form-grid portal-account-form" id="notifications-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
+        {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="settings">{% endif %}
+        <div class="form-group portal-form-full portal-check-row">
+          <label class="portal-check-label">
+            <input type="checkbox" name="email_receipts" {% if account.email_receipts %}checked{% endif %} data-label="Email receipts after payment" data-original="{% if account.email_receipts %}On{% else %}Off{% endif %}">
+            Email me a receipt after each payment
+          </label>
+        </div>
+        <div class="form-group portal-form-full portal-check-row">
+          <label class="portal-check-label">
+            <input type="checkbox" name="email_reminders" {% if account.email_reminders %}checked{% endif %} data-label="Email balance reminders" data-original="{% if account.email_reminders %}On{% else %}Off{% endif %}">
+            Email balance reminders before due dates
+          </label>
+        </div>
+        <div class="form-group portal-form-full portal-check-row">
+          <label class="portal-check-label">
+            <input type="checkbox" name="sms_reminders" {% if account.sms_reminders %}checked{% endif %} data-label="SMS balance reminders" data-original="{% if account.sms_reminders %}On{% else %}Off{% endif %}">
+            Text (SMS) balance reminders
+          </label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save preferences</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card portal-profile-full">
+      <h2>Profile changes</h2>
+      <p>Update address, phone, or emergency contacts on your <a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a>. Sensitive changes may require staff approval.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var liveAccount = {% if portal_live and parent_authenticated %}true{% else %}false{% endif %};
+  if (liveAccount) return;
+
+  var pending = window.PortalPendingReview.create({
+    storageKey: "yea-account-pending-{{ parent_preview_key|default:'private-pay' }}",
+    bannerId: "account-pending-banner",
+    panelId: "account-pending-panel",
+    tableBodySelector: "#account-pending-table tbody",
+  });
+
+  function applyAutopayDisplay(changes) {
+    var statusEl = document.getElementById("autopay-status-text");
+    if (!statusEl) return;
+    var enabled = changes.find(function (c) { return c.label === "Autopay"; });
+    var day = changes.find(function (c) { return c.label === "Autopay charge day"; });
+    if (!enabled && !day) return;
+    var originalOn = {% if account.autopay_enabled %}true{% else %}false{% endif %};
+    var originalDay = "{{ account.autopay_day|default:'Monday each week'|escapejs }}";
+    var newOn = enabled ? enabled.newValue === "On" : originalOn;
+    var newDay = day ? day.newValue : originalDay;
+    var oldText = originalOn ? ("On — " + originalDay) : "Off";
+    var newText = newOn ? ("On — " + newDay) : "Off";
+    statusEl.innerHTML =
+      '<span class="portal-pending-value">' + newText + '</span> ' +
+      '<span class="portal-pending-badge">Pending review</span><br>' +
+      '<span class="portal-approved-value">Currently on file: ' + oldText + '</span>';
+  }
+
+  var baseRender = pending.render.bind(pending);
+  pending.render = function (changes) {
+    baseRender(changes);
+    applyAutopayDisplay(changes || pending.load());
+  };
+
+  pending.render(pending.load());
+
+  function submitAccountForm(form, panelId, emptyMessage) {
+    if (!form) return;
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var incoming = pending.collectFromContainer(form);
+      if (!incoming.length) {
+        window.portalPreviewToast(emptyMessage || "No changes to submit.");
+        return;
+      }
+      pending.mergeFromContainer(form);
+      var panel = panelId ? document.getElementById(panelId) : form.closest(".portal-panel");
+      if (panel) panel.hidden = true;
+      document.getElementById("account-pending-banner")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.portalPreviewToast("Changes submitted — pending staff review.");
+    });
+  }
+
+  submitAccountForm(document.getElementById("change-email-form"), "change-email-panel");
+  submitAccountForm(document.getElementById("autopay-form"), "autopay-panel");
+  submitAccountForm(document.getElementById("notifications-form"));
+
+  document.getElementById("change-password-form")?.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var newPassword = document.getElementById("new-password-input")?.value || "";
+    var confirmPassword = document.getElementById("confirm-password-input")?.value || "";
+    if (!newPassword) {
+      window.portalPreviewToast("Enter a new password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      window.portalPreviewToast("New passwords do not match.");
+      return;
+    }
+    pending.upsert({
+      label: "Password",
+      oldValue: "••••••••••••",
+      newValue: "Update requested",
+      targetId: "password-display",
+      kind: "password",
+    });
+    document.getElementById("change-password-panel").hidden = true;
+    document.getElementById("account-pending-banner")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.portalPreviewToast("Password change submitted — pending staff review.");
+  });
+
+  document.getElementById("add-card-form")?.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var cardNumber = (document.getElementById("add-card-number")?.value || "").replace(/\s/g, "");
+    if (!cardNumber) {
+      window.portalPreviewToast("Enter a card number.");
+      return;
+    }
+    var last4 = cardNumber.slice(-4);
+    var cardName = (document.getElementById("add-card-name")?.value || "").trim();
+    var label = "Payment method — Add card";
+    pending.upsert({
+      label: label,
+      oldValue: "Not on file",
+      newValue: (cardName ? cardName + " — " : "") + "Card ending " + last4,
+      targetId: "",
+      kind: "field",
+    });
+    document.getElementById("account-add-card-panel").hidden = true;
+    document.getElementById("account-pending-banner")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.portalPreviewToast("Card added — pending staff review.");
+  });
+
+  document.querySelectorAll(".portal-remove-card-btn").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var cardLabel = button.getAttribute("data-card-label") || "Card";
+      pending.upsert({
+        label: "Payment method — Remove " + cardLabel,
+        oldValue: "On file",
+        newValue: "Remove requested",
+        targetId: "",
+        kind: "field",
+      });
+      document.getElementById("account-pending-banner")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.portalPreviewToast("Card removal submitted — pending staff review.");
+    });
+  });
+
+  document.getElementById("toggle-autopay-btn")?.addEventListener("click", function () {
+    var panel = document.getElementById("autopay-panel");
+    if (panel) panel.hidden = !panel.hidden;
+  });
+
+  var passwordDisplay = document.getElementById("password-display");
+  var togglePassword = document.getElementById("toggle-password-display");
+  var passwordValue = "{{ account.password_preview|default:'YourPassword123!' }}";
+  var showing = false;
+  if (togglePassword && passwordDisplay) {
+    togglePassword.addEventListener("click", function () {
+      if (passwordDisplay.querySelector(".portal-pending-badge")) return;
+      showing = !showing;
+      passwordDisplay.textContent = showing ? passwordValue : "••••••••••••";
+      togglePassword.textContent = showing ? "Hide password" : "Show password";
+      togglePassword.setAttribute("aria-pressed", showing ? "true" : "false");
+    });
+  }
+})();
+</script>
+{% endblock %}

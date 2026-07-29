@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Apply — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Apply for enrollment</h1>
+    <p class="lead">Start a new application or sign in to your parent portal if you already have an account.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <div class="card-grid card-grid-2" style="max-width:48rem;margin:0 auto;">
+      <article class="card card-accent">
+        <h2>Already have a parent portal account?</h2>
+        <p>Sign in to apply using your saved family information. Submitted applications appear in your portal automatically.</p>
+        <a class="btn btn-primary" href="{% url 'portal_parent_login' %}?next={% url 'enrollment_apply' step='family' %}">Sign in to parent portal</a>
+      </article>
+
+      <article class="card">
+        <h2>New family applying?</h2>
+        <p>Start the enrollment application online. Before you submit, you'll create a username and password so you can track your application in the parent portal.</p>
+        <p class="form-note">Different households with the same last name each get their own portal account — they stay separate.</p>
+        <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1">Start new application</a>
+      </article>
+    </div>
+
+    <p class="form-note" style="text-align:center;margin-top:1.5rem;">
+      Questions? <a href="{% url 'contact' %}">Contact YEA</a> or call us before you apply.
+    </p>
+  </div>
+</section>
+{% endblock %}

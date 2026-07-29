@@ -1,0 +1,50 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child.</p></div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      {% include "portal/includes/add_child_button.html" %}
+    </div>
+
+    {% if parent_applications %}
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Child</th><th>Program</th><th>Location</th><th>Submitted</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for app in parent_applications %}
+          <tr>
+            <td>{{ app.child_name }}</td>
+            <td>{{ app.program }}</td>
+            <td>{{ app.location }}</td>
+            <td>{{ app.submitted }}</td>
+            <td><span class="portal-status portal-status-{{ app.status_slug }}">{{ app.status }}</span></td>
+            <td>
+              {% if app.demo %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}">View</a>
+              {% else %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}&amp;ref={{ app.reference }}">View</a>
+              {% if app.can_edit %}
+              <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_edit' reference=app.reference %}">Edit</a>
+              {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="portal-callout card">
+      <p>No applications yet. When you apply online, your submissions will appear here.</p>
+      {% include "portal/includes/add_child_button.html" %}
+    </div>
+    {% endif %}
+    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a> — it uses your existing account.</p>
+  </div>
+</section>
+{% endblock %}

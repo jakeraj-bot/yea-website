@@ -1,0 +1,75 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Staff compliance</h1>
+    <p class="lead">CARI, CHRI, medical clearance, and CPR — only {{ cpr_required_per_unit }} staff per unit need CPR/First Aid on site.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <p><strong>NJ child care requirements.</strong> Every staff member needs current <strong>CARI</strong>, <strong>CHRI</strong>, and <strong>Medical</strong> clearance. Each unit must have at least <strong>{{ cpr_required_per_unit }} CPR-certified</strong> staff on duty — not every person on roster.</p>
+    </div>
+
+    <div class="portal-stat-row">
+      {% for unit in compliance_by_unit %}
+      <div class="card portal-stat">
+        <span class="portal-stat-label">{{ unit.unit }}</span>
+        <strong class="portal-stat-value {% if unit.cpr_covered < unit.cpr_required %}portal-stat-overdue{% endif %}">
+          CPR {{ unit.cpr_covered }}/{{ unit.cpr_required }}
+        </strong>
+        <p class="form-note">{{ unit.staff_count }} staff · CARI {{ unit.cari_current }}/{{ unit.staff_count }} · CHRI {{ unit.chri_current }}/{{ unit.staff_count }} · Medical {{ unit.medical_current }}/{{ unit.staff_count }}</p>
+        {% if unit.cpr_expiring %}
+        <p class="form-note portal-text-warning">{{ unit.cpr_expiring }} CPR cert{{ unit.cpr_expiring|pluralize }} expiring soon</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Unit</th>
+            <th>CARI</th>
+            <th>CHRI</th>
+            <th>Medical</th>
+            <th>CPR / First Aid</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in staff_compliance %}
+          <tr>
+            <td><strong>{{ row.name }}</strong></td>
+            <td>{{ row.role }}</td>
+            <td>{{ row.unit }}</td>
+            <td>{{ row.cari }}</td>
+            <td>{{ row.chri }}</td>
+            <td>{{ row.medical }}</td>
+            <td>
+              {% if row.cpr_required %}
+              {{ row.cpr }}
+              <span class="portal-status portal-status-active portal-status-inline">Required slot</span>
+              {% else %}
+              <span class="form-note">Not required</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if 'expires' in row.status|lower %}
+              <span class="portal-status portal-status-under-review">{{ row.status }}</span>
+              {% else %}
+              <span class="portal-status portal-status-active">{{ row.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

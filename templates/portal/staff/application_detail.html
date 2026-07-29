@@ -1,0 +1,142 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='applications' %}">Applications</a> / {{ application.child_name }}</p>
+    <h1>{{ application.child_name }}</h1>
+    <p class="lead">Ref {{ application.reference }} · {{ application.submitted }}{% if application.reviewed_at %} · Reviewed {{ application.reviewed_at }}{% endif %}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-review-actions">
+      <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
+      {% if is_live_application and application.can_review %}
+      <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
+      </form>
+      <a class="btn btn-secondary" href="#request-changes-panel">Request changes</a>
+      <a class="btn btn-secondary" href="#reject-panel">Reject</a>
+      {% elif not is_live_application %}
+      <button type="button" class="btn btn-primary" disabled title="Demo application only">Approve</button>
+      <button type="button" class="btn btn-secondary" disabled title="Demo application only">Request changes</button>
+      <button type="button" class="btn btn-secondary" disabled title="Demo application only">Reject</button>
+      {% endif %}
+      <a class="btn btn-secondary" href="{% url 'portal_staff_application_print' app_slug=app_slug %}">Print PDF</a>
+    </div>
+
+    {% if application.staff_message %}
+    <div class="portal-callout card portal-callout-warning">
+      <p><strong>Message to parent</strong> (visible in their portal)</p>
+      <p>{{ application.staff_message|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+
+    {% if is_live_application and application.can_review %}
+    <div class="portal-review-panels">
+      <section class="card portal-review-panel" id="request-changes-panel">
+        <h2>Request changes</h2>
+        <p class="form-note">Tell the parent exactly what to fix or send in. They can update and resubmit the application online from their portal. Status changes to <strong>Pending documents</strong>.</p>
+        <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="request_changes">
+          <div class="form-group portal-form-full">
+            <label for="request-changes-message">What does the family need to update?</label>
+            <textarea id="request-changes-message" name="staff_message" class="portal-input portal-textarea" rows="5" required placeholder="Example: Upload a current immunization record and confirm the emergency contact phone numbers."></textarea>
+          </div>
+          <div class="form-group portal-form-full">
+            <button type="submit" class="btn btn-primary">Send change request to parent</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card portal-review-panel" id="reject-panel">
+        <h2>Reject application</h2>
+        <p class="form-note">Decline this application and optionally include a note for the parent. They'll receive an email notification.</p>
+        <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reject">
+          <div class="form-group portal-form-full">
+            <label for="reject-message">Reason (optional)</label>
+            <textarea id="reject-message" name="staff_message" class="portal-input portal-textarea" rows="4" placeholder="Optional note for the family"></textarea>
+          </div>
+          <div class="form-group portal-form-full">
+            <button type="submit" class="btn btn-secondary" onclick="return confirm('Decline this application? The parent will be notified.')">Decline application</button>
+          </div>
+        </form>
+      </section>
+    </div>
+    {% endif %}
+
+    <div class="portal-review-grid">
+      <div class="card portal-application">
+        <h2>Enrollment details</h2>
+        <dl class="portal-dl portal-dl-2col">
+          <dt>Program</dt><dd>{{ application.program }}</dd>
+          <dt>Location</dt><dd>{{ application.location }}</dd>
+          <dt>Grade</dt><dd>{{ application.grade }}</dd>
+          <dt>DOB</dt><dd>{{ application.student_dob }}</dd>
+          <dt>Returning member</dt><dd>{% if application.returning_member %}Yes{% else %}No{% endif %}</dd>
+          <dt>Membership fee</dt><dd>{% if application.membership_required %}$20 required{% else %}Waived (returning){% endif %}</dd>
+        </dl>
+
+        <h2>Medical information</h2>
+        <p class="form-note">Hover each icon for details.</p>
+        <div class="portal-application-medical">
+          {% medical_badges application.child_name size="lg" %}
+        </div>
+
+        <h2>Guardians</h2>
+        <dl class="portal-dl portal-dl-2col">
+          <dt>Primary</dt><dd>{{ application.primary_parent }}</dd>
+          <dt>Email</dt><dd>{{ application.primary_email }}</dd>
+          <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
+          <dt>Address</dt><dd>{{ application.home_address }}</dd>
+        </dl>
+        <h2>Billing preferences</h2>
+        <dl class="portal-dl portal-dl-2col">
+          <dt>Method</dt><dd>{{ application.payment_method }}</dd>
+          <dt>Plan</dt><dd>{{ application.payment_plan }}</dd>
+        </dl>
+        <h2>Emergency contacts</h2>
+        <ul class="portal-link-list">
+          {% for c in application.emergency_contacts %}
+          <li>{{ c.name }} — {{ c.phone }}</li>
+          {% endfor %}
+        </ul>
+        <p>{{ application.policies_signed }} policies signed at submission.</p>
+      </div>
+
+      <aside class="portal-review-sidebar">
+        <div class="card">
+          <h2>Internal note</h2>
+          {% if is_live_application %}
+          <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_note">
+            <textarea name="internal_note" class="portal-input portal-textarea" rows="4" placeholder="Staff-only notes">{{ application.internal_note }}</textarea>
+            <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.5rem">Save note</button>
+          </form>
+          {% else %}
+          <textarea class="portal-input portal-textarea" rows="4" placeholder="Staff-only notes" disabled>{{ application.internal_note }}</textarea>
+          <button type="button" class="btn btn-secondary btn-sm" disabled style="margin-top:0.5rem">Save note</button>
+          {% endif %}
+        </div>
+        <div class="card">
+          <h2>On approval</h2>
+          <ul class="portal-link-list">
+            <li>Add child to program roster</li>
+            <li>Activate family account if pending</li>
+            <li>Post membership fee if required ($20)</li>
+            <li>Email parent welcome notification</li>
+          </ul>
+          <p class="form-note">Parent portal login is already created when they apply online.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endblock %}

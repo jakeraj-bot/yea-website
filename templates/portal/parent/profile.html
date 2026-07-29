@@ -1,0 +1,257 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Family profile</h1>
+    <p class="lead">Your household information — always available, not buried in old applications.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      {% include "portal/includes/add_child_button.html" %}
+      <button type="button" class="btn btn-secondary" id="toggle-edit-profile">Edit profile</button>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a>
+    </div>
+
+    <div class="portal-callout card portal-callout-warning" id="pending-review-banner" hidden role="status">
+      <p><strong>Changes pending staff review</strong> — your updates were submitted. Approved information stays on file until staff confirms. You'll see pending values below with a <span class="portal-pending-badge">Pending review</span> badge.</p>
+    </div>
+
+    <div class="portal-panel card" id="edit-profile-panel" hidden>
+      <h2>Edit family profile</h2>
+      <p class="form-note">All changes below are saved as <strong>pending review</strong> until staff approves them.</p>
+      <form class="portal-form-grid" id="profile-edit-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_profile_save' %}"{% endif %}>
+        {% if portal_live and parent_authenticated %}{% csrf_token %}{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="edit-address">Home address</label>
+          <input id="edit-address" name="home_address" type="text" class="portal-input" value="{{ profile.home_address }}" data-label="Home address" data-target="display-home-address" data-original="{{ profile.home_address }}">
+        </div>
+
+        <h3 class="portal-form-subheading portal-form-full">Primary parent / guardian</h3>
+        <div class="form-group">
+          <label for="edit-primary-name">Name</label>
+          <input id="edit-primary-name" name="primary_name" type="text" class="portal-input" value="{{ profile.primary.name }}" data-label="Primary guardian — Name" data-target="display-primary-name" data-original="{{ profile.primary.name }}">
+        </div>
+        <div class="form-group">
+          <label for="edit-primary-relationship">Relationship</label>
+          <input id="edit-primary-relationship" type="text" class="portal-input" value="{{ profile.primary.relationship }}" data-label="Primary guardian — Relationship" data-target="display-primary-relationship" data-original="{{ profile.primary.relationship }}">
+        </div>
+        <div class="form-group">
+          <label for="edit-primary-phone">Phone</label>
+          <input id="edit-primary-phone" name="primary_phone" type="text" class="portal-input" value="{{ profile.primary.phone }}" data-label="Primary guardian — Phone" data-target="display-primary-phone" data-original="{{ profile.primary.phone }}">
+        </div>
+        <div class="form-group">
+          <label for="edit-primary-email">Email</label>
+          <input id="edit-primary-email" name="primary_email" type="email" class="portal-input" value="{{ profile.primary.email }}" data-label="Primary guardian — Email" data-target="display-primary-email" data-original="{{ profile.primary.email }}">
+        </div>
+
+        <h3 class="portal-form-subheading portal-form-full">Secondary parent / guardian</h3>
+        <div class="form-group">
+          <label for="edit-secondary-name">Name</label>
+          <input id="edit-secondary-name" type="text" class="portal-input" value="{{ profile.secondary.name }}" data-label="Secondary guardian — Name" data-target="display-secondary-name" data-original="{{ profile.secondary.name }}">
+        </div>
+        <div class="form-group">
+          <label for="edit-secondary-relationship">Relationship</label>
+          <input id="edit-secondary-relationship" type="text" class="portal-input" value="{{ profile.secondary.relationship }}" data-label="Secondary guardian — Relationship" data-target="display-secondary-relationship" data-original="{{ profile.secondary.relationship }}">
+        </div>
+        <div class="form-group">
+          <label for="edit-secondary-phone">Phone</label>
+          <input id="edit-secondary-phone" type="text" class="portal-input" value="{{ profile.secondary.phone }}" data-label="Secondary guardian — Phone" data-target="display-secondary-phone" data-original="{{ profile.secondary.phone }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="edit-secondary-email">Email</label>
+          <input id="edit-secondary-email" type="email" class="portal-input" value="{{ profile.secondary.email }}" data-label="Secondary guardian — Email" data-target="display-secondary-email" data-original="{{ profile.secondary.email }}">
+        </div>
+
+        <div class="form-group portal-form-full">
+          <h3 class="portal-form-subheading">Emergency contacts</h3>
+          <div id="emergency-contact-rows">
+            {% for contact in profile.emergency_contacts %}
+            <div class="portal-emergency-edit-row" data-contact-index="{{ forloop.counter0 }}">
+              <input type="text" class="portal-input portal-emergency-input" data-field="name" data-original="{{ contact.name }}" value="{{ contact.name }}" placeholder="Name" aria-label="Emergency contact name">
+              <input type="text" class="portal-input portal-emergency-input" data-field="phone" data-original="{{ contact.phone }}" value="{{ contact.phone }}" placeholder="Phone" aria-label="Emergency contact phone">
+              <input type="text" class="portal-input portal-emergency-input" data-field="relationship" data-original="{{ contact.relationship }}" value="{{ contact.relationship }}" placeholder="Relationship" aria-label="Emergency contact relationship">
+            </div>
+            {% empty %}
+            <p class="form-note" id="no-emergency-note">No emergency contacts on file — add one below.</p>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="add-emergency-contact">+ Add contact</button>
+        </div>
+
+        <div class="form-group portal-form-full">
+          <h3 class="portal-form-subheading">Medical information (per child)</h3>
+          <p class="form-note">Allergies and medications are reviewed by staff before updating your child's profile.</p>
+          {% for child in profile.children %}
+          <div class="portal-medical-child-edit card">
+            <h4>{{ child.name }}</h4>
+            <div class="portal-form-grid">
+              <div class="form-group">
+                <label>Allergies</label>
+                <input type="text" class="portal-input" value="{{ child.allergies|default:'None' }}" data-label="{{ child.name }} — Allergies" data-target="display-child-allergies-{{ forloop.counter0 }}" data-original="{{ child.allergies|default:'None' }}">
+              </div>
+              <div class="form-group">
+                <label>Medications</label>
+                <input type="text" class="portal-input" value="{{ child.medications|default:'None' }}" data-label="{{ child.name }} — Medications" data-target="display-child-medications-{{ forloop.counter0 }}" data-original="{{ child.medications|default:'None' }}">
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          <div class="form-group portal-form-full" style="margin-top:0.75rem;">
+            <label for="medical-update-notes">Notes for staff (optional)</label>
+            <textarea id="medical-update-notes" class="portal-input portal-textarea" rows="3" placeholder="Action plan updates, doctor changes, etc." data-label="Medical — Staff notes" data-target="display-medical-notes" data-original="No additional medical notes on file." data-kind="medical-note"></textarea>
+          </div>
+        </div>
+
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          <button type="button" class="btn btn-secondary" id="cancel-edit-profile">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <section class="card portal-profile-full" id="pending-changes-panel" hidden>
+      <h2>Pending review</h2>
+      <p class="form-note">These changes are waiting for staff approval.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table" id="pending-changes-table">
+          <thead><tr><th>Field</th><th>Current (approved)</th><th>Your change</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="portal-profile-grid">
+      <section class="card">
+        <h2>Household</h2>
+        <dl class="portal-dl">
+          <dt>Family name</dt><dd>{{ profile.family_name }}</dd>
+          <dt>Home address</dt><dd id="display-home-address">{{ profile.home_address }}</dd>
+        </dl>
+      </section>
+
+      <section class="card">
+        <h2>Primary parent / guardian</h2>
+        <dl class="portal-dl">
+          <dt>Name</dt><dd id="display-primary-name">{{ profile.primary.name }}</dd>
+          <dt>Relationship</dt><dd id="display-primary-relationship">{{ profile.primary.relationship }}</dd>
+          <dt>Email</dt><dd id="display-primary-email">{{ profile.primary.email }}</dd>
+          <dt>Phone</dt><dd id="display-primary-phone" data-phone-suffix="{{ profile.primary.phone_type }}">{{ profile.primary.phone }}{% if profile.primary.phone_type %} ({{ profile.primary.phone_type }}){% endif %}</dd>
+        </dl>
+      </section>
+
+      <section class="card" id="secondary-guardian-section" {% if not profile.secondary.name %}data-empty-secondary="1"{% endif %}>
+        <h2>Secondary parent / guardian</h2>
+        {% if not profile.secondary.name %}
+        <p class="form-note" id="secondary-empty-note">No secondary guardian on file.</p>
+        {% endif %}
+        <dl class="portal-dl">
+          <dt>Name</dt><dd id="display-secondary-name">{{ profile.secondary.name|default:"—" }}</dd>
+          <dt>Relationship</dt><dd id="display-secondary-relationship">{{ profile.secondary.relationship|default:"—" }}</dd>
+          <dt>Email</dt><dd id="display-secondary-email">{{ profile.secondary.email|default:"—" }}</dd>
+          <dt>Phone</dt><dd id="display-secondary-phone" data-phone-suffix="{{ profile.secondary.phone_type }}">{% if profile.secondary.phone %}{{ profile.secondary.phone }}{% if profile.secondary.phone_type %} ({{ profile.secondary.phone_type }}){% endif %}{% else %}—{% endif %}</dd>
+        </dl>
+      </section>
+
+      {% for child in profile.children %}
+      <section class="card card-accent">
+        <h2>{{ child.name }}</h2>
+        <dl class="portal-dl">
+          <dt>Date of birth</dt><dd>{{ child.dob }}</dd>
+          <dt>Grade</dt><dd>{{ child.grade }}</dd>
+          <dt>Location</dt><dd>{{ child.location }}</dd>
+          <dt>Current program</dt><dd>{{ child.program }}</dd>
+          {% if child.payment_type %}<dt>Payment type</dt><dd>{{ child.payment_type }}</dd>{% endif %}
+          <dt>Allergies</dt><dd id="display-child-allergies-{{ forloop.counter0 }}">{{ child.allergies|default:"None" }}</dd>
+          <dt>Medications</dt><dd id="display-child-medications-{{ forloop.counter0 }}">{{ child.medications|default:"None" }}</dd>
+        </dl>
+      </section>
+      {% endfor %}
+
+      <section class="card portal-profile-full">
+        <h2>Emergency contacts</h2>
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th></tr></thead>
+            <tbody id="display-emergency-contacts">
+              {% for contact in profile.emergency_contacts %}
+              <tr data-contact-index="{{ forloop.counter0 }}">
+                <td id="display-emergency-name-{{ forloop.counter0 }}">{{ contact.name }}</td>
+                <td id="display-emergency-phone-{{ forloop.counter0 }}">{{ contact.phone }}</td>
+                <td id="display-emergency-relationship-{{ forloop.counter0 }}">{{ contact.relationship }}</td>
+              </tr>
+              {% empty %}
+              <tr id="no-emergency-contacts-row"><td colspan="3">No emergency contacts on file.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {% if profile.children %}
+      <section class="card portal-profile-full">
+        <h2>Medical notes</h2>
+        <p id="display-medical-notes" class="form-note">No additional medical notes on file.</p>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var liveProfile = {% if portal_live and parent_authenticated %}true{% else %}false{% endif %};
+  if (liveProfile) return;
+
+  var pending = window.PortalPendingReview.create({
+    storageKey: "yea-profile-pending-{{ parent_preview_key|default:'private-pay' }}",
+    bannerId: "pending-review-banner",
+    panelId: "pending-changes-panel",
+    tableBodySelector: "#pending-changes-table tbody",
+  });
+
+  var panel = document.getElementById("edit-profile-panel");
+  var form = document.getElementById("profile-edit-form");
+
+  pending.render(pending.load());
+
+  document.getElementById("toggle-edit-profile")?.addEventListener("click", function () {
+    panel.hidden = !panel.hidden;
+  });
+  document.getElementById("cancel-edit-profile")?.addEventListener("click", function () {
+    panel.hidden = true;
+  });
+
+  form?.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var changes = pending.collectFromForm(form);
+    if (!changes.length) {
+      window.portalPreviewToast("No changes to submit.");
+      return;
+    }
+    pending.save(changes);
+    pending.render(changes);
+    panel.hidden = true;
+    document.getElementById("pending-review-banner").scrollIntoView({ behavior: "smooth", block: "start" });
+    window.portalPreviewToast("Changes submitted — pending staff review.");
+  });
+
+  document.getElementById("add-emergency-contact")?.addEventListener("click", function () {
+    document.getElementById("no-emergency-note")?.remove();
+    var wrap = document.getElementById("emergency-contact-rows");
+    var index = wrap.querySelectorAll(".portal-emergency-edit-row").length;
+    var row = document.createElement("div");
+    row.className = "portal-emergency-edit-row";
+    row.setAttribute("data-contact-index", index);
+    row.innerHTML =
+      '<input type="text" class="portal-input portal-emergency-input" data-field="name" data-original="" placeholder="Name" aria-label="Emergency contact name">' +
+      '<input type="text" class="portal-input portal-emergency-input" data-field="phone" data-original="" placeholder="Phone" aria-label="Emergency contact phone">' +
+      '<input type="text" class="portal-input portal-emergency-input" data-field="relationship" data-original="" placeholder="Relationship" aria-label="Emergency contact relationship">';
+    wrap.appendChild(row);
+  });
+})();
+</script>
+{% endblock %}

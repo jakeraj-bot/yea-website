@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Apply — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Apply for enrollment</h1>
+    <p class="lead">You're signed in as <strong>{{ account.user.username }}</strong> ({{ account.family.name }} family).</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <div class="card-grid card-grid-2" style="max-width:48rem;margin:0 auto;">
+      <article class="card card-accent">
+        <h2>Add to your existing family</h2>
+        <p>Use this if you're enrolling another child for the same household and guardians already on your account.</p>
+        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for my family account</a>
+      </article>
+
+      <article class="card">
+        <h2>Different household (same last name is OK)</h2>
+        <p>If this application is for a <strong>separate family</strong> — different parents, address, or billing — sign out first and start a new application with its own portal login.</p>
+        <a class="btn btn-primary" href="{% url 'portal_parent_logout' %}?next={% url 'enrollment_apply' step='family' %}%3Fnew%3D1">Sign out and start new application</a>
+      </article>
+    </div>
+
+    <p class="form-note" style="text-align:center;margin-top:1.5rem;">
+      Families with the same last name are kept separate when each has its own parent portal account.
+    </p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Organization overview</h1>
+    <p class="lead">All units, enrollment, and billing at a glance.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-stat-row portal-stat-row--colorful">
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Children enrolled</span>
+        <strong class="portal-stat-value">{{ dashboard.total_enrolled }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Families</span>
+        <strong class="portal-stat-value">{{ dashboard.total_families }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Open applications</span>
+        <strong class="portal-stat-value">{{ dashboard.open_applications }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Overdue balances</span>
+        <strong class="portal-stat-value portal-stat-overdue">{{ dashboard.overdue_families }} · ${{ dashboard.overdue_amount }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Policies signed</span>
+        <strong class="portal-stat-value">{{ dashboard.policy_completion_pct }}%</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Portal staff</span>
+        <strong class="portal-stat-value">{{ dashboard.staff_count }}</strong>
+      </div>
+    </div>
+
+    {% if alerts %}
+    <div class="portal-alerts card">
+      <h2>Needs attention</h2>
+      <ul class="portal-alert-list">
+        {% for alert in alerts %}
+        <li>
+          {% if alert.link_name %}
+          <a href="{% url alert.link_name page=alert.link_arg %}">{{ alert.text }}</a>
+          {% else %}
+          {{ alert.text }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if absence_charge_alerts.feature_enabled and absence_charge_alerts.families %}
+    <div class="portal-alerts card portal-alerts-billing">
+      <h2>Zero attendance last week — review charges</h2>
+      <p class="form-note">Enabled for: {{ absence_charge_alerts.programs_with_alerts|join:", " }}. Disabled for summer programs where families pay for registered weeks.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Family</th><th>Child</th><th>Week</th><th>Days attended</th><th>Charges posted</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for row in absence_charge_alerts.families %}
+            <tr>
+              <td>{{ row.family }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.week_label }}</td>
+              <td>{{ row.attendance_days }}</td>
+              <td>{% for c in row.charges_to_review %}{{ c.description }} ${{ c.amount }}{% if not forloop.last %}; {% endif %}{% endfor %}</td>
+              <td>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=row.slug %}">Review billing</a>
+                {% if portal_live %}
+                {% for c in row.charges_to_review %}
+                <form method="post" action="{% url 'portal_admin_waive_charge' %}" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="family_slug" value="{{ row.slug }}">
+                  <input type="hidden" name="child_name" value="{{ row.child }}">
+                  <input type="hidden" name="week_label" value="{{ row.week_label }}">
+                  <input type="hidden" name="charge_description" value="{{ c.description }}">
+                  <input type="hidden" name="amount" value="{{ c.amount }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Waive charge</button>
+                </form>
+                {% endfor %}
+                {% else %}
+                <button type="button" class="btn btn-secondary btn-sm" disabled>Waive charge</button>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if portal_live and pending_profile_changes %}
+    <div class="portal-alerts card">
+      <h2>Parent profile changes pending review</h2>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Family</th><th>Submitted</th><th>Changes</th><th></th></tr></thead>
+          <tbody>
+            {% for change in pending_profile_changes %}
+            <tr>
+              <td>{{ change.account.family.name }}</td>
+              <td>{{ change.submitted_at|date:"M j, Y g:i A" }}</td>
+              <td>{% for key, val in change.changes.items %}<span class="portal-table-meta">{{ key }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+              <td class="portal-table-actions">
+                <form method="post" action="{% url 'portal_admin_profile_change' %}" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="change_id" value="{{ change.pk }}">
+                  <input type="hidden" name="action" value="approve">
+                  <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                </form>
+                <form method="post" action="{% url 'portal_admin_profile_change' %}" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="change_id" value="{{ change.pk }}">
+                  <input type="hidden" name="action" value="reject">
+                  <button type="submit" class="btn btn-secondary btn-sm">Decline</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="portal-profile-grid portal-dashboard-grid">
+      <section class="card portal-profile-full">
+        <h2>Enrollment by unit</h2>
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Enrolled</th>
+                <th>Capacity</th>
+                <th>Fill</th>
+                <th>Programs</th>
+                <th>Open apps</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in enrollment_by_unit %}
+              <tr>
+                <td><strong>{{ row.unit }}</strong></td>
+                <td>{{ row.enrolled }}</td>
+                <td>{{ row.capacity }}</td>
+                <td>
+                  <div class="portal-capacity-bar" aria-hidden="true">
+                    <span class="portal-capacity-fill" style="width: {% widthratio row.enrolled row.capacity 100 %}%;"></span>
+                  </div>
+                  <span class="form-note">{% widthratio row.enrolled row.capacity 100 %}%</span>
+                </td>
+                <td>{{ row.programs }}</td>
+                <td>{{ row.open_apps }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Active programs</h2>
+        <p><strong>{{ dashboard.active_programs }}</strong> seasons running org-wide</p>
+        <p class="form-note">After-School 2026–27 at 3 units · Summer Camp 2027 registration open</p>
+        <p><a href="{% url 'portal_admin_page' page='programs' %}">Manage programs →</a></p>
+      </section>
+
+      <section class="card">
+        <h2>4Cs subsidy</h2>
+        <p><strong>{{ dashboard.agency_children }}</strong> children on agency billing</p>
+        <p class="form-note">Passaic County 4Cs — separate agency accounts per child</p>
+        <p><a href="{% url 'portal_admin_page' page='agencies' %}">Agency settings →</a></p>
+      </section>
+    </div>
+
+    <div class="portal-quick-actions">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='messages' %}">Team messages{% if messages_unread_count %} ({{ messages_unread_count }}){% endif %}</a>
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}">Parent comms</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='lesson-planner' %}">AI lesson planner</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='programs' %}">Programs</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='reports' %}">Reports</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

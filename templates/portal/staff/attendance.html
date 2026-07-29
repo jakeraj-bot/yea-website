@@ -1,0 +1,436 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Attendance</h1>
+    <p class="lead">{{ attendance.unit }} · {{ attendance.program }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if attendance_needs_seed %}
+    <div class="portal-callout card">
+      {% if show_dev_hints %}
+      <p><strong>Live mode needs sample members.</strong> Run <code>python manage.py seed_portal</code> once, then refresh this page.</p>
+      {% else %}
+      <p><strong>Attendance roster is not available yet.</strong> Member records are still being set up. Please check back soon or contact your administrator.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="portal-attendance-toolbar portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1">+ Check in</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1">+ Check out</a>
+      {% if attendance_live %}
+      <form method="get" action="{% url 'portal_staff_page' page='attendance' %}" class="portal-date-form">
+        <label class="portal-filter-label">
+          Date
+          <input type="date" name="date" class="portal-input" value="{{ attendance.date_value }}">
+        </label>
+        <button type="submit" class="btn btn-secondary btn-sm">Go</button>
+      </form>
+      {% else %}
+      <label class="portal-filter-label">
+        Date
+        <input type="date" class="portal-input" value="{{ attendance.date_value }}" disabled>
+      </label>
+      {% endif %}
+      <label class="portal-filter-label">
+        Program
+        <select class="portal-select" disabled>
+          <option>{{ attendance.program }}</option>
+        </select>
+      </label>
+      <label class="portal-filter-label">
+        Search
+        <input type="search" class="portal-input portal-search" placeholder="Child or family name" id="attendance-search">
+      </label>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_medical_report' %}">Medical report (PDF)</a>
+    </div>
+
+    {% if show_checkin_panel %}
+    <div class="portal-panel card portal-program-form" id="checkin-panel">
+      <h2>Check in a child</h2>
+      {% if attendance_live %}
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_attendance_checkin' %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ attendance.date_value }}">
+        <div class="form-group">
+          <label for="checkin-child">Child</label>
+          <select id="checkin-child" name="child_id" class="portal-select" required>
+            {% for row in roster %}
+            {% if row.status == 'expected' or row.status == 'absent' or row.can_check_in %}
+            <option value="{{ row.id }}">{{ row.child }} · {{ row.family }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="checkin-time">Check-in time</label>
+          <input id="checkin-time" name="check_in_time" type="time" class="portal-input" value="{{ attendance.program_start_time }}">
+        </div>
+        <div class="form-group">
+          <label for="checkin-method">Method</label>
+          <select id="checkin-method" name="method" class="portal-select">
+            <option>Staff</option>
+            <option>Barcode</option>
+            <option>Kiosk</option>
+            <option>Parent app</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="checkin-note">Note (optional)</label>
+          <input id="checkin-note" name="note" type="text" class="portal-input">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Check in</button>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1&amp;bulk=1">Bulk / multiples</a>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+        </div>
+      </form>
+      {% else %}
+      <p class="form-note">Preview mode — enable live mode to save check-ins.</p>
+      <div class="portal-form-actions portal-form-full">
+        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?checkin=1&amp;bulk=1">Bulk / multiples</a>
+        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Cancel</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if show_bulk_checkin_panel %}
+    <div class="portal-panel card portal-program-form" id="bulk-checkin-panel">
+      <h2>Bulk check in</h2>
+      {% if attendance_live %}
+      <form method="post" action="{% url 'portal_staff_attendance_bulk_checkin' %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ attendance.date_value }}">
+        <input type="hidden" name="program_time" id="bulk-checkin-program-time-hidden" value="{{ attendance.program_start_time }}">
+        <div class="portal-bulk-time-bar card">
+          <div class="portal-bulk-time-bar-main">
+            <label class="portal-filter-label" for="bulk-checkin-program-time">
+              Program hour start time
+              <input type="time" id="bulk-checkin-program-time" class="portal-input" value="{{ attendance.program_start_time }}">
+            </label>
+            <span class="form-note">Scheduled start: {{ attendance.program_start_display }}</span>
+          </div>
+          <label class="portal-bulk-time-toggle">
+            <input type="checkbox" id="bulk-checkin-use-program-time">
+            Use program start time for all selected children
+          </label>
+        </div>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label for="bulk-checkin-method">Check-in method (all selected)</label>
+          <select id="bulk-checkin-method" name="method" class="portal-select">
+            <option>Staff</option>
+            <option>Barcode</option>
+            <option>Kiosk</option>
+            <option>Parent app</option>
+          </select>
+        </div>
+        <div class="portal-table-wrap">
+          <table class="portal-table portal-bulk-attendance-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="bulk-checkin-select-all" aria-label="Select all"></th>
+                <th>Child</th>
+                <th>Family</th>
+                <th>Check-in time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in roster %}
+              {% if row.status == 'expected' or row.status == 'absent' or row.can_check_in %}
+              <tr>
+                <td><input type="checkbox" class="bulk-checkin-select" name="child_ids" value="{{ row.id }}"></td>
+                <td><strong>{{ row.child }}</strong></td>
+                <td>{{ row.family }}</td>
+                <td><input type="time" name="check_in_time_{{ row.id }}" class="portal-input bulk-checkin-time" value="{{ attendance.program_start_time }}"></td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="portal-form-actions" style="margin-top: 1rem;">
+          <button type="submit" class="btn btn-primary">Check in selected</button>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1">Single check in</a>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+        </div>
+      </form>
+      {% else %}
+      <p class="form-note">Bulk check-in saves in live mode only.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if show_checkout_panel %}
+    <div class="portal-panel card portal-program-form" id="checkout-panel">
+      <h2>Check out a child</h2>
+      {% if attendance_live %}
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_attendance_checkout' %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ attendance.date_value }}">
+        <div class="form-group">
+          <label for="checkout-child">Child</label>
+          <select id="checkout-child" name="child_id" class="portal-select" required>
+            {% for row in roster %}
+            {% if row.can_check_out %}
+            <option value="{{ row.id }}">{{ row.child }} · {{ row.family }} · in {{ row.check_in }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="checkout-time">Check-out time</label>
+          <input id="checkout-time" name="check_out_time" type="time" class="portal-input" value="{{ attendance.program_end_time }}">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Check out</button>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1&amp;bulk=1">Bulk / multiples</a>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+        </div>
+      </form>
+      {% else %}
+      <div class="portal-form-actions portal-form-full">
+        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?checkout=1&amp;bulk=1">Bulk / multiples</a>
+        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Cancel</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if show_bulk_checkout_panel %}
+    <div class="portal-panel card portal-program-form" id="bulk-checkout-panel">
+      <h2>Bulk check out</h2>
+      {% if attendance_live %}
+      <form method="post" action="{% url 'portal_staff_attendance_bulk_checkout' %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ attendance.date_value }}">
+        <input type="hidden" name="program_time" id="bulk-checkout-program-time-hidden" value="{{ attendance.program_end_time }}">
+        <div class="portal-bulk-time-bar card">
+          <div class="portal-bulk-time-bar-main">
+            <label class="portal-filter-label" for="bulk-checkout-program-time">
+              Program hour end time
+              <input type="time" id="bulk-checkout-program-time" class="portal-input" value="{{ attendance.program_end_time }}">
+            </label>
+            <span class="form-note">Scheduled end: {{ attendance.program_end_display }}</span>
+          </div>
+          <label class="portal-bulk-time-toggle">
+            <input type="checkbox" id="bulk-checkout-use-program-time">
+            Use program end time for all selected children
+          </label>
+        </div>
+        <div class="portal-table-wrap">
+          <table class="portal-table portal-bulk-attendance-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="bulk-checkout-select-all" aria-label="Select all"></th>
+                <th>Child</th>
+                <th>Family</th>
+                <th>Checked in</th>
+                <th>Check-out time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in roster %}
+              {% if row.can_check_out %}
+              <tr>
+                <td><input type="checkbox" class="bulk-checkout-select" name="child_ids" value="{{ row.id }}"></td>
+                <td><strong>{{ row.child }}</strong></td>
+                <td>{{ row.family }}</td>
+                <td>{{ row.check_in }}</td>
+                <td><input type="time" name="check_out_time_{{ row.id }}" class="portal-input bulk-checkout-time" value="{{ attendance.program_end_time }}"></td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="portal-form-actions" style="margin-top: 1rem;">
+          <button type="submit" class="btn btn-primary">Check out selected</button>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1">Single check out</a>
+          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="portal-checkin-modes card">
+      <span class="portal-checkin-modes-label">Check-in methods</span>
+      {% for mode in checkin_modes %}
+      <span class="portal-mode-pill {% if mode.enabled %}is-on{% else %}is-off{% endif %}">
+        {% if mode.enabled %}✓{% else %}—{% endif %} {{ mode.label }}
+      </span>
+      {% endfor %}
+      <a class="form-note" href="{% url 'portal_admin_page' page='checkin-settings' %}">Manage in portal admin</a>
+    </div>
+
+    <div class="portal-stat-row portal-stat-row--colorful portal-attendance-stats">
+      <div class="portal-stat card"><span class="portal-stat-label">Enrolled today</span><strong class="portal-stat-value" id="stat-enrolled">{{ attendance.summary.enrolled }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Present</span><strong class="portal-stat-value portal-stat-present" id="stat-present">{{ attendance.summary.present }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Not arrived</span><strong class="portal-stat-value" id="stat-expected">{{ attendance.summary.not_arrived }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Checked out</span><strong class="portal-stat-value" id="stat-out">{{ attendance.summary.checked_out }}</strong></div>
+      <div class="portal-stat card"><span class="portal-stat-label">Absent</span><strong class="portal-stat-value" id="stat-absent">{{ attendance.summary.absent }}</strong></div>
+    </div>
+
+    <p class="form-note">
+      {{ attendance.date_display }} · Program hours {{ attendance.program_start_display }} – {{ attendance.program_end_display }}
+      {% if show_dev_hints and not attendance_live %}— preview mode (screen only). Set <code>PORTAL_PREVIEW_MODE=False</code> for live mode.{% endif %}
+    </p>
+
+    {% include "portal/staff/includes/medical_legend.html" %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table portal-attendance-table" id="attendance-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Medical</th>
+            <th>Family</th>
+            <th>Grade</th>
+            <th>Status</th>
+            <th>Check in</th>
+            <th>Check out</th>
+            <th>Method</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in roster %}
+          <tr data-id="{{ row.id }}" data-status="{{ row.status }}" data-child="{{ row.child|lower }}" data-family="{{ row.family|lower }}">
+            <td><strong>{{ row.child }}</strong>{% if row.note %}<br><span class="form-note">{{ row.note }}</span>{% endif %}</td>
+            <td class="portal-medical-cell">{% medical_badges row.child %}</td>
+            <td>{{ row.family }}</td>
+            <td>{{ row.grade }}</td>
+            <td><span class="portal-attendance-status portal-attendance-{{ row.status }}">{{ row.status|title }}</span></td>
+            <td class="cell-check-in">
+              {% if row.check_in %}<span>{{ row.check_in }}</span>{% else %}<span class="form-note">—</span>{% endif %}
+            </td>
+            <td class="cell-check-out">
+              {% if row.check_out %}<span>{{ row.check_out }}</span>{% elif row.can_check_out %}<span class="form-note">On site</span>{% else %}<span class="form-note">—</span>{% endif %}
+            </td>
+            <td class="cell-method">{% if row.method %}{{ row.method }}{% else %}—{% endif %}</td>
+            <td class="cell-actions portal-attendance-actions">
+              {% if attendance_live and not attendance_needs_seed %}
+              <form method="post" action="{% url 'portal_staff_attendance_checkin' %}" class="portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ attendance.date_value }}">
+                <input type="hidden" name="child_id" value="{{ row.id }}">
+                <button type="submit" class="btn btn-primary btn-sm">{% if row.check_in %}Update check in{% else %}Check in{% endif %}</button>
+              </form>
+              {% if row.can_check_out %}
+              <form method="post" action="{% url 'portal_staff_attendance_checkout' %}" class="portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ attendance.date_value }}">
+                <input type="hidden" name="child_id" value="{{ row.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Check out</button>
+              </form>
+              {% endif %}
+              {% if row.status == 'expected' %}
+              <form method="post" action="{% url 'portal_staff_attendance_absent' %}" class="portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ attendance.date_value }}">
+                <input type="hidden" name="child_id" value="{{ row.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Absent</button>
+              </form>
+              {% elif row.status == 'absent' %}
+              <form method="post" action="{% url 'portal_staff_attendance_undo_absent' %}" class="portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ attendance.date_value }}">
+                <input type="hidden" name="child_id" value="{{ row.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Undo absent</button>
+              </form>
+              {% elif row.is_complete %}
+              <span class="form-note">Complete</span>
+              {% endif %}
+              {% else %}
+              {% if row.status == 'expected' or row.status == 'absent' or row.status == 'present' %}
+              <button type="button" class="btn btn-primary btn-sm btn-check-in">Check in</button>
+              {% endif %}
+              {% if row.can_check_out or row.status == 'present' and not row.check_out %}
+              <button type="button" class="btn btn-secondary btn-sm btn-check-out">Check out</button>
+              {% elif row.is_complete %}
+              <span class="form-note">Complete</span>
+              {% endif %}
+              {% if row.status == 'expected' %}
+              <button type="button" class="btn btn-secondary btn-sm btn-mark-absent">Absent</button>
+              {% elif row.status == 'absent' %}
+              <button type="button" class="btn btn-secondary btn-sm btn-undo-absent">Undo absent</button>
+              {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function wireBulkProgramTime(programInputId, hiddenInputId, useCheckboxId, timeInputClass) {
+    var programInput = document.getElementById(programInputId);
+    var hiddenInput = document.getElementById(hiddenInputId);
+    var useCheckbox = document.getElementById(useCheckboxId);
+    if (!programInput) return;
+
+    function applyProgramTime() {
+      if (hiddenInput) hiddenInput.value = programInput.value;
+      if (!useCheckbox || !useCheckbox.checked) return;
+      document.querySelectorAll("." + timeInputClass).forEach(function (input) {
+        input.value = programInput.value;
+      });
+    }
+
+    programInput.addEventListener("input", applyProgramTime);
+    if (useCheckbox) useCheckbox.addEventListener("change", applyProgramTime);
+    applyProgramTime();
+  }
+
+  function wireSelectAll(selectAllId, itemSelector) {
+    var selectAll = document.getElementById(selectAllId);
+    if (!selectAll) return;
+    selectAll.addEventListener("change", function () {
+      document.querySelectorAll(itemSelector).forEach(function (cb) {
+        cb.checked = selectAll.checked;
+      });
+    });
+  }
+
+  wireBulkProgramTime("bulk-checkin-program-time", "bulk-checkin-program-time-hidden", "bulk-checkin-use-program-time", "bulk-checkin-time");
+  wireBulkProgramTime("bulk-checkout-program-time", "bulk-checkout-program-time-hidden", "bulk-checkout-use-program-time", "bulk-checkout-time");
+  wireSelectAll("bulk-checkin-select-all", ".bulk-checkin-select");
+  wireSelectAll("bulk-checkout-select-all", ".bulk-checkout-select");
+
+  var search = document.getElementById("attendance-search");
+  if (search) {
+    search.addEventListener("input", function () {
+      var q = search.value.toLowerCase().trim();
+      document.querySelectorAll("#attendance-table tbody tr").forEach(function (row) {
+        row.hidden = q && row.dataset.child.indexOf(q) < 0 && row.dataset.family.indexOf(q) < 0;
+      });
+    });
+  }
+
+  {% if not attendance_live %}
+  function nowTime() {
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+  }
+  document.getElementById("attendance-table").addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn || !btn.classList.contains("btn-check-in") && !btn.classList.contains("btn-check-out") && !btn.classList.contains("btn-mark-absent") && !btn.classList.contains("btn-undo-absent")) return;
+    alert("Preview mode — set PORTAL_PREVIEW_MODE=False and run seed_portal for live attendance.");
+  });
+  {% endif %}
+})();
+</script>
+{% endblock %}

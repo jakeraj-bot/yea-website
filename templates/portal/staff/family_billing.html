@@ -1,0 +1,350 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">{{ billing.family_name }}</a> /
+      {% endif %}
+      Billing
+    </p>
+    <h1>Family billing — {{ billing.family_name }}</h1>
+    <p class="lead">Charges &amp; payments per child · {{ billing_permissions.role_label }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if portal_area != 'admin' %}
+    {% include "portal/staff/includes/family_tabs.html" %}
+    {% endif %}
+    <div class="portal-balance-banner card card-accent orange">
+      <div>
+        <span class="portal-stat-label">Family balance</span>
+        <p class="portal-balance-total">${{ billing.running_balance }}</p>
+        {% if billing.account_note %}<p class="portal-balance-sub">{{ billing.account_note }}</p>{% endif %}
+      </div>
+      <div class="portal-banner-actions">
+        {% if portal_area == 'admin' %}
+        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">All members</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}">Policies</a>
+        {% else %}
+        <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>
+        {% endif %}
+        {% if billing.slug == "martinez" or billing.slug == "chen" %}
+        <a class="btn btn-secondary" href="{% url 'portal_staff_agency_billing' family_slug=billing.slug %}">4Cs agency account</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <h2>Billing plan by child</h2>
+    <div class="portal-child-billing-grid">
+      {% for child in billing.children %}
+      <article class="card {% if child.type == 'Scholarship' %}card-accent purple{% endif %}">
+        <h3>{{ child.name }}</h3>
+        <dl class="portal-dl">
+          <dt>Type</dt><dd>{{ child.type|default:"Private pay" }}</dd>
+          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
+          {% if child.full_rate %}
+          <dt>Full rate</dt><dd>${{ child.full_rate }}</dd>
+          <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
+          <dt>Discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
+          <dt>Family pays</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
+          {% else %}
+          <dt>Amount</dt><dd>{{ child.amount|default:"—" }}</dd>
+          {% endif %}
+          <dt>Balance</dt><dd>${{ child.balance }}</dd>
+        </dl>
+        {% if billing_permissions.can_add_charge or portal_area == 'admin' %}
+        <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+
+    {% if billing_permissions.can_add_charge or portal_area == 'admin' %}
+    <div class="portal-panel card" id="edit-plan-panel" hidden>
+      <h2>Edit billing plan</h2>
+      <p class="form-note">Update the recurring plan and amount for one child on this account.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <input type="hidden" name="action" value="update_plan">
+        <div class="form-group">
+          <label for="plan-child">Child</label>
+          <select id="plan-child" name="child_name" class="portal-select" required>
+            {% for child in billing.children %}
+            <option value="{{ child.name }}">{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="plan-type">Billing type</label>
+          <select id="plan-type" name="billing_type" class="portal-select">
+            <option value="Private pay">Private pay</option>
+            <option value="4Cs">4Cs (copay only)</option>
+            <option value="Scholarship">Scholarship</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="plan-name">Plan</label>
+          <select id="plan-name" name="billing_plan" class="portal-select">
+            <option value="Weekly">Weekly</option>
+            <option value="Weekly copay">Weekly copay</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="plan-amount">Amount ($)</label>
+          <input id="plan-amount" name="billing_amount" type="text" class="portal-input" placeholder="0.00">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not billing_live %} disabled{% endif %}>Save plan</button>
+          <button type="button" class="btn btn-secondary" id="cancel-edit-plan">Cancel</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-toolbar">
+      {% if billing_permissions.can_add_charge %}
+      <button type="button" class="btn btn-primary" id="toggle-add-charge">+ Add charge</button>
+      {% endif %}
+      {% if billing_permissions.can_add_credit %}
+      <button type="button" class="btn btn-secondary" id="toggle-add-credit">Add credit</button>
+      {% endif %}
+      <button type="button" class="btn btn-secondary" id="toggle-record-payment">Record payment</button>
+    </div>
+
+    {% if billing_permissions.can_add_charge %}
+    <div class="portal-panel card" id="add-charge-panel" hidden>
+      <h2>Add charge</h2>
+      <p class="form-note">Post a fee to this member account — membership, tuition, late fee, field trip, or other.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <input type="hidden" name="action" value="charge">
+        <div class="form-group">
+          <label for="charge-child">Child</label>
+          <select id="charge-child" name="child_name" class="portal-select">
+            {% for child in billing.children %}
+            <option>{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="charge-type">Charge type</label>
+          <select id="charge-type" name="charge_type" class="portal-select">
+            {% for ct in charge_types %}
+            <option value="{{ ct.value }}">{{ ct.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="charge-amount">Amount</label>
+          <input id="charge-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="charge-date">Date</label>
+          <input id="charge-date" name="date" type="date" class="portal-input" value="{{ today }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="charge-description">Description</label>
+          <input id="charge-description" name="description" type="text" class="portal-input" placeholder="e.g. Late pickup — Sep 12">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Post charge</button>
+          <button type="button" class="btn btn-secondary" id="cancel-add-charge">Cancel</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if billing_permissions.can_add_credit %}
+    <div class="portal-panel card" id="add-credit-panel" hidden>
+      <h2>Add credit</h2>
+      <p class="form-note">Post a credit to reduce the family balance — adjustments, goodwill, billing correction. Requires admin permission.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <input type="hidden" name="action" value="credit">
+        <div class="form-group">
+          <label for="credit-child">Child (optional)</label>
+          <select id="credit-child" name="child_name" class="portal-select">
+            <option value="">Family-wide</option>
+            {% for child in billing.children %}
+            <option>{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="credit-amount">Credit amount</label>
+          <input id="credit-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="credit-date">Date</label>
+          <input id="credit-date" name="date" type="date" class="portal-input" value="{{ today }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="credit-reason">Reason (required)</label>
+          <input id="credit-reason" name="reason" type="text" class="portal-input" placeholder="e.g. Billing correction — duplicate charge" required>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not billing_live %} disabled{% endif %}>Post credit</button>
+          <button type="button" class="btn btn-secondary" id="cancel-add-credit">Cancel</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-panel card" id="record-payment-panel" hidden>
+      <h2>Record payment</h2>
+      <p class="form-note">Card (staff entry), cash, or check — when parents pay in person.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <input type="hidden" name="action" value="payment">
+        <div class="form-group">
+          <label for="pay-child">Child</label>
+          <select id="pay-child" name="child_name" class="portal-select">
+            {% for child in billing.children %}
+            <option>{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pay-amount">Amount</label>
+          <input id="pay-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="pay-method">Payment method</label>
+          <select id="pay-method" name="method" class="portal-select">
+            <option value="card">Card (staff entry)</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full" id="check-fields" hidden>
+          <label for="pay-check">Check number</label>
+          <input id="pay-check" name="check_number" type="text" class="portal-input" placeholder="Check #">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="pay-note">Note (optional)</label>
+          <input id="pay-note" name="note" type="text" class="portal-input" placeholder="e.g. Weekly tuition">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Post payment</button>
+          <button type="button" class="btn btn-secondary" id="cancel-record-payment">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    {% if not billing_permissions.can_delete_charge and not billing_permissions.can_add_credit %}
+    <p class="form-note">Your role can add charges and record payments. Delete charges and credits require permission — set in Portal admin → Billing permissions.</p>
+    {% endif %}
+
+    <h2>Ledger</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th>{% if billing_permissions.can_delete_charge %}<th></th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for row in billing.ledger %}
+          <tr>
+            <td>{{ row.date }}</td>
+            <td>{{ row.child }}</td>
+            <td>
+              {% if row.type == 'discount' %}
+              <span class="portal-ledger-type portal-ledger-type-discount">Discount</span>
+              {% elif row.type == 'credit' %}
+              <span class="portal-ledger-type portal-ledger-type-credit">Credit</span>
+              {% else %}
+              {{ row.type|title }}
+              {% endif %}
+            </td>
+            <td>{{ row.description }}</td>
+            <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
+              {% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
+            </td>
+            {% if billing_permissions.can_delete_charge %}
+            <td>
+              {% if row.deletable and billing_live %}
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="portal_area" value="{{ portal_area }}">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="entry_id" value="{{ row.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge" onclick="return confirm('Remove this ledger entry?')">Delete</button>
+              </form>
+              {% elif row.deletable %}
+              <button type="button" class="btn btn-secondary btn-sm" disabled title="Remove this charge">Delete</button>
+              {% else %}
+              <span class="form-note">—</span>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if families %}
+    <p class="portal-family-switch">
+      Other families:
+      {% for f in families %}
+      {% if f.slug != billing.slug %}
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_family_billing' family_slug=f.slug %}">{{ f.name }}</a>
+      {% else %}
+      <a href="{% url 'portal_staff_family_billing' family_slug=f.slug %}">{{ f.name }}</a>
+      {% endif %}
+      {% if not forloop.last %} · {% endif %}
+      {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function bindPanel(toggleId, panelId, cancelId) {
+    var panel = document.getElementById(panelId);
+    var toggle = document.getElementById(toggleId);
+    var cancel = document.getElementById(cancelId);
+    if (toggle && panel) toggle.addEventListener("click", function () { panel.hidden = !panel.hidden; });
+    if (cancel && panel) cancel.addEventListener("click", function () { panel.hidden = true; });
+  }
+  bindPanel("toggle-add-charge", "add-charge-panel", "cancel-add-charge");
+  bindPanel("toggle-add-credit", "add-credit-panel", "cancel-add-credit");
+  bindPanel("toggle-record-payment", "record-payment-panel", "cancel-record-payment");
+  bindPanel(null, "edit-plan-panel", "cancel-edit-plan");
+  document.querySelectorAll(".edit-plan-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var panel = document.getElementById("edit-plan-panel");
+      var childSelect = document.getElementById("plan-child");
+      var planSelect = document.getElementById("plan-name");
+      var typeSelect = document.getElementById("plan-type");
+      var amountInput = document.getElementById("plan-amount");
+      if (childSelect) childSelect.value = btn.getAttribute("data-child") || "";
+      if (planSelect) planSelect.value = btn.getAttribute("data-plan") || "Weekly";
+      if (typeSelect) typeSelect.value = btn.getAttribute("data-type") || "Private pay";
+      if (amountInput) {
+        var raw = btn.getAttribute("data-amount") || "";
+        amountInput.value = raw.replace(/[^0-9.]/g, "");
+      }
+      if (panel) panel.hidden = false;
+    });
+  });
+  var method = document.getElementById("pay-method");
+  var checkFields = document.getElementById("check-fields");
+  if (method && checkFields) method.addEventListener("change", function () { checkFields.hidden = method.value !== "check"; });
+})();
+</script>
+{% endblock %}

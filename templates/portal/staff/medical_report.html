@@ -1,0 +1,124 @@
+{% extends "portal/base.html" %}
+{% load static portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Medical report</p>
+    <h1>Medical report</h1>
+    <p class="lead">{{ report_meta.unit }} · {{ report_meta.program }}</p>
+  </div>
+</section>
+<section class="page-content portal-medical-report">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
+    </div>
+
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Medical report</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ report_meta.unit }}</strong> · {{ report_meta.program }}<br>
+            Generated {{ report_meta.generated_date }} · {{ report_rows|length }} children ·
+            <strong>{{ alert_count }} with medical alerts</strong>
+          </p>
+        </div>
+      </header>
+
+      {% include "portal/staff/includes/medical_legend.html" %}
+
+      <h3 class="portal-medical-report-section">Children with medical alerts</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Grade</th>
+              <th>Alerts</th>
+              <th>Allergies</th>
+              <th>Medications</th>
+              <th>Plans on file</th>
+              <th>Doctor</th>
+              <th>Staff notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            {% if row.has_medical %}
+            <tr class="portal-medical-report-alert-row">
+              <td><strong>{{ row.child }}</strong><br><span class="portal-table-meta">{{ row.family }}</span></td>
+              <td>{{ row.grade }}</td>
+              <td class="portal-medical-cell">
+                {% for alert in row.alerts %}
+                <span class="portal-med-report-tag portal-med-icon-{{ alert.key }}" title="{{ alert.label }}: {{ alert.detail }}">
+                  {{ alert.symbol }} {{ alert.label }}
+                </span>
+                {% endfor %}
+              </td>
+              <td>{{ row.allergies }}</td>
+              <td>{{ row.medications }}</td>
+              <td>{% if row.plans_on_file %}{{ row.plans_on_file|join:", " }}{% else %}—{% endif %}</td>
+              <td>{% if row.doctor_name %}{{ row.doctor_name }}{% if row.doctor_phone %}<br>{{ row.doctor_phone }}{% endif %}{% else %}—{% endif %}</td>
+              <td>{% if row.staff_notes %}{{ row.staff_notes }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="portal-medical-report-section">All enrolled children — medical snapshot</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-medical-report-table portal-medical-report-compact">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Grade</th>
+              <th>Alerts</th>
+              <th>Allergies</th>
+              <th>Medications</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr class="{% if row.has_medical %}portal-medical-report-alert-row{% endif %}">
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.grade }}</td>
+              <td class="portal-medical-cell">
+                {% if row.has_medical %}
+                {% medical_badges row.child %}
+                {% else %}
+                <span class="portal-medical-none">None</span>
+                {% endif %}
+              </td>
+              <td>{{ row.allergies }}</td>
+              <td>{{ row.medications }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="portal-medical-report-footer">
+        <p>Keep this report accessible to staff on site. Update when enrollment or medical information changes. Full profiles: YEA Portal → Families.</p>
+      </footer>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  if (window.matchMedia) {
+    var mq = window.matchMedia("print");
+    /* placeholder for future print hooks */
+  }
+})();
+</script>
+{% endblock %}

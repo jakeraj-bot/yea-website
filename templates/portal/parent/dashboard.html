@@ -1,0 +1,64 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Dashboard</h1>
+    <p class="lead">Welcome back, {{ parent_preview.family_name }} family — {{ parent_preview.label }} account.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if parent_announcement.active %}
+    <div class="portal-parent-announcement portal-parent-announcement-{{ parent_announcement.style }}">
+      <strong>{{ parent_announcement.title }}</strong>
+      <p>{{ parent_announcement.body }}</p>
+      <span class="form-note">Posted {{ parent_announcement.posted }} · {{ parent_announcement.unit }}</span>
+    </div>
+    {% endif %}
+
+    {% if parent_authenticated %}
+    <div class="portal-callout card card-accent portal-add-child-callout">
+      <div class="portal-add-child-callout-inner">
+        <div>
+          <h2 style="margin:0 0 0.35rem">Enrolling another child?</h2>
+          <p class="form-note" style="margin:0">Use your existing family account — no new login required. Household info is prefilled from your profile.</p>
+        </div>
+        {% include "portal/includes/add_child_button.html" %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="portal-stat-row">
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Running balance</span>
+        <strong class="portal-stat-value">${{ dashboard.balance }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Application status</span>
+        <strong class="portal-stat-value">{{ dashboard.application_status }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Policies signed</span>
+        <strong class="portal-stat-value">{{ dashboard.policies_signed }}</strong>
+      </div>
+    </div>
+
+    <div class="portal-quick-links card">
+      <h2>Quick links</h2>
+      <ul class="portal-link-list">
+        <li><a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a></li>
+        {% if parent_authenticated %}
+        <li><a href="{% url 'enrollment_apply_add_child' %}"><strong>+ Add another child</strong></a></li>
+        {% endif %}
+        <li><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing &amp; balance</a> — {{ parent_preview.label }}</li>
+        <li><a href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a></li>
+        <li><a href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Receipts</a></li>
+        <li><a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a></li>
+        <li><a href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policies</a> ({{ dashboard.policies_signed }}/{{ dashboard.policies_total }})</li>
+        <li><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
+        <li><a href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

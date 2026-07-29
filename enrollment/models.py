@@ -158,6 +158,28 @@ class EnrollmentApplication(models.Model):
     four_cs_signature = models.CharField(max_length=120, blank=True)
     four_cs_signed_date = models.DateField(null=True, blank=True)
 
+    STATUS_CHOICES = [
+        ("under_review", "Under review"),
+        ("approved", "Approved"),
+        ("pending_documents", "Pending documents"),
+        ("enrolled", "Enrolled"),
+        ("declined", "Declined"),
+    ]
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="under_review")
+    internal_note = models.TextField(blank=True)
+    staff_message = models.TextField(
+        blank=True,
+        help_text="Message shown to the parent when changes are requested or an application is declined.",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    portal_family = models.ForeignKey(
+        "portal.PortalFamily",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="enrollment_applications",
+    )
+
     class Meta:
         ordering = ["-submitted_at"]
 

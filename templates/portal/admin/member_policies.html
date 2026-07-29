@@ -1,0 +1,81 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Member policies</h1>
+    <p class="lead">Organization-wide · {{ policies_per_child }} policies per child.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_member_policies_print' %}">Print all members (PDF)</a>
+    </div>
+
+    {% if portal_live %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Add policy</h2>
+      <p class="form-note">Parents receive an alert in their portal to sign the new policy.</p>
+      <form method="post" action="{% url 'portal_admin_policy_create' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <div class="form-group portal-form-full">
+          <label for="policy-title">Policy title</label>
+          <input id="policy-title" name="title" type="text" class="portal-input" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="policy-body">Policy text</label>
+          <textarea id="policy-body" name="body" class="portal-input portal-textarea" rows="4" required></textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="notify_parents" checked> Notify parents to sign</label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Publish policy</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-callout card">
+      <p>Each child signs all {{ policies_per_child }} policies. Example: Jacobs family (Jordan + Maya) = 24 signatures on file when complete.</p>
+    </div>
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Children</th>
+            <th>Policies signed</th>
+            <th>Per child</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in member_summaries %}
+          <tr>
+            <td><strong>{{ row.family_name }}</strong></td>
+            <td>{{ row.unit }}</td>
+            <td>{{ row.children|join:", " }}</td>
+            <td><strong>{{ row.signed_count }} / {{ row.total_count }}</strong></td>
+            <td class="portal-table-meta">{{ row.child_summary }}</td>
+            <td>
+              {% if row.complete %}
+              <span class="portal-status portal-status-active">Complete</span>
+              {% else %}
+              <span class="portal-status portal-status-pending-membership">Incomplete</span>
+              {% endif %}
+            </td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=row.slug %}">View &amp; print</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

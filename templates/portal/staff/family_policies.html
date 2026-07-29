@@ -1,0 +1,84 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='member-policies' %}">Member policies</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='member-policies' %}">Member policies</a> /
+      {% endif %}
+      {{ policy_data.family_name }}
+    </p>
+    <h1>Signed policies — {{ policy_data.family_name }}</h1>
+    <p class="lead">{{ policy_data.signed_count }} of {{ policy_data.total_count }} signed · {{ policy_data.policies_per_child }} per child · {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }}</p>
+  </div>
+</section>
+<section class="page-content portal-policy-report">
+  <div class="container">
+    {% if portal_area != 'admin' %}
+    {% include "portal/staff/includes/family_tabs.html" %}
+    {% endif %}
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_page' page='member-policies' %}{% else %}{% url 'portal_staff_page' page='member-policies' %}{% endif %}">All members</a>
+      {% if portal_area != 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">Family profile</a>
+      {% endif %}
+    </div>
+
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Signed policies — {{ policy_data.family_name }} family</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ policy_data.unit }}</strong> · Program year {{ policy_data.program_year }}<br>
+            {{ policy_data.signed_count }} of {{ policy_data.total_count }} signatures
+            ({{ policy_data.policies_per_child }} policies × {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }})
+          </p>
+        </div>
+      </header>
+
+      {% if not policy_data.complete %}
+      <div class="portal-callout card portal-callout-warning">
+        <p><strong>Incomplete.</strong> Every child must sign all {{ policy_data.policies_per_child }} policies before enrollment is complete.</p>
+      </div>
+      {% endif %}
+
+      {% for child in policy_data.children %}
+      <section class="portal-child-policy-section">
+        <h2 class="portal-policy-child-heading">{{ child.child_name }}</h2>
+        <p class="form-note portal-policy-child-meta">{{ child.signed_count }} of {{ child.total_count }} signed · Parent/guardian: {{ child.signed_by }}</p>
+        <div class="portal-policy-list portal-policy-list-print">
+          {% for policy in child.policies %}
+          <details class="portal-policy-item card" {% if policy.signed %}open{% endif %}>
+            <summary class="portal-policy-summary">
+              <span class="portal-policy-title">{{ policy.title }}</span>
+              {% if policy.signed %}
+              <span class="portal-policy-badge portal-policy-badge-signed">Signed {{ policy.signed_date }}</span>
+              {% else %}
+              <span class="portal-policy-badge portal-policy-badge-unsigned">Not signed</span>
+              {% endif %}
+            </summary>
+            <div class="portal-policy-body">
+              {% for paragraph in policy.paragraphs %}
+              <p>{{ paragraph }}</p>
+              {% endfor %}
+              {% if policy.acknowledgment %}
+              <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+              {% endif %}
+              {% if policy.signed %}
+              <p class="portal-policy-signature"><strong>Signed for {{ child.child_name }} by:</strong> {{ policy.signed_by }} · {{ policy.signed_date }}</p>
+              {% endif %}
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}</p>
+    <h1>{{ profile.family_name }} family</h1>
+    <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/staff/includes/family_tabs.html" %}
+
+    <p class="form-note">Anyone listed below is authorized to pick up children in this family. Staff must verify photo ID at release.</p>
+
+    {% for child in pickup_data.children %}
+    <section class="card" style="margin-bottom:1rem;">
+      <h2>{{ child.name }}</h2>
+      <p class="form-note">{{ child.program }}{% if child.grade %} · Grade {{ child.grade }}{% endif %}</p>
+      {% if pickup_data.authorized %}
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Relationship</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for person in pickup_data.authorized %}
+            <tr>
+              <td><strong>{{ person.name }}</strong></td>
+              <td>{{ person.phone|default:"—" }}</td>
+              <td>{{ person.relationship|default:"—" }}</td>
+              <td>{{ person.source }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="form-note">No authorized pickup people on file.</p>
+      {% endif %}
+    </section>
+    {% empty %}
+    <p class="form-note">No children on file for this family.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

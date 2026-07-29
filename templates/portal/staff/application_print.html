@@ -1,0 +1,28 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_application_detail' app_slug=app_slug %}">Application</a> / Print</p>
+    <h1>Application — {{ application.child_name }}</h1>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_application_detail' app_slug=app_slug %}">Back</a>
+    </div>
+    <div class="portal-medical-report-sheet card portal-application">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Enrollment application — {{ application.child_name }}</h2>
+          <p class="portal-medical-report-meta">Ref {{ application.reference }} · {{ application.status }} · {{ application.submitted }}</p>
+        </div>
+      </header>
+      {% include "portal/includes/application_print_body.html" with application=application %}
+    </div>
+  </div>
+</section>
+{% endblock %}

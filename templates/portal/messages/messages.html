@@ -1,0 +1,125 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Team messages</h1>
+    <p class="lead">Staff ↔ admin — replace WhatsApp for work updates, coverage, and emergencies.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if not portal_live %}
+    <div class="portal-callout card">
+      <p><strong>Design preview.</strong> Messages are stored in the portal (not SMS). In live mode, urgent staff messages email portal admins automatically.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-toolbar">
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='messages' %}?compose=1{% if active_thread %}&amp;thread={{ active_thread.id }}{% endif %}">+ New message</a>
+      {% else %}
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='messages' %}?compose=1{% if active_thread %}&amp;thread={{ active_thread.id }}{% endif %}">+ New message</a>
+      {% endif %}
+      <span class="form-note">{{ messages_unread_count }} unread</span>
+    </div>
+
+    {% if show_compose %}
+    <div class="portal-panel card portal-program-form">
+      <h2>New message to {% if portal_area == 'admin' %}staff{% else %}admin{% endif %}</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_team_message_send' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <div class="form-group">
+          <label for="msg-category">Category</label>
+          <select id="msg-category" name="category" class="portal-select">
+            {% for cat in message_categories %}
+            <option value="{{ cat.key }}">{{ cat.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="msg-priority">Priority</label>
+          <select id="msg-priority" name="priority" class="portal-select">
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="msg-subject">Subject</label>
+          <input id="msg-subject" name="subject" type="text" class="portal-input" placeholder="Coverage needed, maintenance, etc." required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="msg-body">Message</label>
+          <textarea id="msg-body" name="body" class="portal-input portal-textarea" rows="4" required></textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">Send message</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Send message</button>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_page' page='messages' %}{% else %}{% url 'portal_staff_page' page='messages' %}{% endif %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-messages-layout">
+      <aside class="portal-messages-threads card">
+        <h2 class="portal-messages-sidebar-title">Threads</h2>
+        <ul class="portal-messages-thread-list">
+          {% for thread in message_threads %}
+          <li class="{% if active_thread.id == thread.id %}is-active{% endif %}">
+            <a href="{% if portal_area == 'admin' %}{% url 'portal_admin_page' page='messages' %}?thread={{ thread.id }}{% else %}{% url 'portal_staff_page' page='messages' %}?thread={{ thread.id }}{% endif %}">
+              <span class="portal-messages-thread-subject">{{ thread.subject }}</span>
+              <span class="portal-messages-thread-meta">{{ thread.unit }} · {{ thread.updated_display }}</span>
+              {% if thread.priority == 'urgent' %}
+              <span class="portal-status portal-status-past-due">Urgent</span>
+              {% endif %}
+              {% if portal_area == 'admin' and thread.unread_for_admin %}
+              <span class="portal-messages-unread-badge">{{ thread.unread_for_admin }}</span>
+              {% elif portal_area == 'staff' and thread.unread_for_staff %}
+              <span class="portal-messages-unread-badge">{{ thread.unread_for_staff }}</span>
+              {% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </aside>
+
+      <section class="portal-messages-pane card">
+        {% if active_thread %}
+        <header class="portal-messages-pane-header">
+          <h2>{{ active_thread.subject }}</h2>
+          <p class="form-note">{{ active_thread.unit }} · Updated {{ active_thread.updated_display }}</p>
+        </header>
+        <div class="portal-messages-scroll">
+          {% for message in active_thread.messages %}
+          <article class="portal-message {% if message.is_admin %}portal-message-admin{% else %}portal-message-staff{% endif %}">
+            <header class="portal-message-header">
+              <strong>{{ message.author }}</strong>
+              <span class="portal-message-role">{{ message.role }}</span>
+              <time>{{ message.time }}</time>
+            </header>
+            <p>{{ message.body }}</p>
+          </article>
+          {% endfor %}
+        </div>
+        <form class="portal-message-compose" method="post" action="{% if portal_live %}{% url 'portal_team_message_send' %}{% else %}#{% endif %}">
+          {% if portal_live %}{% csrf_token %}{% endif %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          <input type="hidden" name="thread_id" value="{{ active_thread.id }}">
+          <label for="reply-body" class="visually-hidden">Reply</label>
+          <textarea id="reply-body" name="body" class="portal-input portal-textarea" rows="3" placeholder="Reply to thread…" required></textarea>
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">Send reply</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Send reply</button>
+          {% endif %}
+        </form>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

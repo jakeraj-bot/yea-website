@@ -1,0 +1,53 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Applications</h1>
+    <p class="lead">{{ staff_unit }} — review, approve, or create on behalf of families.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
+    </div>
+
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Approved,Pending documents" search_placeholder="Child or family" %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Medical</th>
+            <th>Family</th>
+            <th>Submitted</th>
+            <th>Program</th>
+            <th>Returning</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr>
+            <td><strong>{{ app.child }}</strong></td>
+            <td class="portal-medical-cell">{% medical_badges app.child %}</td>
+            <td>{{ app.family }}</td>
+            <td>{{ app.submitted }}</td>
+            <td>{{ app.program }}</td>
+            <td>{% if app.returning %}Yes{% else %}No{% endif %}</td>
+            <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_application_detail' app_slug=app.slug %}">Review</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_application_print' app_slug=app.slug %}">PDF</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

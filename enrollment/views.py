@@ -2,6 +2,8 @@ import logging
 import uuid
 from datetime import date, datetime
 
+from django.contrib.auth import login
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.mail import send_mail
 from django.conf import settings
@@ -9,20 +11,37 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from portal.parent_auth import get_parent_account, parent_login_required
+
+from .application_edit import (
+    application_to_session_data,
+    parent_can_edit_application,
+    update_application_from_session,
+)
+from .application_review import resubmit_application
+
 from .forms import (
     CHILD_STEP_SLUGS,
     FAMILY_FIELD_NAMES,
     STEP_FORMS,
     STEP_ORDER,
     STEP_TITLES,
+    STEP_TAB_LABELS,
     EmergencyContactFormSet,
+    PortalAccountForm,
 )
 from .models import EmergencyContact, EnrollmentApplication, PolicySignature
 from .policies_data import POLICIES, POLICY_BY_SLUG
+from .portal_integration import (
+    create_portal_account_from_enrollment,
+    link_applications_to_family,
+)
+from .validators import validate_emergency_contacts
 
 logger = logging.getLogger(__name__)
 
 SESSION_KEY = "enrollment_application"
+LINK_EXISTING_KEY = "enrollment_link_existing"
 
 DATE_FIELDS = frozenset(
     {
@@ -163,22 +182,140 @@ def _notify_staff(application):
     )
 
 
+def _max_step_index(session_data):
+    return min(session_data.get("max_step_index", 0), len(STEP_ORDER) - 1)
+
+
+def _mark_step_reached(session_data, step_idx):
+    session_data["max_step_index"] = max(session_data.get("max_step_index", 0), step_idx)
+    return session_data
+
+
+def _is_editing(session_data):
+    return bool(session_data.get("editing_reference"))
+
+
+def _editing_application(session_data):
+    if not _is_editing(session_data):
+        return None
+    return EnrollmentApplication.objects.filter(reference=session_data["editing_reference"]).first()
+
+
 def _wizard_context(request, step, session_data, **extra):
     step_idx = _step_index(step)
     _ensure_children(session_data)
     child_index = session_data.get("current_child_index", 0)
+    editing_app = _editing_application(session_data)
+    step_order = [s for s in STEP_ORDER if s != "add_child"] if editing_app else STEP_ORDER
     return {
         "step": step,
         "step_titles": STEP_TITLES,
-        "step_order": STEP_ORDER,
+        "step_tab_labels": STEP_TAB_LABELS,
+        "step_order": step_order,
         "step_index": step_idx,
+        "max_step_index": _max_step_index(session_data),
         "prev_step": STEP_ORDER[step_idx - 1] if step_idx > 0 else None,
         "child_index": child_index,
         "child_number": child_index + 1,
         "child_count": _child_count(session_data),
         "policies": POLICIES if step == "policies" else None,
+        "is_editing": bool(editing_app),
+        "editing_child_name": (
+            f"{editing_app.student_first_name} {editing_app.student_last_name}".strip()
+            if editing_app
+            else ""
+        ),
+        "staff_change_message": editing_app.staff_message if editing_app else "",
+        "is_adding_child": bool(session_data.get("adding_to_existing_family")),
         **extra,
     }
+
+
+def _prefill_family_from_portal(session_data, account):
+    user = account.user
+    family = account.family
+    session_data.setdefault("family_name", family.name)
+    session_data.setdefault("primary_email", user.email)
+    session_data.setdefault("primary_email_address", user.email)
+    session_data.setdefault("primary_first_name", user.first_name)
+    session_data.setdefault("primary_last_name", user.last_name)
+    if family.primary_contact and not user.first_name:
+        parts = family.primary_contact.split(" ", 1)
+        session_data.setdefault("primary_first_name", parts[0])
+        session_data.setdefault("primary_last_name", parts[1] if len(parts) > 1 else "")
+    return session_data
+
+
+def _prefill_family_from_application(session_data, family):
+    latest = (
+        EnrollmentApplication.objects.filter(portal_family=family)
+        .order_by("-submitted_at")
+        .first()
+    )
+    if not latest:
+        return session_data
+    for key in FAMILY_FIELD_NAMES:
+        value = getattr(latest, key, "")
+        if value:
+            session_data[key] = value
+    return session_data
+
+
+def _start_session_for_existing_family(account):
+    session_data = _prefill_family_from_portal({}, account)
+    session_data = _prefill_family_from_application(session_data, account.family)
+    session_data["children"] = [{}]
+    session_data["current_child_index"] = 0
+    session_data["max_step_index"] = 0
+    session_data["adding_to_existing_family"] = True
+    return session_data
+
+
+@require_http_methods(["GET"])
+def apply_start(request):
+    account = get_parent_account(request.user) if request.user.is_authenticated else None
+    if account:
+        return render(request, "enrollment/apply_logged_in.html", {"account": account})
+    return render(request, "enrollment/apply_gate.html")
+
+
+@require_http_methods(["GET"])
+@parent_login_required
+def apply_add_child(request):
+    account = get_parent_account(request.user)
+    if SESSION_KEY in request.session:
+        del request.session[SESSION_KEY]
+    session_data = _start_session_for_existing_family(account)
+    request.session[LINK_EXISTING_KEY] = True
+    _save_session_data(request, session_data)
+    messages.info(
+        request,
+        f"Apply for another child on your {account.family.name} family account. Your household information is prefilled.",
+    )
+    return redirect("enrollment_apply", step="family")
+
+
+@require_http_methods(["GET"])
+@parent_login_required
+def apply_edit_start(request, reference):
+    account = get_parent_account(request.user)
+    application = get_object_or_404(EnrollmentApplication, reference=reference)
+    if not parent_can_edit_application(account, application):
+        messages.error(
+            request,
+            "This application cannot be edited right now. You can only update applications when staff requests changes.",
+        )
+        return redirect(
+            f"{reverse('portal_parent_page', kwargs={'page': 'application'})}?ref={reference}"
+        )
+
+    session_data = application_to_session_data(application)
+    _save_session_data(request, session_data)
+    messages.info(
+        request,
+        f"Update {application.student_first_name}'s application, then resubmit for staff review.",
+    )
+    return redirect("enrollment_apply", step="family")
 
 
 @require_http_methods(["GET", "POST"])
@@ -189,21 +326,101 @@ def apply_wizard(request, step="family"):
     session_data = _get_session_data(request)
     _ensure_children(session_data)
     step_idx = _step_index(step)
+    portal_account = get_parent_account(request.user) if request.user.is_authenticated else None
+    editing = _is_editing(session_data)
+
+    if step_idx > _max_step_index(session_data):
+        return redirect("enrollment_apply", step=STEP_ORDER[_max_step_index(session_data)])
+
+    if editing and step == "add_child":
+        return redirect("enrollment_apply", step="review")
+
+    if step == "family" and request.method == "GET" and not session_data.get("family_name"):
+        if portal_account:
+            if request.GET.get("existing") == "1":
+                session_data = _start_session_for_existing_family(portal_account)
+                request.session[LINK_EXISTING_KEY] = True
+                _save_session_data(request, session_data)
+            elif not editing:
+                return redirect("apply")
+        elif not request.GET.get("new"):
+            return redirect("apply")
+
+    if editing and not portal_account:
+        return redirect(f"{settings.PORTAL_PARENT_LOGIN_URL}?next={request.get_full_path()}")
 
     if step == "review":
         if request.method == "POST":
             if not session_data.get("children"):
                 return redirect("enrollment_apply", step="family")
+            if editing:
+                application = _editing_application(session_data)
+                if not application or not parent_can_edit_application(portal_account, application):
+                    messages.error(request, "This application is no longer open for editing.")
+                    if SESSION_KEY in request.session:
+                        del request.session[SESSION_KEY]
+                    return redirect("portal_parent_page", page="applications")
+                update_application_from_session(application, session_data.copy())
+                resubmit_application(application)
+                if SESSION_KEY in request.session:
+                    del request.session[SESSION_KEY]
+                messages.success(
+                    request,
+                    f"Application for {application.student_first_name} {application.student_last_name} resubmitted for review.",
+                )
+                return redirect("portal_parent_page", page="applications")
+            if portal_account and not request.session.get(LINK_EXISTING_KEY):
+                return redirect("apply")
+            portal_form = None
+            if not portal_account:
+                portal_form = PortalAccountForm(request.POST)
+                if not portal_form.is_valid():
+                    return render(
+                        request,
+                        "enrollment/review.html",
+                        _wizard_context(
+                            request,
+                            step,
+                            session_data,
+                            data=session_data,
+                            policies=POLICIES,
+                            portal_form=portal_form,
+                            portal_account=portal_account,
+                        ),
+                    )
             applications = _create_applications(session_data.copy())
             family_group = applications[0].family_group
+            linked_existing = portal_account and request.session.get(LINK_EXISTING_KEY)
+            if linked_existing:
+                link_applications_to_family(applications, portal_account.family)
+            else:
+                family, user = create_portal_account_from_enrollment(
+                    session_data,
+                    portal_form.cleaned_data["username"],
+                    portal_form.cleaned_data["password1"],
+                )
+                link_applications_to_family(applications, family)
+                login(request, user)
             if SESSION_KEY in request.session:
                 del request.session[SESSION_KEY]
+            if LINK_EXISTING_KEY in request.session:
+                del request.session[LINK_EXISTING_KEY]
             for app in applications:
                 try:
                     _notify_staff(app)
                 except Exception:
                     logger.exception("Failed to send enrollment notification email")
+            if linked_existing:
+                child_names = ", ".join(
+                    f"{app.student_first_name} {app.student_last_name}".strip() for app in applications
+                )
+                messages.success(
+                    request,
+                    f"Application submitted for {child_names}. Track status anytime in your parent portal.",
+                )
+                return redirect("portal_parent_page", page="applications")
             return redirect("enrollment_confirmation_group", family_group=family_group)
+        portal_form = None if portal_account or editing else PortalAccountForm()
         return render(
             request,
             "enrollment/review.html",
@@ -213,6 +430,8 @@ def apply_wizard(request, step="family"):
                 session_data,
                 data=session_data,
                 policies=POLICIES,
+                portal_form=portal_form,
+                portal_account=portal_account,
             ),
         )
 
@@ -223,8 +442,11 @@ def apply_wizard(request, step="family"):
                 if form.cleaned_data["add_another"] == "yes":
                     session_data["current_child_index"] = session_data.get("current_child_index", 0) + 1
                     session_data["children"].append({})
+                    session_data["max_step_index"] = _step_index("program")
                     _save_session_data(request, session_data)
                     return redirect("enrollment_apply", step="program")
+                session_data = _mark_step_reached(session_data, _step_index("review"))
+                _save_session_data(request, session_data)
                 return redirect("enrollment_apply", step="review")
         else:
             form = STEP_FORMS["add_child"]()
@@ -250,15 +472,8 @@ def apply_wizard(request, step="family"):
         billing_ok = True
         if emergency_formset is not None:
             billing_ok = emergency_formset.is_valid()
-            filled = [
-                f for f in emergency_formset
-                if f.cleaned_data.get("first_name") or f.cleaned_data.get("last_name")
-            ]
-            if len(filled) < 2:
-                billing_ok = False
-                emergency_formset._non_form_errors = emergency_formset.error_class(
-                    ["Two emergency contacts are required."]
-                )
+            if billing_ok:
+                billing_ok = validate_emergency_contacts(emergency_formset, session_data)
 
         if form.is_valid() and billing_ok:
             cleaned = form.cleaned_data.copy()
@@ -291,18 +506,26 @@ def apply_wizard(request, step="family"):
                 child_data.update(cleaned)
 
             session_data["children"][child_index] = child_data
+            session_data = _mark_step_reached(session_data, step_idx + 1)
             _save_session_data(request, session_data)
-            return redirect("enrollment_apply", step=STEP_ORDER[step_idx + 1])
+            next_step = STEP_ORDER[step_idx + 1]
+            if editing and next_step == "add_child":
+                next_step = "review"
+            return redirect("enrollment_apply", step=next_step)
     else:
         if step == "family":
             initial = {k: session_data.get(k, "") for k in FAMILY_FIELD_NAMES}
         elif step == "policies":
             initial = {}
+            today = date.today()
             for slug, payload in child_data.get("policies", {}).items():
                 initial[f"{slug}__signature"] = payload.get("signature", "")
-                initial[f"{slug}__date"] = payload.get("date")
+                initial[f"{slug}__date"] = payload.get("date") or today
                 for key, value in payload.get("extra", {}).items():
                     initial[f"{slug}__{key}"] = value
+            for policy in POLICIES:
+                slug = policy["slug"]
+                initial.setdefault(f"{slug}__date", today)
         else:
             initial = {k: v for k, v in child_data.items() if k not in ("emergency_contacts", "policies")}
         form = form_class(initial=initial)

@@ -1,0 +1,184 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>{% if portal_area == 'admin' %}Support inbox{% else %}Support{% endif %}</h1>
+    <p class="lead">
+      {% if portal_area == 'admin' %}
+      Messages from parents and staff — with screenshots so you can troubleshoot quickly.
+      {% else %}
+      Message YEA admin directly. Attach a photo or screenshot so we can see what's wrong.
+      {% endif %}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if portal_area == 'parent' %}
+    <div class="portal-callout card">
+      <p><strong>Where tickets go:</strong> When you submit a ticket, it appears in the <strong>Admin → Support inbox</strong> for YEA staff. Your unit team can see tickets you open from the parent portal. Attach screenshots so we can troubleshoot billing, check-in, or portal issues faster.</p>
+    </div>
+    {% elif not portal_live %}
+    <div class="portal-callout card">
+      <p><strong>Design preview.</strong> Tickets stay in the portal (not email). Image uploads will work when live — for now you can see how attachments appear in the thread.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-toolbar">
+      {% if portal_area == 'admin' %}
+      <span class="form-note">{{ support_unread_count }} unread ticket{{ support_unread_count|pluralize }}</span>
+      {% else %}
+      <a class="btn btn-primary" href="{% if portal_area == 'parent' %}{% url 'portal_parent_page' page='support' %}?pay={{ parent_preview_key|default:'private-pay' }}&amp;new=1{% else %}{% url 'portal_staff_page' page='support' %}?new=1{% endif %}">+ New ticket</a>
+      <span class="form-note">{{ support_unread_count }} unread repl{{ support_unread_count|pluralize:"y,ies" }}</span>
+      {% endif %}
+    </div>
+
+    {% if show_new_ticket and portal_area != 'admin' %}
+    <div class="portal-panel card portal-program-form">
+      <h2>New support ticket</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_support_ticket_create' %}{% else %}#{% endif %}" enctype="multipart/form-data">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <input type="hidden" name="from_area" value="{{ portal_area }}">
+        <input type="hidden" name="preview_key" value="{{ parent_preview_key|default:'private-pay' }}">
+        <div class="form-group">
+          <label for="ticket-category">Category</label>
+          <select id="ticket-category" name="category" class="portal-select">
+            {% for cat in support_categories %}
+            <option value="{{ cat.key }}">{{ cat.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if portal_area == 'staff' %}
+        <div class="form-group">
+          <label for="ticket-unit">Unit</label>
+          <select id="ticket-unit" class="portal-select" disabled>
+            <option>School 18</option>
+          </select>
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="ticket-subject">Subject</label>
+          <input id="ticket-subject" name="subject" type="text" class="portal-input" placeholder="Brief description of the issue" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="ticket-body">Message</label>
+          <textarea id="ticket-body" name="body" class="portal-input portal-textarea" rows="4" placeholder="What happened? What were you trying to do?" required></textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="ticket-images">Attach images</label>
+          <div class="portal-support-upload">
+            <input id="ticket-images" name="attachments" type="file" class="portal-file-input" accept="image/*" multiple {% if not portal_live %}disabled{% endif %}>
+            <p>Drag photos here or click to browse. PNG, JPG, HEIC — up to 5 images, 10 MB each.</p>
+          </div>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">Submit ticket</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>Submit ticket</button>
+          {% endif %}
+          <a class="btn btn-secondary" href="{% if portal_area == 'parent' %}{% url 'portal_parent_page' page='support' %}?pay={{ parent_preview_key|default:'private-pay' }}{% else %}{% url 'portal_staff_page' page='support' %}{% endif %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-messages-layout">
+      <aside class="portal-messages-threads card">
+        <h2 class="portal-messages-sidebar-title">Tickets</h2>
+        {% if support_tickets %}
+        <ul class="portal-messages-thread-list">
+          {% for ticket in support_tickets %}
+          <li class="{% if active_ticket.id == ticket.id %}is-active{% endif %}">
+            <a href="{% if portal_area == 'admin' %}{% url 'portal_admin_page' page='support' %}?ticket={{ ticket.id }}{% elif portal_area == 'parent' %}{% url 'portal_parent_page' page='support' %}?pay={{ parent_preview_key|default:'private-pay' }}&amp;ticket={{ ticket.id }}{% else %}{% url 'portal_staff_page' page='support' %}?ticket={{ ticket.id }}{% endif %}">
+              <span class="portal-messages-thread-subject">{{ ticket.subject }}</span>
+              <span class="portal-messages-thread-meta">
+                {% if portal_area == 'admin' %}{{ ticket.from_detail }} · {% endif %}{{ ticket.updated_display }}
+              </span>
+              <span class="portal-status {% if ticket.status == 'Open' %}portal-status-past-due{% elif ticket.status == 'Resolved' %}portal-status-active{% endif %}">{{ ticket.status }}</span>
+              {% if portal_area == 'admin' and ticket.unread_for_admin %}
+              <span class="portal-messages-unread-badge">{{ ticket.unread_for_admin }}</span>
+              {% elif portal_area != 'admin' and ticket.unread_for_user %}
+              <span class="portal-messages-unread-badge">{{ ticket.unread_for_user }}</span>
+              {% endif %}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="form-note portal-messages-empty">No tickets yet.</p>
+        {% endif %}
+      </aside>
+
+      <section class="portal-messages-pane card">
+        {% if active_ticket %}
+        <header class="portal-messages-pane-header">
+          <h2>{{ active_ticket.subject }}</h2>
+          <p class="form-note">
+            {% if portal_area == 'admin' %}{{ active_ticket.from_detail }} · {% endif %}{{ active_ticket.unit }} · Updated {{ active_ticket.updated_display }} · {{ active_ticket.status }}
+          </p>
+        </header>
+        <div class="portal-messages-scroll">
+          {% for message in active_ticket.messages %}
+          <article class="portal-message {% if message.is_admin %}portal-message-admin{% else %}portal-message-staff{% endif %}">
+            <header class="portal-message-header">
+              <strong>{{ message.author }}</strong>
+              <span class="portal-message-role">{{ message.role }}</span>
+              <time>{{ message.time }}</time>
+            </header>
+            <p>{{ message.body }}</p>
+            {% if message.attachments %}
+            <ul class="portal-support-attachments">
+              {% for attachment in message.attachments %}
+              <li>
+                <figure class="portal-support-attachment-thumb">
+                  {% if attachment.url %}
+                  <img class="portal-support-attachment-preview" src="{{ attachment.url }}" alt="{{ attachment.name }}">
+                  {% else %}
+                  <div class="portal-support-attachment-preview" aria-hidden="true">
+                    <span class="portal-support-attachment-icon">🖼</span>
+                  </div>
+                  {% endif %}
+                  <figcaption>
+                    <strong>{{ attachment.name }}</strong>
+                    <span>{{ attachment.label }}</span>
+                  </figcaption>
+                </figure>
+              </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+        <form class="portal-message-compose portal-support-compose" method="post" action="{% if portal_live %}{% url 'portal_support_ticket_reply' %}{% else %}#{% endif %}" enctype="multipart/form-data">
+          {% if portal_live %}{% csrf_token %}{% endif %}
+          <input type="hidden" name="ticket_id" value="{{ active_ticket.id }}">
+          <input type="hidden" name="from_area" value="{{ portal_area }}">
+          <input type="hidden" name="preview_key" value="{{ parent_preview_key|default:'private-pay' }}">
+          {% if portal_area == 'admin' %}
+          <input type="hidden" name="author" value="YEA Support">
+          {% endif %}
+          <label for="reply-body" class="visually-hidden">Reply</label>
+          <textarea id="reply-body" name="body" class="portal-input portal-textarea" rows="3" placeholder="{% if portal_area == 'admin' %}Reply to {{ active_ticket.from_name }}…{% else %}Add a follow-up…{% endif %}" required></textarea>
+          <div class="portal-support-upload portal-support-upload-inline">
+            <input id="reply-images" name="attachments" type="file" class="portal-file-input" accept="image/*" multiple {% if not portal_live %}disabled{% endif %}>
+            <label for="reply-images" class="btn btn-secondary btn-sm">Attach image</label>
+            <span class="form-note">Screenshots help us fix issues faster.</span>
+          </div>
+          {% if portal_live %}
+          <button type="submit" class="btn btn-primary">{% if portal_area == 'admin' %}Send reply{% else %}Send update{% endif %}</button>
+          {% else %}
+          <button type="button" class="btn btn-primary" disabled>{% if portal_area == 'admin' %}Send reply{% else %}Send update{% endif %}</button>
+          {% endif %}
+        </form>
+        {% elif not support_tickets %}
+        <div class="portal-messages-empty-state">
+          <p>No support tickets yet. {% if portal_area != 'admin' %}Open one above if something isn't working.{% endif %}</p>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

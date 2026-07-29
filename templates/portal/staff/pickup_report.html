@@ -1,0 +1,71 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Authorized pickup</p>
+    <h1>Authorized pickup report</h1>
+    <p class="lead">{{ staff_unit }} · Generated {{ generated_date }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="portal-toolbar portal-no-print" style="margin-bottom:1rem;">
+      <label for="program-filter">Program</label>
+      <select id="program-filter" name="program" class="portal-input" onchange="this.form.submit()">
+        <option value="all"{% if selected_program == "all" %} selected{% endif %}>All programs</option>
+        {% for program in report_programs %}
+        <option value="{{ program }}"{% if selected_program == program %} selected{% endif %}>{{ program }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
+    </form>
+
+    <div class="card portal-medical-report-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Authorized pickup report</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ staff_unit }}</strong>
+            {% if selected_program != "all" %} · {{ selected_program }}{% endif %}
+            <br>{{ report_rows|length }} entries · Generated {{ generated_date }}
+          </p>
+        </div>
+      </header>
+
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Program</th>
+              <th>Grade</th>
+              <th>Authorized person</th>
+              <th>Phone</th>
+              <th>Relationship</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.program }}</td>
+              <td>{{ row.grade }}</td>
+              <td>{{ row.pickup_name }}</td>
+              <td>{{ row.pickup_phone }}</td>
+              <td>{{ row.relationship }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No authorized pickup records match this filter.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,20 @@
+<div class="portal-preview-banner" role="note">
+  <div class="container portal-preview-inner">
+    <span><strong>Design preview mode</strong> — UI only; attendance and saves are disabled. Set <code>PORTAL_PREVIEW_MODE=False</code> for live mode.</span>
+    <nav class="portal-preview-nav" aria-label="Preview role">
+      <a class="{% if portal_area == 'parent' %}is-active{% endif %}" href="{% url 'portal_parent_page' page='dashboard' %}?pay={{ parent_preview_key|default:'private-pay' }}">Parent</a>
+      <a class="{% if portal_area == 'staff' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='dashboard' %}">Staff (unit)</a>
+      <a class="{% if portal_area == 'admin' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='dashboard' %}">Portal admin</a>
+    </nav>
+  </div>
+  {% if portal_area == 'parent' %}
+  <div class="container portal-preview-sub">
+    <span class="portal-preview-sub-label">Payment type:</span>
+    <nav class="portal-preview-nav portal-preview-nav-sub" aria-label="Parent payment type">
+      <a class="{% if parent_preview_key == 'private-pay' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=private-pay">Private pay</a>
+      <a class="{% if parent_preview_key == '4cs' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=4cs">4Cs</a>
+      <a class="{% if parent_preview_key == 'scholarship' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=scholarship">Scholarship</a>
+    </nav>
+  </div>
+  {% endif %}
+</div>

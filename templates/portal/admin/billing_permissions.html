@@ -1,0 +1,118 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Billing permissions</h1>
+    <p class="lead">Yes/No per staff member — charges, credits, family plans, and charge types.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <ul class="portal-link-list">
+      {% for note in billing_permission_notes %}
+      <li>{{ note }}</li>
+      {% endfor %}
+    </ul>
+
+    <div class="portal-table-wrap">
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_billing_permissions' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <table class="portal-table portal-permissions-table">
+          <thead>
+            <tr>
+              <th>Staff member</th>
+              <th>Role</th>
+              <th>Unit(s)</th>
+              <th>Add charge</th>
+              <th>Delete charge</th>
+              <th>Add credit</th>
+              <th>Edit family plans</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in portal_staff_users %}
+            <tr>
+              <td><strong>{{ user.name }}</strong><br><span class="portal-table-meta">{{ user.email }}</span></td>
+              <td>{{ user.role }}</td>
+              <td>{{ user.units }}</td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="add_charge_{{ user.id }}" {% if user.can_add_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_add_charge %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="delete_charge_{{ user.id }}" {% if user.can_delete_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_delete_charge %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="add_credit_{{ user.id }}" {% if user.can_add_credit %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_add_credit %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="edit_plans_{{ user.id }}" {% if user.can_edit_family_plans %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_edit_family_plans %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
+            </tr>
+            {% if billing_charge_types %}
+            <tr class="portal-table-subrow">
+              <td colspan="7">
+                <strong class="portal-table-meta">Charge types for {{ user.name }}:</strong>
+                {% for ct in billing_charge_types %}
+                <label class="portal-check-label" style="margin-right:1rem;">
+                  <input type="checkbox" name="charge_{{ ct.value }}_{{ user.id }}" checked{% if not portal_live %} disabled{% endif %}> {{ ct.label }}
+                </label>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="portal-form-actions" style="margin-top: 1.25rem;">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save permissions</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>
+        </div>
+      </form>
+    </div>
+
+    <h2 style="margin-top: 2rem;">Default rules by role</h2>
+    <p class="form-note">New staff accounts inherit these defaults. Customize and save your own rules.</p>
+    <div class="portal-profile-grid">
+      {% for rule in default_billing_rules %}
+      <section class="card{% if rule.role_name == 'Portal admin' %} card-accent{% endif %}">
+        <h3>{{ rule.role_name }}</h3>
+        {% if portal_live %}
+        <form method="post" action="{% url 'portal_admin_default_rule_save' %}">
+          {% csrf_token %}
+          <input type="hidden" name="role_name" value="{{ rule.role_name }}">
+          <ul class="portal-link-list">
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_add_charge" {% if rule.can_add_charge %}checked{% endif %}> Add charge</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_charge" {% if rule.can_delete_charge %}checked{% endif %}> Delete charge</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_add_credit" {% if rule.can_add_credit %}checked{% endif %}> Add credit</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_edit_family_plans" {% if rule.can_edit_family_plans %}checked{% endif %}> Edit family plans</label></li>
+          </ul>
+          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Save rule</button>
+        </form>
+        {% else %}
+        <ul class="portal-link-list">
+          <li>{% if rule.can_add_charge %}✓{% else %}✗{% endif %} Add charge</li>
+          <li>{% if rule.can_delete_charge %}✓{% else %}✗{% endif %} Delete charge</li>
+          <li>{% if rule.can_add_credit %}✓{% else %}✗{% endif %} Add credit</li>
+          <li>{% if rule.can_edit_family_plans %}✓{% else %}✗{% endif %} Edit family plans</li>
+        </ul>
+        {% endif %}
+      </section>
+      {% empty %}
+      <section class="card"><h3>Unit staff</h3><p class="form-note">Enable live mode to edit default rules.</p></section>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

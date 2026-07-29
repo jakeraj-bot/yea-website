@@ -1,0 +1,77 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> / {{ application.child_name }}</p>
+    <h1>Application — {{ application.child_name }}</h1>
+    <p class="lead">Submitted {{ application.submitted }} · Ref {{ application.reference }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <span class="portal-status portal-status-{{ application.status_slug|default:'under-review' }}">{{ application.status }}</span>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{{ parent_pay_query }}{% if application.reference %}&amp;ref={{ application.reference }}{% endif %}">Download PDF</a>
+    </div>
+
+    {% if application.staff_message %}
+    <div class="portal-callout card {% if application.status_slug == 'declined' %}portal-callout-danger{% else %}portal-callout-warning{% endif %}">
+      <p><strong>{% if application.status_slug == 'declined' %}Message from YEA staff{% elif application.status_slug == 'pending-documents' %}Action needed{% else %}Note from YEA staff{% endif %}</strong></p>
+      <p>{{ application.staff_message|linebreaksbr }}</p>
+      {% if application.status_slug == 'pending-documents' %}
+      <p class="form-note">Reply through portal Support or use <strong>Edit &amp; resubmit application</strong> to update your answers online and send them back for review.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="portal-application card">
+      <h2>Program</h2>
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Program</dt><dd>{{ application.program }}</dd>
+        <dt>Location</dt><dd>{{ application.location }}</dd>
+      </dl>
+
+      <h2>Student</h2>
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Child</dt><dd>{{ application.child_name }}</dd>
+        <dt>Date of birth</dt><dd>{{ application.student_dob }}</dd>
+        <dt>Grade</dt><dd>{{ application.grade }}</dd>
+      </dl>
+
+      <h2>Family &amp; guardians</h2>
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Family name</dt><dd>{{ application.family_name }}</dd>
+        <dt>Home address</dt><dd>{{ application.home_address }}</dd>
+        <dt>Primary parent</dt><dd>{{ application.primary_parent }}</dd>
+        <dt>Email</dt><dd>{{ application.primary_email }}</dd>
+        <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
+      </dl>
+
+      <h2>Billing preferences</h2>
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Payment method</dt><dd>{{ application.payment_method }}</dd>
+        <dt>Payment plan</dt><dd>{{ application.payment_plan }}</dd>
+        <dt>Membership fee ($20)</dt><dd>{{ application.membership_fee_agreed }}</dd>
+      </dl>
+
+      <h2>Emergency contacts</h2>
+      <ul class="portal-link-list">
+        {% for c in application.emergency_contacts %}
+        <li>{{ c.name }} — {{ c.phone }}</li>
+        {% endfor %}
+      </ul>
+
+      <h2>Policies</h2>
+      <p>{{ application.policies_signed }} policies signed electronically at submission.</p>
+    </div>
+      {% if application.status_slug == 'pending-documents' %}
+      <p class="form-note">Update the application online with the requested changes, then resubmit for staff review.</p>
+      <a class="btn btn-primary" href="{% url 'enrollment_apply_edit' reference=application.reference %}">Edit &amp; resubmit application</a>
+      {% elif application.status_slug == 'declined' %}
+      <p class="form-note">If you have questions, please contact us through the office.</p>
+      {% else %}
+      <p class="form-note">After approval, this child moves to your <a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a> and billing begins in the portal.</p>
+      {% endif %}
+  </div>
+</section>
+{% endblock %}

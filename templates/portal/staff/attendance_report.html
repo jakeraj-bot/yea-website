@@ -1,0 +1,47 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Daily attendance</p>
+    <h1>Daily attendance sheet</h1>
+    <p class="lead">{{ attendance.date_display }} · {{ attendance.unit }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Open roster</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back</a>
+    </div>
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Attendance sign-in sheet</h2>
+          <p class="portal-medical-report-meta">{{ attendance.unit }} · {{ attendance.program }} · {{ attendance.date_display }}</p>
+        </div>
+      </header>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Child</th><th>Check in</th><th>Check out</th><th>Method</th><th>Parent signature</th></tr>
+          </thead>
+          <tbody>
+            {% for row in roster %}
+            <tr>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.check_in|default:"—" }}</td>
+              <td>{{ row.check_out|default:"—" }}</td>
+              <td>{{ row.method|default:"—" }}</td>
+              <td></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

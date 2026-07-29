@@ -1,0 +1,21 @@
+{% if child_name %}
+<h3 class="portal-policy-child-print-title">{{ child_name }}</h3>
+{% endif %}
+{% for policy in policies %}
+<section class="portal-policy-print-block">
+  <h4>{{ policy.title }}</h4>
+  {% for paragraph in policy.paragraphs %}
+  <p>{{ paragraph }}</p>
+  {% endfor %}
+  {% if policy.acknowledgment %}
+  <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+  {% endif %}
+  {% if policy.signed %}
+  <p class="portal-policy-signature">
+    <strong>Signed for {{ child_name|default:policy.child_name }} by:</strong> {{ policy.signed_by }} · {{ policy.signed_date }}
+  </p>
+  {% else %}
+  <p class="portal-policy-signature portal-policy-signature-missing"><strong>Not signed</strong></p>
+  {% endif %}
+</section>
+{% endfor %}

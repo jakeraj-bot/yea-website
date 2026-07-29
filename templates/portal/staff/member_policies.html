@@ -1,0 +1,57 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Member policies</h1>
+    <p class="lead">{{ staff_unit }} — {{ policies_per_child }} policies per child · view and print signed policies.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_staff_member_policies_print' %}">Print all members (PDF)</a>
+    </div>
+
+    <div class="portal-callout card">
+      <p>Each child signs all {{ policies_per_child }} policies. A family with 2 children = {{ policies_per_child }} × 2 = {% widthratio policies_per_child 1 2 %} signatures required.</p>
+    </div>
+
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Family name A–Z" filter_options="All,Complete,Incomplete" search_placeholder="Family name" %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Children</th>
+            <th>Policies signed</th>
+            <th>Per child</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in member_summaries %}
+          <tr>
+            <td><strong>{{ row.family_name }}</strong><br><span class="portal-table-meta">{{ row.primary_contact }}</span></td>
+            <td>{{ row.children|join:", " }}</td>
+            <td><strong>{{ row.signed_count }} / {{ row.total_count }}</strong></td>
+            <td class="portal-table-meta">{{ row.child_summary }}</td>
+            <td>
+              {% if row.complete %}
+              <span class="portal-status portal-status-active">Complete</span>
+              {% else %}
+              <span class="portal-status portal-status-pending-membership">Incomplete</span>
+              {% endif %}
+            </td>
+            <td class="portal-row-actions">
+              <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_family_policies' family_slug=row.slug %}">View &amp; print</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

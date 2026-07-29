@@ -1,0 +1,100 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    {% if is_dropin_payment %}
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in</a> / Review drop-in payment</p>
+    <h1>Review drop-in payment</h1>
+    {% else %}
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing</a> / Review</p>
+    <h1>Review payment</h1>
+    {% endif %}
+    <p class="lead">{% if parent_stripe_enabled %}Confirm details before paying with Stripe.{% elif is_dropin_payment %}Confirm drop-in details before submitting.{% else %}Confirm details before submitting your payment.{% endif %}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if is_dropin_payment %}
+    <div class="portal-callout card portal-callout-warning">
+      <p>You are paying <strong>${{ payment_amount }}</strong> for drop-in care only. Your program account balance of <strong>${{ billing.running_balance }}</strong> stays unchanged.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-profile-grid">
+      <section class="card portal-profile-full">
+        <h2>Payment summary</h2>
+        <dl class="portal-dl portal-dl-2col">
+          <dt>Family</dt><dd>{{ parent_preview.family_name }}</dd>
+          {% if is_dropin_payment %}
+          <dt>Drop-in for</dt><dd>{{ dropin.child }}</dd>
+          <dt>Program</dt><dd>{{ dropin.program }}</dd>
+          <dt>Location</dt><dd>{{ dropin.location }}</dd>
+          {% if dropin.date %}<dt>Date</dt><dd>{{ dropin.date }}</dd>{% endif %}
+          <dt>Account balance (unchanged)</dt><dd>${{ billing.running_balance }}</dd>
+          {% else %}
+          <dt>Current balance</dt><dd>${{ billing.running_balance }}</dd>
+          {% endif %}
+          <dt>{% if is_dropin_payment %}Drop-in fee{% else %}Payment amount{% endif %}</dt><dd><strong>${{ payment_amount }}</strong></dd>
+          {% if credit_amount != "0.00" %}
+          <dt>Account credit after payment</dt><dd class="portal-amount-credit">${{ credit_amount }}</dd>
+          {% endif %}
+          <dt>Payment method</dt><dd>{{ payment_method }}</dd>
+          <dt>{{ stripe_fee.label }}</dt><dd>${{ payment_totals.fee }}</dd>
+          <dt><strong>Total charged to card</strong></dt><dd><strong>${{ payment_totals.total }}</strong></dd>
+        </dl>
+
+        {% if parent_stripe_enabled %}
+        <div class="portal-callout card">
+          <p><strong>Secure checkout.</strong> You will be redirected to Stripe to complete this payment. Processing fees are included in the total shown above.</p>
+        </div>
+        <form method="post" action="{% url 'portal_parent_payment_checkout' %}" class="portal-form-actions">
+          {% csrf_token %}
+          <input type="hidden" name="amount" value="{{ payment_amount }}">
+          {% if is_dropin_payment %}
+          <input type="hidden" name="source" value="dropin">
+          <input type="hidden" name="child" value="{{ dropin.child }}">
+          <input type="hidden" name="program_label" value="{{ dropin.program }}">
+          <input type="hidden" name="location" value="{{ dropin.location }}">
+          <input type="hidden" name="date" value="{{ dropin.date }}">
+          {% endif %}
+          <input type="hidden" name="booking_id" value="{{ request.GET.booking_id|default:'' }}">
+          <button type="submit" class="btn btn-primary">Pay ${{ payment_totals.total }} with Stripe</button>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}{% if is_dropin_payment %}&amp;source=dropin&amp;child={{ dropin.child|urlencode }}&amp;program_label={{ dropin.program|urlencode }}&amp;location={{ dropin.location|urlencode }}&amp;date={{ dropin.date|urlencode }}{% endif %}">Back to edit</a>
+          <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
+        </form>
+        {% else %}
+        <div class="portal-callout card">
+          <p><strong>Preview mode.</strong> Submitting records a sample receipt for design review. Stripe charges are not processed yet.</p>
+        </div>
+
+        <div class="portal-form-actions">
+          <a class="btn btn-primary" href="{% url 'portal_parent_payment_complete' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}&amp;method={{ payment_method|urlencode }}{% if is_dropin_payment %}&amp;source=dropin{% endif %}">Submit payment</a>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}{% if is_dropin_payment %}&amp;source=dropin&amp;child={{ dropin.child|urlencode }}&amp;program_label={{ dropin.program|urlencode }}&amp;location={{ dropin.location|urlencode }}&amp;date={{ dropin.date|urlencode }}{% endif %}">Back to edit</a>
+          <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        {% if is_dropin_payment %}
+        <h2>Drop-in booking</h2>
+        <dl class="portal-dl">
+          <dt>Child</dt><dd>{{ dropin.child }}</dd>
+          <dt>Fee</dt><dd>${{ dropin.fee }}</dd>
+        </dl>
+        {% else %}
+        <h2>Applied to</h2>
+        <ul class="portal-link-list">
+          {% for child in billing.children %}
+          <li><strong>{{ child.name }}</strong> — ${{ child.balance }} currently due</li>
+          {% endfor %}
+        </ul>
+        {% if credit_amount != "0.00" %}
+        <p class="form-note">Extra payment of ${{ credit_amount }} stays on your account as credit for future program charges.</p>
+        {% endif %}
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

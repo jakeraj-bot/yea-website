@@ -1,0 +1,108 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Programs &amp; seasons</h1>
+    <p class="lead">Create sessions with start/end dates — assign to one or more units.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='programs' %}?add=1">+ Add program</a>
+    </div>
+
+    {% if show_add_program %}
+    <div class="portal-panel card portal-program-form">
+      <h2>New program</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_program_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="prog-name">Program name</label>
+          <input id="prog-name" name="name" type="text" class="portal-input" placeholder="After-School 2027–28" required>
+        </div>
+        <div class="form-group">
+          <label for="prog-type">Program type</label>
+          <select id="prog-type" name="program_type" class="portal-select">
+            <option value="after_school">After-school</option>
+            <option value="summer_camp">Summer camp</option>
+            <option value="drop_in">Drop-in (seasonal)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="prog-status">Status</label>
+          <select id="prog-status" name="status_label" class="portal-select">
+            <option>Registration open</option>
+            <option>Active</option>
+            <option>Closed</option>
+            <option>Ended</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="prog-start">Start date</label>
+          <input id="prog-start" name="start_date" type="date" class="portal-input">
+        </div>
+        <div class="form-group">
+          <label for="prog-end">End date</label>
+          <input id="prog-end" name="end_date" type="date" class="portal-input">
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Units (select all that apply)</label>
+          <div class="portal-checkbox-grid">
+            {% for unit in units %}
+            <label class="portal-check-label"><input type="checkbox" name="unit_slugs" value="{{ unit.slug }}"> {{ unit.name }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save program</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='programs' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Program</th>
+            <th>Type</th>
+            <th>Dates</th>
+            <th>Units</th>
+            <th>Enrolled</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for program in programs %}
+          <tr>
+            <td><strong>{{ program.name }}</strong></td>
+            <td>{{ program.type }}</td>
+            <td>{{ program.start_date }} – {{ program.end_date }}</td>
+            <td>{{ program.units|join:", " }}</td>
+            <td>{{ program.enrolled_count }}</td>
+            <td>{{ program.status }}</td>
+            <td class="portal-table-actions">
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='programs' %}?add=1&name={{ program.name|urlencode }}">Edit</a>
+              {% if portal_live and program.program_ids %}
+              <form method="post" action="{% url 'portal_admin_program_delete' %}" style="display:inline;">
+                {% csrf_token %}
+                {% for pid in program.program_ids %}
+                <input type="hidden" name="program_ids" value="{{ pid }}">
+                {% endfor %}
+                <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this program from all units?');">Delete</button>
+              </form>
+              {% else %}
+              <button type="button" class="btn btn-secondary btn-sm portal-btn-danger" disabled>Delete</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

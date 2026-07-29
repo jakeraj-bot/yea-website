@@ -2,34 +2,59 @@
 {% load enrollment_extras %}
 
 {% block step_content %}
-<h2>{{ step_titles|get_item:step }}</h2>
+<div class="apply-tabbed-sections" data-apply-tabs>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="Family sections" role="tablist">
+    <a class="portal-family-tab is-active" href="#family-info" role="tab" data-tab-target="apply-tab-family-info" aria-selected="true">Family info</a>
+    <a class="portal-family-tab" href="#primary-guardian" role="tab" data-tab-target="apply-tab-primary-guardian" aria-selected="false">Primary guardian</a>
+    <a class="portal-family-tab" href="#secondary-guardian" role="tab" data-tab-target="apply-tab-secondary-guardian" aria-selected="false">Secondary guardian</a>
+  </nav>
 
-<h3>Family information</h3>
-<div class="form-grid">
-  <div class="form-group">{% for field in form %}{% if field.name == "family_name" %}{{ field.label_tag }}{{ field }}{{ field.errors }}{% endif %}{% endfor %}</div>
-  <div class="form-group">{% for field in form %}{% if field.name == "primary_email" %}{{ field.label_tag }}{{ field }}{{ field.errors }}{% endif %}{% endfor %}</div>
-  <div class="form-group form-group-full">{% for field in form %}{% if field.name == "home_address" %}{{ field.label_tag }}{{ field }}{{ field.errors }}{% endif %}{% endfor %}</div>
-</div>
+  <div class="apply-tab-panels">
+    <div class="apply-tab-panel is-active" id="apply-tab-family-info" role="tabpanel" data-tab-panel="apply-tab-family-info">
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Family information</h3>
+          <p class="apply-section-desc">Basic contact details for your household.</p>
+        </header>
+        <div class="form-grid">
+          {% apply_field form.family_name %}
+          {% apply_field form.primary_email %}
+          {% apply_field form.home_address full=True %}
+        </div>
+      </section>
+    </div>
 
-<h3>Primary parent/guardian (required)</h3>
-<div class="form-grid">
-  {% for field in form %}
-  {% if "primary_" in field.name %}
-  <div class="form-group">
-    {{ field.label_tag }}{{ field }}{{ field.errors }}
+    <div class="apply-tab-panel" id="apply-tab-primary-guardian" role="tabpanel" data-tab-panel="apply-tab-primary-guardian" hidden>
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Primary parent/guardian {% include "enrollment/includes/required_mark.html" %}</h3>
+          <p class="apply-section-desc">This person is the main contact for your family.</p>
+        </header>
+        <div class="form-grid">
+          {% for field in form %}
+            {% if "primary_" in field.name %}
+              {% apply_field field %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="apply-tab-panel" id="apply-tab-secondary-guardian" role="tabpanel" data-tab-panel="apply-tab-secondary-guardian" hidden>
+      <section class="apply-section apply-section-flat apply-section-optional">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Secondary parent/guardian <span class="optional-mark">Optional</span></h3>
+          <p class="apply-section-desc">Add another parent or guardian if applicable.</p>
+        </header>
+        <div class="form-grid">
+          {% for field in form %}
+            {% if "secondary_" in field.name %}
+              {% apply_field field %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    </div>
   </div>
-  {% endif %}
-  {% endfor %}
-</div>
-
-<h3>Secondary parent/guardian (optional)</h3>
-<div class="form-grid">
-  {% for field in form %}
-  {% if "secondary_" in field.name %}
-  <div class="form-group">
-    {{ field.label_tag }}{{ field }}{{ field.errors }}
-  </div>
-  {% endif %}
-  {% endfor %}
 </div>
 {% endblock %}

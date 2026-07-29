@@ -1,0 +1,30 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policies</a> / Print</p>
+    <h1>Signed policies — {{ print_policy_data.family_name }}</h1>
+  </div>
+</section>
+<section class="page-content portal-policy-report">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Back</a>
+    </div>
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Signed policies — {{ print_policy_data.family_name }} family</h2>
+          <p class="portal-medical-report-meta">{{ print_policy_data.signed_count }} / {{ print_policy_data.total_count }} signatures</p>
+        </div>
+      </header>
+      {% for child in print_policy_data.children %}
+      {% include "portal/staff/includes/policy_print_sections.html" with policies=child.policies child_name=child.child_name %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

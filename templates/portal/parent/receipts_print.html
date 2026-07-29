@@ -1,0 +1,120 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Receipts</a> / Print</p>
+    <h1>{% if payment_just_completed %}Payment complete{% elif print_receipt_ref %}Receipt {{ print_receipt_ref }}{% else %}All receipts{% endif %}</h1>
+    {% if payment_just_completed %}
+    <p class="lead">Your payment was recorded. Save or print this receipt for your records.</p>
+    {% endif %}
+  </div>
+</section>
+<section class="page-content portal-paper-receipt-page">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Back to receipts</a>
+      {% if payment_just_completed %}
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">View billing</a>
+      {% endif %}
+    </div>
+
+    {% if print_receipts %}
+    <div class="portal-paper-receipt-stack">
+      {% for receipt in print_receipts %}
+      <article class="portal-paper-receipt">
+        <header class="portal-paper-receipt-header">
+          <div class="portal-paper-receipt-brand">
+            <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-paper-receipt-logo">
+            <div class="portal-paper-receipt-company">
+              <strong class="portal-paper-receipt-company-name">{{ receipt.company_name|default:receipt.company.name }}</strong>
+              <p>{{ receipt.company_address_line1|default:receipt.company.address_line1 }}</p>
+              <p>{{ receipt.company_city_state_zip|default:receipt.company.city_state_zip }}</p>
+              <p>{{ receipt.company_phone|default:receipt.company.phone }} · {{ receipt.company_website|default:receipt.company.website }}</p>
+            </div>
+          </div>
+          <div class="portal-paper-receipt-location">
+            <span class="portal-paper-receipt-location-label">Program location</span>
+            <strong>{{ receipt.location_name }}</strong>
+            <p>{{ receipt.location_address }}</p>
+          </div>
+        </header>
+
+        <div class="portal-paper-receipt-title-row">
+          <div class="portal-paper-receipt-meta-left">
+            <p><span>Receipt No.</span> <strong>{{ receipt.receipt_no }}</strong></p>
+            <p><span>Date</span> <strong>{{ receipt.date_display }}</strong></p>
+          </div>
+          <h2 class="portal-paper-receipt-title">Payment Receipt</h2>
+        </div>
+
+        <div class="portal-paper-receipt-body">
+          <div class="portal-paper-receipt-main">
+            <p class="portal-paper-receipt-field">
+              <span>Received From</span>
+              <strong>{{ receipt.received_from }}</strong>
+            </p>
+            <p class="portal-paper-receipt-field">
+              <span>Amount in Words</span>
+              <strong>{{ receipt.amount_in_words }}</strong>
+            </p>
+            <p class="portal-paper-receipt-field">
+              <span>For Payment of</span>
+              <strong>{{ receipt.payment_for }}</strong>
+            </p>
+            <p class="portal-paper-receipt-field portal-paper-receipt-program">
+              <span>Program</span>
+              <strong>{{ receipt.program }}</strong>
+            </p>
+            {% if receipt.child %}
+            <p class="portal-paper-receipt-field">
+              <span>Child</span>
+              <strong>{{ receipt.child }}</strong>
+            </p>
+            {% endif %}
+
+            <dl class="portal-paper-receipt-amounts">
+              <div><dt>Amount Due</dt><dd>${{ receipt.amount_due }}</dd></div>
+              <div><dt>Amount Received</dt><dd>${{ receipt.amount_received }}</dd></div>
+              <div><dt>Balance Due</dt><dd>${{ receipt.balance_due }}</dd></div>
+            </dl>
+          </div>
+
+          <aside class="portal-paper-receipt-side">
+            <div class="portal-paper-receipt-amount-box">
+              <span>Amount of</span>
+              <strong>${{ receipt.amount }}</strong>
+            </div>
+
+            <div class="portal-paper-receipt-paid-through">
+              <span>Paid Through</span>
+              <ul>
+                <li><span class="portal-paper-check {% if receipt.paid_through == 'Cash' %}is-checked{% endif %}"></span> Cash</li>
+                <li><span class="portal-paper-check {% if receipt.paid_through == 'Check' %}is-checked{% endif %}"></span> Check</li>
+                <li>
+                  <span class="portal-paper-check {% if receipt.paid_through == 'Card' or receipt.paid_through == 'Other' %}is-checked{% endif %}"></span>
+                  {% if receipt.paid_through == 'Card' %}Card{% else %}Other{% endif %}
+                  {% if receipt.paid_through_detail %}<em>{{ receipt.paid_through_detail }}</em>{% endif %}
+                </li>
+              </ul>
+            </div>
+
+            <div class="portal-paper-receipt-signature">
+              <span>Received By</span>
+              <div class="portal-paper-signature-box">{{ receipt.received_by }}</div>
+            </div>
+          </aside>
+        </div>
+      </article>
+      {% if not forloop.last %}<div class="portal-paper-receipt-divider" aria-hidden="true"></div>{% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card">
+      <p>No receipt found for this reference.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

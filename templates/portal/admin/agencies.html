@@ -1,0 +1,141 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Agencies (4Cs)</h1>
+    <p class="lead">Manage subsidy agencies organization-wide — rates, contracts, and remittance rules.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <p><strong>Agency vs family billing:</strong> Each 4Cs child has two accounts — their regular family account (membership + parent copay) and a separate <em>4Cs agency billing</em> account. Configure agency contracts here; child-level rates and copays can use variable weekly/daily/monthly tiers like EZChildTracking.</p>
+    </div>
+
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='agencies' %}?add=1">+ Add agency</a>
+    </div>
+
+    {% if show_add_agency or editing_agency %}
+    <div class="portal-panel card portal-program-form">
+      <h2>{% if editing_agency %}Edit agency{% else %}New subsidy agency{% endif %}</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_agency_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        {% if editing_agency %}<input type="hidden" name="agency_id" value="{{ editing_agency.pk }}">{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="agency-name">Agency name</label>
+          <input id="agency-name" name="name" type="text" class="portal-input" value="{{ editing_agency.name|default:'' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="agency-contact">Contact name</label>
+          <input id="agency-contact" name="contact_name" type="text" class="portal-input" value="{{ editing_agency.contact_name|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="agency-email">Contact email</label>
+          <input id="agency-email" name="contact_email" type="email" class="portal-input" value="{{ editing_agency.contact_email|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="agency-rate">Default weekly agency rate</label>
+          <input id="agency-rate" name="default_weekly_rate" type="text" class="portal-input" value="{{ editing_agency.default_weekly_rate|default:'110.00' }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Rate tiers (check all that apply — like EZChildTracking)</label>
+          <div class="portal-checkbox-grid">
+            <label class="portal-check-label"><input type="checkbox" name="tier_label" value="Standard weekly" checked> Standard weekly rate</label>
+            <label class="portal-check-label"><input type="checkbox" name="tier_label" value="Per day (4Cs)"> Per day — 4Cs pays daily</label>
+            <label class="portal-check-label"><input type="checkbox" name="tier_label" value="Partial month"> Partial month (e.g. August)</label>
+          </div>
+          <input type="hidden" name="tier_amount" value="110.00">
+          <input type="hidden" name="tier_basis" value="week">
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Units using this agency</label>
+          <div class="portal-checkbox-grid">
+            {% for unit in units %}
+            <label class="portal-check-label"><input type="checkbox" name="unit_ids" value="{{ unit.pk }}" {% if editing_agency and unit.pk in editing_agency.unit_pks %}checked{% endif %}> {{ unit.name }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save agency</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='agencies' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% for agency in agencies %}
+    <article class="card portal-agency-card">
+      <div class="portal-unit-card-header">
+        <h2>{{ agency.name }}</h2>
+        {% if agency.active %}
+        <span class="portal-status portal-status-active">Active</span>
+        {% endif %}
+      </div>
+      <div class="portal-profile-grid">
+        <dl class="portal-dl">
+          <dt>Contact</dt>
+          <dd>{{ agency.contact_name }}<br>{{ agency.contact_email }} · {{ agency.contact_phone }}</dd>
+          <dt>Contract</dt>
+          <dd>{{ agency.contract_start }} – {{ agency.contract_end }}</dd>
+          <dt>Default weekly rate</dt>
+          <dd>${{ agency.default_weekly_rate }} / child</dd>
+        </dl>
+        <dl class="portal-dl">
+          <dt>Children enrolled</dt>
+          <dd><strong>{{ agency.children_enrolled }}</strong> on agency billing</dd>
+          <dt>Units</dt>
+          <dd>{{ agency.units|join:", " }}</dd>
+          <dt>Remittance</dt>
+          <dd>{{ agency.remittance_schedule }}</dd>
+        </dl>
+      </div>
+      <div class="portal-unit-card-actions">
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='agencies' %}?edit={{ agency.pk }}">Edit agency</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='member-billing' %}">Enrolled families</a>
+      </div>
+    </article>
+    {% endfor %}
+
+    <section class="card" style="margin-top: 1.5rem;">
+      <h2>Rate overrides per child</h2>
+      <p class="form-note">Default agency rate applies unless overridden when enrolling a 4Cs child at the unit level. Example: Sofia Martinez $110/wk, Ethan Chen $95/wk.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Agency rate / wk</th>
+              <th>Parent copay / wk</th>
+              <th>Auth #</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in agency_child_rates %}
+            <tr>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.unit }}</td>
+              <td>${{ row.agency_rate }}</td>
+              <td>${{ row.copay }}</td>
+              <td>{{ row.auth_number }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td>Sofia Martinez</td>
+              <td>Martinez</td>
+              <td>School 18</td>
+              <td>$110.00</td>
+              <td>$25.00</td>
+              <td>4CS-2026-0842</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Youth Education Academy{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Youth Education Academy — nonprofit after-school and summer camp in Paterson, NJ and Caldwell University. Ages 2½–13. Enroll today.{% endblock %}">
+  {% if staging_site %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <link rel="canonical" href="{% block canonical_url %}{{ site_url }}{{ request.path }}{% endblock %}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Youth Education Academy">
@@ -18,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
-  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=28">
   {% include "includes/seo_json_ld.html" %}
 </head>
 <body>
@@ -55,6 +56,15 @@
           <li><a class="nav-link nav-partnerships" href="{% url 'partnerships' %}">Partnerships</a></li>
           <li><a class="nav-link nav-donate" href="{% url 'donate' %}">Donate</a></li>
           <li><a class="nav-link nav-contact" href="{% url 'contact' %}">Contact</a></li>
+          <li class="has-dropdown">
+            <a class="nav-link nav-portals" href="{% url 'portal_home' %}">Portals</a>
+            <ul class="dropdown">
+              <li><a href="{% url 'portal_parent_page' page='dashboard' %}">Parent portal</a></li>
+              <li><a href="{% url 'portal_staff_page' page='dashboard' %}">Staff portal</a></li>
+              <li><a href="{% url 'portal_admin_page' page='dashboard' %}">Portal admin</a></li>
+              <li><a href="{% url 'portal_home' %}">All portals…</a></li>
+            </ul>
+          </li>
         </ul>
         <a class="btn btn-primary btn-nav" href="{% url 'apply' %}">Apply</a>
       </nav>
@@ -90,13 +100,15 @@
           <li><a href="mailto:info@yeanj.org">info@yeanj.org</a></li>
           <li><a href="tel:6093578608">609-357-8608</a></li>
           <li><a href="{% url 'contact' %}">Contact form</a></li>
+          <li><a href="{% url 'portal_parent_page' page='dashboard' %}">Parent portal</a></li>
+          <li><a href="{% url 'portal_home' %}">Staff portals</a></li>
           <li><a href="{% url 'donate' %}">Donate</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-bottom">
       <p>&copy; {% now "Y" %} Youth Education Academy. All rights reserved.</p>
-      <p class="footer-staff-link"><a href="/admin/">Staff admin</a></p>
+      <p class="footer-staff-link"><a href="{% url 'portal_home' %}">Staff portals</a> · <a href="/admin/">Website admin</a></p>
     </div>
   </footer>
 

@@ -1,0 +1,152 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Scholarships</h1>
+    <p class="lead">Assign scholarships to children — full rate is charged, then a discount is applied each billing cycle.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if portal_live %}
+    <div class="portal-callout card">
+      <p>Assign scholarships below — discounts post as separate ledger lines on the family billing account.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-callout card">
+      <p><strong>How billing works:</strong> if a child's program rate is <strong>$70/week</strong> and their scholarship amount is <strong>$50/week</strong>, the system charges <strong>$70</strong> and applies a <strong>$20 scholarship discount</strong> — the family pays <strong>$50</strong>. This shows as separate lines on the parent and staff billing ledgers.</p>
+    </div>
+
+    <div class="portal-toolbar">
+      <button type="button" class="btn btn-primary" id="toggle-assign-scholarship">+ Assign scholarship</button>
+    </div>
+
+    <div class="portal-panel card" id="assign-scholarship-panel" hidden>
+      <h2>Assign scholarship to child</h2>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_scholarship_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="sch-child">Child</label>
+          <select id="sch-child" name="child_id" class="portal-select" required>
+            <option value="">Select child…</option>
+            {% for opt in scholarship_child_options %}
+            <option value="{{ opt.pk }}">{{ opt.name }} ({{ opt.family }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sch-fund">Scholarship fund</label>
+          <select id="sch-fund" name="fund_id" class="portal-select" required>
+            {% for fund in scholarship_funds %}
+            <option value="{{ fund.pk }}">{{ fund.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sch-full-rate">Full program rate / week</label>
+          <input id="sch-full-rate" name="full_rate" type="text" class="portal-input" value="70.00">
+        </div>
+        <div class="form-group">
+          <label for="sch-parent-amount">Family pays / week</label>
+          <input id="sch-parent-amount" name="parent_amount" type="text" class="portal-input" value="50.00">
+        </div>
+        <div class="form-group">
+          <label for="sch-start">Effective start</label>
+          <input id="sch-start" name="start_date" type="date" class="portal-input">
+        </div>
+        <div class="form-group">
+          <label for="sch-end">Effective end</label>
+          <input id="sch-end" name="end_date" type="date" class="portal-input">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save assignment</button>
+          <button type="button" class="btn btn-secondary" id="cancel-assign-scholarship">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h2>Active assignments</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Fund</th>
+            <th>Full rate</th>
+            <th>Discount</th>
+            <th>Family pays</th>
+            <th>Dates</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in scholarship_assignments %}
+          <tr>
+            <td><strong>{{ row.child }}</strong></td>
+            <td>{{ row.family }}</td>
+            <td>{{ row.unit }}</td>
+            <td>{{ row.fund }}</td>
+            <td>${{ row.full_rate }}/wk</td>
+            <td class="portal-amount-credit">${{ row.discount }}/wk</td>
+            <td><strong>${{ row.parent_amount }}/wk</strong></td>
+            <td>{{ row.start }} – {{ row.end }}</td>
+            <td>
+              <button type="button" class="btn btn-secondary btn-sm" disabled>Edit</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Scholarship funds</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Fund</th><th>Description</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for fund in scholarship_funds %}
+          <tr>
+            <td><strong>{{ fund.name }}</strong></td>
+            <td>{{ fund.description }}</td>
+            <td>{% if fund.active %}Active{% else %}Inactive{% endif %}</td>
+            <td><button type="button" class="btn btn-secondary btn-sm" disabled>Edit</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note">Scholarship assignments appear on the child's billing account immediately. Membership fees ($20/child) are separate and not discounted unless configured.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var panel = document.getElementById("assign-scholarship-panel");
+  var toggle = document.getElementById("toggle-assign-scholarship");
+  var cancel = document.getElementById("cancel-assign-scholarship");
+  var fullRate = document.getElementById("sch-full-rate");
+  var parentAmount = document.getElementById("sch-parent-amount");
+  var discount = document.getElementById("sch-discount");
+  function parseMoney(val) {
+    var n = parseFloat(String(val || "0").replace(/[^0-9.-]/g, ""));
+    return isNaN(n) ? 0 : n;
+  }
+  function updateDiscount() {
+    if (!fullRate || !parentAmount || !discount) return;
+    var diff = parseMoney(fullRate.value) - parseMoney(parentAmount.value);
+    discount.value = Math.max(0, diff).toFixed(2);
+  }
+  if (toggle && panel) toggle.addEventListener("click", function () { panel.hidden = !panel.hidden; });
+  if (cancel && panel) cancel.addEventListener("click", function () { panel.hidden = true; });
+  if (fullRate) fullRate.addEventListener("input", updateDiscount);
+  if (parentAmount) parentAmount.addEventListener("input", updateDiscount);
+})();
+</script>
+{% endblock %}

@@ -1,3 +1,8 @@
 {% if step != "family" and step != "review" %}
-<p class="form-note form-note-child"><strong>Child {{ child_number }}</strong>{% if child_count > 1 %} — {{ child_count }} child{{ child_count|pluralize }} added so far{% endif %}</p>
+<div class="apply-child-badge">
+  <span class="apply-child-badge-label">Child {{ child_number }}</span>
+  {% if child_count > 1 %}
+  <span class="apply-child-badge-meta">{{ child_count }} children in this application</span>
+  {% endif %}
+</div>
 {% endif %}

@@ -1,0 +1,52 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container"><h1>Reports &amp; PDFs</h1><p class="lead">{{ staff_unit }} — printable forms for daily operations.</p></div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-reports-grid">
+      {% for report in reports %}
+      <article class="card portal-report-card">
+        <h2>{{ report.name }}</h2>
+        <p>{{ report.description }}</p>
+        <p class="form-note">Format: {{ report.format }}</p>
+        {% if report.slug == 'pickup-report' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_pickup_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'medical' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_medical_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'member-policies' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_page' page='member-policies' %}">View &amp; print</a>
+        {% elif report.slug == 'attendance' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'weekly-attendance' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_weekly_attendance_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'attendance-blank-daily' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_blank_daily' %}">Preview &amp; print</a>
+        {% elif report.slug == 'attendance-blank-weekly' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_blank_weekly' %}">Preview &amp; print</a>
+        {% elif report.slug == 'signout-blank' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_signout_blank' %}">Preview &amp; print</a>
+        {% elif report.slug == 'roster' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_program_roster' program_slug='after-school-2026-27' %}">View roster</a>
+        {% elif report.slug == 'application-blank' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'apply' %}">Open enrollment form</a>
+        {% elif report.slug == 'application-filled' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_application_print' app_slug=report.link_arg %}">Preview &amp; print</a>
+        {% elif report.slug == 'balances' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_balances_export' %}">Download CSV</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='families' %}">View families</a>
+        {% elif report.slug == '4cs' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_agency_copay_export' %}">Download CSV</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a>
+        {% elif report.link_name and report.link_arg %}
+        <a class="btn btn-primary btn-sm" href="{% url report.link_name page=report.link_arg %}">Open in portal</a>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-sm" disabled>Generate</button>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

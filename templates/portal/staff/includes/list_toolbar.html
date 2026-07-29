@@ -1,0 +1,20 @@
+<nav class="portal-list-toolbar portal-no-print" data-staff-list-toolbar>
+  <div class="portal-list-toolbar-group">
+    <label>Sort</label>
+    <select class="portal-select portal-list-sort">
+      <option>{{ sort_default|default:"Name A–Z" }}</option>
+    </select>
+  </div>
+  <div class="portal-list-toolbar-group">
+    <label>Filter</label>
+    <select class="portal-select portal-list-filter">
+      <option>All</option>
+    </select>
+  </div>
+  {% if search_placeholder %}
+  <div class="portal-list-toolbar-group portal-list-search-wrap">
+    <label for="{% if search_id %}{{ search_id }}{% else %}list-search{% endif %}">Search</label>
+    <input type="search" class="portal-input portal-search portal-list-search" id="{% if search_id %}{{ search_id }}{% else %}list-search{% endif %}" placeholder="{{ search_placeholder }}" autocomplete="off">
+  </div>
+  {% endif %}
+</nav>

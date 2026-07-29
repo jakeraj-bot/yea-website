@@ -2,45 +2,87 @@
 {% load enrollment_extras %}
 
 {% block step_content %}
-{% include "enrollment/includes/child_heading.html" %}
-<h2>{{ step_titles|get_item:step }}</h2>
+<div class="apply-tabbed-sections" data-apply-tabs>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="Billing sections" role="tablist">
+    <a class="portal-family-tab is-active" href="#billing" role="tab" data-tab-target="apply-tab-billing" aria-selected="true">Billing</a>
+    <a class="portal-family-tab" href="#emergency-contacts" role="tab" data-tab-target="apply-tab-emergency" aria-selected="false">Emergency contacts</a>
+  </nav>
 
-<h3>Billing information for this child</h3>
-<p class="form-note">Payments are made through the EZChildTracking portal. We do not accept cash.</p>
-<div class="form-grid">
-  {% for field in form %}
-  <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
-    {% if field.field.widget.input_type == 'checkbox' %}
-    <label>{{ field }} {{ field.label }}</label>
-    {% else %}
-    {{ field.label_tag }}{{ field }}
-    {% endif %}
-    {{ field.errors }}
-  </div>
-  {% endfor %}
-</div>
+  <div class="apply-tab-panels">
+    <div class="apply-tab-panel is-active" id="apply-tab-billing" role="tabpanel" data-tab-panel="apply-tab-billing">
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Billing & payment</h3>
+          <p class="apply-section-desc">Payments are made through the EZChildTracking portal. We do not accept cash.</p>
+        </header>
+        <div class="form-grid">
+          {% for field in form %}
+            {% if field.name == "four_cs_signature" or field.name == "four_cs_signed_date" %}
+            {% elif field.field.widget.input_type == "checkbox" %}
+              {% apply_field field full=True %}
+            {% elif field.name == "payment_plan_signature" %}
+              {% apply_field field full=True %}
+            {% else %}
+              {% apply_field field %}
+            {% endif %}
+          {% endfor %}
+        </div>
 
-<h3>Emergency contacts</h3>
-<p class="form-note"><strong>Note:</strong> Two (2) emergency contacts are required.</p>
-{{ emergency_formset.management_form }}
-{% for contact_form in emergency_formset %}
-<fieldset class="emergency-contact-block">
-  <legend>Emergency contact #{{ forloop.counter }}</legend>
-  <div class="form-grid">
-    {% for field in contact_form %}
-    <div class="form-group{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
-      {% if field.field.widget.input_type == 'checkbox' %}
-      <label>{{ field }} {{ field.label }}</label>
-      {% else %}
-      {{ field.label_tag }}{{ field }}
-      {% endif %}
-      {{ field.errors }}
+        <div class="apply-fourcs-block">
+          <h4 class="apply-fourcs-title">4Cs families {% include "enrollment/includes/required_mark.html" %}</h4>
+          <ul class="apply-fourcs-list">
+            <li>If you have 4Cs, email your contract to <a href="mailto:ezchildtracking@yeanj.org">ezchildtracking@yeanj.org</a>. The contract will be filled out and sent back to you by email.</li>
+            <li>Before your child can start, they need:
+              <ul>
+                <li>Their name in our 4Cs portal</li>
+                <li>A first-week deposit of $70 (refundable once they are in our portal)</li>
+              </ul>
+            </li>
+            <li>If they are not in the portal and you do not want to pay the deposit, they can start once they are in the portal.</li>
+            <li>All 4Cs copays are determined by 4Cs, not YEA. Once your contract appears in our 4Cs portal we will notify you of your copay. You are then responsible to pay weekly, bi-weekly, or monthly depending on your payment plan.</li>
+          </ul>
+          <div class="form-grid">
+            {% apply_field form.four_cs_signature full=True %}
+            {% apply_field form.four_cs_signed_date %}
+          </div>
+        </div>
+      </section>
     </div>
-    {% endfor %}
+
+    <div class="apply-tab-panel" id="apply-tab-emergency" role="tabpanel" data-tab-panel="apply-tab-emergency" hidden>
+      <section class="apply-section apply-section-flat">
+        <header class="apply-section-header">
+          <h3 class="apply-section-title">Emergency contacts {% include "enrollment/includes/required_mark.html" %}</h3>
+          <p class="apply-section-desc"><strong>Two complete emergency contacts are required.</strong> They must be different people and different from the primary parent/guardian (different name and phone).</p>
+        </header>
+        {{ emergency_formset.management_form }}
+        <div class="apply-contact-list">
+          {% for contact_form in emergency_formset %}
+          <fieldset class="emergency-contact-block{% if forloop.counter <= 2 %} is-required{% endif %}">
+            <legend>
+              Emergency contact #{{ forloop.counter }}
+              {% if forloop.counter <= 2 %}{% include "enrollment/includes/required_mark.html" %}{% else %}<span class="optional-mark">Optional</span>{% endif %}
+            </legend>
+            <div class="form-grid">
+              {% for field in contact_form %}
+                {% if field.field.widget.input_type == "checkbox" %}
+                  {% apply_field field full=True %}
+                {% else %}
+                  <div class="form-group{% if forloop.parentloop.counter <= 2 %} is-required{% endif %}">
+                    <label for="{{ field.id_for_label }}">
+                      {{ field.label }}{% if forloop.parentloop.counter <= 2 %}{% include "enrollment/includes/required_mark.html" %}{% endif %}
+                    </label>
+                    {{ field }}
+                    {{ field.errors }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </fieldset>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
   </div>
-</fieldset>
-{% endfor %}
-{% if emergency_formset.non_form_errors %}
-<div class="form-errors">{{ emergency_formset.non_form_errors }}</div>
-{% endif %}
+</div>
 {% endblock %}

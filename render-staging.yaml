@@ -1,0 +1,41 @@
+# Partner / QA staging — live portals, NOT connected to yeanj.org DNS.
+# Deploy: Render Dashboard → New → Blueprint → point at this file (or duplicate the main service).
+# After first deploy, set SITE_URL to your *.onrender.com URL and run: python manage.py seed_portal
+
+services:
+  - type: web
+    name: yea-website-staging
+    runtime: python
+    plan: starter
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: PORTAL_PREVIEW_MODE
+        value: "False"
+      - key: STAGING_SITE
+        value: "True"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://yea-website-staging.onrender.com"
+      - key: SITE_URL
+        value: "https://yea-website-staging.onrender.com"
+      - key: CONTACT_EMAIL
+        value: "info@yeanj.org"
+      - key: DEFAULT_FROM_EMAIL
+        value: "noreply@yeanj.org"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yea-db-staging
+          property: connectionString
+
+databases:
+  - name: yea-db-staging
+    plan: basic-256mb

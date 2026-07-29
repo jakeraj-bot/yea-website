@@ -1,0 +1,9 @@
+<form method="get" class="portal-toolbar portal-no-print portal-report-date-bar">
+  <div class="portal-report-date-field">
+    <label for="report-date">{% if date_label %}{{ date_label }}{% else %}Date{% endif %}</label>
+    <input type="date" id="report-date" name="date" value="{{ sheet_date_value }}" class="portal-input">
+  </div>
+  <button type="submit" class="btn btn-secondary btn-sm">Update date</button>
+  <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+  <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
+</form>

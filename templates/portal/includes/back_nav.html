@@ -1,0 +1,11 @@
+{% if portal_area != 'public' and portal_back_fallback %}
+<nav class="portal-back-nav portal-no-print" aria-label="Back navigation">
+  <button
+    type="button"
+    class="btn btn-secondary btn-sm portal-back-btn"
+    data-fallback="{{ portal_back_fallback }}"
+  >
+    ← Back
+  </button>
+</nav>
+{% endif %}

@@ -1,32 +1,98 @@
 {% extends "base.html" %}
-{% load enrollment_extras %}
+{% load static enrollment_extras %}
 
-{% block title %}Enrollment application — Youth Education Academy{% endblock %}
+{% block title %}{% if is_editing %}Update application{% elif is_adding_child %}Add another child{% else %}Enrollment application{% endif %} — Youth Education Academy{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>Enrollment application</h1>
-    <p class="lead">Complete all steps online. You can print your submitted application for your records.</p>
+    <h1>{% if is_editing %}Update application{% elif is_adding_child %}Add another child{% else %}Enrollment application{% endif %}</h1>
+    <p class="lead">
+      {% if is_editing %}
+      Staff requested updates for <strong>{{ editing_child_name }}</strong>. Fix the sections below, then resubmit for review.
+      {% elif is_adding_child %}
+      You're adding a new child to your existing family account. Household information is prefilled — complete the steps for your new child.
+      {% else %}
+      Complete all steps online. You can print your submitted application for your records.
+      {% endif %}
+    </p>
   </div>
 </section>
 
-<section class="page-content">
+<section class="page-content apply-page">
   <div class="container apply-container">
+    {% if is_editing and staff_change_message %}
+    <div class="apply-error-banner apply-edit-callout" role="status">
+      <p class="apply-error-banner-title">What staff needs from you</p>
+      <p>{{ staff_change_message|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+    <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
     {% include "enrollment/includes/step_progress.html" %}
 
     <form method="post" class="apply-form" novalidate>
       {% csrf_token %}
-      {% block step_content %}{% endblock %}
 
-      <div class="apply-actions">
-        {% if prev_step %}
-        <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">Back</a>
-        {% endif %}
-        <button type="submit" class="btn btn-primary">Continue</button>
+      <div class="apply-form-card">
+        {% include "enrollment/includes/form_error_summary.html" %}
+        {% include "enrollment/includes/required_legend.html" %}
+
+        <header class="apply-step-header">
+          {% include "enrollment/includes/child_heading.html" %}
+          <h2 class="apply-step-title">{{ step_titles|get_item:step }}</h2>
+          {% block step_lead %}{% endblock %}
+        </header>
+
+        <div class="apply-step-body">
+          {% block step_content %}{% endblock %}
+        </div>
+
+        <footer class="apply-actions">
+          {% if prev_step %}
+          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">Back</a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </footer>
       </div>
     </form>
   </div>
 </section>
-{% block extra_js %}{% endblock %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/apply-tabs.js' %}?v=3"></script>
+<script>
+(function () {
+  if (window.initApplyTabs) window.initApplyTabs();
+
+  var banner = document.getElementById("apply-error-banner");
+  if (banner) banner.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  var firstError = document.querySelector(".apply-form .errorlist");
+  if (!firstError) return;
+
+  var panel = firstError.closest("[data-tab-panel]");
+  if (panel) {
+    var root = panel.closest("[data-apply-tabs]");
+    var panelId = panel.getAttribute("data-tab-panel");
+    if (root && panelId && window.initApplyTabs) {
+      root.querySelectorAll("[data-tab-target]").forEach(function (tab) {
+        var active = tab.getAttribute("data-tab-target") === panelId;
+        tab.classList.toggle("is-active", active);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      root.querySelectorAll("[data-tab-panel]").forEach(function (item) {
+        var active = item.getAttribute("data-tab-panel") === panelId;
+        item.classList.toggle("is-active", active);
+        if (active) item.removeAttribute("hidden");
+        else item.setAttribute("hidden", "");
+      });
+    }
+  }
+
+  var group = firstError.closest(".form-group, .emergency-contact-block, .policy-sign-block");
+  var input = group && group.querySelector("input, select, textarea");
+  if (input) input.focus();
+})();
+</script>
 {% endblock %}

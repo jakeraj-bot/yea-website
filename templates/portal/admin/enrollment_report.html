@@ -1,0 +1,55 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_admin_page' page='reports' %}">Organization reports</a> / Enrollment</p>
+    <h1>Organization enrollment summary</h1>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='reports' %}">Back</a>
+    </div>
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Enrollment summary — all units</h2>
+          <p class="portal-medical-report-meta">{{ dashboard.total_enrolled }} children · {{ dashboard.total_families }} families</p>
+        </div>
+      </header>
+      <h3>By unit</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Unit</th><th>Enrolled</th><th>Capacity</th><th>Open apps</th></tr></thead>
+          <tbody>
+            {% for row in enrollment_by_unit %}
+            <tr><td>{{ row.unit }}</td><td>{{ row.enrolled }}</td><td>{{ row.capacity }}</td><td>{{ row.open_apps }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h3>By billing type (sample families)</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Family</th><th>Unit</th><th>Children</th><th>Billing type</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for family in families %}
+            <tr>
+              <td>{{ family.name }}</td>
+              <td>{{ family.unit|default:"School 18" }}</td>
+              <td>{{ family.children|join:", " }}</td>
+              <td>{{ family.billing_type }}</td>
+              <td>{{ family.status }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

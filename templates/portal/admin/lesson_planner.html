@@ -1,0 +1,116 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>AI lesson planner</h1>
+    <p class="lead">Admin only — type your own topic and goals; AI builds steps, materials, modifications, and visual aids.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if show_dev_hints %}
+    <div class="portal-callout card">
+      <p><strong>How it works.</strong> Pick a starter topic or choose <em>Custom topic</em>, describe what you want kids to do, then click <strong>Generate plan</strong>. In the live build, AI creates step-by-step instructions plus printable diagrams and photo references. This preview shows the layout with a sample generated plan.</p>
+    </div>
+    {% else %}
+    <div class="portal-callout card">
+      <p><strong>How it works.</strong> Pick a starter topic or choose <em>Custom topic</em>, describe what you want kids to do, then click <strong>Generate plan</strong> to build step-by-step instructions plus printable diagrams and photo references.</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-profile-grid">
+      <section class="card">
+        <h2>Build a lesson</h2>
+        <form class="portal-form-grid" action="{% url 'portal_admin_page' page='lesson-planner' %}" method="get">
+          <input type="hidden" name="generate" value="1">
+          <div class="form-group portal-form-full">
+            <label for="lesson-topic">Topic</label>
+            <select id="lesson-topic" name="topic" class="portal-select">
+              {% for topic in lesson_topics %}
+              {% if topic == "__custom__" %}
+              <option value="__custom__" {% if lesson_form.topic == "__custom__" %}selected{% endif %}>Custom topic…</option>
+              {% else %}
+              <option value="{{ topic }}" {% if lesson_form.topic == topic %}selected{% endif %}>{{ topic }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="lesson-custom-topic">Your topic (when custom)</label>
+            <input id="lesson-custom-topic" name="custom_topic" type="text" class="portal-input" placeholder="e.g. Black History Month — local heroes collage" value="{{ lesson_form.custom_topic }}">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="lesson-goals">What should kids do?</label>
+            <textarea id="lesson-goals" name="goals" class="portal-input portal-textarea" rows="3" placeholder="Describe the activity, skills, or outcomes you want — AI turns this into timed steps.">{{ lesson_form.goals }}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="lesson-age">Age / grade band</label>
+            <input id="lesson-age" name="age_group" type="text" class="portal-input" value="{{ lesson_form.age_group }}">
+          </div>
+          <div class="form-group">
+            <label for="lesson-size">Group size</label>
+            <input id="lesson-size" name="group_size" type="number" class="portal-input" value="{{ lesson_form.group_size }}">
+          </div>
+          <div class="form-group">
+            <label for="lesson-duration">Duration</label>
+            <input id="lesson-duration" name="duration" type="text" class="portal-input" value="{{ lesson_form.duration }}">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="lesson-accommodations">Member accommodations (from medical profiles)</label>
+            <textarea id="lesson-accommodations" name="accommodations" class="portal-input portal-textarea" rows="2">{{ lesson_form.accommodations }}</textarea>
+          </div>
+          <div class="portal-form-actions portal-form-full">
+            <button type="submit" class="btn btn-primary">Generate plan</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card portal-profile-full">
+        <h2>{% if lesson_generated %}Generated plan{% else %}Sample plan{% endif %} — {{ lesson_sample.topic }}</h2>
+        {% if lesson_generated %}
+        <p class="portal-generated-badge">Preview generated from your inputs. Live version uses AI + image generation.</p>
+        {% endif %}
+        {% if lesson_sample.goals %}
+        <p class="form-note"><strong>Your goal:</strong> {{ lesson_sample.goals }}</p>
+        {% endif %}
+        <p class="form-note"><strong>Objective:</strong> {{ lesson_sample.plan.objective }}</p>
+        <h3>Materials</h3>
+        <ul class="portal-link-list">
+          {% for item in lesson_sample.plan.materials %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+        <h3>Steps</h3>
+        <ol class="portal-ordered-list">
+          {% for step in lesson_sample.plan.steps %}
+          <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+        <h3>Modifications</h3>
+        <p>{{ lesson_sample.plan.modifications }}</p>
+        {% if lesson_sample.plan.visual_aids %}
+        <h3>Visual aids &amp; pictures</h3>
+        <p class="form-note">When live, AI generates printable images for each card below — setup diagrams, example work, and activity posters.</p>
+        <div class="portal-lesson-visual-grid">
+          {% for visual in lesson_sample.plan.visual_aids %}
+          <figure class="portal-lesson-visual-card">
+            <div class="portal-lesson-visual-preview" aria-hidden="true">
+              <span>🖼</span>
+            </div>
+            <figcaption>
+              <strong>{{ visual.title }}</strong>
+              <span>{{ visual.description }}</span>
+            </figcaption>
+          </figure>
+          {% endfor %}
+        </div>
+        <div class="portal-form-actions" style="margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" disabled>Download PDF packet</button>
+          <button type="button" class="btn btn-secondary" disabled>Print visual aids</button>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

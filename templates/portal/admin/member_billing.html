@@ -1,0 +1,51 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Member billing</h1>
+    <p class="lead">All units — add charges, credits, and payments to any member account.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>
+    </div>
+
+    <div class="portal-callout card">
+      <p>Portal admins can <strong>add charges</strong>, <strong>add credits</strong>, and <strong>delete charges</strong> on member accounts. Unit staff permissions are controlled in <a href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>.</p>
+    </div>
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Primary contact</th>
+            <th>Children</th>
+            <th>Balance</th>
+            <th>Billing type</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for family in families %}
+          <tr>
+            <td><strong>{{ family.name }}</strong></td>
+            <td>{{ family.unit|default:"School 18" }}</td>
+            <td>{{ family.primary_contact }}</td>
+            <td>{{ family.children|join:", " }}</td>
+            <td>${{ family.balance }}</td>
+            <td>{{ family.billing_type }}</td>
+            <td>
+              <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}">Manage billing</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

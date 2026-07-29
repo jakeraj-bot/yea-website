@@ -1,0 +1,40 @@
+<div class="portal-preview-banner portal-live-banner" role="note">
+  <div class="container portal-preview-inner">
+    <span><strong>Partially live mode</strong> — saves below go to your local database. Billing, login, and email/SMS are still demo.</span>
+    <nav class="portal-preview-nav" aria-label="Portal role">
+      <a class="{% if portal_area == 'parent' %}is-active{% endif %}" href="{% url 'portal_parent_page' page='dashboard' %}?pay={{ parent_preview_key|default:'private-pay' }}">Parent</a>
+      <a class="{% if portal_area == 'staff' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='dashboard' %}">Staff (unit)</a>
+      <a class="{% if portal_area == 'admin' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='dashboard' %}">Portal admin</a>
+    </nav>
+  </div>
+  <div class="container portal-preview-sub portal-live-sub">
+    <div class="portal-live-columns">
+      <div>
+        <span class="portal-preview-sub-label">Saves to database:</span>
+        <ul class="portal-live-list">
+          {% for label in live_feature_labels %}
+          <li>{{ label }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <span class="portal-preview-sub-label">Still demo:</span>
+        <ul class="portal-live-list portal-live-list-muted">
+          {% for label in still_demo_labels %}
+          <li>{{ label }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% if portal_area == 'parent' and not parent_authenticated %}
+  <div class="container portal-preview-sub">
+    <span class="portal-preview-sub-label">Payment type:</span>
+    <nav class="portal-preview-nav portal-preview-nav-sub" aria-label="Parent payment type">
+      <a class="{% if parent_preview_key == 'private-pay' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=private-pay">Private pay</a>
+      <a class="{% if parent_preview_key == '4cs' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=4cs">4Cs</a>
+      <a class="{% if parent_preview_key == 'scholarship' %}is-active{% endif %}" href="{% url 'portal_parent_page' page=parent_page_slug|default:'dashboard' %}?pay=scholarship">Scholarship</a>
+    </nav>
+  </div>
+  {% endif %}
+</div>

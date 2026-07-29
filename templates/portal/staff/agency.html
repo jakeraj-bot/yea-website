@@ -1,0 +1,369 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>4Cs / Agency — {{ agency.unit }}</h1>
+    <p class="lead">{{ agency.agency_name }} · enroll 4Cs children, record copays, and post agency remittance in one check for multiple kids.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <p><strong>Two separate accounts per 4Cs family:</strong> the <em>regular family billing</em> account covers membership and parent copays. The <em>4Cs agency billing</em> account tracks what the agency owes and pays (weekly agency rate + remittance). Agency payments never mix with private-pay tuition.</p>
+    </div>
+
+    <div class="portal-toolbar">
+      <button type="button" class="btn btn-primary" id="toggle-add-child">+ Add 4Cs child</button>
+      <button type="button" class="btn btn-primary" id="toggle-remittance">Record agency remittance</button>
+      <button type="button" class="btn btn-secondary" id="toggle-copay">Record parent copay</button>
+    </div>
+
+    <div class="portal-panel card" id="add-child-panel" hidden>
+      <h2>Add 4Cs child</h2>
+      <p class="form-note">Link a child to {{ agency.agency_name }} at this unit. Creates their 4Cs agency billing account (separate from regular family billing).</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_agency_action' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_child">
+        <div class="form-group">
+          <label for="ac-family">Family</label>
+          <select id="ac-family" name="family_slug" class="portal-select" required>
+            <option value="">Select family…</option>
+            {% for fam in agency.family_options %}
+            <option value="{{ fam.slug }}">{{ fam.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ac-child">Child name</label>
+          <input id="ac-child" name="child_name" type="text" class="portal-input" placeholder="Full name" required>
+        </div>
+        <div class="form-group">
+          <label for="ac-dob">Date of birth</label>
+          <input id="ac-dob" name="student_dob" type="date" class="portal-input">
+        </div>
+        <div class="form-group">
+          <label for="ac-grade">Grade</label>
+          <input id="ac-grade" name="grade" type="text" class="portal-input" placeholder="e.g. 2nd">
+        </div>
+        <div class="form-group">
+          <label for="ac-program">Program</label>
+          <select id="ac-program" name="program" class="portal-select">
+            {% for prog in agency.program_options %}
+            <option>{{ prog }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ac-auth">Authorization #</label>
+          <input id="ac-auth" name="auth_number" type="text" class="portal-input" placeholder="4CS-2026-XXXX" required>
+        </div>
+        <div class="form-group">
+          <label for="ac-auth-start">Auth start</label>
+          <input id="ac-auth-start" name="auth_start" type="date" class="portal-input">
+        </div>
+        <div class="form-group">
+          <label for="ac-auth-end">Auth end</label>
+          <input id="ac-auth-end" name="auth_end" type="date" class="portal-input">
+        </div>
+        <div class="form-group">
+          <label for="ac-copay">Weekly parent copay</label>
+          <input id="ac-copay" name="weekly_copay" type="text" class="portal-input" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="ac-rate">Agency rate / week</label>
+          <input id="ac-rate" name="weekly_agency_rate" type="text" class="portal-input" placeholder="0.00">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="ac-note">Notes (optional)</label>
+          <input id="ac-note" name="notes" type="text" class="portal-input" placeholder="Case worker, special instructions…">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not agency.agency_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live agency billing{% else %}Agency billing is not available yet{% endif %}"{% endif %}>Save 4Cs child</button>
+          <button type="button" class="btn btn-secondary" id="cancel-add-child">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="portal-panel card" id="remittance-panel" hidden>
+      <h2>Record agency remittance</h2>
+      <p class="form-note">4Cs often sends <strong>one check for multiple children</strong>. Enter the total payment once, then split it across the children below — each amount posts to that child's separate 4Cs agency billing account.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_agency_action' %}" id="remittance-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="remittance">
+        <div class="form-group">
+          <label for="rem-date">Date received</label>
+          <input id="rem-date" name="date" type="date" class="portal-input" value="{{ today|default:'2026-09-15' }}">
+        </div>
+        <div class="form-group">
+          <label for="rem-ref">Reference / check #</label>
+          <input id="rem-ref" name="reference" type="text" class="portal-input" placeholder="4CS-REM-0915" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="rem-total">Total amount from 4Cs</label>
+          <input id="rem-total" name="total_amount" type="text" class="portal-input portal-input-lg" placeholder="0.00" value="820.00">
+        </div>
+      </form>
+
+      <h3>Split across children</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-remittance-table">
+          <thead>
+            <tr>
+              <th class="portal-col-check"><span class="visually-hidden">Include</span></th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Auth #</th>
+              <th>Agency balance due</th>
+              <th>Amount to apply</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in agency.children %}
+            <tr class="remittance-row" data-balance-due="{{ row.agency_balance }}">
+              <td><input type="checkbox" class="remittance-check" checked aria-label="Include {{ row.child }}"></td>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.auth_number }}</td>
+              <td>${{ row.agency_balance }}</td>
+              <td>
+                <input type="text" form="remittance-form" name="alloc_{{ row.profile_id|default:forloop.counter }}" class="portal-input portal-input-sm remittance-amount" value="{{ row.agency_payment_amount }}" aria-label="Amount for {{ row.child }}">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" class="portal-remittance-total-label"><strong>Allocated total</strong></td>
+              <td><strong id="remittance-allocated">$820.00</strong></td>
+            </tr>
+            <tr>
+              <td colspan="5" class="portal-remittance-total-label">Payment total</td>
+              <td><span id="remittance-payment-total">$820.00</span></td>
+            </tr>
+            <tr id="remittance-mismatch-row" hidden>
+              <td colspan="6" class="portal-remittance-mismatch">Allocated total must match the payment amount before posting.</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="portal-form-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="split-evenly">Split evenly</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="fill-balances">Fill from balances due</button>
+      </div>
+      <div class="portal-form-actions" style="margin-top: 1rem;">
+        <button type="submit" form="remittance-form" class="btn btn-primary"{% if not agency.agency_live %} disabled{% endif %} id="post-remittance">Post to 4Cs agency accounts</button>
+        <button type="button" class="btn btn-secondary" id="cancel-remittance">Cancel</button>
+      </div>
+    </div>
+
+    <div class="portal-panel card" id="copay-panel" hidden>
+      <h2>Record parent copay</h2>
+      <p class="form-note">Parent copays go to the <strong>regular family billing</strong> account (not the 4Cs agency account).</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_agency_action' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="copay">
+        <div class="form-group">
+          <label for="copay-child">4Cs child</label>
+          <select id="copay-child" name="family_slug" class="portal-select">
+            {% for row in agency.children %}
+            <option value="{{ row.family_slug }}" data-child="{{ row.child }}">{{ row.child }} ({{ row.family }})</option>
+            {% endfor %}
+          </select>
+          <input type="hidden" name="child_name" id="copay-child-name" value="{{ agency.children.0.child }}">
+        </div>
+        <div class="form-group">
+          <label for="copay-amount">Amount</label>
+          <input id="copay-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="copay-method">Payment method</label>
+          <select id="copay-method" name="method_label" class="portal-select">
+            <option value="Card (staff entry)">Card (staff entry)</option>
+            <option value="Cash">Cash</option>
+            <option value="Check">Check</option>
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="copay-note">Note (optional)</label>
+          <input id="copay-note" name="note" type="text" class="portal-input" placeholder="Weekly copay">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not agency.agency_live %} disabled{% endif %}>Post to regular billing</button>
+          <button type="button" class="btn btn-secondary" id="cancel-copay">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h2>Enrolled 4Cs children at this unit</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Family</th>
+            <th>Auth #</th>
+            <th>Weekly copay</th>
+            <th>Agency rate/wk</th>
+            <th>Copay balance<br><span class="portal-th-sub">(regular acct)</span></th>
+            <th>Agency balance<br><span class="portal-th-sub">(4Cs acct)</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in agency.children %}
+          <tr>
+            <td><strong>{{ row.child }}</strong><br><span class="portal-table-meta">{{ row.grade }} · {{ row.program }}</span></td>
+            <td>{{ row.family }}</td>
+            <td>{{ row.auth_number }}</td>
+            <td>${{ row.weekly_copay }}</td>
+            <td>${{ row.agency_rate }}</td>
+            <td>${{ row.copay_balance }}</td>
+            <td>${{ row.agency_balance }}</td>
+            <td class="portal-table-actions">
+              <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_agency_billing' family_slug=row.family_slug %}">4Cs account</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=row.family_slug %}">Regular billing</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Agency remittance received</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Date</th><th>Reference</th><th>Total</th><th>Applied to children</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for pay in agency.recent_agency_payments %}
+          <tr>
+            <td>{{ pay.date }}</td>
+            <td>{{ pay.reference }}</td>
+            <td>${{ pay.amount }}</td>
+            <td>
+              <ul class="portal-allocation-list">
+                {% for alloc in pay.allocations %}
+                <li>
+                  <a href="{% url 'portal_staff_agency_billing' family_slug=alloc.family_slug %}">{{ alloc.child }}</a>
+                  <span class="portal-allocation-amount">${{ alloc.amount }}</span>
+                </li>
+                {% endfor %}
+              </ul>
+            </td>
+            <td><button type="button" class="btn btn-secondary btn-sm" disabled>Edit</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note">Agency definitions (rates, contract) are managed in Portal admin. Staff at each unit enroll children and record remittance for their families.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function togglePanel(panelId, show) {
+    var panel = document.getElementById(panelId);
+    if (panel) panel.hidden = !show;
+  }
+  function hideOtherPanels(exceptId) {
+    ["add-child-panel", "remittance-panel", "copay-panel"].forEach(function (id) {
+      if (id !== exceptId) togglePanel(id, false);
+    });
+  }
+  function bindToggle(btnId, panelId) {
+    var btn = document.getElementById(btnId);
+    var panel = document.getElementById(panelId);
+    var cancel = document.getElementById("cancel-" + panelId.replace("-panel", ""));
+    if (btn && panel) {
+      btn.addEventListener("click", function () {
+        var opening = panel.hidden;
+        hideOtherPanels(panelId);
+        panel.hidden = !opening;
+      });
+    }
+    if (cancel && panel) cancel.addEventListener("click", function () { panel.hidden = true; });
+  }
+  bindToggle("toggle-add-child", "add-child-panel");
+  bindToggle("toggle-remittance", "remittance-panel");
+  bindToggle("toggle-copay", "copay-panel");
+
+  function parseMoney(val) {
+    var n = parseFloat(String(val || "0").replace(/[^0-9.-]/g, ""));
+    return isNaN(n) ? 0 : n;
+  }
+  function formatMoney(n) {
+    return "$" + n.toFixed(2);
+  }
+  function updateRemittanceTotals() {
+    var totalInput = document.getElementById("rem-total");
+    var allocatedEl = document.getElementById("remittance-allocated");
+    var paymentEl = document.getElementById("remittance-payment-total");
+    var mismatchRow = document.getElementById("remittance-mismatch-row");
+    if (!totalInput || !allocatedEl) return;
+    var allocated = 0;
+    document.querySelectorAll(".remittance-row").forEach(function (row) {
+      var check = row.querySelector(".remittance-check");
+      var amount = row.querySelector(".remittance-amount");
+      if (check && check.checked && amount) allocated += parseMoney(amount.value);
+    });
+    var paymentTotal = parseMoney(totalInput.value);
+    allocatedEl.textContent = formatMoney(allocated);
+    if (paymentEl) paymentEl.textContent = formatMoney(paymentTotal);
+    if (mismatchRow) mismatchRow.hidden = Math.abs(allocated - paymentTotal) < 0.01;
+  }
+  document.querySelectorAll(".remittance-check, .remittance-amount, #rem-total").forEach(function (el) {
+    el.addEventListener("input", updateRemittanceTotals);
+    el.addEventListener("change", updateRemittanceTotals);
+  });
+  var splitEvenly = document.getElementById("split-evenly");
+  if (splitEvenly) splitEvenly.addEventListener("click", function () {
+    var total = parseMoney(document.getElementById("rem-total").value);
+    var rows = Array.prototype.slice.call(document.querySelectorAll(".remittance-row")).filter(function (row) {
+      var check = row.querySelector(".remittance-check");
+      return check && check.checked;
+    });
+    if (!rows.length) return;
+    var each = total / rows.length;
+    rows.forEach(function (row) {
+      var amount = row.querySelector(".remittance-amount");
+      if (amount) amount.value = each.toFixed(2);
+    });
+    updateRemittanceTotals();
+  });
+  var fillBalances = document.getElementById("fill-balances");
+  if (fillBalances) fillBalances.addEventListener("click", function () {
+    document.querySelectorAll(".remittance-row").forEach(function (row) {
+      var check = row.querySelector(".remittance-check");
+      var amount = row.querySelector(".remittance-amount");
+      if (check && check.checked && amount) amount.value = row.getAttribute("data-balance-due") || "0.00";
+    });
+    updateRemittanceTotals();
+  });
+  updateRemittanceTotals();
+
+  var remForm = document.getElementById("remittance-form");
+  if (remForm) {
+    remForm.addEventListener("submit", function () {
+      document.querySelectorAll(".remittance-row").forEach(function (row) {
+        var check = row.querySelector(".remittance-check");
+        var amount = row.querySelector(".remittance-amount");
+        if (amount && check && !check.checked) amount.disabled = true;
+      });
+    });
+  }
+
+  var copayChild = document.getElementById("copay-child");
+  var copayChildName = document.getElementById("copay-child-name");
+  if (copayChild && copayChildName) {
+    copayChild.addEventListener("change", function () {
+      var opt = copayChild.options[copayChild.selectedIndex];
+      copayChildName.value = opt.getAttribute("data-child") || "";
+    });
+  }
+})();
+</script>
+{% endblock %}

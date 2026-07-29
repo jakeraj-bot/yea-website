@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Member Portals — Youth Education Academy{% endblock %}
+{% block meta_description %}Sign in to the YEA parent portal for billing, applications, and policies. Staff and admin portals for attendance, enrollment, and organization management.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Member portals</h1>
+    <p class="lead">One login area for families and YEA staff — billing, applications, attendance, and more.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="card-grid card-grid-3 portals-role-cards">
+      <article class="card card-accent">
+        <h2>Parent portal</h2>
+        <p>View your family profile, application status, signed policies, running balance, receipts, drop-in bookings, and account settings.</p>
+        <ul class="portals-feature-list">
+          <li>Billing &amp; pay balance</li>
+          <li>Policy library (per child)</li>
+          <li>Drop-in care</li>
+        </ul>
+        <a class="btn btn-primary" href="{% url 'portal_parent_login' %}">Sign in to parent portal</a>
+        <a class="btn btn-secondary" href="{% url 'portal_parent_signup' %}">Create parent account</a>
+        {% if show_dev_hints %}
+        <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='dashboard' %}?pay=private-pay">Design preview (no login)</a>
+        {% endif %}
+      </article>
+
+      <article class="card card-accent orange">
+        <h2>Staff portal</h2>
+        <p>Daily tools for your unit — attendance check-in, applications, family profiles, member policies, 4Cs agency billing, and printable reports.</p>
+        <ul class="portals-feature-list">
+          <li>Attendance roster</li>
+          <li>Family billing &amp; 4Cs</li>
+          <li>Medical &amp; policy reports</li>
+        </ul>
+        {% if portal_live %}
+        <a class="btn btn-primary" href="{% url 'portal_staff_login' %}">Sign in to staff portal</a>
+        {% else %}
+        <a class="btn btn-primary" href="{% url 'portal_staff_page' page='dashboard' %}">Go to staff portal</a>
+        {% endif %}
+      </article>
+
+      <article class="card card-accent blue">
+        <h2>Portal admin</h2>
+        <p>Organization-wide settings — all units, programs, staff access, member billing, scholarships, agencies, fees, and cross-unit reports.</p>
+        <ul class="portals-feature-list">
+          <li>Units &amp; programs</li>
+          <li>Member billing (all units)</li>
+          <li>Scholarships &amp; 4Cs agencies</li>
+        </ul>
+        <a class="btn btn-primary" href="{% url 'portal_admin_page' page='dashboard' %}">Go to portal admin</a>
+      </article>
+    </div>
+
+    <div class="portals-note card">
+      {% if show_dev_hints %}
+      <p><strong>Local design preview.</strong> Parent login is optional while <code>PORTAL_PREVIEW_MODE=True</code>. Set it to <code>False</code> and run <code>python manage.py seed_portal</code> for live portal data.</p>
+      {% else %}
+      <p>Parent and staff portals require sign-in. Portal admin is for organization settings and cross-unit reports.</p>
+      {% endif %}
+      <p class="form-note">Website content editing (pages, photos) is at <a href="/admin/">Django admin</a> — separate from these member portals.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

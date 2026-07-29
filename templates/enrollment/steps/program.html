@@ -1,23 +1,20 @@
 {% extends "enrollment/apply_base.html" %}
 {% load static enrollment_extras %}
 
-{% block step_content %}
-{% include "enrollment/includes/child_heading.html" %}
-<h2>{{ step_titles|get_item:step }}</h2>
-<p class="form-note">Choose the program and location for this child. After-school runs September–June at our Paterson sites. Summer camp is July 6 – August 14, 2026 at Caldwell University.</p>
+{% block step_lead %}
+<p class="apply-step-lead">Choose the program and location for this child. After-school runs September–June at our Paterson sites. Summer camp is July 6 – August 14, 2026 at Caldwell University.</p>
+{% endblock %}
 
-<div class="form-grid">
-  <div class="form-group form-group-full">
-    <span class="form-label">{{ form.program.label }}</span>
-    {{ form.program }}
-    {{ form.program.errors }}
+{% block step_content %}
+<section class="apply-section">
+  <header class="apply-section-header">
+    <h3 class="apply-section-title">Program selection</h3>
+  </header>
+  <div class="form-grid">
+    {% apply_field form.program full=True %}
+    {% apply_field form.program_location full=True %}
   </div>
-  <div class="form-group form-group-full">
-    {{ form.program_location.label_tag }}
-    {{ form.program_location }}
-    {{ form.program_location.errors }}
-  </div>
-</div>
+</section>
 
 <div class="modal" id="dale-ave-bus-modal" hidden role="dialog" aria-modal="true" aria-labelledby="dale-ave-modal-title">
   <div class="modal-backdrop" data-modal-close></div>
@@ -30,5 +27,6 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script src="{% static 'js/apply-program.js' %}?v=2"></script>
 {% endblock %}

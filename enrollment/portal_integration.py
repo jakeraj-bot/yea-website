@@ -1,0 +1,236 @@
+"""Connect enrollment applications to the parent portal."""
+
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
+from django.utils.text import slugify
+
+from portal.models import PortalFamily, PortalParentAccount, PortalUnit
+
+from .models import EnrollmentApplication
+
+LOCATION_TO_UNIT_SLUG = {
+    "school_18": "school-18",
+    "school_26": "school-26",
+    "dale_ave": "school-18",
+    "caldwell": "caldwell",
+}
+
+PAYMENT_TO_BILLING_TYPE = {
+    "private_pay": "Private pay",
+    "4cs": "4Cs",
+    "other": "Other",
+}
+
+STATUS_LABELS = {
+    "under_review": "Under review",
+    "approved": "Approved",
+    "pending_documents": "Pending documents",
+    "enrolled": "Enrolled",
+    "declined": "Declined",
+}
+
+
+def _unit_for_location(program_location):
+    slug = LOCATION_TO_UNIT_SLUG.get(program_location, "school-18")
+    unit = PortalUnit.objects.filter(slug=slug, is_active=True).first()
+    if unit:
+        return unit
+    return PortalUnit.objects.filter(is_active=True).first()
+
+
+def _unique_family_slug(unit, family_name):
+    base = slugify(family_name) or "family"
+    slug = base
+    suffix = 2
+    while PortalFamily.objects.filter(unit=unit, slug=slug).exists():
+        slug = f"{base}-{suffix}"
+        suffix += 1
+    return slug
+
+
+def _billing_type_from_session(session_data, child_data):
+    payment = child_data.get("payment_method") or session_data.get("payment_method")
+    return PAYMENT_TO_BILLING_TYPE.get(payment, "Private pay")
+
+
+def _program_label_from_child(child_data):
+    program = child_data.get("program", "after_school")
+    return dict(EnrollmentApplication.PROGRAM_CHOICES).get(program, "After-school program")
+
+
+@transaction.atomic
+def create_portal_account_from_enrollment(session_data, username, password):
+    family_fields = session_data
+    first_child = (session_data.get("children") or [{}])[0]
+    unit = _unit_for_location(first_child.get("program_location", "school_18"))
+    if not unit:
+        raise RuntimeError("Portal is not set up yet. Run: python manage.py seed_portal")
+
+    primary_name = " ".join(
+        part
+        for part in [family_fields.get("primary_first_name", ""), family_fields.get("primary_last_name", "")]
+        if part
+    ).strip()
+
+    family = PortalFamily.objects.create(
+        unit=unit,
+        slug=_unique_family_slug(unit, family_fields.get("family_name", "Family")),
+        name=family_fields.get("family_name", "Family"),
+        primary_contact=primary_name,
+        balance=0,
+        billing_type=_billing_type_from_session(session_data, first_child),
+        program_label=_program_label_from_child(first_child),
+        status="Pending enrollment",
+    )
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username=username.strip(),
+        email=(family_fields.get("primary_email") or family_fields.get("primary_email_address", "")).strip(),
+        password=password,
+        first_name=family_fields.get("primary_first_name", "").strip(),
+        last_name=family_fields.get("primary_last_name", "").strip(),
+    )
+    PortalParentAccount.objects.create(user=user, family=family)
+    return family, user
+
+
+def link_applications_to_family(applications, family):
+    for app in applications:
+        app.portal_family = family
+        if not app.status:
+            app.status = "under_review"
+        app.save(update_fields=["portal_family", "status"])
+
+
+def link_applications_by_email(family, email):
+    if not email:
+        return 0
+    return EnrollmentApplication.objects.filter(
+        primary_email__iexact=email.strip(),
+        portal_family__isnull=True,
+    ).update(portal_family=family, status="under_review")
+
+
+def application_to_portal_dict(app):
+    contacts = [
+        {
+            "name": f"{contact.first_name} {contact.last_name}".strip(),
+            "phone": contact.phone,
+        }
+        for contact in app.emergency_contacts.all()
+    ]
+    return {
+        "reference": str(app.reference),
+        "status": STATUS_LABELS.get(app.status, "Under review"),
+        "status_slug": (app.status or "under_review").replace("_", "-"),
+        "staff_message": app.staff_message or "",
+        "submitted": timezone.localtime(app.submitted_at).strftime("%B %d, %Y"),
+        "submitted_short": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
+        "child_name": f"{app.student_first_name} {app.student_last_name}",
+        "program": app.get_program_display(),
+        "location": app.get_program_location_display(),
+        "family_name": app.family_name,
+        "student_dob": app.student_dob.strftime("%B %d, %Y"),
+        "grade": app.get_student_grade_display(),
+        "primary_parent": f"{app.primary_first_name} {app.primary_last_name}".strip(),
+        "primary_email": app.primary_email,
+        "primary_phone": app.primary_phone,
+        "home_address": app.home_address,
+        "payment_method": app.get_payment_method_display(),
+        "payment_plan": app.get_payment_plan_display(),
+        "membership_fee_agreed": "Yes" if app.membership_fee_agreed == "yes" else "No",
+        "emergency_contacts": contacts,
+        "policies_signed": app.policy_signatures.count(),
+    }
+
+
+def application_list_item(app):
+    data = application_to_portal_dict(app)
+    return {
+        "reference": data["reference"],
+        "child_name": data["child_name"],
+        "program": data["program"],
+        "location": data["location"].split(" — ")[0],
+        "submitted": data["submitted_short"],
+        "status": data["status"],
+        "status_slug": data["status_slug"],
+        "can_edit": app.status == "pending_documents",
+    }
+
+
+def get_applications_for_family(family):
+    return EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
+
+
+def family_display_label(family):
+    """Disambiguate families that share the same last name."""
+    dupes = PortalFamily.objects.filter(unit=family.unit, name__iexact=family.name).count()
+    if dupes <= 1:
+        return family.name
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if account and account.user.email:
+        return f"{family.name} ({account.user.email})"
+    if family.primary_contact:
+        return f"{family.name} ({family.primary_contact})"
+    return f"{family.name} ({family.slug})"
+
+
+def _application_family_label(app):
+    if app.portal_family_id:
+        return family_display_label(app.portal_family)
+    return app.family_name
+
+
+def staff_application_row(app):
+    return {
+        "slug": str(app.reference),
+        "child": f"{app.student_first_name} {app.student_last_name}".strip(),
+        "family": _application_family_label(app),
+        "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
+        "program": app.get_program_display().replace(" program", ""),
+        "status": STATUS_LABELS.get(app.status, "Under review"),
+        "returning": False,
+    }
+
+
+def staff_application_detail(app):
+    data = application_to_portal_dict(app)
+    data.update(
+        {
+            "returning_member": False,
+            "membership_required": app.membership_fee_agreed == "yes",
+            "internal_note": app.internal_note or "",
+            "staff_message": app.staff_message or "",
+            "can_review": app.status in {"under_review", "pending_documents"},
+            "status_slug": (app.status or "under_review").replace("_", "-"),
+            "reviewed_at": timezone.localtime(app.reviewed_at).strftime("%B %d, %Y at %-I:%M %p")
+            if app.reviewed_at
+            else "",
+        }
+    )
+    return data
+
+
+def applications_for_staff(unit=None):
+    qs = EnrollmentApplication.objects.select_related("portal_family", "portal_family__unit").prefetch_related(
+        "emergency_contacts"
+    )
+    if unit:
+        family_ids = PortalFamily.objects.filter(unit=unit).values_list("id", flat=True)
+        qs = qs.filter(portal_family_id__in=family_ids)
+    return [staff_application_row(app) for app in qs.order_by("-submitted_at")]
+
+
+def get_application_by_reference(reference):
+    try:
+        ref = reference if hasattr(reference, "hex") else __import__("uuid").UUID(str(reference))
+    except (ValueError, AttributeError, TypeError):
+        return None
+    return (
+        EnrollmentApplication.objects.filter(reference=ref)
+        .select_related("portal_family")
+        .prefetch_related("emergency_contacts")
+        .first()
+    )

@@ -1,38 +1,72 @@
 {% extends "enrollment/apply_base.html" %}
-{% load enrollment_extras %}
+{% load static enrollment_extras %}
+
+{% block step_lead %}
+<p class="apply-step-lead">Read each policy, then sign and date for <strong>this child</strong>. Use the section tabs or Next policy to move between policies.</p>
+{% endblock %}
 
 {% block step_content %}
-{% include "enrollment/includes/child_heading.html" %}
-<h2>{{ step_titles|get_item:step }}</h2>
-<p>Read each policy below, then sign and date for <strong>this child</strong>. You can also open any policy in a new tab for easier reading.</p>
-
-{% for policy in policies %}
-<section class="policy-sign-block" id="policy-{{ policy.slug }}">
-  <div class="policy-sign-header">
-    <h3>{{ policy.title }}</h3>
-    <a href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
+<div class="apply-tabbed-sections apply-tabbed-sections-policies" data-apply-tabs id="apply-policies">
+  <div class="apply-policy-toolbar">
+    <button type="button" class="btn btn-secondary btn-sm" id="policy-prev-btn" disabled>Previous policy</button>
+    <button type="button" class="btn btn-primary btn-sm" id="policy-next-btn">Next policy</button>
   </div>
-  <div class="policy-read-box">
-    {% for para in policy.paragraphs %}
-    <p>{{ para }}</p>
+
+  <nav class="portal-family-tabs apply-section-tabs apply-section-tabs-scroll" aria-label="Policy sections" role="tablist">
+    {% for policy in policies %}
+    <a
+      class="portal-family-tab{% if forloop.first %} is-active{% endif %}"
+      href="#policy-{{ policy.slug }}"
+      role="tab"
+      data-tab-target="apply-tab-policy-{{ policy.slug }}"
+      aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+      title="{{ policy.title }}"
+    >{{ forloop.counter }}. {{ policy.title|truncatechars:28 }}</a>
     {% endfor %}
-  </div>
+  </nav>
 
-  <div class="form-grid policy-sign-fields">
-    {% for field in form %}
-    {% if field.name|policy_field:policy.slug %}
-    <div class="form-group{% if field.field.widget.input_type == 'radio' %} form-group-full{% endif %}">
-      {% if field.field.widget.input_type == 'radio' %}
-      <span class="form-label">{{ field.label }}</span>{{ field }}
-      {% else %}
-      {{ field.label_tag }}{{ field }}
-      {% endif %}
-      {{ field.errors }}
+  <div class="apply-tab-panels">
+    {% for policy in policies %}
+    <div
+      class="apply-tab-panel{% if forloop.first %} is-active{% endif %}"
+      id="apply-tab-policy-{{ policy.slug }}"
+      role="tabpanel"
+      data-tab-panel="apply-tab-policy-{{ policy.slug }}"
+      {% if not forloop.first %}hidden{% endif %}
+    >
+      <section class="policy-sign-block apply-section-flat">
+        <div class="policy-sign-header">
+          <h3 class="apply-section-title">{{ policy.title }} {% include "enrollment/includes/required_mark.html" %}</h3>
+          <a class="policy-open-link" href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
+        </div>
+        <div class="policy-read-box">
+          {% for para in policy.paragraphs %}
+          <p>{{ para }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="form-grid policy-sign-fields">
+          {% for field in form %}
+            {% if field.name|policy_field:policy.slug %}
+              {% if field|is_radio_select %}
+                {% apply_field field full=True %}
+              {% elif field.name|slice:"-4:" == "date" %}
+                {% apply_field field %}
+              {% else %}
+                {% apply_field field full=True %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <p class="policy-acknowledgment">{{ policy.acknowledgment }}</p>
+      </section>
     </div>
-    {% endif %}
     {% endfor %}
   </div>
-  <p class="form-note">{{ policy.acknowledgment }}</p>
-</section>
-{% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/apply-policies.js' %}?v=1"></script>
 {% endblock %}

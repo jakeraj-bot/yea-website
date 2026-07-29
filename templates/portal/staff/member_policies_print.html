@@ -1,0 +1,45 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='member-policies' %}">Member policies</a> / Print all</p>
+    <h1>Print all member policies</h1>
+    <p class="lead">{{ print_scope }} · {{ families_data|length }} families · {{ policies_per_child }} policies per child</p>
+  </div>
+</section>
+<section class="page-content portal-policy-report">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='member-policies' %}">Back to list</a>
+    </div>
+
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Member signed policies — {{ print_scope }}</h2>
+          <p class="portal-medical-report-meta">
+            {{ families_data|length }} families · {{ policies_per_child }} policies required per child
+          </p>
+        </div>
+      </header>
+
+      {% for family in families_data %}
+      <section class="portal-family-policy-print-section">
+        <h2 class="portal-family-policy-print-title">{{ family.family_name }} family</h2>
+        <p class="portal-medical-report-meta">
+          Unit: {{ family.unit }} · {{ family.signed_count }} / {{ family.total_count }} signatures
+          ({{ family.child_count }} child{{ family.child_count|pluralize:"ren" }} × {{ family.policies_per_child }} policies)
+        </p>
+        {% for child in family.children %}
+        {% include "portal/staff/includes/policy_print_sections.html" with policies=child.policies child_name=child.child_name %}
+        {% endfor %}
+      </section>
+      {% if not forloop.last %}<hr class="portal-policy-print-divider">{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

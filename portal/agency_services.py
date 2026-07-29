@@ -1,0 +1,251 @@
+"""4Cs / agency billing services for staff portal."""
+
+from decimal import Decimal, InvalidOperation
+
+from django.db import transaction
+from django.utils import timezone
+
+from .demo_data import AGENCY_BILLING, AGENCY_UNIT_DATA
+from .models import (
+    PortalAgencyLedgerEntry,
+    PortalAgencyProfile,
+    PortalAgencyRemittance,
+    PortalAgencyRemittanceAllocation,
+    PortalChild,
+    PortalFamily,
+    PortalProgram,
+    PortalUnit,
+)
+
+
+def _parse_amount(value):
+    try:
+        amount = Decimal(str(value).replace(",", "").strip())
+    except (InvalidOperation, TypeError):
+        raise ValueError("Enter a valid dollar amount.")
+    return amount.quantize(Decimal("0.01"))
+
+
+def get_agency_billing_live(family_slug, unit=None):
+    demo = AGENCY_BILLING.get(family_slug)
+    profile = (
+        PortalAgencyProfile.objects.filter(family__slug=family_slug)
+        .select_related("child", "family")
+        .first()
+    )
+    if not profile:
+        return demo
+    ledger = [
+        {
+            "date": entry.date.isoformat(),
+            "type": entry.entry_type,
+            "description": entry.description,
+            "amount": f"{entry.amount:.2f}" if entry.entry_type == "charge" else f"-{abs(entry.amount):.2f}",
+        }
+        for entry in profile.ledger_entries.all()
+    ]
+    if not ledger and demo:
+        ledger = demo.get("ledger", [])
+    return {
+        "family_name": profile.family.name,
+        "slug": profile.family.slug,
+        "child_name": profile.child.name,
+        "auth_number": profile.auth_number,
+        "agency_name": "Passaic County 4Cs",
+        "running_balance": f"{profile.agency_balance:.2f}",
+        "weekly_agency_rate": f"{profile.weekly_agency_rate:.2f}",
+        "ledger": ledger,
+    }
+
+
+def agency_page_data(unit):
+    """Build agency page context — live profiles merged with demo fallback."""
+    data = dict(AGENCY_UNIT_DATA)
+    data["unit"] = unit.name if unit else data.get("unit", "School 18")
+    if not unit:
+        return data
+
+    profiles = (
+        PortalAgencyProfile.objects.filter(unit=unit)
+        .select_related("child", "family")
+        .order_by("child__name")
+    )
+    if profiles.exists():
+        children = []
+        for profile in profiles:
+            children.append(
+                {
+                    "slug": profile.child.name.lower().replace(" ", "-"),
+                    "child": profile.child.name,
+                    "family": profile.family.name,
+                    "family_slug": profile.family.slug,
+                    "profile_id": profile.pk,
+                    "dob": "",
+                    "grade": profile.child.grade,
+                    "program": profile.family.program_label or "After-School 2026–27",
+                    "auth_number": profile.auth_number,
+                    "auth_start": profile.auth_start.isoformat() if profile.auth_start else "",
+                    "auth_end": profile.auth_end.isoformat() if profile.auth_end else "",
+                    "weekly_copay": f"{profile.weekly_copay:.2f}",
+                    "agency_rate": f"{profile.weekly_agency_rate:.2f}",
+                    "copay_balance": f"{profile.family.balance:.2f}",
+                    "agency_balance": f"{profile.agency_balance:.2f}",
+                    "last_agency_payment": "",
+                    "agency_payment_amount": f"{profile.weekly_agency_rate:.2f}",
+                }
+            )
+        data["children"] = children
+
+    families = PortalFamily.objects.filter(unit=unit).order_by("name")
+    data["family_options"] = [
+        {
+            "slug": family.slug,
+            "name": family.name,
+            "children": [c.name for c in family.children.filter(is_active=True)],
+        }
+        for family in families
+    ]
+
+    program = PortalProgram.objects.filter(unit=unit, is_active=True).first()
+    if program:
+        data["program_options"] = [program.name]
+
+    remittances = PortalAgencyRemittance.objects.filter(unit=unit).prefetch_related(
+        "allocations__profile__child", "allocations__profile__family"
+    )[:10]
+    if remittances.exists():
+        data["recent_agency_payments"] = [
+            {
+                "date": rem.date.isoformat(),
+                "reference": rem.reference,
+                "amount": f"{rem.total_amount:.2f}",
+                "children": ", ".join(
+                    {a.profile.family.name for a in rem.allocations.all()}
+                ),
+                "allocations": [
+                    {
+                        "child": alloc.profile.child.name,
+                        "family_slug": alloc.profile.family.slug,
+                        "amount": f"{alloc.amount:.2f}",
+                    }
+                    for alloc in rem.allocations.all()
+                ],
+            }
+            for rem in remittances
+        ]
+
+    data["agency_live"] = _portal_data_live()
+    return data
+
+
+def _portal_data_live():
+    from .attendance_service import ensure_portal_seeded, portal_is_live
+
+    return portal_is_live() and ensure_portal_seeded()
+
+
+@transaction.atomic
+def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_copay, weekly_rate, program_label="", notes="", auth_start=None, auth_end=None):
+    family = PortalFamily.objects.filter(unit=unit, slug=family_slug).first()
+    if not family:
+        raise ValueError("Family not found.")
+
+    family.billing_type = "4Cs"
+    if program_label:
+        family.program_label = program_label
+    family.save(update_fields=["billing_type", "program_label"])
+
+    child, _ = PortalChild.objects.get_or_create(
+        family=family,
+        name=child_name.strip(),
+        defaults={"grade": grade, "is_active": True},
+    )
+    if grade:
+        child.grade = grade
+        child.save(update_fields=["grade"])
+
+    profile, created = PortalAgencyProfile.objects.update_or_create(
+        child=child,
+        defaults={
+            "unit": unit,
+            "family": family,
+            "auth_number": auth_number.strip(),
+            "auth_start": auth_start,
+            "auth_end": auth_end,
+            "weekly_copay": _parse_amount(weekly_copay or "0"),
+            "weekly_agency_rate": _parse_amount(weekly_rate or "0"),
+            "notes": notes,
+        },
+    )
+    return profile
+
+
+@transaction.atomic
+def post_agency_remittance(unit, remittance_date, reference, total_amount, allocations):
+    total = _parse_amount(total_amount)
+    allocated = sum(_parse_amount(item["amount"]) for item in allocations)
+    if allocated != total:
+        raise ValueError("Allocated total must match the payment amount.")
+
+    remittance = PortalAgencyRemittance.objects.create(
+        unit=unit,
+        date=remittance_date,
+        reference=reference.strip(),
+        total_amount=total,
+    )
+    for item in allocations:
+        profile = PortalAgencyProfile.objects.filter(pk=item["profile_id"], unit=unit).first()
+        if not profile:
+            continue
+        amount = _parse_amount(item["amount"])
+        PortalAgencyRemittanceAllocation.objects.create(
+            remittance=remittance,
+            profile=profile,
+            amount=amount,
+        )
+        PortalAgencyLedgerEntry.objects.create(
+            profile=profile,
+            date=remittance_date,
+            entry_type="payment",
+            description=f"Agency remittance {reference}",
+            amount=-amount,
+            is_manual=True,
+        )
+        profile.agency_balance = max(Decimal("0"), profile.agency_balance - amount)
+        profile.save(update_fields=["agency_balance"])
+    return remittance
+
+
+def copay_report_rows(unit):
+    rows = []
+    for profile in PortalAgencyProfile.objects.filter(unit=unit).select_related("child", "family"):
+        rows.append(
+            {
+                "child": profile.child.name,
+                "family": profile.family.name,
+                "family_slug": profile.family.slug,
+                "weekly_copay": f"{profile.weekly_copay:.2f}",
+                "copay_balance": f"{profile.family.balance:.2f}",
+                "agency_balance": f"{profile.agency_balance:.2f}",
+                "auth_number": profile.auth_number,
+            }
+        )
+    return rows
+
+
+def balances_report_rows(unit):
+    rows = []
+    for family in PortalFamily.objects.filter(unit=unit).order_by("name"):
+        if family.balance <= 0:
+            continue
+        rows.append(
+            {
+                "family": family.name,
+                "slug": family.slug,
+                "contact": family.primary_contact,
+                "billing_type": family.billing_type,
+                "balance": f"{family.balance:.2f}",
+                "program": family.program_label,
+            }
+        )
+    return rows

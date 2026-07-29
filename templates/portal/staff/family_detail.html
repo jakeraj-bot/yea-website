@@ -1,0 +1,69 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}</p>
+    <h1>{{ profile.family_name }} family</h1>
+    <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/staff/includes/family_tabs.html" %}
+
+    <div class="portal-profile-grid">
+      <section class="card">
+        <h2>Household</h2>
+        <dl class="portal-dl">
+          <dt>Address</dt><dd>{{ profile.home_address }}</dd>
+          {% if family_meta.billing_type %}<dt>Billing type</dt><dd>{{ family_meta.billing_type }}</dd>{% endif %}
+          {% if family_meta.balance %}<dt>Balance</dt><dd>${{ family_meta.balance }}</dd>{% endif %}
+        </dl>
+      </section>
+      <section class="card">
+        <h2>Primary guardian</h2>
+        <dl class="portal-dl">
+          <dt>Name</dt><dd>{{ profile.primary.name }}</dd>
+          {% if profile.primary.email %}<dt>Email</dt><dd>{{ profile.primary.email }}</dd>{% endif %}
+          {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone }}</dd>{% endif %}
+        </dl>
+      </section>
+      {% if profile.secondary.name %}
+      <section class="card">
+        <h2>Secondary guardian</h2>
+        <dl class="portal-dl">
+          <dt>Name</dt><dd>{{ profile.secondary.name }}</dd>
+          <dt>Email</dt><dd>{{ profile.secondary.email }}</dd>
+          <dt>Phone</dt><dd>{{ profile.secondary.phone }}</dd>
+        </dl>
+      </section>
+      {% endif %}
+
+      {% for child in profile.children %}
+      {% child_medical_card child.name child=child %}
+      {% endfor %}
+
+      <section class="card portal-profile-full">
+        <h2>Emergency contacts</h2>
+        {% if profile.emergency_contacts %}
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th></tr></thead>
+            <tbody>
+              {% for c in profile.emergency_contacts %}
+              <tr><td>{{ c.name }}</td><td>{{ c.phone }}</td><td>{{ c.relationship }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="form-note">No emergency contacts on file.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    {% include "portal/staff/includes/medical_legend.html" %}
+  </div>
+</section>
+{% endblock %}

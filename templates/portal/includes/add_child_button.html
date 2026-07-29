@@ -1,0 +1,3 @@
+{% if parent_authenticated %}
+<a class="btn btn-primary{% if button_class %} {{ button_class }}{% endif %}" href="{% url 'enrollment_apply_add_child' %}">+ Add another child</a>
+{% endif %}
