@@ -126,6 +126,7 @@ def get_staff_users_live():
             {
                 "id": account.pk,
                 "user_id": user.pk,
+                "username": user.username,
                 "name": account.display_name or user.get_full_name() or user.username,
                 "email": user.email,
                 "role": account.role,
@@ -264,7 +265,9 @@ def save_billing_permissions(staff_id, can_add_charge, can_delete_charge, can_ad
     return account
 
 
-def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_units_access=False):
+def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_units_access=False, password=None):
+    import secrets
+
     from .admin_config import ensure_admin_config_seeded
     from .models import PortalBillingDefaultRule
 
@@ -291,8 +294,11 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
     if not created and not user.email:
         user.email = email
         user.save(update_fields=["email"])
-    temp_password = "ChangeMe2026!"
+    temp_password = (password or "").strip() or secrets.token_urlsafe(10)
     if created:
+        user.set_password(temp_password)
+        user.save()
+    elif password:
         user.set_password(temp_password)
         user.save()
     default_rule = PortalBillingDefaultRule.objects.filter(role_name=role).first()
@@ -316,7 +322,7 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
         account.accessible_units.set(PortalUnit.objects.filter(slug__in=unit_slugs))
     elif unit_slug:
         account.accessible_units.set(PortalUnit.objects.filter(slug=unit_slug))
-    return account, created, temp_password if created else None
+    return account, created, temp_password if created or password else None, username
 
 
 def update_staff_user(staff_id, data):
@@ -351,8 +357,14 @@ def update_staff_user(staff_id, data):
         if unit:
             account.unit = unit
             account.accessible_units.set([unit])
+    new_password = (data.get("new_password") or "").strip()
+    if new_password:
+        if len(new_password) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        account.user.set_password(new_password)
+        account.user.save()
     account.save()
-    return account
+    return account, new_password if new_password else None
 
 
 def approve_profile_change(change_id, reviewer="Admin", approve=True, notes=""):

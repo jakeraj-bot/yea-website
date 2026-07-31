@@ -316,19 +316,31 @@ def admin_staff_invite(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     role = request.POST.get("role", "Unit staff")
+    password = request.POST.get("password", "").strip()
+    if password and len(password) < 8:
+        messages.error(request, "Password must be at least 8 characters.")
+        return redirect("portal_admin_page", page="staff")
     try:
-        account, created, temp_password = invite_staff_user(
+        account, created, temp_password, username = invite_staff_user(
             request.POST.get("name", "").strip(),
             request.POST.get("email", "").strip(),
             role,
             unit_slug=request.POST.get("unit_slug") or None,
             unit_slugs=request.POST.getlist("unit_slugs"),
             all_units_access=request.POST.get("all_units_access") == "on" or role == "Portal admin",
+            password=password or None,
         )
         if created and temp_password:
             messages.success(
                 request,
-                f"Staff portal account created for {account.display_name}. Temporary password: {temp_password}",
+                f"Staff account created for {account.display_name}. "
+                f"Sign-in username: {username} · Password: {temp_password} "
+                f"(share privately — staff sign in at /portal/staff/login/)",
+            )
+        elif temp_password:
+            messages.success(
+                request,
+                f"Updated {account.display_name} and set a new password.",
             )
         else:
             messages.success(request, f"Staff account updated for {account.display_name}.")
@@ -345,8 +357,11 @@ def admin_staff_edit(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     try:
-        account = update_staff_user(request.POST.get("staff_id"), request.POST)
-        messages.success(request, f"Updated {account.display_name}.")
+        account, new_password = update_staff_user(request.POST.get("staff_id"), request.POST)
+        if new_password:
+            messages.success(request, f"Updated {account.display_name} and set a new password.")
+        else:
+            messages.success(request, f"Updated {account.display_name}.")
     except Exception as exc:
         messages.error(request, str(exc))
     edit_id = request.POST.get("staff_id")

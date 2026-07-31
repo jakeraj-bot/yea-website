@@ -29,6 +29,12 @@
         <div class="form-group">
           <label for="staff-email">Email</label>
           <input id="staff-email" name="email" type="email" class="portal-input" required>
+          <p class="form-note">Login username is generated from the email (part before @).</p>
+        </div>
+        <div class="form-group">
+          <label for="staff-password">Password</label>
+          <input id="staff-password" name="password" type="text" class="portal-input" autocomplete="new-password" placeholder="At least 8 characters">
+          <p class="form-note">Leave blank to auto-generate — the password is shown once after you create the account.</p>
         </div>
         <div class="form-group">
           <label for="staff-role">Role</label>
@@ -92,6 +98,10 @@
             <option value="0" {% if editing_staff.status != 'Active' %}selected{% endif %}>Inactive</option>
           </select>
         </div>
+        <div class="form-group portal-form-full">
+          <label for="staff-new-password">Set new password</label>
+          <input id="staff-new-password" name="new_password" type="text" class="portal-input" autocomplete="new-password" placeholder="Leave blank to keep current password">
+        </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Save changes</button>
           <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
@@ -120,6 +130,7 @@
         <thead>
           <tr>
             <th>Name</th>
+            <th>Username</th>
             <th>Email</th>
             <th>Role</th>
             <th>Units</th>
@@ -132,6 +143,7 @@
           {% for user in portal_staff_users %}
           <tr>
             <td><strong>{{ user.name }}</strong></td>
+            <td><code>{{ user.username }}</code></td>
             <td>{{ user.email }}</td>
             <td>{{ user.role }}</td>
             <td>{{ user.units }}</td>
