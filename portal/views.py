@@ -851,9 +851,9 @@ def staff_page(request, page):
         context["incident_severity_options"] = INCIDENT_SEVERITY_OPTIONS
         context["show_log_incident"] = request.GET.get("log") == "1"
     if page == "families":
-        if portal_is_live() and ensure_portal_seeded():
+        if portal_is_live():
             unit = _staff_unit(request)
-            context["families"] = families_for_staff(unit) if unit else FAMILIES
+            context["families"] = families_for_staff(unit) if unit else []
         else:
             context["families"] = FAMILIES
     if page == "member-policies":
@@ -887,9 +887,9 @@ def staff_page(request, page):
             context["show_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1"
             context["show_bulk_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1"
     if page == "applications":
-        if portal_is_live() and ensure_portal_seeded():
+        if portal_is_live():
             unit = _staff_unit(request)
-            context["applications"] = applications_for_staff(unit) if unit else STAFF_APPLICATIONS
+            context["applications"] = applications_for_staff(unit) if unit else []
         else:
             context["applications"] = STAFF_APPLICATIONS
     if page == "agency":
@@ -907,7 +907,26 @@ def staff_page(request, page):
     if page == "dashboard":
         unit = _staff_unit(request)
         program = get_active_program(unit) if unit else None
-        if unit and program:
+        if portal_is_live():
+            from .staff_services import build_dashboard_live
+
+            if unit and program:
+                context.update(build_dashboard_live(unit, program))
+            else:
+                today = date.today()
+                context["attendance"] = {
+                    "date_display": today.strftime("%A, %B %d, %Y"),
+                    "summary": {
+                        "present": 0,
+                        "not_arrived": 0,
+                        "absent": 0,
+                        "enrolled": 0,
+                        "checked_out": 0,
+                    },
+                }
+                context["application_count"] = 0
+                context["alerts"] = []
+        elif unit and program:
             from .staff_services import build_dashboard_live
 
             context.update(build_dashboard_live(unit, program))

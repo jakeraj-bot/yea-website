@@ -32,7 +32,7 @@ from .pickup_services import pickup_report_data, pickup_report_programs
 def get_programs_for_unit(unit):
     programs = PortalProgram.objects.filter(unit=unit, is_active=True).order_by("name")
     if not programs.exists():
-        return STAFF_PROGRAMS_SCHOOL_18
+        return []
     rows = []
     for program in programs:
         enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
@@ -45,7 +45,7 @@ def get_programs_for_unit(unit):
                 "program_id": program.pk,
             }
         )
-    return rows or STAFF_PROGRAMS_SCHOOL_18
+    return rows
 
 
 def get_program_roster(unit, program_name=None):
@@ -55,7 +55,7 @@ def get_program_roster(unit, program_name=None):
         .order_by("name")
     )
     if not children.exists():
-        return PROGRAM_ROSTER
+        return []
     roster = []
     for child in children:
         roster.append(
@@ -73,7 +73,7 @@ def get_program_roster(unit, program_name=None):
 def get_member_summaries_for_unit(unit):
     families = list(PortalFamily.objects.filter(unit=unit).order_by("name"))
     if not families:
-        return get_member_policy_summaries(FAMILIES)
+        return []
     summaries = []
     for family in families:
         policy_data = get_parent_policy_data_live(family)
@@ -90,7 +90,7 @@ def get_member_summaries_for_unit(unit):
                 "label": family.primary_contact or family.name,
             }
         )
-    return summaries or get_member_policy_summaries(FAMILIES)
+    return summaries
 
 
 def get_family_policies_for_staff(family_slug):
@@ -282,10 +282,19 @@ def build_dashboard_live(unit, program):
             }
         )
     if not alerts:
-        alerts = DASHBOARD_ALERTS[:2]
+        pass
 
     return {
-        "attendance": session or {"date_display": today.strftime("%A, %B %d, %Y"), "summary": {}},
+        "attendance": session or {
+            "date_display": today.strftime("%A, %B %d, %Y"),
+            "summary": {
+                "present": 0,
+                "not_arrived": 0,
+                "absent": 0,
+                "enrolled": 0,
+                "checked_out": 0,
+            },
+        },
         "application_count": len(open_apps),
         "alerts": alerts,
     }
