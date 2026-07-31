@@ -43,6 +43,7 @@
       </form>
     </ul>
 
+    {% if checkin_units %}
     <section class="card" style="margin-top: 1.5rem;">
       <h2>Per-unit override (future)</h2>
       <p class="form-note">Some locations may enable barcode check-in before others. Override toggles will appear here when multi-mode rollout begins.</p>
@@ -57,34 +58,19 @@
             </tr>
           </thead>
           <tbody>
+            {% for unit in checkin_units %}
             <tr>
-              <td>School 18</td>
+              <td>{{ unit.name }}</td>
               <td><span class="portal-mode-pill is-on">On</span></td>
               <td><span class="portal-mode-pill is-off">Off</span></td>
               <td><span class="portal-mode-pill is-off">Off</span></td>
             </tr>
-            <tr>
-              <td>School 26</td>
-              <td><span class="portal-mode-pill is-on">On</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-            </tr>
-            <tr>
-              <td>Dale Ave</td>
-              <td><span class="portal-mode-pill is-on">On</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-            </tr>
-            <tr>
-              <td>Caldwell University</td>
-              <td><span class="portal-mode-pill is-on">On</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-              <td><span class="portal-mode-pill is-off">Off</span></td>
-            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
     </section>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

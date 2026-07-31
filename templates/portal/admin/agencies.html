@@ -95,11 +95,15 @@
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='member-billing' %}">Enrolled families</a>
       </div>
     </article>
+    {% empty %}
+    <div class="card portal-callout-muted">
+      <p class="form-note">No agencies yet. Click <strong>+ Add agency</strong> to set up your first 4Cs contract.</p>
+    </div>
     {% endfor %}
 
     <section class="card" style="margin-top: 1.5rem;">
       <h2>Rate overrides per child</h2>
-      <p class="form-note">Default agency rate applies unless overridden when enrolling a 4Cs child at the unit level. Example: Sofia Martinez $110/wk, Ethan Chen $95/wk.</p>
+      <p class="form-note">Default agency rate applies unless overridden when enrolling a 4Cs child at the unit level.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
@@ -124,12 +128,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td>Sofia Martinez</td>
-              <td>Martinez</td>
-              <td>School 18</td>
-              <td>$110.00</td>
-              <td>$25.00</td>
-              <td>4CS-2026-0842</td>
+              <td colspan="6" class="form-note">No child rate overrides yet.</td>
             </tr>
             {% endfor %}
           </tbody>

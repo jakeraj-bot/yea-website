@@ -2517,14 +2517,17 @@ LESSON_PLANNER_SAMPLE = {
             {
                 "title": "Welcome circle layout",
                 "description": "Top-down diagram of children seated in a circle with a facilitator.",
+                "image": "images/lesson-visual-overview.svg",
             },
             {
                 "title": "Name tag example",
                 "description": "Sample name tag with first name large and a fun icon sticker.",
+                "image": "images/lesson-visual-materials.svg",
             },
             {
                 "title": "Story ball pass",
                 "description": "Illustration of soft ball moving child-to-child during the group story.",
+                "image": "images/lesson-visual-example.svg",
             },
         ],
     },
@@ -2668,14 +2671,17 @@ def build_lesson_plan_preview(topic, goals, age_group, group_size, duration, acc
         {
             "title": f"Activity overview — {topic}",
             "description": f"Illustrated poster showing the main steps and what success looks like for {age_group}.",
+            "image": "images/lesson-visual-overview.svg",
         },
         {
             "title": "Materials setup photo",
             "description": "Labeled photo of tables arranged with all materials ready before children arrive.",
+            "image": "images/lesson-visual-materials.svg",
         },
         {
             "title": "Example finished work",
             "description": f"Sample outcome so staff and children know the goal — tailored to: {goals or topic}.",
+            "image": "images/lesson-visual-example.svg",
         },
     ]
     if accommodations.strip():

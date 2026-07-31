@@ -255,39 +255,22 @@ def get_programs_admin():
     for program in PortalProgram.objects.select_related("unit").order_by("name", "unit__name"):
         key = program.name
         if key not in grouped:
-            demo = next((p for p in PROGRAMS if p["name"] == program.name), {})
             grouped[key] = {
                 "pk": program.pk,
                 "name": program.name,
                 "type": (program.program_type or "after_school").replace("_", " ").title(),
-                "start_date": program.start_date.isoformat() if program.start_date else demo.get("start_date", ""),
-                "end_date": program.end_date.isoformat() if program.end_date else demo.get("end_date", ""),
+                "start_date": program.start_date.isoformat() if program.start_date else "",
+                "end_date": program.end_date.isoformat() if program.end_date else "",
                 "units": [],
                 "unit_pks": [],
                 "enrolled_count": 0,
-                "status": program.status_label or demo.get("status", "Active"),
+                "status": program.status_label or "Active",
                 "program_ids": [],
             }
         grouped[key]["units"].append(program.unit.name)
         grouped[key]["unit_pks"].append(program.unit.pk)
         grouped[key]["program_ids"].append(program.pk)
         grouped[key]["enrolled_count"] += program.unit.families.filter(children__is_active=True).count()
-    if not grouped:
-        return [
-            {
-                "pk": p.get("id"),
-                "name": p["name"],
-                "type": p.get("type", ""),
-                "start_date": p.get("start_date", ""),
-                "end_date": p.get("end_date", ""),
-                "units": p.get("units", []),
-                "unit_pks": [],
-                "enrolled_count": p.get("enrolled_count", 0),
-                "status": p.get("status", ""),
-                "program_ids": [],
-            }
-            for p in PROGRAMS
-        ]
     return list(grouped.values())
 
 
@@ -365,9 +348,7 @@ def get_agencies_admin():
                 "active": agency.is_active,
             }
         )
-    return rows or [
-        {**a, "pk": None, "slug": a.get("slug", ""), "unit_pks": [], "rate_tiers": []} for a in ADMIN_AGENCIES
-    ]
+    return rows
 
 
 def get_agency_child_rates():

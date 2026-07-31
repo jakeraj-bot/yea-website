@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Activity overview placeholder">
+  <rect width="320" height="240" fill="#e3f2fd"/>
+  <rect x="24" y="24" width="272" height="40" rx="8" fill="#1976d2" opacity="0.15"/>
+  <rect x="40" y="36" width="120" height="16" rx="4" fill="#1976d2" opacity="0.35"/>
+  <circle cx="72" cy="112" r="28" fill="#ffc107"/>
+  <rect x="120" y="88" width="160" height="12" rx="4" fill="#455a64" opacity="0.25"/>
+  <rect x="120" y="108" width="140" height="12" rx="4" fill="#455a64" opacity="0.18"/>
+  <rect x="120" y="128" width="120" height="12" rx="4" fill="#455a64" opacity="0.12"/>
+  <rect x="40" y="168" width="80" height="48" rx="8" fill="#81c784"/>
+  <rect x="136" y="168" width="80" height="48" rx="8" fill="#64b5f6"/>
+  <rect x="232" y="168" width="48" height="48" rx="8" fill="#ffb74d"/>
+</svg>

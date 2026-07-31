@@ -24,6 +24,10 @@
         <p class="form-note portal-text-warning">{{ unit.cpr_expiring }} CPR cert{{ unit.cpr_expiring|pluralize }} expiring soon</p>
         {% endif %}
       </div>
+      {% empty %}
+      <div class="card portal-callout-muted">
+        <p class="form-note">No staff compliance records yet. Add staff under <strong>Staff access</strong> to track CARI, CHRI, medical clearance, and CPR.</p>
+      </div>
       {% endfor %}
     </div>
 
@@ -65,6 +69,10 @@
               <span class="portal-status portal-status-active">{{ row.status }}</span>
               {% endif %}
             </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="form-note">No staff on file yet.</td>
           </tr>
           {% endfor %}
         </tbody>

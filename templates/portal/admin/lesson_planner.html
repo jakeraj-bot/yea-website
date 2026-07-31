@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load static %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -66,6 +67,7 @@
       </section>
 
       <section class="card portal-profile-full">
+        {% if lesson_sample %}
         <h2>{% if lesson_generated %}Generated plan{% else %}Sample plan{% endif %} — {{ lesson_sample.topic }}</h2>
         {% if lesson_generated %}
         <p class="portal-generated-badge">Preview generated from your inputs. Live version uses AI + image generation.</p>
@@ -90,12 +92,16 @@
         <p>{{ lesson_sample.plan.modifications }}</p>
         {% if lesson_sample.plan.visual_aids %}
         <h3>Visual aids &amp; pictures</h3>
-        <p class="form-note">When live, AI generates printable images for each card below — setup diagrams, example work, and activity posters.</p>
+        <p class="form-note">Printable reference images for setup diagrams, example work, and activity posters.</p>
         <div class="portal-lesson-visual-grid">
           {% for visual in lesson_sample.plan.visual_aids %}
           <figure class="portal-lesson-visual-card">
-            <div class="portal-lesson-visual-preview" aria-hidden="true">
-              <span>🖼</span>
+            <div class="portal-lesson-visual-preview">
+              {% if visual.image %}
+              <img src="{% static visual.image %}" alt="{{ visual.title }}" width="320" height="240" loading="lazy">
+              {% else %}
+              <img src="{% static 'images/lesson-visual-overview.svg' %}" alt="{{ visual.title }}" width="320" height="240" loading="lazy">
+              {% endif %}
             </div>
             <figcaption>
               <strong>{{ visual.title }}</strong>
@@ -108,6 +114,10 @@
           <button type="button" class="btn btn-secondary" disabled>Download PDF packet</button>
           <button type="button" class="btn btn-secondary" disabled>Print visual aids</button>
         </div>
+        {% endif %}
+        {% else %}
+        <h2>Generated plan preview</h2>
+        <p class="form-note">Fill in your topic and goals, then click <strong>Generate plan</strong> to see steps, materials, and visual aids here.</p>
         {% endif %}
       </section>
     </div>

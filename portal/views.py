@@ -1629,7 +1629,12 @@ def admin_page(request, page):
         context["announcements"] = announcements
         context["newsletter_templates"] = NEWSLETTER_TEMPLATES
         context["newsletters"] = newsletters
-        context["units"] = UNITS
+        if context.get("portal_live"):
+            from .admin_config import get_units_admin
+
+            context["units"] = get_units_admin()
+        else:
+            context["units"] = UNITS
         context["show_add_announcement"] = add == "announcement"
         context["show_add_newsletter"] = add == "newsletter"
         context["editing_announcement"] = (
@@ -1650,17 +1655,26 @@ def admin_page(request, page):
         context["admin_page_slug"] = "support"
     if page == "lesson-planner":
         context["lesson_topics"] = LESSON_PLANNER_TOPICS
-        context["units"] = UNITS
+        if context.get("portal_live"):
+            from .admin_config import get_units_admin
+
+            context["units"] = get_units_admin()
+        else:
+            context["units"] = UNITS
+        default_age = "Grades 1–3"
+        default_size = 12
+        default_duration = "45 minutes"
         if request.GET.get("generate") == "1":
             topic_key = request.GET.get("topic", "")
             custom_topic = request.GET.get("custom_topic", "").strip()
-            topic = custom_topic if topic_key == "__custom__" else topic_key or LESSON_PLANNER_SAMPLE["topic"]
+            sample_topic = LESSON_PLANNER_SAMPLE["topic"] if not context.get("portal_live") else "Custom activity"
+            topic = custom_topic if topic_key == "__custom__" else topic_key or sample_topic
             context["lesson_sample"] = build_lesson_plan_preview(
                 topic=topic,
                 goals=request.GET.get("goals", ""),
-                age_group=request.GET.get("age_group", LESSON_PLANNER_SAMPLE["age_group"]),
-                group_size=int(request.GET.get("group_size") or LESSON_PLANNER_SAMPLE["group_size"]),
-                duration=request.GET.get("duration", LESSON_PLANNER_SAMPLE["duration"]),
+                age_group=request.GET.get("age_group", default_age),
+                group_size=int(request.GET.get("group_size") or default_size),
+                duration=request.GET.get("duration", default_duration),
                 accommodations=request.GET.get("accommodations", ""),
             )
             context["lesson_generated"] = True
@@ -1668,10 +1682,22 @@ def admin_page(request, page):
                 "topic": topic_key or LESSON_PLANNER_TOPICS[0],
                 "custom_topic": custom_topic,
                 "goals": request.GET.get("goals", ""),
-                "age_group": request.GET.get("age_group", LESSON_PLANNER_SAMPLE["age_group"]),
-                "group_size": request.GET.get("group_size", LESSON_PLANNER_SAMPLE["group_size"]),
-                "duration": request.GET.get("duration", LESSON_PLANNER_SAMPLE["duration"]),
+                "age_group": request.GET.get("age_group", default_age),
+                "group_size": request.GET.get("group_size", default_size),
+                "duration": request.GET.get("duration", default_duration),
                 "accommodations": request.GET.get("accommodations", ""),
+            }
+        elif context.get("portal_live"):
+            context["lesson_sample"] = None
+            context["lesson_generated"] = False
+            context["lesson_form"] = {
+                "topic": LESSON_PLANNER_TOPICS[0],
+                "custom_topic": "",
+                "goals": "",
+                "age_group": default_age,
+                "group_size": default_size,
+                "duration": default_duration,
+                "accommodations": "",
             }
         else:
             context["lesson_sample"] = LESSON_PLANNER_SAMPLE
@@ -1686,12 +1712,21 @@ def admin_page(request, page):
                 "accommodations": LESSON_PLANNER_SAMPLE["accommodations"],
             }
     if page == "staff-compliance":
-        context["staff_compliance"] = STAFF_COMPLIANCE
-        context["compliance_by_unit"] = get_staff_compliance_by_unit()
         context["cpr_required_per_unit"] = STAFF_COMPLIANCE_CPR_REQUIRED_PER_UNIT
+        if context.get("portal_live"):
+            context["staff_compliance"] = []
+            context["compliance_by_unit"] = []
+        else:
+            context["staff_compliance"] = STAFF_COMPLIANCE
+            context["compliance_by_unit"] = get_staff_compliance_by_unit()
     if page == "licensing":
         context["licensing_forms"] = NJ_LICENSING_FORMS
-        context["units"] = UNITS
+        if context.get("portal_live"):
+            from .admin_config import get_units_admin
+
+            context["units"] = get_units_admin()
+        else:
+            context["units"] = UNITS
     if page == "units":
         edit_id = request.GET.get("edit")
         if context.get("portal_live"):
@@ -1764,11 +1799,13 @@ def admin_page(request, page):
             context["tax_staff_options"] = []
     if page == "checkin-settings":
         if context.get("portal_live"):
-            from .admin_config import get_checkin_settings_admin
+            from .admin_config import get_checkin_settings_admin, get_units_admin
 
             context["checkin_modes"] = get_checkin_settings_admin()
+            context["checkin_units"] = get_units_admin()
         else:
             context["checkin_modes"] = CHECKIN_MODES
+            context["checkin_units"] = UNITS
     if page == "member-billing":
         if context.get("portal_live"):
             from .admin_services import get_member_families_live
@@ -1818,7 +1855,12 @@ def admin_page(request, page):
             context["org_policies"] = []
         context["member_summaries"] = get_member_policy_summaries(families)
         context["policies_per_child"] = POLICIES_PER_CHILD
-        context["units"] = UNITS
+        if context.get("portal_live"):
+            from .admin_config import get_units_admin
+
+            context["units"] = get_units_admin()
+        else:
+            context["units"] = UNITS
     if page == "reports":
         context["reports"] = ADMIN_REPORTS
     return render(request, template, _finalize_admin_context(request, context))

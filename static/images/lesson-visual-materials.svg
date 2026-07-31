@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Materials setup placeholder">
+  <rect width="320" height="240" fill="#f3e5f5"/>
+  <rect x="40" y="120" width="240" height="72" rx="8" fill="#8d6e63" opacity="0.35"/>
+  <rect x="56" y="104" width="48" height="32" rx="4" fill="#ef5350"/>
+  <rect x="112" y="96" width="40" height="40" rx="4" fill="#42a5f5"/>
+  <rect x="160" y="100" width="56" height="36" rx="4" fill="#66bb6a"/>
+  <rect x="224" y="108" width="40" height="28" rx="4" fill="#ffa726"/>
+  <rect x="72" y="72" width="176" height="8" rx="4" fill="#6a1b9a" opacity="0.2"/>
+  <text x="160" y="210" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#6a1b9a" opacity="0.55">Materials setup</text>
+</svg>

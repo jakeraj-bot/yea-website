@@ -99,6 +99,10 @@
               {% endif %}
             </td>
           </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="form-note">No programs yet. Click <strong>+ Add program</strong> to create your first season.</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
