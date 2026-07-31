@@ -121,7 +121,7 @@ class Command(BaseCommand):
 
         demo_usernames = ["jakeraj", "mmartinez", "dwilliams", "staff18"]
         demo_deleted, _ = User.objects.filter(username__in=demo_usernames).exclude(
-            portalstaffaccount__role="Portal admin"
+            portal_staff_account__role="Portal admin"
         ).delete()
         counts["demo login users removed"] = demo_deleted
 
