@@ -252,7 +252,7 @@ def _portal_context(area, page_title, **extra):
 
     preview_mode = getattr(settings, "PORTAL_PREVIEW_MODE", False)
     staging_site = getattr(settings, "STAGING_SITE", False)
-    live = portal_is_live() if area == "admin" else _portal_data_live()
+    live = portal_is_live() if area in ("admin", "staff") else _portal_data_live()
     context = {
         "portal_area": area,
         "page_title": page_title,
@@ -391,15 +391,30 @@ def _attendance_program_or_redirect(request, attendance_date):
 
 def _messages_context(area, page_title, request, **extra):
     thread_id = request.GET.get("thread")
-    base = _staff_context(page_title) if area == "staff" else _portal_context("admin", page_title)
+    base = _staff_context(page_title, request=request) if area == "staff" else _portal_context("admin", page_title)
     base["portal_area"] = area
-    if base.get("portal_live"):
+    staff_unit = None
+    if area == "staff":
+        from .staff_auth import resolve_staff_unit
+
+        staff_unit = resolve_staff_unit(request)
+    if portal_is_live():
         base.update(
             {
-                "message_threads": get_message_threads_live(),
-                "active_thread": get_message_thread_live(thread_id),
+                "message_threads": get_message_threads_live(
+                    unit=staff_unit,
+                    for_admin=(area == "admin"),
+                ),
+                "active_thread": get_message_thread_live(
+                    thread_id,
+                    unit=staff_unit,
+                    for_admin=(area == "admin"),
+                ),
                 "message_categories": MESSAGE_CATEGORIES,
-                "messages_unread_count": count_messages_unread_live(for_admin=(area == "admin")),
+                "messages_unread_count": count_messages_unread_live(
+                    for_admin=(area == "admin"),
+                    unit=staff_unit,
+                ),
                 "show_compose": request.GET.get("compose") == "1",
             }
         )
@@ -426,7 +441,7 @@ def _support_context(area, page_title, request, preview_family=None, **extra):
     else:
         base = _portal_context("admin", page_title, **extra)
     base["portal_area"] = area
-    if base.get("portal_live"):
+    if portal_is_live():
         tickets = get_support_tickets_live(area, preview_family)
         active_ticket = get_support_ticket_live(ticket_id, area, preview_family)
         unread = count_support_unread_live(for_admin=(area == "admin"))

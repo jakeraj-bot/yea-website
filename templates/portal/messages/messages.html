@@ -83,6 +83,8 @@
               {% endif %}
             </a>
           </li>
+          {% empty %}
+          <li class="portal-messages-empty"><p class="form-note">No messages yet. Click <strong>+ New message</strong> to start a thread.</p></li>
           {% endfor %}
         </ul>
       </aside>
@@ -117,6 +119,8 @@
           <button type="button" class="btn btn-primary" disabled>Send reply</button>
           {% endif %}
         </form>
+        {% else %}
+        <p class="form-note" style="padding:1.5rem;">Select a thread or start a new message.</p>
         {% endif %}
       </section>
     </div>

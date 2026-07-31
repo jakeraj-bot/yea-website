@@ -298,18 +298,22 @@ def message_thread_to_dict(thread):
     }
 
 
-def get_message_threads_live():
-    unit = get_unit()
-    if not unit:
-        return []
-    return [
-        message_thread_to_dict(thread)
-        for thread in MessageThread.objects.filter(unit=unit).prefetch_related("messages")
-    ]
+def get_message_threads_live(unit=None, for_admin=False):
+    qs = MessageThread.objects.prefetch_related("messages").order_by("-updated_at")
+    if for_admin:
+        pass
+    elif unit:
+        qs = qs.filter(unit=unit)
+    else:
+        unit = get_unit()
+        if not unit:
+            return []
+        qs = qs.filter(unit=unit)
+    return [message_thread_to_dict(thread) for thread in qs]
 
 
-def get_message_thread_live(thread_id):
-    threads = get_message_threads_live()
+def get_message_thread_live(thread_id, unit=None, for_admin=False):
+    threads = get_message_threads_live(unit=unit, for_admin=for_admin)
     if thread_id:
         match = next((t for t in threads if t["id"] == thread_id), None)
         if match:
@@ -317,12 +321,18 @@ def get_message_thread_live(thread_id):
     return threads[0] if threads else None
 
 
-def count_messages_unread_live(for_admin=False):
-    unit = get_unit()
-    if not unit:
-        return 0
+def count_messages_unread_live(for_admin=False, unit=None):
+    qs = MessageThread.objects.all()
+    if not for_admin:
+        if unit:
+            qs = qs.filter(unit=unit)
+        else:
+            unit = get_unit()
+            if not unit:
+                return 0
+            qs = qs.filter(unit=unit)
     key = "unread_for_admin" if for_admin else "unread_for_staff"
-    return sum(getattr(t, key) for t in MessageThread.objects.filter(unit=unit))
+    return sum(getattr(t, key) for t in qs)
 
 
 def send_team_message_live(thread_id, body, is_admin=False, author="Staff", role="Staff"):
