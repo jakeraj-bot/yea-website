@@ -52,9 +52,8 @@ def get_admin_dashboard_live():
 def get_enrollment_by_unit_live():
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
-        demo = _demo_unit(unit.slug)
         enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
-        capacity = demo.get("capacity", max(enrolled, 1))
+        capacity = unit.capacity or enrolled
         programs = PortalProgram.objects.filter(unit=unit, is_active=True).count()
         open_apps = EnrollmentApplication.objects.filter(
             portal_family__unit=unit,
@@ -65,56 +64,52 @@ def get_enrollment_by_unit_live():
                 "slug": unit.slug,
                 "enrolled": enrolled,
                 "capacity": capacity,
-                "programs": programs or demo.get("programs", 1),
+                "programs": programs,
                 "open_apps": open_apps,
             }
         )
-    if not rows:
-        return []
     return rows
 
 
 def get_units_live():
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
-        demo = _demo_unit(unit.slug)
         enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
         rows.append(
             {
                 "slug": unit.slug,
                 "name": unit.name,
                 "active": unit.is_active,
-                "program_type": demo.get("program_type", "after_school"),
-                "address": demo.get("address", ""),
-                "city": demo.get("city", ""),
-                "capacity": demo.get("capacity", enrolled or 50),
+                "program_type": unit.program_type or "after_school",
+                "address": unit.address or "",
+                "city": unit.city or "",
+                "capacity": unit.capacity or enrolled,
                 "enrolled": enrolled,
-                "manager": demo.get("manager", ""),
-                "phone": demo.get("phone", ""),
+                "manager": unit.manager_name or "",
+                "phone": unit.phone or "",
                 "pk": unit.pk,
             }
         )
-    return rows or list(UNITS)
+    return rows
 
 
 def get_programs_live():
     rows = []
     for program in PortalProgram.objects.select_related("unit").order_by("unit__name", "name"):
-        demo = next((p for p in PROGRAMS if p.get("name") == program.name), {})
         rows.append(
             {
                 "name": program.name,
                 "unit": program.unit.name,
                 "unit_slug": program.unit.slug,
-                "season": demo.get("season", "2026–27"),
-                "schedule": demo.get("schedule", f"{program.start_time:%I:%M %p} – {program.end_time:%I:%M %p}"),
-                "capacity": demo.get("capacity", "—"),
+                "season": program.season or "",
+                "schedule": f"{program.start_time:%I:%M %p} – {program.end_time:%I:%M %p}",
+                "capacity": program.capacity if program.capacity else "—",
                 "enrolled": PortalChild.objects.filter(family__unit=program.unit, is_active=True).count(),
                 "active": program.is_active,
                 "pk": program.pk,
             }
         )
-    return rows or list(PROGRAMS)
+    return rows
 
 
 def get_staff_users_live():
@@ -170,12 +165,12 @@ def get_member_families_live():
 def get_agencies_admin_live():
     profiles = PortalAgencyProfile.objects.select_related("child", "family", "unit").order_by("unit__name")
     if not profiles.exists():
-        return ADMIN_AGENCIES
+        return []
     rows = []
     for profile in profiles:
         rows.append(
             {
-                "name": "Passaic County 4Cs",
+                "name": profile.agency_name or "Agency",
                 "unit": profile.unit.name,
                 "children_enrolled": 1,
                 "contract_rate": f"${profile.weekly_agency_rate:.2f}/wk",
@@ -189,32 +184,52 @@ def get_agencies_admin_live():
         if key not in by_unit:
             by_unit[key] = {**row, "children_enrolled": 0}
         by_unit[key]["children_enrolled"] += 1
-    return list(by_unit.values()) or ADMIN_AGENCIES
+    return list(by_unit.values())
 
 
 def get_admin_alerts_live():
-    alerts = list(ADMIN_ALERTS)
+    from .live_services import count_messages_unread_live
+
+    alerts = []
+    open_apps = EnrollmentApplication.objects.exclude(status__in=("enrolled", "declined")).count()
+    if open_apps:
+        alerts.append(
+            {
+                "text": f"{open_apps} application(s) awaiting review across all units",
+                "link_name": "portal_admin_page",
+                "link_arg": "reports",
+            }
+        )
+    overdue_qs = PortalFamily.objects.filter(balance__gt=0)
+    overdue = overdue_qs.count()
+    if overdue:
+        total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")
+        alerts.append(
+            {
+                "text": f"{overdue} families with overdue balances (${total:.2f} total)",
+                "link_name": "portal_admin_page",
+                "link_arg": "member-billing",
+            }
+        )
     pending_profiles = PortalProfileChangeRequest.objects.filter(
         status=PortalProfileChangeRequest.STATUS_PENDING
     ).count()
     if pending_profiles:
-        alerts.insert(
-            0,
+        alerts.append(
             {
                 "text": f"{pending_profiles} parent profile change(s) awaiting review",
                 "link_name": "portal_admin_page",
                 "link_arg": "dashboard",
-            },
+            }
         )
-    overdue = PortalFamily.objects.filter(balance__gt=0).count()
-    if overdue:
-        alerts.insert(
-            0,
+    unread = count_messages_unread_live(for_admin=True)
+    if unread:
+        alerts.append(
             {
-                "text": f"{overdue} families with overdue balances",
+                "text": f"{unread} unread staff message(s)",
                 "link_name": "portal_admin_page",
-                "link_arg": "member-billing",
-            },
+                "link_arg": "messages",
+            }
         )
     return alerts
 

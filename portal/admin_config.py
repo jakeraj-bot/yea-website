@@ -668,22 +668,11 @@ def waive_absence_charge(family_slug, child_name, week_label, charge_description
 
 
 def get_absence_charge_alerts():
-    from .demo_data import ABSENCE_CHARGE_ALERTS
-
-    waived = {
-        (w.family_slug, w.child_name, w.week_label, w.charge_description)
-        for w in PortalWaivedAbsenceCharge.objects.all()
+    return {
+        "feature_enabled": False,
+        "programs_with_alerts": [],
+        "families": [],
     }
-    data = {**ABSENCE_CHARGE_ALERTS, "families": []}
-    for row in ABSENCE_CHARGE_ALERTS.get("families", []):
-        charges = []
-        for charge in row.get("charges_to_review", []):
-            key = (row["slug"], row["child"], row["week_label"], charge["description"])
-            if key not in waived:
-                charges.append(charge)
-        if charges:
-            data["families"].append({**row, "charges_to_review": charges})
-    return data
 
 
 def get_org_policies_admin():
