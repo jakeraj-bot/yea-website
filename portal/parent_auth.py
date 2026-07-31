@@ -1,7 +1,6 @@
 from functools import wraps
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
 from .models import PortalParentAccount
@@ -34,7 +33,13 @@ def parent_login_required(view_func):
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        if request.user.is_authenticated and get_parent_account(request.user):
+        from .staff_auth import get_portal_auth
+
+        if (
+            request.user.is_authenticated
+            and get_parent_account(request.user)
+            and get_portal_auth(request) == "parent"
+        ):
             return view_func(request, *args, **kwargs)
         login_url = settings.PORTAL_PARENT_LOGIN_URL
         return redirect(f"{login_url}?next={request.get_full_path()}")
@@ -43,13 +48,20 @@ def parent_login_required(view_func):
 
 
 def parent_login_required_post(view_func):
-    decorated = login_required(login_url=settings.PORTAL_PARENT_LOGIN_URL)(view_func)
-
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        return decorated(request, *args, **kwargs)
+        from .staff_auth import get_portal_auth
+
+        if (
+            request.user.is_authenticated
+            and get_parent_account(request.user)
+            and get_portal_auth(request) == "parent"
+        ):
+            return view_func(request, *args, **kwargs)
+        login_url = settings.PORTAL_PARENT_LOGIN_URL
+        return redirect(f"{login_url}?next={request.get_full_path()}")
 
     return wrapper
 

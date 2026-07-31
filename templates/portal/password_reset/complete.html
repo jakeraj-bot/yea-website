@@ -1,0 +1,19 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Password updated</h1>
+    <p class="lead">Your {{ portal_label }} password has been changed.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <p>You can now sign in with your new password.</p>
+      <div class="portal-form-actions" style="margin-top:1rem;">
+        <a class="btn btn-primary" href="{% url login_url_name %}">Sign in</a>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

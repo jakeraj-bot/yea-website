@@ -27,6 +27,7 @@
           {{ form.password }}
           {% if form.password.errors %}<p class="form-note" style="color:var(--danger);">{{ form.password.errors.0 }}</p>{% endif %}
         </div>
+        <p class="form-note portal-form-full"><a href="{% url 'portal_parent_password_reset' %}">Forgot password?</a></p>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Log in</button>
           <a class="btn btn-secondary" href="{% url 'portal_parent_signup' %}">Create account</a>

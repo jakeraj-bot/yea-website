@@ -119,13 +119,19 @@ In **yea-website-staging → Environment**, add:
 | `PORTAL_ADMIN_USERNAME` | `yeaadmin` (or your choice) |
 | `PORTAL_ADMIN_PASSWORD` | A secure password (8+ characters) |
 | `PORTAL_ADMIN_NAME` | `YEA Admin` (optional) |
+| `PORTAL_CLEAR_MEMBERS_ON_DEPLOY` | `True` **once** to wipe demo/parent data, then remove or set `False` |
+| `WEBSITE_ADMIN_USERNAME` | Optional — Django `/admin/` login for editing site pages |
+| `WEBSITE_ADMIN_PASSWORD` | Password for website admin (8+ characters) |
 
 Click **Save Changes** — Render redeploys. In **Logs**, during the build you should see:
 
 - `Empty portal ready — fee rules, check-in toggles...`
 - `Created portal admin: yeaadmin`
+- `Member data cleared:` (if `PORTAL_CLEAR_MEMBERS_ON_DEPLOY=True`)
 
 **Do not run `seed_portal`** — that loads demo families and staff.
+
+Forgot-password emails require SMTP env vars (`EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`). Without them, reset links only appear in server logs (not useful on Render).
 
 After deploy, sign in at `/portal/admin/login/` with the username and password you set.
 

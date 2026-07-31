@@ -1,0 +1,46 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Choose a new password</h1>
+    <p class="lead">Enter a new password for your {{ portal_label }} account.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <form method="post" class="portal-form-grid">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="portal-callout card portal-callout-warning portal-form-full">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="{{ form.new_password1.id_for_label }}">New password</label>
+          {{ form.new_password1 }}
+          {% if form.new_password1.errors %}<p class="form-note" style="color:var(--danger);">{{ form.new_password1.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="{{ form.new_password2.id_for_label }}">Confirm new password</label>
+          {{ form.new_password2 }}
+          {% if form.new_password2.errors %}<p class="form-note" style="color:var(--danger);">{{ form.new_password2.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Update password</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll("#id_new_password1, #id_new_password2").forEach(function (input) {
+    input.classList.add("portal-input");
+  });
+})();
+</script>
+{% endblock %}

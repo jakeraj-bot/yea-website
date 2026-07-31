@@ -1,13 +1,49 @@
 from django.urls import path
 
-from . import auth_views, views, views_actions
+from . import auth_views, password_reset_views, views, views_actions
 
 urlpatterns = [
     path("", views.portal_home, name="portal_home"),
     path("login/", auth_views.parent_login, name="portal_parent_login"),
+    path("login/password-reset/", password_reset_views.ParentPasswordResetView.as_view(), name="portal_parent_password_reset"),
+    path("login/password-reset/done/", password_reset_views.ParentPasswordResetDoneView.as_view(), name="portal_parent_password_reset_done"),
+    path(
+        "login/password-reset/confirm/<uidb64>/<token>/",
+        password_reset_views.ParentPasswordResetConfirmView.as_view(),
+        name="portal_parent_password_reset_confirm",
+    ),
+    path(
+        "login/password-reset/complete/",
+        password_reset_views.ParentPasswordResetCompleteView.as_view(),
+        name="portal_parent_password_reset_complete",
+    ),
     path("staff/login/", auth_views.staff_login, name="portal_staff_login"),
+    path("staff/login/password-reset/", password_reset_views.StaffPasswordResetView.as_view(), name="portal_staff_password_reset"),
+    path("staff/login/password-reset/done/", password_reset_views.StaffPasswordResetDoneView.as_view(), name="portal_staff_password_reset_done"),
+    path(
+        "staff/login/password-reset/confirm/<uidb64>/<token>/",
+        password_reset_views.StaffPasswordResetConfirmView.as_view(),
+        name="portal_staff_password_reset_confirm",
+    ),
+    path(
+        "staff/login/password-reset/complete/",
+        password_reset_views.StaffPasswordResetCompleteView.as_view(),
+        name="portal_staff_password_reset_complete",
+    ),
     path("staff/logout/", auth_views.staff_logout, name="portal_staff_logout"),
     path("admin/login/", auth_views.admin_login, name="portal_admin_login"),
+    path("admin/login/password-reset/", password_reset_views.AdminPasswordResetView.as_view(), name="portal_admin_password_reset"),
+    path("admin/login/password-reset/done/", password_reset_views.AdminPasswordResetDoneView.as_view(), name="portal_admin_password_reset_done"),
+    path(
+        "admin/login/password-reset/confirm/<uidb64>/<token>/",
+        password_reset_views.AdminPasswordResetConfirmView.as_view(),
+        name="portal_admin_password_reset_confirm",
+    ),
+    path(
+        "admin/login/password-reset/complete/",
+        password_reset_views.AdminPasswordResetCompleteView.as_view(),
+        name="portal_admin_password_reset_complete",
+    ),
     path("admin/logout/", auth_views.admin_logout, name="portal_admin_logout"),
     path("staff/unit/switch/", views.staff_unit_switch, name="portal_staff_unit_switch"),
     path("signup/", auth_views.parent_signup, name="portal_parent_signup"),

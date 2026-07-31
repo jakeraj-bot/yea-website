@@ -15,6 +15,12 @@
       <div class="portal-stat card"><span class="portal-stat-label">Open applications</span><strong class="portal-stat-value">{{ application_count }}</strong></div>
     </div>
 
+    {% if portal_live and attendance.summary.enrolled == 0 %}
+    <div class="portal-callout card portal-callout-muted">
+      <p>No enrolled members yet. Families appear here after enrollment — add units and programs in <strong>portal admin</strong>, or have parents apply on the public site.</p>
+    </div>
+    {% endif %}
+
     {% if alerts %}
     <div class="portal-alerts card">
       <h2>Needs attention</h2>

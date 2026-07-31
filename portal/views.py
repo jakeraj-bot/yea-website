@@ -339,6 +339,9 @@ def _parent_context(request, page_title, page_slug="", **extra):
         drop_in = PARENT_DROP_IN.get(preview_key, {})
         pending_profile_changes = []
     parent_avatar = get_parent_avatar_context(account, preview)
+    from .staff_auth import get_portal_auth
+
+    parent_signed_in = bool(account) and get_portal_auth(request) == "parent"
     return _portal_context(
         "parent",
         page_title,
@@ -353,7 +356,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         policy_data=policy_data,
         policies_per_child=POLICIES_PER_CHILD,
         parent_stripe_enabled=_parent_live_mode(request) and stripe_configured(),
-        parent_authenticated=bool(account),
+        parent_authenticated=parent_signed_in or portal_preview_mode(),
         parent_avatar=parent_avatar,
         parent_can_manage_photo=bool(account) and not portal_preview_mode(),
         pending_profile_changes=pending_profile_changes,
@@ -873,19 +876,23 @@ def staff_page(request, page):
             context["families"] = FAMILIES
     if page == "member-policies":
         unit = _staff_unit(request)
-        if unit:
+        if unit and context.get("portal_live"):
             from .staff_services import get_member_summaries_for_unit
 
             context["member_summaries"] = get_member_summaries_for_unit(unit)
+        elif context.get("portal_live"):
+            context["member_summaries"] = []
         else:
             context["member_summaries"] = get_member_policy_summaries(FAMILIES)
         context["policies_per_child"] = POLICIES_PER_CHILD
     if page == "programs":
         unit = _staff_unit(request)
-        if unit:
+        if unit and context.get("portal_live"):
             from .staff_services import get_programs_for_unit
 
             context["programs"] = get_programs_for_unit(unit)
+        elif context.get("portal_live"):
+            context["programs"] = []
         else:
             context["programs"] = STAFF_PROGRAMS_SCHOOL_18
     if page == "attendance":

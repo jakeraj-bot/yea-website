@@ -1,0 +1,43 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Forgot password</h1>
+    <p class="lead">Reset your {{ portal_label }} password by email.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <form method="post" class="portal-form-grid">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="portal-callout card portal-callout-warning portal-form-full">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="{{ form.email.id_for_label }}">Email on your account</label>
+          {{ form.email }}
+          {% if form.email.errors %}<p class="form-note" style="color:var(--danger);">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Send reset link</button>
+          <a class="btn btn-secondary" href="{% url login_url_name %}">Back to login</a>
+        </div>
+      </form>
+      <p class="form-note" style="margin-top:1rem;">If an account exists for that email, we will send a reset link. Check spam if it does not arrive within a few minutes.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll("#id_email").forEach(function (input) {
+    input.classList.add("portal-input");
+  });
+})();
+</script>
+{% endblock %}

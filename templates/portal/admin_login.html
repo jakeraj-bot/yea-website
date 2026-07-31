@@ -30,6 +30,7 @@
           <label for="{{ form.password.id_for_label }}">Password</label>
           {{ form.password }}
         </div>
+        <p class="form-note portal-form-full"><a href="{% url 'portal_admin_password_reset' %}">Forgot password?</a></p>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Log in</button>
           <a class="btn btn-secondary" href="{% url 'portal_home' %}">All portals</a>

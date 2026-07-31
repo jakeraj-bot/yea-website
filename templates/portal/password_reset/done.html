@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Check your email</h1>
+    <p class="lead">If an account exists for that address, we sent a password reset link for the {{ portal_label }}.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <p>Open the link in the email to choose a new password. The link expires after a short time.</p>
+      <p class="form-note">Did not receive it? Confirm the email matches your account, check spam, or ask your administrator to verify your email on file.</p>
+      <div class="portal-form-actions" style="margin-top:1rem;">
+        <a class="btn btn-primary" href="{% url login_url_name %}">Back to login</a>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

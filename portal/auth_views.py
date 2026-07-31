@@ -7,7 +7,6 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .attendance_service import get_unit
 from .forms import ParentSignupForm
 from .models import PortalFamily, PortalParentAccount, PortalUnit
 from .parent_auth import get_parent_account, portal_preview_mode
@@ -21,7 +20,10 @@ def parent_login(request):
         return redirect("portal_parent_page", page="dashboard")
 
     if request.user.is_authenticated and get_parent_account(request.user):
-        return redirect(_login_redirect(request))
+        from .staff_auth import get_portal_auth
+
+        if get_portal_auth(request) == "parent":
+            return redirect(_login_redirect(request))
 
     form = AuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -35,6 +37,9 @@ def parent_login(request):
             )
         else:
             login(request, user)
+            from .staff_auth import set_portal_auth
+
+            set_portal_auth(request, "parent")
             messages.success(request, f"Welcome back, {family_display_label(account.family)} family.")
             return redirect(_login_redirect(request))
 
@@ -56,15 +61,20 @@ def parent_signup(request):
         return redirect("portal_parent_page", page="dashboard")
 
     if request.user.is_authenticated and get_parent_account(request.user):
-        return redirect("portal_parent_page", page="dashboard")
+        from .staff_auth import get_portal_auth
+
+        if get_portal_auth(request) == "parent":
+            return redirect("portal_parent_page", page="dashboard")
 
     form = ParentSignupForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        unit = get_unit()
+        unit = PortalUnit.objects.filter(is_active=True).order_by("name").first()
         if not unit:
-            unit = PortalUnit.objects.filter(is_active=True).first()
-        if not unit:
-            messages.error(request, "Portal is not set up yet. Ask YEA staff to run: python manage.py seed_portal")
+            messages.error(
+                request,
+                "Parent signup is not open yet — your organization has not added any locations. "
+                "Contact YEA staff or try again later.",
+            )
             return render(
                 request,
                 "portal/signup.html",
@@ -98,6 +108,9 @@ def parent_signup(request):
             PortalParentAccount.objects.create(user=user, family=family)
             link_applications_by_email(family, form.cleaned_data["email"].strip())
             login(request, user)
+            from .staff_auth import set_portal_auth
+
+            set_portal_auth(request, "parent")
 
         messages.success(
             request,
@@ -236,8 +249,11 @@ def _staff_login_redirect(request):
 
 @require_GET
 def parent_logout(request):
+    from .staff_auth import clear_portal_auth
+
+    clear_portal_auth(request)
     logout(request)
-    messages.success(request, "You have been signed out.")
+    messages.success(request, "You have been signed out of the parent portal.")
     return redirect("portal_home")
 
 
