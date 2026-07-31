@@ -14,6 +14,10 @@ if [ "${PORTAL_CLEAR_MEMBERS_ON_DEPLOY}" = "True" ]; then
   python manage.py clear_portal_members --yes
 fi
 
+if [ "${PORTAL_MIGRATE_USERNAMES_ON_DEPLOY}" = "True" ]; then
+  python manage.py migrate_portal_usernames --yes
+fi
+
 if [ -n "${PORTAL_ADMIN_USERNAME}" ] && [ -n "${PORTAL_ADMIN_PASSWORD}" ]; then
   python manage.py create_portal_admin \
     --username "${PORTAL_ADMIN_USERNAME}" \

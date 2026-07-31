@@ -137,9 +137,11 @@ class Command(BaseCommand):
         parent_logins = seed_parent_accounts(unit)
         from portal.models import PortalStaffAccount
 
+        from portal.usernames import portal_username
+
         User = get_user_model()
         staff_user, staff_created = User.objects.get_or_create(
-            username="staff18",
+            username=portal_username("staff", "staff18"),
             defaults={"email": "staff18@yeanj.org", "first_name": "School 18 Staff"},
         )
         if staff_created:

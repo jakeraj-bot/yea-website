@@ -113,6 +113,8 @@ def get_programs_live():
 
 
 def get_staff_users_live():
+    from .usernames import display_username
+
     rows = []
     for account in PortalStaffAccount.objects.select_related("user", "unit").prefetch_related("accessible_units").order_by("display_name"):
         user = account.user
@@ -122,12 +124,13 @@ def get_staff_users_live():
             extra = list(account.accessible_units.values_list("name", flat=True))
             names = extra or [account.unit.name]
             units_label = ", ".join(dict.fromkeys(names))
+        login_name = display_username(user.username)
         rows.append(
             {
                 "id": account.pk,
                 "user_id": user.pk,
-                "username": user.username,
-                "name": account.display_name or user.get_full_name() or user.username,
+                "username": login_name,
+                "name": account.display_name or user.get_full_name() or login_name,
                 "email": user.email,
                 "role": account.role,
                 "units": units_label,
@@ -270,15 +273,13 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
 
     from .admin_config import ensure_admin_config_seeded
     from .models import PortalBillingDefaultRule
+    from .usernames import allocate_portal_username, display_username
 
     ensure_admin_config_seeded()
     User = get_user_model()
-    username = email.split("@")[0].lower().replace(".", "")
-    base = username
-    counter = 1
-    while User.objects.filter(username=username).exists():
-        username = f"{base}{counter}"
-        counter += 1
+    base_login = email.split("@")[0].lower().replace(".", "")
+    stored_username = allocate_portal_username("staff", base_login)
+    login_name = display_username(stored_username)
     if all_units_access or role == "Portal admin":
         all_units_access = True
         unit = PortalUnit.objects.filter(is_active=True).order_by("name").first()
@@ -288,7 +289,7 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
     if not unit:
         raise ValueError("No active unit configured.")
     user, created = User.objects.get_or_create(
-        username=username,
+        username=stored_username,
         defaults={"email": email, "first_name": name.split()[0] if name else "", "last_name": " ".join(name.split()[1:]) if name else ""},
     )
     if not created and not user.email:
@@ -306,7 +307,7 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
         user=user,
         defaults={
             "unit": unit,
-            "display_name": name.strip() or username,
+            "display_name": name.strip() or login_name,
             "role": role or "Unit staff",
             "all_units_access": all_units_access,
             "is_active": True,
@@ -322,7 +323,7 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
         account.accessible_units.set(PortalUnit.objects.filter(slug__in=unit_slugs))
     elif unit_slug:
         account.accessible_units.set(PortalUnit.objects.filter(slug=unit_slug))
-    return account, created, temp_password if created or password else None, username
+    return account, created, temp_password if created or password else None, login_name
 
 
 def update_staff_user(staff_id, data):

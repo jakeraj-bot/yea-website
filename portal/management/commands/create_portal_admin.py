@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
 from portal.models import PortalStaffAccount, PortalUnit
+from portal.usernames import display_username, migrate_user_username, portal_username
 
 
 class Command(BaseCommand):
@@ -19,10 +20,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        username = options["username"].strip()
+        login_name = options["username"].strip()
         password = options["password"]
-        display_name = (options["name"] or username).strip()
-        email = (options["email"] or f"{username}@yeanj.org").strip()
+        display_name = (options["name"] or login_name).strip()
+        email = (options["email"] or f"{login_name}@yeanj.org").strip()
+        stored_username = portal_username("admin", login_name)
 
         if len(password) < 8:
             raise CommandError("Password must be at least 8 characters.")
@@ -37,10 +39,21 @@ class Command(BaseCommand):
             )
             self.stdout.write(f"Created placeholder unit: {unit.name}")
 
-        user, created = User.objects.get_or_create(
-            username=username,
-            defaults={"email": email, "first_name": display_name},
-        )
+        user = User.objects.filter(username__iexact=stored_username).first()
+        created = False
+        if not user:
+            legacy = User.objects.filter(username__iexact=login_name).first()
+            if legacy:
+                user = legacy
+                migrate_user_username(user, "admin")
+            else:
+                user = User.objects.create_user(
+                    username=stored_username,
+                    email=email,
+                    password=password,
+                    first_name=display_name,
+                )
+                created = True
         user.email = email
         user.first_name = display_name
         user.set_password(password)
@@ -65,7 +78,7 @@ class Command(BaseCommand):
         verb = "Created" if created or account_created else "Updated"
         self.stdout.write(
             self.style.SUCCESS(
-                f"{verb} portal admin: {username}\n"
+                f"{verb} portal admin: {display_username(user.username)}\n"
                 f"Sign in at /portal/admin/login/"
             )
         )

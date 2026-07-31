@@ -1,7 +1,19 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.core.exceptions import ValidationError
+
+
+class PortalAuthenticationForm(AuthenticationForm):
+    def __init__(self, *args, portal_type="parent", **kwargs):
+        self.portal_type = portal_type
+        super().__init__(*args, **kwargs)
+
+    def clean_username(self):
+        login_name = super().clean_username()
+        from .usernames import resolve_auth_username
+
+        return resolve_auth_username(self.portal_type, login_name)
 
 
 class ParentSignupForm(forms.Form):
@@ -30,27 +42,22 @@ class ParentSignupForm(forms.Form):
     )
 
     def clean_username(self):
-        username = self.cleaned_data["username"].strip()
-        existing = get_user_model().objects.filter(username__iexact=username).first()
-        if existing:
-            from .parent_auth import get_parent_account
-            from .staff_auth import get_staff_account
+        from .usernames import portal_username_taken
 
-            if get_staff_account(existing):
-                raise ValidationError(
-                    "That username belongs to a staff or admin account. Choose a different username."
-                )
-            if get_parent_account(existing):
-                raise ValidationError(
-                    "That username is already registered — try logging in or use Forgot password below."
-                )
-            raise ValidationError("That username is already taken — try another or log in.")
+        username = self.cleaned_data["username"].strip()
+        if portal_username_taken("parent", username):
+            raise ValidationError(
+                "That parent portal username is already registered — try logging in or use Forgot password below."
+            )
         return username
 
     def clean_email(self):
+        from .parent_auth import get_parent_account
+
         email = self.cleaned_data["email"].strip().lower()
-        if get_user_model().objects.filter(email__iexact=email).exists():
-            raise ValidationError("An account with this email already exists — try logging in.")
+        for user in get_user_model().objects.filter(email__iexact=email):
+            if get_parent_account(user):
+                raise ValidationError("A parent account with this email already exists — try logging in.")
         return email
 
     def clean(self):

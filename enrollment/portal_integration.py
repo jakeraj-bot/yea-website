@@ -85,8 +85,10 @@ def create_portal_account_from_enrollment(session_data, username, password):
     )
 
     User = get_user_model()
+    from portal.usernames import portal_username
+
     user = User.objects.create_user(
-        username=username.strip(),
+        username=portal_username("parent", username.strip()),
         email=(family_fields.get("primary_email") or family_fields.get("primary_email_address", "")).strip(),
         password=password,
         first_name=family_fields.get("primary_first_name", "").strip(),

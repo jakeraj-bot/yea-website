@@ -283,6 +283,12 @@ class PortalStaffAccount(models.Model):
     def __str__(self):
         return f"{self.display_name} · {self.unit.name}"
 
+    @property
+    def login_username(self):
+        from .usernames import display_username
+
+        return display_username(self.user.username)
+
 
 class PortalParentAccount(models.Model):
     user = models.OneToOneField(
@@ -308,7 +314,13 @@ class PortalParentAccount(models.Model):
         ordering = ["family__name"]
 
     def __str__(self):
-        return f"{self.user.username} · {self.family.name}"
+        return f"{self.login_username} · {self.family.name}"
+
+    @property
+    def login_username(self):
+        from .usernames import display_username
+
+        return display_username(self.user.username)
 
 
 class PortalLedgerEntry(models.Model):

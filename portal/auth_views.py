@@ -1,15 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
-from django.contrib.auth.forms import AuthenticationForm
 from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .forms import ParentSignupForm
+from .forms import ParentSignupForm, PortalAuthenticationForm
 from .models import PortalFamily, PortalParentAccount, PortalUnit
 from .parent_auth import get_parent_account, portal_preview_mode
+from .usernames import portal_username
 from enrollment.portal_integration import family_display_label, link_applications_by_email
 
 
@@ -25,7 +25,7 @@ def parent_login(request):
         if get_portal_auth(request) == "parent":
             return redirect(_login_redirect(request))
 
-    form = AuthenticationForm(request, data=request.POST or None)
+    form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="parent")
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
         account = get_parent_account(user)
@@ -100,7 +100,7 @@ def parent_signup(request):
                 status="Active",
             )
             user = get_user_model().objects.create_user(
-                username=form.cleaned_data["username"].strip(),
+                username=portal_username("parent", form.cleaned_data["username"].strip()),
                 email=form.cleaned_data["email"].strip(),
                 password=form.cleaned_data["password1"],
                 first_name=form.cleaned_data["your_name"].strip(),
@@ -140,7 +140,7 @@ def staff_login(request):
     if is_staff_portal_authenticated(request):
         return redirect(_staff_login_redirect(request))
 
-    form = AuthenticationForm(request, data=request.POST or None)
+    form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="staff")
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
         account = get_staff_account(user)
@@ -185,7 +185,7 @@ def admin_login(request):
     if is_admin_portal_authenticated(request):
         return redirect(_admin_login_redirect(request))
 
-    form = AuthenticationForm(request, data=request.POST or None)
+    form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="admin")
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
         account = get_staff_account(user)

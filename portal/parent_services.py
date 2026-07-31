@@ -105,6 +105,8 @@ def get_billing_live(family):
 
 
 def get_account_live(account):
+    from .usernames import display_username
+
     preview_key = SEED_PREVIEW_KEYS.get(account.family.slug)
     demo = PARENT_ACCOUNT.get(preview_key, {}) if preview_key else {}
     user = account.user
@@ -118,7 +120,7 @@ def get_account_live(account):
 
     return {
         "login_email": user.email,
-        "username": user.username,
+        "username": display_username(user.username),
         "password_preview": demo.get("password_preview", ""),
         "last_login": _format_last_login(user),
         "autopay_enabled": account.autopay_enabled,
@@ -441,6 +443,7 @@ def seed_parent_accounts(unit):
     from django.contrib.auth import get_user_model
 
     from .demo_data import PARENT_ACCOUNT
+    from .usernames import display_username, portal_username
 
     User = get_user_model()
     seed_map = [
@@ -458,7 +461,7 @@ def seed_parent_accounts(unit):
         email = demo_account.get("login_email", f"{username}@example.com")
         password = demo_account.get("password_preview", "ChangeMe2026!")
         user, user_created = User.objects.get_or_create(
-            username=username,
+            username=portal_username("parent", username),
             defaults={"email": email, "first_name": family.name},
         )
         if user_created:
@@ -503,7 +506,7 @@ def seed_parent_accounts(unit):
                     amount=amount,
                     is_manual=row.get("manual", False),
                 )
-        logins.append((username, password, family.name))
+        logins.append((display_username(user.username), password, family.name))
     return logins
 
 

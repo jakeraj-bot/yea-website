@@ -288,11 +288,11 @@ class PortalAccountForm(forms.Form):
     )
 
     def clean_username(self):
-        from django.contrib.auth import get_user_model
+        from portal.usernames import portal_username_taken
 
         username = self.cleaned_data["username"].strip()
-        if get_user_model().objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError("That username is taken — choose another.")
+        if portal_username_taken("parent", username):
+            raise forms.ValidationError("That parent portal username is taken — choose another.")
         return username
 
     def clean(self):

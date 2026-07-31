@@ -61,21 +61,21 @@
             <header class="apply-section-header">
               <h3 class="apply-section-title">Your family account</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.user.username }}</strong>. This application will be added to your existing family — no new login needed.</p>
+            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. This application will be added to your existing family — no new login needed.</p>
           </section>
           {% elif is_editing %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
               <h3 class="apply-section-title">Resubmit for review</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.user.username }}</strong>. After you submit, staff will review your updated application.</p>
+            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. After you submit, staff will review your updated application.</p>
           </section>
           {% elif portal_account %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
               <h3 class="apply-section-title">Parent portal</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.user.username }}</strong>. This application will appear in your portal after submission.</p>
+            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. This application will appear in your portal after submission.</p>
           </section>
           {% elif not portal_account %}
           <section class="apply-section apply-section-flat">
