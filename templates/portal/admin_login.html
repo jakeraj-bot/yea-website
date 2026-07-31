@@ -9,6 +9,11 @@
 <section class="page-content">
   <div class="container" style="max-width:32rem;">
     <section class="card">
+      {% if other_portal_signed_in %}
+      <div class="portal-callout card portal-callout-muted portal-form-full" style="margin-bottom:1rem;">
+        <p class="form-note">You are signed in to another portal. Portal admin requires its own sign-in — regular staff accounts cannot access this area.</p>
+      </div>
+      {% endif %}
       <form method="post" class="portal-form-grid">
         {% csrf_token %}
         {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}

@@ -231,9 +231,9 @@ def _staff_family_context(family_slug, page_title, family_tab, **extra):
 
 def _finalize_admin_context(request, context):
     from .parent_auth import portal_preview_mode
-    from .staff_auth import is_portal_admin
+    from .staff_auth import is_admin_portal_authenticated
 
-    context["admin_authenticated"] = portal_preview_mode() or is_portal_admin(request.user)
+    context["admin_authenticated"] = portal_preview_mode() or is_admin_portal_authenticated(request)
     return context
 
 
@@ -283,12 +283,12 @@ def _staff_context(page_title, request=None, **extra):
     staff_unit = unit.name if unit else "School 18"
     ctx = _portal_context("staff", page_title, staff_unit=staff_unit, **extra)
     if request is not None:
-        from .staff_auth import billing_permissions_for_staff, get_staff_account, staff_accessible_units
+        from .staff_auth import billing_permissions_for_staff, get_staff_account, is_staff_portal_authenticated, staff_accessible_units
 
         account = get_staff_account(request.user)
         ctx["staff_account"] = account
         ctx["billing_permissions"] = billing_permissions_for_staff(account)
-        ctx["staff_authenticated"] = bool(account) or portal_preview_mode()
+        ctx["staff_authenticated"] = is_staff_portal_authenticated(request) or portal_preview_mode()
         ctx["staff_units"] = list(staff_accessible_units(request.user)) if request.user.is_authenticated else []
         ctx["staff_unit_slug"] = unit.slug if unit else ""
     return ctx

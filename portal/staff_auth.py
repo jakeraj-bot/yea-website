@@ -1,13 +1,42 @@
 from functools import wraps
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
 from .attendance_service import get_unit
 from .demo_data import ADMIN_BILLING_PERMISSIONS, STAFF_BILLING_PERMISSIONS
 from .models import PortalStaffAccount, PortalUnit
 from .parent_auth import portal_preview_mode
+
+PORTAL_AUTH_SESSION_KEY = "portal_auth_area"
+
+
+def set_portal_auth(request, area):
+    request.session[PORTAL_AUTH_SESSION_KEY] = area
+
+
+def get_portal_auth(request):
+    return request.session.get(PORTAL_AUTH_SESSION_KEY)
+
+
+def clear_portal_auth(request):
+    request.session.pop(PORTAL_AUTH_SESSION_KEY, None)
+
+
+def is_admin_portal_authenticated(request):
+    return (
+        request.user.is_authenticated
+        and is_portal_admin(request.user)
+        and get_portal_auth(request) == "admin"
+    )
+
+
+def is_staff_portal_authenticated(request):
+    return (
+        request.user.is_authenticated
+        and get_staff_account(request.user)
+        and get_portal_auth(request) == "staff"
+    )
 
 
 def get_staff_account(user):
@@ -80,7 +109,7 @@ def staff_login_required(view_func):
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        if request.user.is_authenticated and get_staff_account(request.user):
+        if is_staff_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
         login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
         return redirect(f"{login_url}?next={request.get_full_path()}")
@@ -90,13 +119,14 @@ def staff_login_required(view_func):
 
 def staff_login_required_post(view_func):
     login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
-    decorated = login_required(login_url=login_url)(view_func)
 
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        return decorated(request, *args, **kwargs)
+        if is_staff_portal_authenticated(request):
+            return view_func(request, *args, **kwargs)
+        return redirect(f"{login_url}?next={request.get_full_path()}")
 
     return wrapper
 
@@ -108,7 +138,7 @@ def admin_login_required(view_func):
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        if request.user.is_authenticated and is_portal_admin(request.user):
+        if is_admin_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
         return redirect(f"{login_url}?next={request.get_full_path()}")
 
@@ -117,13 +147,12 @@ def admin_login_required(view_func):
 
 def admin_login_required_post(view_func):
     login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
-    decorated = login_required(login_url=login_url)(view_func)
 
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
-        if request.user.is_authenticated and is_portal_admin(request.user):
+        if is_admin_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
         return redirect(f"{login_url}?next={request.get_full_path()}")
 

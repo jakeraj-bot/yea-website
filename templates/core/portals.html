@@ -60,7 +60,7 @@
       {% if show_dev_hints %}
       <p><strong>Local design preview.</strong> Parent login is optional while <code>PORTAL_PREVIEW_MODE=True</code>. Set it to <code>False</code> and run <code>python manage.py seed_portal</code> for live portal data.</p>
       {% else %}
-      <p>Parent and staff portals require sign-in. Portal admin is for organization settings and cross-unit reports.</p>
+      <p>Parent, staff, and portal admin each require their own sign-in. Staff accounts cannot open portal admin.</p>
       {% endif %}
       <p class="form-note">Website content editing (pages, photos) is at <a href="/admin/">Django admin</a> — separate from these member portals.</p>
     </div>

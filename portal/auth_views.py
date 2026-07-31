@@ -118,13 +118,13 @@ def parent_signup(request):
 
 @require_http_methods(["GET", "POST"])
 def staff_login(request):
-    from .staff_auth import get_staff_account
+    from .staff_auth import get_portal_auth, get_staff_account, is_staff_portal_authenticated, set_portal_auth
 
     if portal_preview_mode():
         messages.info(request, "Design preview mode — staff login is not required.")
         return redirect("portal_staff_page", page="dashboard")
 
-    if request.user.is_authenticated and get_staff_account(request.user):
+    if is_staff_portal_authenticated(request):
         return redirect(_staff_login_redirect(request))
 
     form = AuthenticationForm(request, data=request.POST or None)
@@ -138,9 +138,11 @@ def staff_login(request):
             )
         else:
             login(request, user)
+            set_portal_auth(request, "staff")
             messages.success(request, f"Welcome back, {account.display_name}.")
             return redirect(_staff_login_redirect(request))
 
+    other_portal = get_portal_auth(request)
     return render(
         request,
         "portal/staff_login.html",
@@ -148,19 +150,26 @@ def staff_login(request):
             "form": form,
             "page_title": "Staff login",
             "portal_area": "public",
+            "other_portal_signed_in": other_portal if other_portal and other_portal != "staff" else "",
         },
     )
 
 
 @require_http_methods(["GET", "POST"])
 def admin_login(request):
-    from .staff_auth import get_staff_account, is_portal_admin
+    from .staff_auth import (
+        get_portal_auth,
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_portal_admin,
+        set_portal_auth,
+    )
 
     if portal_preview_mode():
         messages.info(request, "Design preview mode — admin login is not required.")
         return redirect("portal_admin_page", page="dashboard")
 
-    if request.user.is_authenticated and is_portal_admin(request.user):
+    if is_admin_portal_authenticated(request):
         return redirect(_admin_login_redirect(request))
 
     form = AuthenticationForm(request, data=request.POST or None)
@@ -174,9 +183,11 @@ def admin_login(request):
             )
         else:
             login(request, user)
+            set_portal_auth(request, "admin")
             messages.success(request, f"Welcome back, {account.display_name}.")
             return redirect(_admin_login_redirect(request))
 
+    other_portal = get_portal_auth(request)
     return render(
         request,
         "portal/admin_login.html",
@@ -184,14 +195,18 @@ def admin_login(request):
             "form": form,
             "page_title": "Portal admin login",
             "portal_area": "public",
+            "other_portal_signed_in": other_portal if other_portal and other_portal != "admin" else "",
         },
     )
 
 
 @require_GET
 def admin_logout(request):
+    from .staff_auth import clear_portal_auth
+
+    clear_portal_auth(request)
     logout(request)
-    messages.success(request, "You have been signed out.")
+    messages.success(request, "You have been signed out of portal admin.")
     return redirect("portal_home")
 
 
@@ -204,8 +219,11 @@ def _admin_login_redirect(request):
 
 @require_GET
 def staff_logout(request):
+    from .staff_auth import clear_portal_auth
+
+    clear_portal_auth(request)
     logout(request)
-    messages.success(request, "You have been signed out.")
+    messages.success(request, "You have been signed out of the staff portal.")
     return redirect("portal_home")
 
 
