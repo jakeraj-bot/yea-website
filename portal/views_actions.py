@@ -5,6 +5,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.http import require_POST
 
+from .staff_auth import admin_login_required_post
+
 from .attendance_service import portal_is_live, ensure_portal_seeded, get_unit
 from .live_services import (
     create_incident_live,
@@ -27,6 +29,13 @@ PREVIEW_FAMILY_SLUG = {
 def _needs_live(request):
     if not portal_is_live() or not ensure_portal_seeded():
         messages.error(request, "Run python manage.py seed_portal to enable partially live mode.")
+        return False
+    return True
+
+
+def _admin_needs_live(request):
+    if not portal_is_live():
+        messages.error(request, "Portal admin saves are disabled in preview mode.")
         return False
     return True
 
@@ -165,9 +174,10 @@ def team_message_send(request):
     return redirect(url)
 
 
+@admin_login_required_post
 @require_POST
 def admin_announcement_save(request):
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id") or None
     channels = []
@@ -199,9 +209,10 @@ def admin_announcement_save(request):
     return redirect("portal_admin_page", page="communications")
 
 
+@admin_login_required_post
 @require_POST
 def admin_newsletter_save(request):
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id") or None
     try:
@@ -242,11 +253,12 @@ def admin_newsletter_save(request):
     return redirect("portal_admin_page", page="communications")
 
 
+@admin_login_required_post
 @require_POST
 def admin_announcement_delete(request):
     from .models import PortalAnnouncement
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id")
     try:
@@ -264,13 +276,14 @@ def _perm_yes(post, key):
     return post.get(key, "no") in ("yes", "on", "1", "true")
 
 
+@admin_login_required_post
 @require_POST
 def admin_billing_permissions(request):
     from .admin_config import get_charge_types_admin
     from .admin_services import save_billing_permissions
     from .models import PortalStaffAccount
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="billing-permissions")
     charge_types = get_charge_types_admin()
     updated = 0
@@ -295,11 +308,12 @@ def admin_billing_permissions(request):
     return redirect("portal_admin_page", page="billing-permissions")
 
 
+@admin_login_required_post
 @require_POST
 def admin_staff_invite(request):
     from .admin_services import invite_staff_user
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     role = request.POST.get("role", "Unit staff")
     try:
@@ -323,11 +337,12 @@ def admin_staff_invite(request):
     return redirect("portal_admin_page", page="staff")
 
 
+@admin_login_required_post
 @require_POST
 def admin_staff_edit(request):
     from .admin_services import update_staff_user
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     try:
         account = update_staff_user(request.POST.get("staff_id"), request.POST)
@@ -340,11 +355,12 @@ def admin_staff_edit(request):
     return redirect("portal_admin_page", page="staff")
 
 
+@admin_login_required_post
 @require_POST
 def admin_staff_role_create(request):
     from .admin_config import save_custom_role
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     try:
         role, created = save_custom_role(request.POST.get("role_name", ""))
@@ -357,11 +373,12 @@ def admin_staff_role_create(request):
     return redirect("portal_admin_page", page="staff")
 
 
+@admin_login_required_post
 @require_POST
 def admin_default_rule_save(request):
     from .admin_config import save_default_billing_rule
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="billing-permissions")
     try:
         save_default_billing_rule(request.POST)
@@ -371,11 +388,12 @@ def admin_default_rule_save(request):
     return redirect("portal_admin_page", page="billing-permissions")
 
 
+@admin_login_required_post
 @require_POST
 def admin_waive_charge(request):
     from .admin_config import waive_absence_charge
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="dashboard")
     try:
         waive_absence_charge(
@@ -391,11 +409,12 @@ def admin_waive_charge(request):
     return redirect("portal_admin_page", page="dashboard")
 
 
+@admin_login_required_post
 @require_POST
 def admin_unit_save(request):
     from .admin_config import save_unit
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="units")
     try:
         unit_pk = request.POST.get("unit_id") or None
@@ -406,11 +425,12 @@ def admin_unit_save(request):
     return redirect("portal_admin_page", page="units")
 
 
+@admin_login_required_post
 @require_POST
 def admin_unit_action(request):
     from .admin_config import delete_unit, set_unit_active
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="units")
     action = request.POST.get("action", "")
     unit_id = request.POST.get("unit_id")
@@ -426,11 +446,12 @@ def admin_unit_action(request):
     return redirect("portal_admin_page", page="units")
 
 
+@admin_login_required_post
 @require_POST
 def admin_program_save(request):
     from .admin_config import save_program
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="programs")
     try:
         data = request.POST.copy()
@@ -442,11 +463,12 @@ def admin_program_save(request):
     return redirect("portal_admin_page", page="programs")
 
 
+@admin_login_required_post
 @require_POST
 def admin_program_delete(request):
     from .admin_config import delete_program
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="programs")
     try:
         ids = [int(x) for x in request.POST.getlist("program_ids") if str(x).isdigit()]
@@ -457,11 +479,12 @@ def admin_program_delete(request):
     return redirect("portal_admin_page", page="programs")
 
 
+@admin_login_required_post
 @require_POST
 def admin_agency_save(request):
     from .admin_config import save_agency
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="agencies")
     try:
         agency_pk = request.POST.get("agency_id") or None
@@ -472,11 +495,12 @@ def admin_agency_save(request):
     return redirect("portal_admin_page", page="agencies")
 
 
+@admin_login_required_post
 @require_POST
 def admin_scholarship_save(request):
     from .admin_config import save_scholarship_assignment
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="scholarships")
     try:
         pk = request.POST.get("assignment_id") or None
@@ -487,11 +511,12 @@ def admin_scholarship_save(request):
     return redirect("portal_admin_page", page="scholarships")
 
 
+@admin_login_required_post
 @require_POST
 def admin_fee_save(request):
     from .admin_config import save_fee_rule
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
         save_fee_rule(int(request.POST.get("fee_id")), request.POST)
@@ -501,11 +526,12 @@ def admin_fee_save(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_payment_plan_save(request):
     from .admin_config import save_payment_plan
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     pk = request.POST.get("plan_id") or None
     try:
@@ -516,11 +542,12 @@ def admin_payment_plan_save(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_payment_plan_delete(request):
     from .admin_config import delete_payment_plan
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
         delete_payment_plan(int(request.POST.get("plan_id")))
@@ -530,11 +557,12 @@ def admin_payment_plan_delete(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_processing_fee_save(request):
     from .admin_config import save_processing_fee
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     pk = request.POST.get("fee_id") or None
     try:
@@ -545,11 +573,12 @@ def admin_processing_fee_save(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_processing_fee_delete(request):
     from .admin_config import delete_processing_fee
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
         delete_processing_fee(int(request.POST.get("fee_id")))
@@ -559,11 +588,12 @@ def admin_processing_fee_delete(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_tax_settings_save(request):
     from .admin_config import save_tax_settings
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
         save_tax_settings(request.POST)
@@ -573,11 +603,12 @@ def admin_tax_settings_save(request):
     return redirect("portal_admin_page", page="fees")
 
 
+@admin_login_required_post
 @require_POST
 def admin_checkin_save(request):
     from .admin_config import save_checkin_settings
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="checkin-settings")
     try:
         save_checkin_settings(request.POST)
@@ -587,11 +618,12 @@ def admin_checkin_save(request):
     return redirect("portal_admin_page", page="checkin-settings")
 
 
+@admin_login_required_post
 @require_POST
 def admin_policy_create(request):
     from .admin_config import create_org_policy
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="member-policies")
     try:
         policy = create_org_policy(
@@ -605,11 +637,12 @@ def admin_policy_create(request):
     return redirect("portal_admin_page", page="member-policies")
 
 
+@admin_login_required_post
 @require_POST
 def admin_newsletter_delete(request):
     from .models import PortalNewsletter
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id")
     try:
@@ -624,11 +657,12 @@ def admin_newsletter_delete(request):
     return redirect("portal_admin_page", page="communications")
 
 
+@admin_login_required_post
 @require_POST
 def admin_profile_change_action(request):
     from .admin_services import approve_profile_change
 
-    if not _needs_live(request):
+    if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="dashboard")
     change_id = request.POST.get("change_id")
     action = request.POST.get("action", "approve")

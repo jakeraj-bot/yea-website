@@ -133,7 +133,7 @@ from .parent_auth import (
     portal_preview_mode,
     resolve_preview_key,
 )
-from .staff_auth import staff_login_required
+from .staff_auth import admin_login_required, staff_login_required
 from .parent_services import (
     build_parent_preview_live,
     get_account_live,
@@ -229,6 +229,14 @@ def _staff_family_context(family_slug, page_title, family_tab, **extra):
     )
 
 
+def _finalize_admin_context(request, context):
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import is_portal_admin
+
+    context["admin_authenticated"] = portal_preview_mode() or is_portal_admin(request.user)
+    return context
+
+
 def _portal_back_fallback(area, pay_query=""):
     if area == "parent":
         return reverse("portal_parent_page", kwargs={"page": "dashboard"}) + pay_query
@@ -240,9 +248,11 @@ def _portal_back_fallback(area, pay_query=""):
 
 
 def _portal_context(area, page_title, **extra):
-    live = _portal_data_live()
+    from .attendance_service import portal_is_live
+
     preview_mode = getattr(settings, "PORTAL_PREVIEW_MODE", False)
     staging_site = getattr(settings, "STAGING_SITE", False)
+    live = portal_is_live() if area == "admin" else _portal_data_live()
     context = {
         "portal_area": area,
         "page_title": page_title,
@@ -1208,6 +1218,7 @@ def staff_family_billing(request, family_slug):
 
 
 @require_GET
+@admin_login_required
 def admin_family_billing(request, family_slug):
     from .billing_services import get_family_for_billing, prepare_billing_for_staff
     from .staff_auth import billing_permissions_for_staff
@@ -1230,21 +1241,25 @@ def admin_family_billing(request, family_slug):
     return render(
         request,
         "portal/staff/family_billing.html",
-        _portal_context(
-            "admin",
-            f"{billing['family_name']} billing",
-            admin_page_slug="member-billing",
-            billing=billing,
-            billing_permissions=permissions,
-            charge_types=BILLING_CHARGE_TYPES,
-            families=families,
-            billing_live=_portal_data_live(),
-            today=date.today().isoformat(),
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                f"{billing['family_name']} billing",
+                admin_page_slug="member-billing",
+                billing=billing,
+                billing_permissions=permissions,
+                charge_types=BILLING_CHARGE_TYPES,
+                families=families,
+                billing_live=_portal_data_live(),
+                today=date.today().isoformat(),
+            ),
         ),
     )
 
 
 @require_GET
+@admin_login_required
 def admin_family_policies(request, family_slug):
     policy_data = get_family_policies(family_slug)
     if not policy_data:
@@ -1253,13 +1268,16 @@ def admin_family_policies(request, family_slug):
     return render(
         request,
         "portal/staff/family_policies.html",
-        _portal_context(
-            "admin",
-            f"{policy_data['family_name']} — signed policies",
-            admin_page_slug="member-policies",
-            policy_data=policy_data,
-            family_meta=family_meta,
-            family_slug=family_slug,
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                f"{policy_data['family_name']} — signed policies",
+                admin_page_slug="member-policies",
+                policy_data=policy_data,
+                family_meta=family_meta,
+                family_slug=family_slug,
+            ),
         ),
     )
 
@@ -1495,6 +1513,7 @@ def staff_agency_copay_export(request):
 
 
 @require_GET
+@admin_login_required
 def admin_page(request, page):
     templates = {
         "dashboard": "portal/admin/dashboard.html",
@@ -1768,10 +1787,11 @@ def admin_page(request, page):
         context["units"] = UNITS
     if page == "reports":
         context["reports"] = ADMIN_REPORTS
-    return render(request, template, context)
+    return render(request, template, _finalize_admin_context(request, context))
 
 
 @require_GET
+@admin_login_required
 def admin_enrollment_report(request):
     if _portal_data_live():
         from .admin_services import get_admin_dashboard_live, get_enrollment_by_unit_live, get_member_families_live
@@ -1786,18 +1806,22 @@ def admin_enrollment_report(request):
     return render(
         request,
         "portal/admin/enrollment_report.html",
-        _portal_context(
-            "admin",
-            "Organization enrollment summary",
-            admin_page_slug="reports",
-            dashboard=dashboard,
-            enrollment_by_unit=enrollment_by_unit,
-            families=families,
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Organization enrollment summary",
+                admin_page_slug="reports",
+                dashboard=dashboard,
+                enrollment_by_unit=enrollment_by_unit,
+                families=families,
+            ),
         ),
     )
 
 
 @require_GET
+@admin_login_required
 def admin_financial_report(request):
     if _portal_data_live():
         from .admin_services import get_admin_dashboard_live, get_member_families_live
@@ -1811,18 +1835,22 @@ def admin_financial_report(request):
     return render(
         request,
         "portal/admin/financial_report.html",
-        _portal_context(
-            "admin",
-            "Cross-unit financial summary",
-            admin_page_slug="reports",
-            families=families,
-            overdue_families=overdue,
-            dashboard=dashboard,
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Cross-unit financial summary",
+                admin_page_slug="reports",
+                families=families,
+                overdue_families=overdue,
+                dashboard=dashboard,
+            ),
         ),
     )
 
 
 @require_GET
+@admin_login_required
 def admin_member_policies_print(request):
     families_data = []
     for summary in get_member_policy_summaries(ADMIN_MEMBER_FAMILIES):
@@ -1830,17 +1858,21 @@ def admin_member_policies_print(request):
     return render(
         request,
         "portal/admin/member_policies_print.html",
-        _portal_context(
-            "admin",
-            "Member policies — print all",
-            families_data=families_data,
-            print_scope="All units",
-            policies_per_child=POLICIES_PER_CHILD,
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Member policies — print all",
+                families_data=families_data,
+                print_scope="All units",
+                policies_per_child=POLICIES_PER_CHILD,
+            ),
         ),
     )
 
 
 @require_GET
+@admin_login_required
 def admin_parent_preview(request, family_slug, page="dashboard"):
     """Admin troubleshooting view — browse parent portal pages with sensitive data masked."""
     from enrollment.models import EnrollmentApplication

@@ -1,0 +1,47 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Portal admin login</h1>
+    <p class="lead">Sign in to manage units, programs, billing settings, and organization-wide reports.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container" style="max-width:32rem;">
+    <section class="card">
+      <form method="post" class="portal-form-grid">
+        {% csrf_token %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+        {% if form.non_field_errors %}
+        <div class="portal-callout card portal-callout-warning portal-form-full">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="{{ form.password.id_for_label }}">Password</label>
+          {{ form.password }}
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Log in</button>
+          <a class="btn btn-secondary" href="{% url 'portal_home' %}">All portals</a>
+        </div>
+      </form>
+      <p class="form-note" style="margin-top:1rem;">Portal admin accounts are created by your organization. Staff unit logins use the <a href="{% url 'portal_staff_login' %}">staff portal sign-in</a>.</p>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll("#id_username, #id_password").forEach(function (input) {
+    input.classList.add("portal-input");
+  });
+})();
+</script>
+{% endblock %}

@@ -20,6 +20,13 @@ def get_staff_account(user):
     )
 
 
+def is_portal_admin(user):
+    account = get_staff_account(user)
+    if not account:
+        return False
+    return account.role == "Portal admin" or account.all_units_access
+
+
 def staff_accessible_units(user):
     account = get_staff_account(user)
     if not account:
@@ -90,5 +97,34 @@ def staff_login_required_post(view_func):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
         return decorated(request, *args, **kwargs)
+
+    return wrapper
+
+
+def admin_login_required(view_func):
+    login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if portal_preview_mode():
+            return view_func(request, *args, **kwargs)
+        if request.user.is_authenticated and is_portal_admin(request.user):
+            return view_func(request, *args, **kwargs)
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    return wrapper
+
+
+def admin_login_required_post(view_func):
+    login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+    decorated = login_required(login_url=login_url)(view_func)
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if portal_preview_mode():
+            return view_func(request, *args, **kwargs)
+        if request.user.is_authenticated and is_portal_admin(request.user):
+            return view_func(request, *args, **kwargs)
+        return redirect(f"{login_url}?next={request.get_full_path()}")
 
     return wrapper

@@ -152,6 +152,56 @@ def staff_login(request):
     )
 
 
+@require_http_methods(["GET", "POST"])
+def admin_login(request):
+    from .staff_auth import get_staff_account, is_portal_admin
+
+    if portal_preview_mode():
+        messages.info(request, "Design preview mode — admin login is not required.")
+        return redirect("portal_admin_page", page="dashboard")
+
+    if request.user.is_authenticated and is_portal_admin(request.user):
+        return redirect(_admin_login_redirect(request))
+
+    form = AuthenticationForm(request, data=request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.get_user()
+        account = get_staff_account(user)
+        if not account or not is_portal_admin(user):
+            messages.error(
+                request,
+                "That login is not linked to a portal admin account. Contact your organization administrator.",
+            )
+        else:
+            login(request, user)
+            messages.success(request, f"Welcome back, {account.display_name}.")
+            return redirect(_admin_login_redirect(request))
+
+    return render(
+        request,
+        "portal/admin_login.html",
+        {
+            "form": form,
+            "page_title": "Portal admin login",
+            "portal_area": "public",
+        },
+    )
+
+
+@require_GET
+def admin_logout(request):
+    logout(request)
+    messages.success(request, "You have been signed out.")
+    return redirect("portal_home")
+
+
+def _admin_login_redirect(request):
+    next_url = request.GET.get("next") or request.POST.get("next")
+    if next_url and next_url.startswith("/portal/admin"):
+        return next_url
+    return reverse("portal_admin_page", kwargs={"page": "dashboard"})
+
+
 @require_GET
 def staff_logout(request):
     logout(request)

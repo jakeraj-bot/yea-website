@@ -107,22 +107,41 @@ If the deploy fails, check logs for missing env vars or migration errors.
 
 ---
 
-## Step 5 — Seed portal data (required once)
+## Step 5 — Set up empty portal (no Shell needed — free plan)
 
-The build runs migrations automatically, but **sample families, staff, units, and billing** come from a one-time seed command.
+Render **free** web services do not include **Shell**. Portal setup runs automatically during deploy when you add these environment variables.
 
-1. In Render → **yea-website-staging** → **Shell** (or **SSH**).
-2. Run:
+In **yea-website-staging → Environment**, add:
+
+| Variable | Value |
+|----------|--------|
+| `PORTAL_BOOTSTRAP_ON_DEPLOY` | `True` |
+| `PORTAL_ADMIN_USERNAME` | `yeaadmin` (or your choice) |
+| `PORTAL_ADMIN_PASSWORD` | A secure password (8+ characters) |
+| `PORTAL_ADMIN_NAME` | `YEA Admin` (optional) |
+
+Click **Save Changes** — Render redeploys. In **Logs**, during the build you should see:
+
+- `Empty portal ready — fee rules, check-in toggles...`
+- `Created portal admin: yeaadmin`
+
+**Do not run `seed_portal`** — that loads demo families and staff.
+
+After deploy, sign in at `/portal/admin/login/` with the username and password you set.
+
+### Alternative — run from your Mac (if build setup fails)
+
+1. Render → your **Postgres** database → copy **External Database URL**
+2. On your Mac:
 
 ```bash
-python manage.py seed_portal
-```
-
-3. Wait for “Portal seed complete” (or similar success output).
-4. Optional sanity check:
-
-```bash
-python manage.py check
+cd ~/Projects/yea-website
+export DATABASE_URL="paste-external-url-here"
+export PORTAL_PREVIEW_MODE=False
+./venv/bin/pip install -r requirements.txt
+./venv/bin/python manage.py migrate
+./venv/bin/python manage.py bootstrap_portal
+./venv/bin/python manage.py create_portal_admin --username yeaadmin --password 'YourSecurePass123!' --name "YEA Admin"
 ```
 
 ---
@@ -138,21 +157,15 @@ Open your staging URL and verify:
 | Portal hub | `/portal/` | Three cards — no “Design preview” button |
 | Parent login | `/portal/parent/login/` | Clean login — no demo password on page |
 | Staff login | `/portal/staff/login/` | Clean login |
-| Admin | `/portal/admin/dashboard/` | Units, programs, billing screens |
+| Admin | `/portal/admin/login/` | Login required — use `PORTAL_ADMIN_USERNAME` / password |
 
-**Test logins** (share these privately with your partner — they are not shown on the site):
-
-| Role | Username | Password |
-|------|----------|----------|
-| Parent | `jakeraj` | `JacobsFamily2026!` |
-| Staff | `staff18` | `StaffSchool18!` |
-| Admin | — | Open `/portal/admin/dashboard/` directly |
+Sign in as admin, then add a unit and program from scratch. Parent and staff accounts are created through the portal (signup / admin invite).
 
 After login, click through:
 
-- **Parent:** billing, policies, drop-in, profile
-- **Staff:** attendance check-in, family billing, applications
-- **Admin:** units, fees, scholarships, communications, parent preview
+- **Admin:** units, programs, staff invite, fees
+- **Parent:** create account via signup after you add a unit
+- **Staff:** invite from admin after you add a unit
 
 ---
 

@@ -52,7 +52,7 @@
           <li>Member billing (all units)</li>
           <li>Scholarships &amp; 4Cs agencies</li>
         </ul>
-        <a class="btn btn-primary" href="{% url 'portal_admin_page' page='dashboard' %}">Go to portal admin</a>
+        <a class="btn btn-primary" href="{% if portal_live %}{% url 'portal_admin_login' %}{% else %}{% url 'portal_admin_page' page='dashboard' %}{% endif %}">{% if portal_live %}Sign in to portal admin{% else %}Go to portal admin{% endif %}</a>
       </article>
     </div>
 
