@@ -107,7 +107,12 @@ def ensure_admin_config_minimal():
 
 
 def ensure_admin_config_seeded():
-    """Seed config tables from demo data when missing — never overwrite admin edits."""
+    """Org defaults for admin pages — no demo units, families, or agencies."""
+    ensure_admin_config_minimal()
+
+
+def ensure_demo_admin_content():
+    """Demo units, agencies, and scholarships — run only via seed_portal."""
     for unit_data in UNITS:
         PortalUnit.objects.get_or_create(
             slug=unit_data["slug"],
@@ -122,53 +127,6 @@ def ensure_admin_config_seeded():
                 "capacity": unit_data.get("capacity", 0),
             },
         )
-    for rule in FEE_RULES:
-        PortalFeeRule.objects.get_or_create(
-            key=rule["key"],
-            defaults={
-                "name": rule["name"],
-                "amount": rule.get("amount", ""),
-                "display": rule.get("display", ""),
-                "frequency": rule.get("frequency", ""),
-                "period": rule.get("period", ""),
-                "notes": rule.get("notes", ""),
-            },
-        )
-    for mode in CHECKIN_MODES:
-        PortalCheckInSetting.objects.get_or_create(
-            key=mode["key"],
-            defaults={
-                "label": mode["label"],
-                "description": mode.get("description", ""),
-                "enabled": mode.get("enabled", False),
-            },
-        )
-    for role in PORTAL_STAFF_ROLES:
-        PortalStaffRole.objects.update_or_create(name=role, defaults={"is_system": True})
-    defaults = [
-        ("Unit staff", True, False, False, False),
-        ("Unit director", True, True, False, False),
-        ("Portal admin", True, True, True, True),
-        ("Front desk staff", True, False, False, False),
-    ]
-    for role_name, add, delete, credit, plans in defaults:
-        PortalBillingDefaultRule.objects.get_or_create(
-            role_name=role_name,
-            defaults={
-                "can_add_charge": add,
-                "can_delete_charge": delete,
-                "can_add_credit": credit,
-                "can_edit_family_plans": plans,
-                "is_custom": False,
-            },
-        )
-    if not PortalPaymentPlan.objects.exists():
-        for name, interval in [("Weekly", "weekly"), ("Bi-weekly", "biweekly"), ("Monthly", "monthly")]:
-            PortalPaymentPlan.objects.create(name=name, interval=interval, is_active=True)
-    if not PortalProcessingFee.objects.exists():
-        PortalProcessingFee.objects.create(name="Card processing", percent=Decimal("2.90"), flat_amount=Decimal("0.30"))
-    if not PortalTaxStatementSetting.objects.exists():
-        PortalTaxStatementSetting.objects.create()
     if not PortalScholarshipFund.objects.exists():
         for fund in SCHOLARSHIP_FUNDS:
             PortalScholarshipFund.objects.create(

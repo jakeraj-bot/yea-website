@@ -124,9 +124,10 @@ class Command(BaseCommand):
         from portal.live_services import seed_partial_live_data
 
         seed_partial_live_data(unit, program)
-        from portal.admin_config import ensure_admin_config_seeded
+        from portal.admin_config import ensure_admin_config_seeded, ensure_demo_admin_content
 
         ensure_admin_config_seeded()
+        ensure_demo_admin_content()
         _seed_agency_profiles(unit)
         from portal.parent_services import seed_dropin_profiles
 
