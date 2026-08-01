@@ -25,6 +25,12 @@ SEED_PREVIEW_KEYS = {
 }
 
 
+def _parent_demo_fallbacks_enabled():
+    from .parent_auth import portal_preview_mode
+
+    return portal_preview_mode()
+
+
 def _format_last_login(user):
     if not user.last_login:
         return "First login"
@@ -33,7 +39,7 @@ def _format_last_login(user):
 
 
 def _child_balances_from_ledger(family):
-    if family.slug in SEED_FAMILY_SLUGS:
+    if _parent_demo_fallbacks_enabled() and family.slug in SEED_FAMILY_SLUGS:
         billing_demo = FAMILIES_BILLING.get(family.slug, {})
         children = [dict(child) for child in billing_demo.get("children", [])]
         if children:
@@ -73,7 +79,9 @@ def _child_balances_from_ledger(family):
 
 
 def get_billing_live(family):
-    demo = FAMILIES_BILLING.get(family.slug, {}) if family.slug in SEED_FAMILY_SLUGS else {}
+    demo = {}
+    if _parent_demo_fallbacks_enabled() and family.slug in SEED_FAMILY_SLUGS:
+        demo = FAMILIES_BILLING.get(family.slug, {})
     ledger_qs = PortalLedgerEntry.objects.filter(family=family)
     if ledger_qs.exists():
         ledger = [
@@ -108,7 +116,11 @@ def get_account_live(account):
     from .usernames import display_username
 
     preview_key = SEED_PREVIEW_KEYS.get(account.family.slug)
-    demo = PARENT_ACCOUNT.get(preview_key, {}) if preview_key else {}
+    demo = (
+        PARENT_ACCOUNT.get(preview_key, {})
+        if preview_key and _parent_demo_fallbacks_enabled()
+        else {}
+    )
     user = account.user
     payment_methods = []
     if account.stripe_customer_id:
@@ -149,7 +161,7 @@ def get_receipts_live(family):
             )
         return receipts
     preview_key = SEED_PREVIEW_KEYS.get(family.slug)
-    if preview_key:
+    if preview_key and _parent_demo_fallbacks_enabled():
         return PARENT_RECEIPTS.get(preview_key, [])
     return []
 
@@ -259,7 +271,7 @@ def _payment_description(payment):
 
 
 def get_profile_live(family, account=None):
-    if family.slug in SEED_FAMILY_SLUGS:
+    if _parent_demo_fallbacks_enabled() and family.slug in SEED_FAMILY_SLUGS:
         demo_profiles = {
             "jacobs": PARENT_PROFILE,
             "martinez": PARENT_PAYMENT_PREVIEWS["4cs"]["profile"],
@@ -326,7 +338,7 @@ def get_parent_policy_data_live(family):
     from enrollment.policies_data import POLICIES
     from portal.demo_data import POLICIES_PER_CHILD, get_family_policies
 
-    demo = get_family_policies(family.slug)
+    demo = get_family_policies(family.slug) if _parent_demo_fallbacks_enabled() else None
     if demo:
         return demo
 
@@ -553,7 +565,7 @@ def get_parent_announcement_live(family):
     from .models import PortalAnnouncement
 
     preview_key = SEED_PREVIEW_KEYS.get(family.slug)
-    if preview_key:
+    if preview_key and _parent_demo_fallbacks_enabled():
         demo = PARENT_ANNOUNCEMENTS.get(preview_key)
         if demo:
             return demo
@@ -574,7 +586,7 @@ def get_parent_announcement_live(family):
 
 def get_tax_eligibility_live(family):
     preview_key = SEED_PREVIEW_KEYS.get(family.slug, family.slug)
-    demo = TAX_STATEMENT_ELIGIBILITY.get(preview_key)
+    demo = TAX_STATEMENT_ELIGIBILITY.get(preview_key) if _parent_demo_fallbacks_enabled() else None
     balance = f"{family.balance:.2f}"
     require_zero = TAX_STATEMENT_SETTINGS.get("require_zero_balance", True)
     if require_zero and family.balance > 0:
@@ -588,8 +600,15 @@ def get_tax_eligibility_live(family):
         status=PortalPayment.STATUS_PAID,
         payment_kind="balance",
     ).aggregate(total=models.Sum("amount"))["total"] or Decimal("0")
-    if paid_total <= 0 and demo:
-        return demo
+    if paid_total <= 0:
+        if demo:
+            return demo
+        return {
+            "eligible": False,
+            "balance": balance,
+            "reason": "No qualifying payments yet for this tax year.",
+            "paid_total": "0.00",
+        }
     return {"eligible": True, "balance": balance, "reason": "", "paid_total": f"{paid_total:.2f}"}
 
 
@@ -705,7 +724,7 @@ def get_drop_in_live(account):
     from dropin.models import DropInBooking, DropInFamilyProfile, DropInWaitlistEntry
 
     preview_key = SEED_PREVIEW_KEYS.get(account.family.slug)
-    if preview_key and preview_key in PARENT_DROP_IN:
+    if preview_key and preview_key in PARENT_DROP_IN and _parent_demo_fallbacks_enabled():
         data = dict(PARENT_DROP_IN[preview_key])
         profile = getattr(account.user, "dropin_profile", None)
         if profile:
