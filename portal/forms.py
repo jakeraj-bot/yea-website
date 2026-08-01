@@ -10,10 +10,10 @@ class PortalAuthenticationForm(AuthenticationForm):
         super().__init__(*args, **kwargs)
 
     def clean_username(self):
-        login_name = super().clean_username()
+        username = self.cleaned_data.get("username")
         from .usernames import resolve_auth_username
 
-        return resolve_auth_username(self.portal_type, login_name)
+        return resolve_auth_username(self.portal_type, username)
 
 
 class ParentSignupForm(forms.Form):
