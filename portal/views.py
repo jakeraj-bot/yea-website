@@ -306,7 +306,9 @@ PREVIEW_FAMILY_SLUG = {
 
 
 def _parent_live_mode(request):
-    if not _portal_data_live() or portal_preview_mode() or not request.user.is_authenticated:
+    if portal_preview_mode() or not request.user.is_authenticated:
+        return False
+    if not portal_is_live():
         return False
     return bool(get_parent_account(request.user))
 
@@ -330,13 +332,14 @@ def _parent_context(request, page_title, page_slug="", **extra):
         preview_key = preview_key_for_family(account.family)
         pending_profile_changes = get_pending_profile_changes(account)
     else:
-        preview = PARENT_PAYMENT_PREVIEWS[preview_key]
-        pay_query = f"?pay={preview_key}"
-        account_data = PARENT_ACCOUNT.get(preview_key, {})
-        receipts = PARENT_RECEIPTS.get(preview_key, [])
-        policy_data = _parent_policy_data(preview_key)
-        parent_announcement = PARENT_ANNOUNCEMENTS.get(preview_key, {})
-        drop_in = PARENT_DROP_IN.get(preview_key, {})
+        demo_key = preview_key if preview_key in PARENT_PAYMENT_PREVIEWS else "private-pay"
+        preview = PARENT_PAYMENT_PREVIEWS[demo_key]
+        pay_query = f"?pay={demo_key}"
+        account_data = PARENT_ACCOUNT.get(demo_key, {})
+        receipts = PARENT_RECEIPTS.get(demo_key, [])
+        policy_data = _parent_policy_data(demo_key)
+        parent_announcement = PARENT_ANNOUNCEMENTS.get(demo_key, {})
+        drop_in = PARENT_DROP_IN.get(demo_key, {})
         pending_profile_changes = []
     parent_avatar = get_parent_avatar_context(account, preview)
     from .staff_auth import get_portal_auth
