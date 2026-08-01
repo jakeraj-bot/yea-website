@@ -719,6 +719,27 @@ def send_payment_receipt_email(payment):
     send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True)
 
 
+def _drop_in_offered():
+    from dropin.models import DropInDayCapacity
+
+    return DropInDayCapacity.objects.exists()
+
+
+def _drop_in_program_catalog():
+    from dropin import constants
+
+    fees = {
+        "after_school": f"{constants.FEE_DOLLARS[constants.PROGRAM_AFTER_SCHOOL]:.0f}",
+        "summer_camp": f"{constants.FEE_DOLLARS[constants.PROGRAM_SUMMER_CAMP]:.0f}",
+    }
+    deadlines = {
+        "after_school": constants.DEADLINE_LABEL[constants.PROGRAM_AFTER_SCHOOL],
+        "summer_camp": constants.DEADLINE_LABEL[constants.PROGRAM_SUMMER_CAMP],
+    }
+    locations = [label for _, label in constants.LOCATION_CHOICES]
+    return fees, deadlines, locations
+
+
 def get_drop_in_live(account):
     from dropin import constants
     from dropin.models import DropInBooking, DropInFamilyProfile, DropInWaitlistEntry
@@ -726,6 +747,8 @@ def get_drop_in_live(account):
     preview_key = SEED_PREVIEW_KEYS.get(account.family.slug)
     if preview_key and preview_key in PARENT_DROP_IN and _parent_demo_fallbacks_enabled():
         data = dict(PARENT_DROP_IN[preview_key])
+        data.setdefault("offered", True)
+        data.setdefault("show_program_details", True)
         profile = getattr(account.user, "dropin_profile", None)
         if profile:
             data["status"] = profile.status
@@ -734,18 +757,16 @@ def get_drop_in_live(account):
         return data
 
     profile = getattr(account.user, "dropin_profile", None)
-    fees = {"after_school": "35", "summer_camp": "55"}
-    deadlines = {
-        "after_school": constants.DEADLINE_LABEL[constants.PROGRAM_AFTER_SCHOOL],
-        "summer_camp": constants.DEADLINE_LABEL[constants.PROGRAM_SUMMER_CAMP],
-    }
-    locations = [label for _, label in constants.LOCATION_CHOICES]
+    fees, deadlines, locations = _drop_in_program_catalog()
+    offered = _drop_in_offered()
 
     if not profile:
         return {
             "status": "not_registered",
             "status_label": "Not registered",
             "registered": False,
+            "offered": offered,
+            "show_program_details": False,
             "fees": fees,
             "deadlines": deadlines,
             "locations": locations,
@@ -782,6 +803,8 @@ def get_drop_in_live(account):
         "status": profile.status,
         "status_label": profile.get_status_display(),
         "registered": True,
+        "offered": offered,
+        "show_program_details": offered,
         "fees": fees,
         "deadlines": deadlines,
         "locations": locations,

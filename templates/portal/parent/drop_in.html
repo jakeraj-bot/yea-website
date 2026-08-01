@@ -13,6 +13,7 @@
       <p><strong>Registration pending staff review.</strong> You cannot book drop-in days until we approve your registration. We'll email you when you're approved.</p>
     </div>
     {% elif drop_in.status == 'not_registered' %}
+    {% if drop_in.offered %}
     <div class="portal-callout card">
       <p><strong>Register for drop-in care</strong> to book individual days using your portal login.</p>
       {% if portal_live and parent_authenticated %}
@@ -22,6 +23,11 @@
       </form>
       {% endif %}
     </div>
+    {% else %}
+    <div class="portal-callout card">
+      <p><strong>Drop-in care is not set up yet.</strong> When your program enables drop-in booking, you'll register here and book individual days from this page.</p>
+    </div>
+    {% endif %}
     {% elif drop_in.status == 'approved' %}
     <div class="portal-toolbar">
       <button type="button" class="btn btn-primary" id="book-dropin-btn">+ Book a drop-in day</button>
@@ -29,6 +35,7 @@
     </div>
     {% endif %}
 
+    {% if drop_in.show_program_details %}
     <div class="portal-stat-row">
       <div class="portal-stat card">
         <span class="portal-stat-label">After-school drop-in</span>
@@ -68,7 +75,9 @@
         </ul>
       </section>
     </div>
+    {% endif %}
 
+    {% if drop_in.show_program_details %}
     <h2>Your bookings</h2>
     {% if drop_in.bookings %}
     <div class="portal-table-wrap">
@@ -152,10 +161,9 @@
         <div class="form-group">
           <label for="di-location">Location</label>
           <select id="di-location" name="location" class="portal-select" required>
-            <option>School 18</option>
-            <option>School 26</option>
-            <option>Dale Ave</option>
-            <option>Caldwell University</option>
+            {% for loc in drop_in.locations %}
+            <option>{{ loc }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="form-group">
@@ -169,6 +177,7 @@
         <p class="form-note portal-form-full">{% if portal_live and parent_authenticated %}We check availability before payment. Full days join the waitlist automatically.{% elif show_dev_hints %}Preview flow — booking details carry to payment review.{% endif %}</p>
       </form>
     </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

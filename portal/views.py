@@ -339,7 +339,9 @@ def _parent_context(request, page_title, page_slug="", **extra):
         receipts = PARENT_RECEIPTS.get(demo_key, [])
         policy_data = _parent_policy_data(demo_key)
         parent_announcement = PARENT_ANNOUNCEMENTS.get(demo_key, {})
-        drop_in = PARENT_DROP_IN.get(demo_key, {})
+        drop_in = dict(PARENT_DROP_IN.get(demo_key, {}))
+        drop_in.setdefault("offered", True)
+        drop_in.setdefault("show_program_details", True)
         pending_profile_changes = []
     parent_avatar = get_parent_avatar_context(account, preview)
     from .staff_auth import get_portal_auth
