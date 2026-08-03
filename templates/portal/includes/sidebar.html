@@ -72,14 +72,14 @@
   </div>
   <p class="portal-sidebar-label">Admin menu</p>
   <nav class="portal-nav-groups portal-nav-admin-groups" aria-label="Admin menu">
-    <details class="portal-nav-group"{% if admin_page_slug == 'dashboard' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-overview"{% if admin_page_slug == 'dashboard' %} open{% endif %}>
       <summary class="portal-nav-group-label">Overview</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-dashboard{% if admin_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='dashboard' %}">Overview</a></li>
       </ul>
     </details>
 
-    <details class="portal-nav-group"{% if admin_page_slug == 'units' or admin_page_slug == 'programs' or admin_page_slug == 'staff' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-organization"{% if admin_page_slug == 'units' or admin_page_slug == 'programs' or admin_page_slug == 'staff' %} open{% endif %}>
       <summary class="portal-nav-group-label">Organization</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-units{% if admin_page_slug == 'units' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='units' %}">Units &amp; locations</a></li>
@@ -88,7 +88,7 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-members"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' %} open{% endif %}>
       <summary class="portal-nav-group-label">Members</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-families{% if admin_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}">All families</a></li>
@@ -98,7 +98,7 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'scholarships' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-billing"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'scholarships' %} open{% endif %}>
       <summary class="portal-nav-group-label">Billing &amp; fees</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-agencies{% if admin_page_slug == 'agencies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='agencies' %}">Agencies (4Cs)</a></li>
@@ -108,7 +108,7 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'support' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-communications"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'support' %} open{% endif %}>
       <summary class="portal-nav-group-label">Communications</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-messages{% if admin_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='messages' %}">Team messages</a></li>
@@ -117,7 +117,7 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group"{% if admin_page_slug == 'lesson-planner' or admin_page_slug == 'licensing' or admin_page_slug == 'staff-compliance' or admin_page_slug == 'checkin-settings' or admin_page_slug == 'reports' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-tools"{% if admin_page_slug == 'lesson-planner' or admin_page_slug == 'licensing' or admin_page_slug == 'staff-compliance' or admin_page_slug == 'checkin-settings' or admin_page_slug == 'reports' %} open{% endif %}>
       <summary class="portal-nav-group-label">Tools &amp; compliance</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-lessons{% if admin_page_slug == 'lesson-planner' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='lesson-planner' %}">AI lesson planner</a></li>

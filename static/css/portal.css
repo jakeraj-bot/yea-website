@@ -457,7 +457,7 @@
 .portal-nav-admin-groups {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .portal-nav-group {
@@ -467,13 +467,16 @@
 .portal-nav-group-label {
   list-style: none;
   cursor: pointer;
-  font-size: 0.72rem;
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
-  padding: 0.35rem 0.5rem 0.15rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
   user-select: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .portal-nav-group-label::-webkit-details-marker {
@@ -484,102 +487,108 @@
   content: "▸ ";
   display: inline-block;
   transition: transform 0.15s ease;
+  opacity: 0.75;
 }
 
 .portal-nav-group[open] > .portal-nav-group-label::before {
   transform: rotate(90deg);
 }
 
-.portal-nav-group .portal-nav {
-  margin: 0 0 0.25rem;
-  padding-left: 0;
+.portal-nav-group-overview > .portal-nav-group-label {
+  color: #1565c0;
+  border-color: #42a5f5;
+  background: rgba(66, 165, 245, 0.14);
 }
 
-.portal-nav-admin-families { color: #00695c; border-color: #26a69a; background: rgba(38, 166, 154, 0.1); }
-.portal-nav-admin-applications { color: #1565c0; border-color: #42a5f5; background: rgba(66, 165, 245, 0.1); }
-.portal-nav-admin-families:hover { background: rgba(38, 166, 154, 0.18); }
-.portal-nav-admin-applications:hover { background: rgba(66, 165, 245, 0.2); }
-.portal-nav-admin-families { --nav-accent: #26a69a; }
-.portal-nav-admin-applications { --nav-accent: var(--yea-blue); }
+.portal-nav-group-organization > .portal-nav-group-label {
+  color: #2e7d32;
+  border-color: var(--yea-green);
+  background: rgba(102, 187, 106, 0.14);
+}
+
+.portal-nav-group-members > .portal-nav-group-label {
+  color: #00695c;
+  border-color: #26a69a;
+  background: rgba(38, 166, 154, 0.12);
+}
+
+.portal-nav-group-billing > .portal-nav-group-label {
+  color: #ad1457;
+  border-color: #ec407a;
+  background: rgba(236, 64, 122, 0.1);
+}
+
+.portal-nav-group-communications > .portal-nav-group-label {
+  color: #d84315;
+  border-color: #ff8a65;
+  background: rgba(255, 138, 101, 0.12);
+}
+
+.portal-nav-group-tools > .portal-nav-group-label {
+  color: #4527a0;
+  border-color: #7e57c2;
+  background: rgba(126, 87, 194, 0.1);
+}
+
+.portal-nav-group[open] > .portal-nav-group-label {
+  box-shadow: inset 4px 0 0 currentColor;
+}
+
+.portal-nav-group .portal-nav {
+  margin: 0.35rem 0 0.15rem;
+  padding: 0 0 0 0.35rem;
+}
 
 .portal-nav-admin {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
 }
 
 .portal-nav-admin .portal-nav-link {
   display: block;
-  padding: 0.45rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
   border: 1px solid transparent;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
-  transition: background 0.15s ease;
+  color: rgba(0, 0, 0, 0.68);
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.portal-nav-admin-dashboard { color: #1565c0; border-color: #42a5f5; background: rgba(66, 165, 245, 0.1); }
-.portal-nav-admin-units { color: #2e7d32; border-color: var(--yea-green); background: rgba(102, 187, 106, 0.12); }
-.portal-nav-admin-programs { color: #e65100; border-color: var(--yea-orange); background: rgba(255, 152, 0, 0.1); }
-.portal-nav-admin-staff { color: #00695c; border-color: #26a69a; background: rgba(38, 166, 154, 0.1); }
-.portal-nav-admin-billing { color: #ad1457; border-color: #ec407a; background: rgba(236, 64, 122, 0.08); }
-.portal-nav-admin-agencies { color: #f57f17; border-color: #ffca28; background: rgba(255, 202, 40, 0.15); }
-.portal-nav-admin-fees { color: #7b1fa2; border-color: var(--yea-purple); background: rgba(156, 39, 176, 0.08); }
-.portal-nav-admin-permissions { color: #283593; border-color: #5c6bc0; background: rgba(92, 107, 192, 0.1); }
-.portal-nav-admin-scholarships { color: #558b2f; border-color: #9ccc65; background: rgba(156, 204, 101, 0.12); }
-.portal-nav-admin-policies { color: #6a1b9a; border-color: #ab47bc; background: rgba(171, 71, 188, 0.08); }
-.portal-nav-admin-messages { color: #0277bd; border-color: #4fc3f7; background: rgba(79, 195, 247, 0.1); }
-.portal-nav-admin-comms { color: #d84315; border-color: #ff8a65; background: rgba(255, 138, 101, 0.1); }
-.portal-nav-admin-support { color: #c62828; border-color: #ef5350; background: rgba(239, 83, 80, 0.1); }
-.portal-nav-admin-lessons { color: #00838f; border-color: #4dd0e1; background: rgba(77, 208, 225, 0.12); }
-.portal-nav-admin-licensing { color: #455a64; border-color: #78909c; background: rgba(120, 144, 156, 0.12); }
-.portal-nav-admin-compliance { color: #bf360c; border-color: #ff7043; background: rgba(255, 112, 67, 0.1); }
-.portal-nav-admin-checkin { color: #4527a0; border-color: #7e57c2; background: rgba(126, 87, 194, 0.1); }
-.portal-nav-admin-reports { color: #37474f; border-color: #90a4ae; background: rgba(144, 164, 174, 0.12); }
-
-.portal-nav-admin-dashboard:hover { background: rgba(66, 165, 245, 0.2); }
-.portal-nav-admin-units:hover { background: rgba(102, 187, 106, 0.22); }
-.portal-nav-admin-programs:hover { background: rgba(255, 152, 0, 0.18); }
-.portal-nav-admin-staff:hover { background: rgba(38, 166, 154, 0.18); }
-.portal-nav-admin-billing:hover { background: rgba(236, 64, 122, 0.15); }
-.portal-nav-admin-agencies:hover { background: rgba(255, 202, 40, 0.25); }
-.portal-nav-admin-fees:hover { background: rgba(156, 39, 176, 0.15); }
-.portal-nav-admin-permissions:hover { background: rgba(92, 107, 192, 0.18); }
-.portal-nav-admin-scholarships:hover { background: rgba(156, 204, 101, 0.2); }
-.portal-nav-admin-policies:hover { background: rgba(171, 71, 188, 0.15); }
-.portal-nav-admin-messages:hover { background: rgba(79, 195, 247, 0.18); }
-.portal-nav-admin-comms:hover { background: rgba(255, 138, 101, 0.18); }
-.portal-nav-admin-support:hover { background: rgba(239, 83, 80, 0.18); }
-.portal-nav-admin-lessons:hover { background: rgba(77, 208, 225, 0.2); }
-.portal-nav-admin-licensing:hover { background: rgba(120, 144, 156, 0.2); }
-.portal-nav-admin-compliance:hover { background: rgba(255, 112, 67, 0.18); }
-.portal-nav-admin-checkin:hover { background: rgba(126, 87, 194, 0.18); }
-.portal-nav-admin-reports:hover { background: rgba(144, 164, 174, 0.2); }
+.portal-nav-admin .portal-nav-link:hover {
+  color: rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.04);
+}
 
 .portal-nav-admin .portal-nav-link.is-active {
   font-weight: 700;
-  box-shadow: inset 4px 0 0 var(--nav-accent, var(--yea-purple));
+  box-shadow: inset 3px 0 0 var(--nav-accent, var(--yea-purple));
   background: color-mix(in srgb, var(--nav-accent, var(--yea-purple)) 14%, white);
 }
-.portal-nav-admin-dashboard { --nav-accent: var(--yea-blue); }
-.portal-nav-admin-units { --nav-accent: var(--yea-green); }
-.portal-nav-admin-programs { --nav-accent: var(--yea-orange); }
-.portal-nav-admin-staff { --nav-accent: var(--yea-purple); }
-.portal-nav-admin-billing { --nav-accent: #26a69a; }
-.portal-nav-admin-agencies { --nav-accent: var(--yea-pink); }
-.portal-nav-admin-fees { --nav-accent: var(--yea-blue); }
-.portal-nav-admin-permissions { --nav-accent: var(--yea-orange); }
-.portal-nav-admin-scholarships { --nav-accent: var(--yea-green); }
-.portal-nav-admin-policies { --nav-accent: var(--yea-purple); }
-.portal-nav-admin-messages { --nav-accent: var(--yea-blue); }
-.portal-nav-admin-comms { --nav-accent: var(--yea-pink); }
-.portal-nav-admin-support { --nav-accent: var(--yea-orange); }
-.portal-nav-admin-lessons { --nav-accent: var(--yea-green); }
-.portal-nav-admin-licensing { --nav-accent: #26a69a; }
-.portal-nav-admin-compliance { --nav-accent: var(--yea-purple); }
-.portal-nav-admin-checkin { --nav-accent: var(--yea-blue); }
-.portal-nav-admin-reports { --nav-accent: var(--yea-orange); }
+
+.portal-nav-admin-dashboard.is-active { color: #1565c0; --nav-accent: var(--yea-blue); }
+.portal-nav-admin-units.is-active { color: #2e7d32; --nav-accent: var(--yea-green); }
+.portal-nav-admin-programs.is-active { color: #e65100; --nav-accent: var(--yea-orange); }
+.portal-nav-admin-staff.is-active { color: #00695c; --nav-accent: #26a69a; }
+.portal-nav-admin-families.is-active { color: #00695c; --nav-accent: #26a69a; }
+.portal-nav-admin-applications.is-active { color: #1565c0; --nav-accent: var(--yea-blue); }
+.portal-nav-admin-billing.is-active { color: #ad1457; --nav-accent: #ec407a; }
+.portal-nav-admin-agencies.is-active { color: #f57f17; --nav-accent: #ffca28; }
+.portal-nav-admin-fees.is-active { color: #7b1fa2; --nav-accent: var(--yea-purple); }
+.portal-nav-admin-permissions.is-active { color: #283593; --nav-accent: #5c6bc0; }
+.portal-nav-admin-scholarships.is-active { color: #558b2f; --nav-accent: #9ccc65; }
+.portal-nav-admin-policies.is-active { color: #6a1b9a; --nav-accent: #ab47bc; }
+.portal-nav-admin-messages.is-active { color: #0277bd; --nav-accent: #4fc3f7; }
+.portal-nav-admin-comms.is-active { color: #d84315; --nav-accent: #ff8a65; }
+.portal-nav-admin-support.is-active { color: #c62828; --nav-accent: #ef5350; }
+.portal-nav-admin-lessons.is-active { color: #00838f; --nav-accent: #4dd0e1; }
+.portal-nav-admin-licensing.is-active { color: #455a64; --nav-accent: #78909c; }
+.portal-nav-admin-compliance.is-active { color: #bf360c; --nav-accent: #ff7043; }
+.portal-nav-admin-checkin.is-active { color: #4527a0; --nav-accent: #7e57c2; }
+.portal-nav-admin-reports.is-active { color: #37474f; --nav-accent: #90a4ae; }
 
 .portal-yesno-toggle {
   display: inline-flex;
