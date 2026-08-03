@@ -56,15 +56,17 @@
           <li><a class="nav-link nav-partnerships" href="{% url 'partnerships' %}">Partnerships</a></li>
           <li><a class="nav-link nav-donate" href="{% url 'donate' %}">Donate</a></li>
           <li><a class="nav-link nav-contact" href="{% url 'contact' %}">Contact</a></li>
+          {% if portals_public %}
           <li class="has-dropdown">
             <a class="nav-link nav-portals" href="{% url 'portal_home' %}">Portals</a>
             <ul class="dropdown">
-              <li><a href="{% url 'portal_parent_page' page='dashboard' %}">Parent portal</a></li>
-              <li><a href="{% url 'portal_staff_page' page='dashboard' %}">Staff portal</a></li>
-              <li><a href="{% url 'portal_admin_page' page='dashboard' %}">Portal admin</a></li>
+              <li><a href="{% url 'portal_parent_login' %}">Parent portal</a></li>
+              <li><a href="{% url 'portal_staff_login' %}">Staff portal</a></li>
+              <li><a href="{% url 'portal_admin_login' %}">Portal admin</a></li>
               <li><a href="{% url 'portal_home' %}">All portals…</a></li>
             </ul>
           </li>
+          {% endif %}
         </ul>
         <a class="btn btn-primary btn-nav" href="{% url 'apply' %}">Apply</a>
       </nav>
@@ -100,15 +102,21 @@
           <li><a href="mailto:info@yeanj.org">info@yeanj.org</a></li>
           <li><a href="tel:6093578608">609-357-8608</a></li>
           <li><a href="{% url 'contact' %}">Contact form</a></li>
-          <li><a href="{% url 'portal_parent_page' page='dashboard' %}">Parent portal</a></li>
+          {% if portals_public %}
+          <li><a href="{% url 'portal_parent_login' %}">Parent portal</a></li>
           <li><a href="{% url 'portal_home' %}">Staff portals</a></li>
+          {% endif %}
           <li><a href="{% url 'donate' %}">Donate</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-bottom">
       <p>&copy; {% now "Y" %} Youth Education Academy. All rights reserved.</p>
+      {% if portals_public %}
       <p class="footer-staff-link"><a href="{% url 'portal_home' %}">Member portals</a> · <a href="/admin/">Website admin</a> <span class="form-note">(site pages — separate login)</span></p>
+      {% else %}
+      <p class="footer-staff-link"><a href="/admin/">Website admin</a> <span class="form-note">(site pages — separate login)</span></p>
+      {% endif %}
     </div>
   </footer>
 

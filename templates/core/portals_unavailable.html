@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Member Portals — Youth Education Academy{% endblock %}
+{% block meta_description %}YEA member portals for families and staff.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <h1>Member portals</h1>
+    <p class="lead">Our online parent and staff portals are being prepared and are not open to the public yet.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container">
+    <div class="card">
+      <p>If you are a YEA family or staff member and need help with billing, enrollment, or your account, please contact us.</p>
+      <p><a class="btn btn-primary" href="{% url 'contact' %}">Contact YEA</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

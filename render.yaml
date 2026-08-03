@@ -18,6 +18,12 @@ services:
         value: "yeanj.org,www.yeanj.org,.onrender.com"
       - key: SITE_URL
         value: "https://yeanj.org"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://yeanj.org,https://www.yeanj.org"
+      - key: PORTALS_PUBLIC
+        value: "False"
+      - key: PORTAL_BOOTSTRAP_ON_DEPLOY
+        value: "True"
       - key: CONTACT_EMAIL
         value: "info@yeanj.org"
       - key: DEFAULT_FROM_EMAIL

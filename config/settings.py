@@ -21,6 +21,8 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 
 PORTAL_PREVIEW_MODE = os.environ.get("PORTAL_PREVIEW_MODE", "False") == "True"
 STAGING_SITE = os.environ.get("STAGING_SITE", "False") == "True"
+# When False, hide portal links on the public site. Direct login URLs still work.
+PORTALS_PUBLIC = os.environ.get("PORTALS_PUBLIC", "True") == "True"
 
 ALLOWED_HOSTS = [
     h.strip()
