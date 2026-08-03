@@ -540,7 +540,7 @@ ADMIN_ENROLLMENT_BY_UNIT = [
 ]
 
 ADMIN_ALERTS = [
-    {"text": "7 applications awaiting review across all units", "link_name": "portal_admin_page", "link_arg": "reports"},
+    {"text": "7 applications awaiting review across all units", "link_name": "portal_admin_page", "link_arg": "applications"},
     {"text": "4 families with overdue balances ($680 total)", "link_name": "portal_admin_page", "link_arg": "member-billing"},
     {"text": "1 family — zero attendance last week (review charges)", "link_name": "portal_admin_page", "link_arg": "dashboard"},
     {"text": "2 unread staff messages", "link_name": "portal_admin_page", "link_arg": "messages"},

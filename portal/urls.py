@@ -376,5 +376,20 @@ urlpatterns = [
         views.admin_financial_report,
         name="portal_admin_financial_report",
     ),
+    path(
+        "admin/application/<slug:app_slug>/review/",
+        views_actions.admin_application_review,
+        name="portal_admin_application_review",
+    ),
+    path(
+        "admin/application/<slug:app_slug>/print/",
+        views.admin_application_print,
+        name="portal_admin_application_print",
+    ),
+    path(
+        "admin/application/<slug:app_slug>/",
+        views.admin_application_detail,
+        name="portal_admin_application_detail",
+    ),
     path("admin/<slug:page>/", views.admin_page, name="portal_admin_page"),
 ]

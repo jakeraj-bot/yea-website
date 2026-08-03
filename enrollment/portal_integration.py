@@ -186,13 +186,21 @@ def _application_family_label(app):
 
 
 def staff_application_row(app):
+    unit_name = ""
+    unit_slug = ""
+    if app.portal_family_id and getattr(app.portal_family, "unit_id", None):
+        unit_name = app.portal_family.unit.name
+        unit_slug = app.portal_family.unit.slug
     return {
         "slug": str(app.reference),
         "child": f"{app.student_first_name} {app.student_last_name}".strip(),
         "family": _application_family_label(app),
+        "unit": unit_name or "—",
+        "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "program": app.get_program_display().replace(" program", ""),
         "status": STATUS_LABELS.get(app.status, "Under review"),
+        "status_slug": (app.status or "under_review").replace("_", "-"),
         "returning": False,
     }
 
@@ -222,6 +230,15 @@ def applications_for_staff(unit=None):
     if unit:
         family_ids = PortalFamily.objects.filter(unit=unit).values_list("id", flat=True)
         qs = qs.filter(portal_family_id__in=family_ids)
+    return [staff_application_row(app) for app in qs.order_by("-submitted_at")]
+
+
+def applications_for_admin(unit_slug=None):
+    qs = EnrollmentApplication.objects.select_related("portal_family", "portal_family__unit").prefetch_related(
+        "emergency_contacts"
+    )
+    if unit_slug:
+        qs = qs.filter(portal_family__unit__slug=unit_slug)
     return [staff_application_row(app) for app in qs.order_by("-submitted_at")]
 
 

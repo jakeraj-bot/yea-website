@@ -153,6 +153,7 @@ from .parent_services import (
 from enrollment.portal_integration import (
     application_list_item,
     application_to_portal_dict,
+    applications_for_admin,
     applications_for_staff,
     get_application_by_reference,
     get_applications_for_family,
@@ -245,6 +246,20 @@ def _portal_back_fallback(area, pay_query=""):
     if area == "admin":
         return reverse("portal_admin_page", kwargs={"page": "dashboard"})
     return reverse("portal_home")
+
+
+def _application_portal_urls(area, app_slug):
+    if area == "admin":
+        return {
+            "list": reverse("portal_admin_page", kwargs={"page": "applications"}),
+            "review": reverse("portal_admin_application_review", kwargs={"app_slug": app_slug}),
+            "print": reverse("portal_admin_application_print", kwargs={"app_slug": app_slug}),
+        }
+    return {
+        "list": reverse("portal_staff_page", kwargs={"page": "applications"}),
+        "review": reverse("portal_staff_application_review", kwargs={"app_slug": app_slug}),
+        "print": reverse("portal_staff_application_print", kwargs={"app_slug": app_slug}),
+    }
 
 
 def _portal_context(area, page_title, **extra):
@@ -1414,6 +1429,7 @@ def staff_family_incidents(request, family_slug):
 
 @require_GET
 def staff_application_detail(request, app_slug):
+    application_urls = _application_portal_urls("staff", app_slug)
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
@@ -1426,6 +1442,7 @@ def staff_application_detail(request, app_slug):
                     app_slug=app_slug,
                     is_live_application=True,
                     staff_page_slug="applications",
+                    application_urls=application_urls,
                 ),
             )
     application = STAFF_APPLICATION_DETAILS.get(app_slug)
@@ -1439,12 +1456,51 @@ def staff_application_detail(request, app_slug):
             application=application,
             app_slug=app_slug,
             staff_page_slug="applications",
+            application_urls=application_urls,
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_application_detail(request, app_slug):
+    application_urls = _application_portal_urls("admin", app_slug)
+    if _portal_data_live():
+        app = get_application_by_reference(app_slug)
+        if app:
+            return render(
+                request,
+                "portal/staff/application_detail.html",
+                _portal_context(
+                    "admin",
+                    f"Application — {app.student_first_name} {app.student_last_name}".strip(),
+                    application=application_detail_dict(app),
+                    app_slug=app_slug,
+                    is_live_application=True,
+                    admin_page_slug="applications",
+                    application_urls=application_urls,
+                ),
+            )
+    application = STAFF_APPLICATION_DETAILS.get(app_slug)
+    if not application:
+        return render(request, "portal/404.html", status=404)
+    return render(
+        request,
+        "portal/staff/application_detail.html",
+        _portal_context(
+            "admin",
+            f"Application — {application['child_name']}",
+            application=application,
+            app_slug=app_slug,
+            admin_page_slug="applications",
+            application_urls=application_urls,
         ),
     )
 
 
 @require_GET
 def staff_application_print(request, app_slug):
+    application_urls = _application_portal_urls("staff", app_slug)
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
@@ -1455,6 +1511,7 @@ def staff_application_print(request, app_slug):
                     f"Application — {app.student_first_name} {app.student_last_name}".strip(),
                     application=application_detail_dict(app),
                     app_slug=app_slug,
+                    application_urls=application_urls,
                 ),
             )
     application = STAFF_APPLICATION_DETAILS.get(app_slug)
@@ -1467,6 +1524,43 @@ def staff_application_print(request, app_slug):
             f"Application — {application['child_name']}",
             application=application,
             app_slug=app_slug,
+            application_urls=application_urls,
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_application_print(request, app_slug):
+    application_urls = _application_portal_urls("admin", app_slug)
+    if _portal_data_live():
+        app = get_application_by_reference(app_slug)
+        if app:
+            return render(
+                request,
+                "portal/staff/application_print.html",
+                _portal_context(
+                    "admin",
+                    f"Application — {app.student_first_name} {app.student_last_name}".strip(),
+                    application=application_detail_dict(app),
+                    app_slug=app_slug,
+                    admin_page_slug="applications",
+                    application_urls=application_urls,
+                ),
+            )
+    application = STAFF_APPLICATION_DETAILS.get(app_slug)
+    if not application:
+        return render(request, "portal/404.html", status=404)
+    return render(
+        request,
+        "portal/staff/application_print.html",
+        _portal_context(
+            "admin",
+            f"Application — {application['child_name']}",
+            application=application,
+            app_slug=app_slug,
+            admin_page_slug="applications",
+            application_urls=application_urls,
         ),
     )
 
@@ -1570,6 +1664,8 @@ def admin_page(request, page):
         "units": "portal/admin/units.html",
         "programs": "portal/admin/programs.html",
         "staff": "portal/admin/staff_users.html",
+        "families": "portal/admin/families.html",
+        "applications": "portal/admin/applications.html",
         "agencies": "portal/admin/agencies.html",
         "fees": "portal/admin/fees.html",
         "member-billing": "portal/admin/member_billing.html",
@@ -1829,6 +1925,35 @@ def admin_page(request, page):
             context["families"] = get_member_families_live()
         else:
             context["families"] = ADMIN_MEMBER_FAMILIES
+    if page == "families":
+        if context.get("portal_live"):
+            from .admin_services import get_admin_families_live, get_units_live
+
+            context["families"] = get_admin_families_live()
+            context["units"] = get_units_live()
+        else:
+            context["families"] = [
+                {
+                    **row,
+                    "unit": row.get("unit", "School 18"),
+                    "unit_slug": row.get("unit_slug", "school-18"),
+                    "program": row.get("program", "After-School 2026–27"),
+                }
+                for row in ADMIN_MEMBER_FAMILIES
+            ]
+            context["units"] = UNITS
+    if page == "applications":
+        unit_filter = request.GET.get("unit", "")
+        if context.get("portal_live"):
+            context["applications"] = applications_for_admin(unit_filter or None)
+            from .admin_services import get_units_live
+
+            context["units"] = get_units_live()
+            context["applications_unit_filter"] = unit_filter
+        else:
+            context["applications"] = [{**row, "unit": row.get("unit", "School 18"), "unit_slug": row.get("unit_slug", ""), "status_slug": row.get("status", "under-review").lower().replace(" ", "-")} for row in STAFF_APPLICATIONS]
+            context["units"] = UNITS
+            context["applications_unit_filter"] = unit_filter
     if page == "billing-permissions":
         if context.get("portal_live"):
             from .admin_config import get_charge_types_admin, get_default_billing_rules

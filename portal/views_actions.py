@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.http import require_POST
 
-from .staff_auth import admin_login_required_post
+from .staff_auth import admin_login_required_post, staff_login_required_post
 
 from .attendance_service import portal_is_live, ensure_portal_seeded, get_unit
 from .live_services import (
@@ -847,6 +847,7 @@ def parent_profile_photo_remove(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_application_review(request, app_slug):
     from enrollment.application_review import (
         approve_application,
@@ -861,6 +862,45 @@ def staff_application_review(request, app_slug):
     if not app:
         messages.error(request, "Application not found.")
         return redirect("portal_staff_page", page="applications")
+
+    action = request.POST.get("action", "")
+    try:
+        if action == "approve":
+            approve_application(app)
+            messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
+        elif action == "request_changes":
+            request_application_changes(app, request.POST.get("staff_message", ""))
+            messages.success(request, "Change request sent to the parent by email and in their portal.")
+        elif action == "reject":
+            reject_application(app, request.POST.get("staff_message", ""))
+            messages.success(request, "Application declined. The parent was notified.")
+        elif action == "save_note":
+            save_internal_note(app, request.POST.get("internal_note", ""))
+            messages.success(request, "Internal note saved.")
+        else:
+            messages.error(request, "Unknown review action.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect(redirect_url)
+
+
+@require_POST
+@admin_login_required_post
+def admin_application_review(request, app_slug):
+    from enrollment.application_review import (
+        approve_application,
+        reject_application,
+        request_application_changes,
+        save_internal_note,
+    )
+    from enrollment.portal_integration import get_application_by_reference
+
+    redirect_url = reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug})
+    app = get_application_by_reference(app_slug)
+    if not app:
+        messages.error(request, "Application not found.")
+        return redirect("portal_admin_page", page="applications")
 
     action = request.POST.get("action", "")
     try:

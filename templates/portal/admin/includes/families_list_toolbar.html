@@ -1,0 +1,72 @@
+<div class="portal-families-toolbar card" id="families-list-toolbar">
+  <div class="portal-families-toolbar-row">
+    <label class="portal-filter-label portal-families-search-label">
+      Search
+      <input type="search" class="portal-input portal-search" id="families-search" placeholder="Family, contact, or child" autocomplete="off">
+    </label>
+    <label class="portal-filter-label">
+      Unit
+      <select class="portal-select" id="families-unit-filter">
+        <option value="all">All units</option>
+        {% for unit in units %}
+        <option value="{{ unit.slug }}">{{ unit.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="portal-filter-label">
+      Filter
+      <select class="portal-select" id="families-filter">
+        <option value="all">All families</option>
+        <option value="active">Active</option>
+        <option value="pending-enrollment">Pending enrollment</option>
+        <option value="past-due">Past due</option>
+        <option value="4cs">4Cs</option>
+        <option value="private-pay">Private pay</option>
+        <option value="pending-membership">Pending membership</option>
+      </select>
+    </label>
+    <label class="portal-filter-label">
+      Sort
+      <select class="portal-select" id="families-sort">
+        <option value="name-asc">Family name A–Z</option>
+        <option value="name-desc">Family name Z–A</option>
+        <option value="unit-asc">Unit A–Z</option>
+        <option value="unit-desc">Unit Z–A</option>
+        <option value="balance-desc">Balance (high to low)</option>
+        <option value="balance-asc">Balance (low to high)</option>
+        <option value="contact-asc">Primary contact A–Z</option>
+      </select>
+    </label>
+    <label class="portal-filter-label">
+      Show
+      <select class="portal-select" id="families-page-size">
+        <option value="10">10 families</option>
+        <option value="25" selected>25 families</option>
+        <option value="50">50 families</option>
+        <option value="all">All</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="portal-families-toolbar-row portal-families-toolbar-row-secondary">
+    <details class="portal-columns-picker" id="families-columns-picker">
+      <summary class="btn btn-secondary btn-sm">Columns</summary>
+      <div class="portal-columns-picker-panel">
+        <p class="form-note">Choose which columns to show in the table.</p>
+        <div class="portal-columns-picker-grid">
+          <label><input type="checkbox" data-col-toggle="unit" checked> Unit</label>
+          <label><input type="checkbox" data-col-toggle="family" checked> Family</label>
+          <label><input type="checkbox" data-col-toggle="contact" checked> Primary contact</label>
+          <label><input type="checkbox" data-col-toggle="children" checked> Children</label>
+          <label><input type="checkbox" data-col-toggle="medical" checked> Medical</label>
+          <label><input type="checkbox" data-col-toggle="program" checked> Program</label>
+          <label><input type="checkbox" data-col-toggle="billing" checked> Billing</label>
+          <label><input type="checkbox" data-col-toggle="balance" checked> Balance</label>
+          <label><input type="checkbox" data-col-toggle="status" checked> Status</label>
+        </div>
+      </div>
+    </details>
+    <p class="form-note portal-families-results" id="families-results-summary" aria-live="polite"></p>
+    <nav class="portal-families-pagination" id="families-pagination" aria-label="Families pages"></nav>
+  </div>
+</div>

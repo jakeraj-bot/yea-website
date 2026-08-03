@@ -1,0 +1,74 @@
+{% extends "portal/base.html" %}
+{% load portal_tags static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>All families</h1>
+    <p class="lead">Every unit — <span id="families-total-count">{{ families|length }}</span> families · sort by unit or name, then open billing or policies.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/admin/includes/families_list_toolbar.html" %}
+
+    <div class="portal-table-wrap portal-families-table-wrap">
+      <table class="portal-table portal-families-table" id="families-table">
+        <thead>
+          <tr>
+            <th data-col="unit">Unit</th>
+            <th data-col="family">Family</th>
+            <th data-col="contact">Primary contact</th>
+            <th data-col="children">Children</th>
+            <th data-col="medical">Medical</th>
+            <th data-col="program">Program</th>
+            <th data-col="billing">Billing</th>
+            <th data-col="balance">Balance</th>
+            <th data-col="status">Status</th>
+            <th data-col="actions"></th>
+          </tr>
+        </thead>
+        <tbody id="families-table-body">
+          {% for family in families %}
+          <tr
+            data-family-row
+            data-slug="{{ family.slug }}"
+            data-unit="{{ family.unit|lower }}"
+            data-unit-slug="{{ family.unit_slug|default:'' }}"
+            data-name="{{ family.name|lower }}"
+            data-contact="{{ family.primary_contact|lower }}"
+            data-children-text="{{ family.children|join:', '|lower }}"
+            data-program="{{ family.program|lower }}"
+            data-billing="{{ family.billing_type|lower }}"
+            data-balance="{{ family.balance }}"
+            data-status="{{ family.status|lower }}"
+          >
+            <td data-col="unit">{{ family.unit }}</td>
+            <td data-col="family"><strong>{{ family.name }}</strong></td>
+            <td data-col="contact">{{ family.primary_contact }}</td>
+            <td data-col="children">{{ family.children|join:", " }}</td>
+            <td data-col="medical" class="portal-medical-cell">
+              {% for child_name in family.children %}
+              {% medical_badges child_name %}
+              {% endfor %}
+            </td>
+            <td data-col="program">{{ family.program }}</td>
+            <td data-col="billing">{{ family.billing_type }}</td>
+            <td data-col="balance">${{ family.balance }}</td>
+            <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
+            <td data-col="actions" class="portal-row-actions">
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}">Policies</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-note portal-families-empty" id="families-empty-state" hidden>No families match your search or filter.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/staff-families-table.js' %}?v=3"></script>
+{% endblock %}

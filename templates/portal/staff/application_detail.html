@@ -3,7 +3,7 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='applications' %}">Applications</a> / {{ application.child_name }}</p>
+    <p class="portal-breadcrumb"><a href="{{ application_urls.list }}">Applications</a> / {{ application.child_name }}</p>
     <h1>{{ application.child_name }}</h1>
     <p class="lead">Ref {{ application.reference }} · {{ application.submitted }}{% if application.reviewed_at %} · Reviewed {{ application.reviewed_at }}{% endif %}</p>
   </div>
@@ -13,7 +13,7 @@
     <div class="portal-toolbar portal-review-actions">
       <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
       {% if is_live_application and application.can_review %}
-      <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-inline-form">
+      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
         <button type="submit" class="btn btn-primary" onclick="return confirm('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
@@ -25,7 +25,7 @@
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Request changes</button>
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Reject</button>
       {% endif %}
-      <a class="btn btn-secondary" href="{% url 'portal_staff_application_print' app_slug=app_slug %}">Print PDF</a>
+      <a class="btn btn-secondary" href="{{ application_urls.print }}">Print PDF</a>
     </div>
 
     {% if application.staff_message %}
@@ -40,7 +40,7 @@
       <section class="card portal-review-panel" id="request-changes-panel">
         <h2>Request changes</h2>
         <p class="form-note">Tell the parent exactly what to fix or send in. They can update and resubmit the application online from their portal. Status changes to <strong>Pending documents</strong>.</p>
-        <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-form-grid">
+        <form method="post" action="{{ application_urls.review }}" class="portal-form-grid">
           {% csrf_token %}
           <input type="hidden" name="action" value="request_changes">
           <div class="form-group portal-form-full">
@@ -56,7 +56,7 @@
       <section class="card portal-review-panel" id="reject-panel">
         <h2>Reject application</h2>
         <p class="form-note">Decline this application and optionally include a note for the parent. They'll receive an email notification.</p>
-        <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}" class="portal-form-grid">
+        <form method="post" action="{{ application_urls.review }}" class="portal-form-grid">
           {% csrf_token %}
           <input type="hidden" name="action" value="reject">
           <div class="form-group portal-form-full">
@@ -114,7 +114,7 @@
         <div class="card">
           <h2>Internal note</h2>
           {% if is_live_application %}
-          <form method="post" action="{% url 'portal_staff_application_review' app_slug=app_slug %}">
+          <form method="post" action="{{ application_urls.review }}">
             {% csrf_token %}
             <input type="hidden" name="action" value="save_note">
             <textarea name="internal_note" class="portal-input portal-textarea" rows="4" placeholder="Staff-only notes">{{ application.internal_note }}</textarea>

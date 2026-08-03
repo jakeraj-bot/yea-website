@@ -7,6 +7,7 @@
   var rows = Array.prototype.slice.call(tbody.querySelectorAll("[data-family-row]"));
   var searchInput = document.getElementById("families-search");
   var filterSelect = document.getElementById("families-filter");
+  var unitFilterSelect = document.getElementById("families-unit-filter");
   var sortSelect = document.getElementById("families-sort");
   var pageSizeSelect = document.getElementById("families-page-size");
   var summaryEl = document.getElementById("families-results-summary");
@@ -17,6 +18,7 @@
   var state = {
     search: "",
     filter: "all",
+    unit: "all",
     sort: "name-asc",
     pageSize: "25",
     page: 1,
@@ -40,6 +42,7 @@
     });
     searchInput.value = state.search || "";
     filterSelect.value = state.filter || "all";
+    if (unitFilterSelect) unitFilterSelect.value = state.unit || "all";
     sortSelect.value = state.sort || "name-asc";
     pageSizeSelect.value = state.pageSize || "25";
   }
@@ -54,6 +57,13 @@
   }
 
   function rowMatchesFilter(row) {
+    if (unitFilterSelect && state.unit && state.unit !== "all") {
+      var unitSlug = row.getAttribute("data-unit-slug") || "";
+      var unitName = row.getAttribute("data-unit") || "";
+      if (unitSlug !== state.unit && unitName.indexOf(state.unit) === -1) {
+        return false;
+      }
+    }
     var status = row.getAttribute("data-status") || "";
     var billing = row.getAttribute("data-billing") || "";
     var balance = parseBalance(row.getAttribute("data-balance"));
@@ -79,6 +89,7 @@
     var q = (state.search || "").trim().toLowerCase();
     if (!q) return true;
     var haystack = [
+      row.getAttribute("data-unit"),
       row.getAttribute("data-name"),
       row.getAttribute("data-contact"),
       row.getAttribute("data-children-text"),
@@ -96,6 +107,8 @@
     sorted.sort(function (a, b) {
       var nameA = a.getAttribute("data-name") || "";
       var nameB = b.getAttribute("data-name") || "";
+      var unitA = a.getAttribute("data-unit") || "";
+      var unitB = b.getAttribute("data-unit") || "";
       var contactA = a.getAttribute("data-contact") || "";
       var contactB = b.getAttribute("data-contact") || "";
       var balA = parseBalance(a.getAttribute("data-balance"));
@@ -103,6 +116,10 @@
       switch (state.sort) {
         case "name-desc":
           return nameB.localeCompare(nameA);
+        case "unit-asc":
+          return unitA.localeCompare(unitB) || nameA.localeCompare(nameB);
+        case "unit-desc":
+          return unitB.localeCompare(unitA) || nameA.localeCompare(nameB);
         case "balance-desc":
           return balB - balA;
         case "balance-asc":
@@ -214,6 +231,15 @@
     savePrefs();
     render();
   });
+
+  if (unitFilterSelect) {
+    unitFilterSelect.addEventListener("change", function () {
+      state.unit = unitFilterSelect.value;
+      state.page = 1;
+      savePrefs();
+      render();
+    });
+  }
 
   sortSelect.addEventListener("change", function () {
     state.sort = sortSelect.value;

@@ -71,25 +71,62 @@
     <span class="portal-badge portal-badge-admin">Organization admin</span>
   </div>
   <p class="portal-sidebar-label">Admin menu</p>
-  <ul class="portal-nav portal-nav-admin">
-    <li><a class="portal-nav-link portal-nav-admin-dashboard{% if admin_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='dashboard' %}">Overview</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-units{% if admin_page_slug == 'units' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='units' %}">Units &amp; locations</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-programs{% if admin_page_slug == 'programs' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='programs' %}">Programs &amp; seasons</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-staff{% if admin_page_slug == 'staff' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='staff' %}">Staff access</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-billing{% if admin_page_slug == 'member-billing' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-agencies{% if admin_page_slug == 'agencies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='agencies' %}">Agencies (4Cs)</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-fees{% if admin_page_slug == 'fees' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='fees' %}">Fees &amp; billing rules</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-scholarships{% if admin_page_slug == 'scholarships' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-policies{% if admin_page_slug == 'member-policies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-policies' %}">Member policies</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-messages{% if admin_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='messages' %}">Team messages</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-comms{% if admin_page_slug == 'communications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='communications' %}">Parent comms</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-support{% if admin_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='support' %}">Support inbox</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-lessons{% if admin_page_slug == 'lesson-planner' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='lesson-planner' %}">AI lesson planner</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-licensing{% if admin_page_slug == 'licensing' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='licensing' %}">NJ licensing forms</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-compliance{% if admin_page_slug == 'staff-compliance' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='staff-compliance' %}">Staff compliance</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-checkin{% if admin_page_slug == 'checkin-settings' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='checkin-settings' %}">Check-in options</a></li>
-    <li><a class="portal-nav-link portal-nav-admin-reports{% if admin_page_slug == 'reports' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='reports' %}">Organization reports</a></li>
-  </ul>
+  <nav class="portal-nav-groups portal-nav-admin-groups" aria-label="Admin menu">
+    <details class="portal-nav-group"{% if admin_page_slug == 'dashboard' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Overview</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-dashboard{% if admin_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='dashboard' %}">Overview</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group"{% if admin_page_slug == 'units' or admin_page_slug == 'programs' or admin_page_slug == 'staff' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Organization</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-units{% if admin_page_slug == 'units' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='units' %}">Units &amp; locations</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-programs{% if admin_page_slug == 'programs' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='programs' %}">Programs &amp; seasons</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-staff{% if admin_page_slug == 'staff' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='staff' %}">Staff access</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Members</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-families{% if admin_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}">All families</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-applications{% if admin_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='applications' %}">Applications</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-billing{% if admin_page_slug == 'member-billing' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-policies{% if admin_page_slug == 'member-policies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-policies' %}">Member policies</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'scholarships' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Billing &amp; fees</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-agencies{% if admin_page_slug == 'agencies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='agencies' %}">Agencies (4Cs)</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-fees{% if admin_page_slug == 'fees' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='fees' %}">Fees &amp; billing rules</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-scholarships{% if admin_page_slug == 'scholarships' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'support' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Communications</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-messages{% if admin_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='messages' %}">Team messages</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-comms{% if admin_page_slug == 'communications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='communications' %}">Parent comms</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-support{% if admin_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='support' %}">Support inbox</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group"{% if admin_page_slug == 'lesson-planner' or admin_page_slug == 'licensing' or admin_page_slug == 'staff-compliance' or admin_page_slug == 'checkin-settings' or admin_page_slug == 'reports' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Tools &amp; compliance</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-lessons{% if admin_page_slug == 'lesson-planner' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='lesson-planner' %}">AI lesson planner</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-licensing{% if admin_page_slug == 'licensing' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='licensing' %}">NJ licensing forms</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-compliance{% if admin_page_slug == 'staff-compliance' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='staff-compliance' %}">Staff compliance</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-checkin{% if admin_page_slug == 'checkin-settings' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='checkin-settings' %}">Check-in options</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-reports{% if admin_page_slug == 'reports' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='reports' %}">Organization reports</a></li>
+      </ul>
+    </details>
+  </nav>
   {% endif %}
 </aside>

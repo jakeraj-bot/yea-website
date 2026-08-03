@@ -166,6 +166,36 @@ def get_member_families_live():
     return rows
 
 
+def get_admin_families_live():
+    from enrollment.models import EnrollmentApplication
+    from enrollment.portal_integration import family_display_label
+
+    rows = []
+    for family in PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("unit__name", "name"):
+        enrolled = [child.name for child in family.children.filter(is_active=True)]
+        enrolled_lower = {name.lower() for name in enrolled}
+        pending_children = []
+        for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
+            child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+            if child_name.lower() not in enrolled_lower and app.status not in {"declined", "enrolled"}:
+                pending_children.append(child_name)
+        rows.append(
+            {
+                "slug": family.slug,
+                "name": family_display_label(family),
+                "unit": family.unit.name,
+                "unit_slug": family.unit.slug,
+                "primary_contact": family.primary_contact or "—",
+                "children": enrolled + pending_children,
+                "balance": format(family.balance, ".2f"),
+                "program": family.program_label or "—",
+                "billing_type": family.billing_type or "Private pay",
+                "status": family.status,
+            }
+        )
+    return rows
+
+
 def get_agencies_admin_live():
     profiles = PortalAgencyProfile.objects.select_related("child", "family", "unit").order_by("unit__name")
     if not profiles.exists():
@@ -201,7 +231,7 @@ def get_admin_alerts_live():
             {
                 "text": f"{open_apps} application(s) awaiting review across all units",
                 "link_name": "portal_admin_page",
-                "link_arg": "reports",
+                "link_arg": "applications",
             }
         )
     overdue_qs = PortalFamily.objects.filter(balance__gt=0)

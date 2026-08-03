@@ -1,0 +1,63 @@
+{% extends "portal/base.html" %}
+{% load portal_tags static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Applications</h1>
+    <p class="lead">All units — review, approve, or request changes. Approved children are added to the unit roster.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="portal-toolbar portal-form-inline">
+      <label class="portal-filter-label">
+        Unit
+        <select class="portal-select" name="unit" onchange="this.form.submit()">
+          <option value="">All units</option>
+          {% for unit in units %}
+          <option value="{{ unit.slug }}"{% if applications_unit_filter == unit.slug %} selected{% endif %}>{{ unit.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+
+    <div class="portal-table-wrap">
+      <table class="portal-table" id="admin-applications-table">
+        <thead>
+          <tr>
+            <th>Child</th>
+            <th>Medical</th>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Submitted</th>
+            <th>Program</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr data-status="{{ app.status_slug }}">
+            <td><strong>{{ app.child }}</strong></td>
+            <td class="portal-medical-cell">{% medical_badges app.child %}</td>
+            <td>{{ app.family }}</td>
+            <td>{{ app.unit }}</td>
+            <td>{{ app.submitted }}</td>
+            <td>{{ app.program }}</td>
+            <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
+            <td class="portal-row-actions">
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="form-note">No applications{% if applications_unit_filter %} for this unit{% endif %}.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
