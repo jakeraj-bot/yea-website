@@ -15,6 +15,13 @@ def get_item(mapping, key):
 
 
 @register.filter
+def policy_fields_for(grouped, slug):
+    if not grouped:
+        return []
+    return grouped.get(slug, [])
+
+
+@register.filter
 def get_policy_signature(signatures, slug):
     for sig in signatures.all():
         if sig.policy_slug == slug:

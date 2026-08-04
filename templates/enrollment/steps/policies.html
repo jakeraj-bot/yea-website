@@ -40,21 +40,22 @@
           <a class="policy-open-link" href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
         </div>
         <div class="policy-read-box">
-          {% for para in policy.paragraphs %}
-          <p>{{ para }}</p>
-          {% endfor %}
+          {% with policy.paragraphs|first as first_para %}
+          {% if first_para %}
+          <p>{{ first_para|truncatechars:500 }}</p>
+          {% endif %}
+          {% endwith %}
+          <p class="policy-read-more"><a href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Read the full policy before signing ↗</a></p>
         </div>
 
         <div class="form-grid policy-sign-fields">
-          {% for field in form %}
-            {% if field.name|policy_field:policy.slug %}
-              {% if field|is_radio_select %}
-                {% apply_field field full=True %}
-              {% elif field.name|slice:"-4:" == "date" %}
-                {% apply_field field %}
-              {% else %}
-                {% apply_field field full=True %}
-              {% endif %}
+          {% for field in policy_form_fields|policy_fields_for:policy.slug %}
+            {% if field|is_radio_select %}
+              {% apply_field field full=True %}
+            {% elif field.name|slice:"-4:" == "date" %}
+              {% apply_field field %}
+            {% else %}
+              {% apply_field field full=True %}
             {% endif %}
           {% endfor %}
         </div>
@@ -68,5 +69,5 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'js/apply-policies.js' %}?v=1"></script>
+<script src="{% static 'js/apply-policies.js' %}?v=2"></script>
 {% endblock %}

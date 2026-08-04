@@ -35,12 +35,30 @@ class ProgramStepForm(forms.Form):
 
 
 class FamilyStepForm(forms.Form):
-    family_name = forms.CharField(max_length=120, label="Family name")
-    primary_email = forms.EmailField(label="Primary email")
-    home_address = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), label="Home address")
+    family_name = forms.CharField(
+        max_length=120,
+        label="Family name",
+        widget=forms.TextInput(attrs={"autocomplete": "organization"}),
+    )
+    primary_email = forms.EmailField(
+        label="Primary email",
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "inputmode": "email"}),
+    )
+    home_address = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 2, "autocomplete": "street-address"}),
+        label="Home address",
+    )
 
-    primary_first_name = forms.CharField(max_length=80, label="First name")
-    primary_last_name = forms.CharField(max_length=80, label="Last name")
+    primary_first_name = forms.CharField(
+        max_length=80,
+        label="First name",
+        widget=forms.TextInput(attrs={"autocomplete": "given-name"}),
+    )
+    primary_last_name = forms.CharField(
+        max_length=80,
+        label="Last name",
+        widget=forms.TextInput(attrs={"autocomplete": "family-name"}),
+    )
     primary_gender = forms.ChoiceField(choices=EnrollmentApplication.GENDER_CHOICES, label="Gender")
     primary_language = forms.ChoiceField(choices=EnrollmentApplication.LANGUAGE_CHOICES, label="Primary language")
     primary_language_other = forms.CharField(max_length=80, required=False, label="If other, specify")
@@ -48,7 +66,11 @@ class FamilyStepForm(forms.Form):
         choices=EnrollmentApplication.RELATIONSHIP_CHOICES, label="Relationship to child"
     )
     primary_relationship_other = forms.CharField(max_length=80, required=False, label="If other, specify")
-    primary_phone = forms.CharField(max_length=30, label="Phone #")
+    primary_phone = forms.CharField(
+        max_length=30,
+        label="Phone #",
+        widget=forms.TextInput(attrs={"autocomplete": "tel", "inputmode": "tel"}),
+    )
     primary_phone_type = forms.ChoiceField(
         choices=EnrollmentApplication.PHONE_TYPE_CHOICES, label="Phone type"
     )
@@ -58,7 +80,10 @@ class FamilyStepForm(forms.Form):
     primary_email_subscription = forms.ChoiceField(
         choices=EnrollmentApplication.YES_NO, label="Email subscription"
     )
-    primary_email_address = forms.EmailField(label="Email address")
+    primary_email_address = forms.EmailField(
+        label="Email address",
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "inputmode": "email"}),
+    )
     primary_authorized_pickup = forms.ChoiceField(
         choices=EnrollmentApplication.YES_NO, label="Authorized to pick up?"
     )
@@ -110,7 +135,10 @@ class StudentStepForm(forms.Form):
     student_first_name = forms.CharField(max_length=80, label="Student first name")
     student_last_name = forms.CharField(max_length=80, label="Student last name")
     student_gender = forms.ChoiceField(choices=EnrollmentApplication.GENDER_CHOICES, label="Gender")
-    student_dob = forms.DateField(label="Date of birth", widget=forms.DateInput(attrs={"type": "date"}))
+    student_dob = forms.DateField(
+        label="Date of birth",
+        widget=forms.DateInput(attrs={"type": "date", "autocomplete": "bday"}),
+    )
     student_language = forms.ChoiceField(
         choices=EnrollmentApplication.LANGUAGE_CHOICES, label="Primary language"
     )
@@ -220,11 +248,28 @@ class BillingStepForm(forms.Form):
         label="Date", widget=forms.DateInput(attrs={"type": "date"})
     )
     four_cs_signature = forms.CharField(
-        max_length=120, label="4Cs signature (type full name)"
+        max_length=120,
+        required=False,
+        label="4Cs signature (type full name)",
     )
     four_cs_signed_date = forms.DateField(
-        label="4Cs date", widget=forms.DateInput(attrs={"type": "date"})
+        required=False,
+        label="4Cs date",
+        widget=forms.DateInput(attrs={"type": "date"}),
     )
+
+    def clean(self):
+        cleaned = super().clean()
+        payment_method = cleaned.get("payment_method")
+        if payment_method == "4cs":
+            if not cleaned.get("four_cs_signature"):
+                self.add_error("four_cs_signature", "Required for 4Cs payment method.")
+            if not cleaned.get("four_cs_signed_date"):
+                self.add_error("four_cs_signed_date", "Required for 4Cs payment method.")
+        else:
+            cleaned["four_cs_signature"] = cleaned.get("four_cs_signature") or ""
+            cleaned["four_cs_signed_date"] = cleaned.get("four_cs_signed_date") or None
+        return cleaned
 
 
 def build_policy_step_form():

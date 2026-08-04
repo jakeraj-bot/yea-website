@@ -22,7 +22,7 @@
     <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
     {% include "enrollment/includes/step_progress.html" %}
 
-    <form method="post" class="apply-form" novalidate>
+    <form method="post" class="apply-form">
       {% csrf_token %}
 
       <div class="apply-form-card apply-review-card">
@@ -110,7 +110,7 @@
           {% else %}
           <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='add_child' %}">Back</a>
           {% endif %}
-          <button type="submit" class="btn btn-primary">{% if is_editing %}Resubmit for review{% elif is_adding_child %}Submit application{% else %}Submit application{{ data.children|length|pluralize }}{% endif %}</button>
+          <button type="submit" class="btn btn-primary" data-loading-text="Submitting…">{% if is_editing %}Resubmit for review{% elif is_adding_child %}Submit application{% else %}Submit application{{ data.children|length|pluralize }}{% endif %}</button>
         </footer>
       </div>
     </form>
@@ -119,20 +119,13 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/apply-form.js' %}?v=1"></script>
 <script>
 (function () {
   document.querySelectorAll("#id_username, #id_password1, #id_password2").forEach(function (input) {
     input.classList.add("portal-input");
   });
-
-  var banner = document.getElementById("apply-error-banner");
-  if (!banner) return;
-  banner.scrollIntoView({ behavior: "smooth", block: "start" });
-  var firstError = document.querySelector(".apply-form .errorlist");
-  if (firstError) {
-    var input = firstError.closest(".form-group") && firstError.closest(".form-group").querySelector("input, select, textarea");
-    if (input) input.focus();
-  }
+  if (window.initApplyForm) window.initApplyForm();
 })();
 </script>
 {% endblock %}

@@ -607,9 +607,20 @@ a:hover { color: var(--yea-orange); }
   background: rgba(0, 0, 0, 0.45);
 }
 
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  left: 0;
+  right: 0;
+}
+
 .modal-panel {
   position: relative;
   width: min(100%, 28rem);
+  max-height: min(90vh, 32rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: #fff;
   border: var(--accent-border) solid var(--yea-orange);
   border-radius: var(--radius);
@@ -1879,6 +1890,17 @@ a.partner-logo:hover {
   border-top: 1px solid var(--border);
 }
 
+.apply-actions .btn-primary.is-loading {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+.apply-error-banner-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
 .apply-error-banner {
   margin-bottom: 1.25rem;
   padding: 1rem 1.15rem;
@@ -2031,6 +2053,44 @@ a.partner-logo:hover {
 .policy-document p,
 .policy-read-box p {
   margin: 0 0 0.75rem;
+}
+
+.policy-read-more {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .apply-form-card {
+    padding: 1rem;
+  }
+
+  .apply-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: #fff;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: -1rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .apply-actions .btn {
+    flex: 1 1 auto;
+    min-height: 2.75rem;
+  }
+
+  .apply-form-card .apply-section-tabs-scroll {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+  }
+
+  .policy-read-box {
+    max-height: 160px;
+  }
 }
 
 .page-hero-compact {

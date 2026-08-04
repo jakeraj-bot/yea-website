@@ -30,7 +30,7 @@
     <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
     {% include "enrollment/includes/step_progress.html" %}
 
-    <form method="post" class="apply-form" novalidate>
+    <form method="post" class="apply-form">
       {% csrf_token %}
 
       <div class="apply-form-card">
@@ -51,7 +51,7 @@
           {% if prev_step %}
           <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">Back</a>
           {% endif %}
-          <button type="submit" class="btn btn-primary">Continue</button>
+          <button type="submit" class="btn btn-primary" data-loading-text="Saving…">Continue</button>
         </footer>
       </div>
     </form>
@@ -60,39 +60,12 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/apply-tabs.js' %}?v=3"></script>
+<script src="{% static 'js/apply-tabs.js' %}?v=4"></script>
+<script src="{% static 'js/apply-form.js' %}?v=1"></script>
 <script>
 (function () {
   if (window.initApplyTabs) window.initApplyTabs();
-
-  var banner = document.getElementById("apply-error-banner");
-  if (banner) banner.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  var firstError = document.querySelector(".apply-form .errorlist");
-  if (!firstError) return;
-
-  var panel = firstError.closest("[data-tab-panel]");
-  if (panel) {
-    var root = panel.closest("[data-apply-tabs]");
-    var panelId = panel.getAttribute("data-tab-panel");
-    if (root && panelId && window.initApplyTabs) {
-      root.querySelectorAll("[data-tab-target]").forEach(function (tab) {
-        var active = tab.getAttribute("data-tab-target") === panelId;
-        tab.classList.toggle("is-active", active);
-        tab.setAttribute("aria-selected", active ? "true" : "false");
-      });
-      root.querySelectorAll("[data-tab-panel]").forEach(function (item) {
-        var active = item.getAttribute("data-tab-panel") === panelId;
-        item.classList.toggle("is-active", active);
-        if (active) item.removeAttribute("hidden");
-        else item.setAttribute("hidden", "");
-      });
-    }
-  }
-
-  var group = firstError.closest(".form-group, .emergency-contact-block, .policy-sign-block");
-  var input = group && group.querySelector("input, select, textarea");
-  if (input) input.focus();
+  if (window.initApplyForm) window.initApplyForm();
 })();
 </script>
 {% endblock %}

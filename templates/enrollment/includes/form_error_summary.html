@@ -1,6 +1,7 @@
 {% if form.errors or form.non_field_errors %}
 <div class="apply-error-banner" role="alert" id="apply-error-banner">
   <p class="apply-error-banner-title">Please complete the required items below</p>
+  <p class="apply-error-banner-hint">If you don’t see the problem, check the other section tabs on this step.</p>
   <ul class="apply-error-list">
     {% for field in form %}
       {% if field.errors %}
@@ -33,6 +34,7 @@
   {% if emergency_formset.non_form_errors %}
   <div class="apply-error-banner" role="alert" id="apply-error-banner">
     <p class="apply-error-banner-title">Please complete the required items below</p>
+  <p class="apply-error-banner-hint">If you don’t see the problem, check the other section tabs on this step.</p>
     <ul class="apply-error-list">
       {% for error in emergency_formset.non_form_errors %}
       <li>{{ error }}</li>
@@ -53,6 +55,7 @@
       {% if contact_form.errors %}
       <div class="apply-error-banner" role="alert" id="apply-error-banner">
         <p class="apply-error-banner-title">Please complete the required items below</p>
+  <p class="apply-error-banner-hint">If you don’t see the problem, check the other section tabs on this step.</p>
         <ul class="apply-error-list">
           {% for field in contact_form %}
             {% if field.errors %}

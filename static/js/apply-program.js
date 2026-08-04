@@ -7,6 +7,7 @@
   const afterSchoolLocations = ["school_18", "school_26", "dale_ave"];
   const summerLocations = ["caldwell"];
   let lastLocation = locationSelect.value;
+  let scrollY = 0;
 
   function selectedProgram() {
     const checked = document.querySelector('input[name="program"]:checked');
@@ -27,10 +28,22 @@
     lastLocation = locationSelect.value;
   }
 
+  function lockScroll() {
+    scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.classList.add("modal-open");
+    document.body.style.top = `-${scrollY}px`;
+  }
+
+  function unlockScroll() {
+    document.body.classList.remove("modal-open");
+    document.body.style.top = "";
+    window.scrollTo(0, scrollY);
+  }
+
   function showDaleAveModal() {
     if (!modal) return;
     modal.hidden = false;
-    document.body.classList.add("modal-open");
+    lockScroll();
     const closeBtn = modal.querySelector("[data-modal-close]");
     if (closeBtn) closeBtn.focus();
   }
@@ -38,7 +51,7 @@
   function hideDaleAveModal() {
     if (!modal) return;
     modal.hidden = true;
-    document.body.classList.remove("modal-open");
+    unlockScroll();
   }
 
   function handleLocationChange() {

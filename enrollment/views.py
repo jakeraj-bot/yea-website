@@ -1,4 +1,5 @@
 import logging
+import threading
 import uuid
 from datetime import date, datetime
 
@@ -178,8 +179,13 @@ def _notify_staff(application):
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[settings.CONTACT_EMAIL],
-        fail_silently=False,
+        fail_silently=True,
     )
+
+
+def _notify_staff_async(application):
+    thread = threading.Thread(target=_notify_staff, args=(application,), daemon=True)
+    thread.start()
 
 
 def _max_step_index(session_data):
@@ -199,6 +205,14 @@ def _editing_application(session_data):
     if not _is_editing(session_data):
         return None
     return EnrollmentApplication.objects.filter(reference=session_data["editing_reference"]).first()
+
+
+def _policy_form_fields(form):
+    grouped = {}
+    for field in form:
+        slug = field.name.split("__", 1)[0]
+        grouped.setdefault(slug, []).append(field)
+    return grouped
 
 
 def _wizard_context(request, step, session_data, **extra):
@@ -369,8 +383,8 @@ def apply_wizard(request, step="family"):
                     f"Application for {application.student_first_name} {application.student_last_name} resubmitted for review.",
                 )
                 return redirect("portal_parent_page", page="applications")
-            if portal_account and not request.session.get(LINK_EXISTING_KEY):
-                return redirect("apply")
+            if portal_account and not request.session.get(LINK_EXISTING_KEY) and not editing:
+                request.session[LINK_EXISTING_KEY] = True
             portal_form = None
             if not portal_account:
                 portal_form = PortalAccountForm(request.POST)
@@ -390,7 +404,7 @@ def apply_wizard(request, step="family"):
                     )
             applications = _create_applications(session_data.copy())
             family_group = applications[0].family_group
-            linked_existing = portal_account and request.session.get(LINK_EXISTING_KEY)
+            linked_existing = bool(portal_account) and not editing
             if linked_existing:
                 link_applications_to_family(applications, portal_account.family)
             else:
@@ -406,10 +420,7 @@ def apply_wizard(request, step="family"):
             if LINK_EXISTING_KEY in request.session:
                 del request.session[LINK_EXISTING_KEY]
             for app in applications:
-                try:
-                    _notify_staff(app)
-                except Exception:
-                    logger.exception("Failed to send enrollment notification email")
+                _notify_staff_async(app)
             if linked_existing:
                 child_names = ", ".join(
                     f"{app.student_first_name} {app.student_last_name}".strip() for app in applications
@@ -544,6 +555,7 @@ def apply_wizard(request, step="family"):
             session_data,
             form=form,
             emergency_formset=emergency_formset,
+            policy_form_fields=_policy_form_fields(form) if step == "policies" else None,
         ),
     )
 
