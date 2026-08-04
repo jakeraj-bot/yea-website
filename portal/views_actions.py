@@ -331,11 +331,13 @@ def admin_staff_invite(request):
             password=password or None,
         )
         if created and temp_password:
+            login_path = "/portal/admin/login/" if role == "Portal admin" else "/portal/staff/login/"
+            portal_label = "admin portal" if role == "Portal admin" else "staff portal"
             messages.success(
                 request,
-                f"Staff account created for {account.display_name}. "
+                f"Account created for {account.display_name}. "
                 f"Sign-in username: {username} · Password: {temp_password} "
-                f"(share privately — staff sign in at /portal/staff/login/)",
+                f"(share privately — sign in at {login_path} for the {portal_label})",
             )
         elif temp_password:
             messages.success(
@@ -347,6 +349,75 @@ def admin_staff_invite(request):
     except Exception as exc:
         messages.error(request, str(exc))
     return redirect("portal_admin_page", page="staff")
+
+
+@admin_login_required_post
+@require_POST
+def admin_admin_invite(request):
+    from .admin_services import invite_admin_user
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="staff")
+    password = request.POST.get("password", "").strip()
+    if password and len(password) < 8:
+        messages.error(request, "Password must be at least 8 characters.")
+        return redirect("portal_admin_page", page="staff")
+    try:
+        account, created, temp_password, username = invite_admin_user(
+            request.POST.get("name", "").strip(),
+            request.POST.get("username", "").strip(),
+            request.POST.get("email", "").strip(),
+            password=password or None,
+        )
+        messages.success(
+            request,
+            f"Admin portal login created for {account.display_name}. "
+            f"Sign-in username: {username} · Password: {temp_password} "
+            f"(share privately — sign in at /portal/admin/login/)",
+        )
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="staff")
+
+
+@admin_login_required_post
+@require_POST
+def admin_bulk_billing_post(request):
+    from django.urls import reverse
+
+    from .billing_services import build_bulk_charge_preview, default_entry_date, post_bulk_charges
+
+    redirect_url = reverse("portal_admin_page", kwargs={"page": "member-billing"})
+    if not _admin_needs_live(request):
+        return redirect(redirect_url)
+
+    unit_slug = request.POST.get("unit", "").strip() or None
+    charge_mode = request.POST.get("mode", "weekly_tuition")
+    billing_filter = request.POST.get("billing_type", "").strip()
+    custom_amount = request.POST.get("custom_amount", "")
+    custom_description = request.POST.get("custom_description", "")
+    entry_date = parse_date(request.POST.get("date") or "") or default_entry_date()
+
+    try:
+        rows = build_bulk_charge_preview(
+            unit_slug=unit_slug,
+            charge_mode=charge_mode,
+            billing_filter=billing_filter,
+            custom_amount=custom_amount or None,
+            custom_description=custom_description,
+        )
+        if not rows:
+            raise ValueError("No matching members to charge. Adjust filters and try again.")
+        posted = post_bulk_charges(rows, entry_date)
+        total = sum(row["amount"] for row in rows)
+        messages.success(
+            request,
+            f"Posted {posted} charge(s) totaling ${total:.2f} for {entry_date.isoformat()}.",
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect(redirect_url)
 
 
 @admin_login_required_post
@@ -935,10 +1006,30 @@ def staff_billing_action(request, family_slug):
         post_charge,
         post_credit,
         post_payment,
+        update_child_billing_plan,
     )
-    from .staff_auth import billing_permissions_for_staff, get_staff_account, resolve_staff_unit
+    from .staff_auth import (
+        billing_permissions_for_staff,
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from .parent_auth import portal_preview_mode
 
     area = request.POST.get("portal_area", "staff")
+    if not portal_preview_mode():
+        if area == "admin" and not is_admin_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+        if area != "admin" and not is_staff_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+
     if area == "admin":
         redirect_url = reverse("portal_admin_family_billing", kwargs={"family_slug": family_slug})
         permissions = billing_permissions_for_staff(None, portal_area="admin")
@@ -955,7 +1046,7 @@ def staff_billing_action(request, family_slug):
     if not family:
         messages.error(request, "Family not found.")
         if area == "admin":
-            return redirect("portal_admin_page", page="member-billing")
+            return redirect("portal_admin_page", page="billing-settings")
         return redirect("portal_staff_page", page="families")
 
     action = request.POST.get("action", "")
@@ -1006,10 +1097,8 @@ def staff_billing_action(request, family_slug):
             delete_ledger_entry(family, request.POST.get("entry_id"))
             messages.success(request, "Ledger entry removed.")
         elif action == "update_plan":
-            if area != "admin" and not permissions.get("can_add_charge"):
+            if area != "admin" and not permissions.get("can_edit_family_plans"):
                 raise ValueError("Your role cannot edit billing plans.")
-            from .billing_services import update_child_billing_plan
-
             update_child_billing_plan(
                 family,
                 request.POST.get("child_name", "").strip(),

@@ -1311,7 +1311,7 @@ def admin_family_billing(request, family_slug):
             _portal_context(
                 "admin",
                 f"{billing['family_name']} billing",
-                admin_page_slug="member-billing",
+                admin_page_slug="billing-settings",
                 billing=billing,
                 billing_permissions=permissions,
                 charge_types=BILLING_CHARGE_TYPES,
@@ -1669,6 +1669,7 @@ def admin_page(request, page):
         "agencies": "portal/admin/agencies.html",
         "fees": "portal/admin/fees.html",
         "member-billing": "portal/admin/member_billing.html",
+        "billing-settings": "portal/admin/billing_settings.html",
         "billing-permissions": "portal/admin/billing_permissions.html",
         "scholarships": "portal/admin/scholarships.html",
         "member-policies": "portal/admin/member_policies.html",
@@ -1688,6 +1689,7 @@ def admin_page(request, page):
     show_add_program = request.GET.get("add") == "1"
     show_add_unit = request.GET.get("add") == "1"
     show_add_staff = request.GET.get("add") == "1"
+    show_add_admin = request.GET.get("add_admin") == "1"
     show_add_agency = request.GET.get("add") == "1"
     context = _portal_context(
         "admin",
@@ -1696,6 +1698,7 @@ def admin_page(request, page):
         show_add_program=show_add_program,
         show_add_unit=show_add_unit,
         show_add_staff=show_add_staff,
+        show_add_admin=show_add_admin,
         show_add_agency=show_add_agency,
     )
     if page == "dashboard":
@@ -1919,6 +1922,48 @@ def admin_page(request, page):
             context["checkin_modes"] = CHECKIN_MODES
             context["checkin_units"] = UNITS
     if page == "member-billing":
+        unit_slug = request.GET.get("unit", "")
+        charge_mode = request.GET.get("mode", "weekly_tuition")
+        billing_filter = request.GET.get("billing_type", "")
+        custom_amount = request.GET.get("custom_amount", "")
+        custom_description = request.GET.get("custom_description", "")
+        show_preview = request.GET.get("preview") == "1"
+        if context.get("portal_live"):
+            from .admin_services import get_units_live
+            from .billing_services import build_bulk_charge_preview, get_org_ledger_live
+
+            context["units"] = get_units_live()
+            context["bulk_filter"] = {
+                "unit": unit_slug,
+                "mode": charge_mode,
+                "billing_type": billing_filter,
+                "custom_amount": custom_amount,
+                "custom_description": custom_description,
+            }
+            context["bulk_preview"] = (
+                build_bulk_charge_preview(
+                    unit_slug=unit_slug or None,
+                    charge_mode=charge_mode,
+                    billing_filter=billing_filter,
+                    custom_amount=custom_amount or None,
+                    custom_description=custom_description,
+                )
+                if show_preview
+                else []
+            )
+            context["ledger_entries"] = get_org_ledger_live(unit_slug=unit_slug or None)
+            context["show_bulk_preview"] = show_preview
+            from .billing_services import default_entry_date
+
+            context["today"] = default_entry_date().isoformat()
+        else:
+            context["units"] = UNITS
+            context["bulk_filter"] = {"unit": "", "mode": "weekly_tuition", "billing_type": "", "custom_amount": "", "custom_description": ""}
+            context["bulk_preview"] = []
+            context["ledger_entries"] = []
+            context["show_bulk_preview"] = False
+            context["today"] = date.today().isoformat()
+    if page == "billing-settings":
         if context.get("portal_live"):
             from .admin_services import get_member_families_live
 

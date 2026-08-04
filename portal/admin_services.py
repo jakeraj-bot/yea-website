@@ -125,11 +125,20 @@ def get_staff_users_live():
             names = extra or [account.unit.name]
             units_label = ", ".join(dict.fromkeys(names))
         login_name = display_username(user.username)
+        lowered = user.username.lower()
+        if lowered.startswith("admin:") or account.role == "Portal admin":
+            login_portal = "admin"
+            login_path = "/portal/admin/login/"
+        else:
+            login_portal = "staff"
+            login_path = "/portal/staff/login/"
         rows.append(
             {
                 "id": account.pk,
                 "user_id": user.pk,
                 "username": login_name,
+                "login_portal": login_portal,
+                "login_path": login_path,
                 "name": account.display_name or user.get_full_name() or login_name,
                 "email": user.email,
                 "role": account.role,
@@ -308,7 +317,8 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
     ensure_admin_config_seeded()
     User = get_user_model()
     base_login = email.split("@")[0].lower().replace(".", "")
-    stored_username = allocate_portal_username("staff", base_login)
+    portal_type = "admin" if role == "Portal admin" else "staff"
+    stored_username = allocate_portal_username(portal_type, base_login)
     login_name = display_username(stored_username)
     if all_units_access or role == "Portal admin":
         all_units_access = True
@@ -356,6 +366,60 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
     return account, created, temp_password if created or password else None, login_name
 
 
+def invite_admin_user(name, username, email="", password=None):
+    import secrets
+
+    from .admin_config import ensure_admin_config_seeded
+    from .models import PortalBillingDefaultRule
+    from .usernames import display_username, portal_username, portal_username_taken
+
+    ensure_admin_config_seeded()
+    User = get_user_model()
+    login_name = (username or "").strip()
+    if not login_name:
+        raise ValueError("Username is required.")
+    if portal_username_taken("admin", login_name):
+        raise ValueError("That admin username is already taken.")
+    stored_username = portal_username("admin", login_name)
+    unit = PortalUnit.objects.filter(is_active=True).order_by("name").first()
+    if not unit:
+        raise ValueError("No active unit configured.")
+    email = (email or "").strip() or f"{login_name}@yeanj.org"
+    user, created = User.objects.get_or_create(
+        username=stored_username,
+        defaults={
+            "email": email,
+            "first_name": name.split()[0] if name else "",
+            "last_name": " ".join(name.split()[1:]) if name else "",
+        },
+    )
+    if not created and email and user.email != email:
+        user.email = email
+        user.save(update_fields=["email"])
+    temp_password = (password or "").strip() or secrets.token_urlsafe(10)
+    if len(temp_password) < 8:
+        raise ValueError("Password must be at least 8 characters.")
+    user.set_password(temp_password)
+    user.save()
+    default_rule = PortalBillingDefaultRule.objects.filter(role_name="Portal admin").first()
+    account, _ = PortalStaffAccount.objects.update_or_create(
+        user=user,
+        defaults={
+            "unit": unit,
+            "display_name": name.strip() or login_name,
+            "role": "Portal admin",
+            "all_units_access": True,
+            "is_active": True,
+            "can_add_charge": default_rule.can_add_charge if default_rule else True,
+            "can_delete_charge": default_rule.can_delete_charge if default_rule else True,
+            "can_add_credit": default_rule.can_add_credit if default_rule else True,
+            "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else True,
+        },
+    )
+    account.accessible_units.clear()
+    return account, created, temp_password, display_username(stored_username)
+
+
 def update_staff_user(staff_id, data):
     account = PortalStaffAccount.objects.filter(pk=staff_id).select_related("user").first()
     if not account:
@@ -372,6 +436,19 @@ def update_staff_user(staff_id, data):
         account.role = role
     all_units = data.get("all_units_access") == "on" or role == "Portal admin"
     account.all_units_access = all_units
+    if role == "Portal admin":
+        from .usernames import allocate_portal_username, display_username, portal_username
+
+        User = get_user_model()
+        user = account.user
+        lowered = user.username.lower()
+        if lowered.startswith("staff:"):
+            login_part = display_username(user.username)
+            new_stored = portal_username("admin", login_part)
+            if User.objects.filter(username__iexact=new_stored).exclude(pk=user.pk).exists():
+                new_stored = allocate_portal_username("admin", login_part)
+            user.username = new_stored
+            user.save(update_fields=["username"])
     if data.get("is_active") is not None:
         account.is_active = data.get("is_active") == "1"
     unit_slug = data.get("unit_slug")

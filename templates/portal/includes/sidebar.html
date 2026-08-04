@@ -98,12 +98,19 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-billing"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'scholarships' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-settings"{% if admin_page_slug == 'billing-settings' or admin_page_slug == 'billing-permissions' %} open{% endif %}>
+      <summary class="portal-nav-group-label">Settings</summary>
+      <ul class="portal-nav portal-nav-admin">
+        <li><a class="portal-nav-link portal-nav-admin-accounts{% if admin_page_slug == 'billing-settings' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-settings' %}">Member accounts</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a></li>
+      </ul>
+    </details>
+
+    <details class="portal-nav-group portal-nav-group-billing"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'scholarships' %} open{% endif %}>
       <summary class="portal-nav-group-label">Billing &amp; fees</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-agencies{% if admin_page_slug == 'agencies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='agencies' %}">Agencies (4Cs)</a></li>
         <li><a class="portal-nav-link portal-nav-admin-fees{% if admin_page_slug == 'fees' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='fees' %}">Fees &amp; billing rules</a></li>
-        <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a></li>
         <li><a class="portal-nav-link portal-nav-admin-scholarships{% if admin_page_slug == 'scholarships' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a></li>
       </ul>
     </details>

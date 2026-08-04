@@ -59,6 +59,11 @@ def resolve_auth_username(portal_type, login_name):
     prefixed = portal_username(portal_type, login_name)
     if User.objects.filter(username__iexact=prefixed).exists():
         return prefixed
+    if portal_type == "admin":
+        staff_prefixed = portal_username("staff", login_name)
+        staff_user = User.objects.filter(username__iexact=staff_prefixed).first()
+        if staff_user and user_matches_portal("admin", staff_user):
+            return staff_prefixed
     legacy = User.objects.filter(username__iexact=login_name).first()
     if legacy and user_matches_portal(portal_type, legacy):
         return login_name

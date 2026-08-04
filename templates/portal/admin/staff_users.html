@@ -3,17 +3,18 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Staff access</h1>
-    <p class="lead">Create and manage staff portal accounts — only admins can invite new logins.</p>
+    <p class="lead">Create staff and admin portal logins — only organization admins can invite new accounts.</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="portal-callout card">
-      <p>Staff portal accounts are created here by organization admin only. Staff cannot self-register. Billing permissions are configured separately in <a href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>.</p>
+      <p>Staff sign in at <code>/portal/staff/login/</code>. Admin portal logins sign in at <code>/portal/admin/login/</code> — they are separate accounts even if the same person uses both.</p>
     </div>
 
     <div class="portal-toolbar">
       <a class="btn btn-primary" href="{% url 'portal_admin_page' page='staff' %}?add=1">+ Create staff account</a>
+      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='staff' %}?add_admin=1">+ Create admin login</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>
     </div>
 
@@ -59,10 +60,41 @@
             <label class="portal-check-label"><input type="checkbox" name="unit_slugs" value="{{ unit.slug }}"> {{ unit.name }}</label>
             {% endfor %}
           </div>
-          <p class="form-note">Portal admin gets all units automatically. Other roles can access multiple locations.</p>
+          <p class="form-note">Portal admin role gets all units automatically. Other roles can access multiple locations. For admin portal sign-in, use <strong>Create admin login</strong>.</p>
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Create account</button>
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if show_add_admin %}
+    <div class="portal-panel card portal-program-form">
+      <h2>Create admin portal login</h2>
+      <p class="form-note">Admin logins sign in at <code>/portal/admin/login/</code> with full organization access.</p>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_admin_invite' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="admin-name">Full name</label>
+          <input id="admin-name" name="name" type="text" class="portal-input" required>
+        </div>
+        <div class="form-group">
+          <label for="admin-username">Username</label>
+          <input id="admin-username" name="username" type="text" class="portal-input" required autocomplete="username">
+          <p class="form-note">What they type at the admin login screen (not their email).</p>
+        </div>
+        <div class="form-group">
+          <label for="admin-email">Email</label>
+          <input id="admin-email" name="email" type="email" class="portal-input" placeholder="optional">
+        </div>
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input id="admin-password" name="password" type="text" class="portal-input" autocomplete="new-password" placeholder="At least 8 characters" required>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Create admin login</button>
           <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
         </div>
       </form>
@@ -131,6 +163,7 @@
           <tr>
             <th>Name</th>
             <th>Username</th>
+            <th>Sign in at</th>
             <th>Email</th>
             <th>Role</th>
             <th>Units</th>
@@ -144,6 +177,7 @@
           <tr>
             <td><strong>{{ user.name }}</strong></td>
             <td><code>{{ user.username }}</code></td>
+            <td><code>{{ user.login_path|default:"/portal/staff/login/" }}</code></td>
             <td>{{ user.email }}</td>
             <td>{{ user.role }}</td>
             <td>{{ user.units }}</td>

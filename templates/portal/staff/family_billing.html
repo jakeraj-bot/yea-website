@@ -4,7 +4,7 @@
   <div class="container">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
-      <a href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a> /
+      <a href="{% url 'portal_admin_page' page='billing-settings' %}">Member accounts</a> /
       {% else %}
       <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
       <a href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">{{ billing.family_name }}</a> /
@@ -28,7 +28,8 @@
       </div>
       <div class="portal-banner-actions">
         {% if portal_area == 'admin' %}
-        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">All members</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-settings' %}">All members</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Bulk billing</a>
         <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}">Policies</a>
         {% else %}
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>

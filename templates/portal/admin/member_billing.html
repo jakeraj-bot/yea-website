@@ -3,49 +3,157 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Member billing</h1>
-    <p class="lead">All units — add charges, credits, and payments to any member account.</p>
+    <p class="lead">Post charges to many members at once, then review recent activity across all accounts.</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="portal-toolbar">
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-settings' %}">Member accounts</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>
     </div>
 
-    <div class="portal-callout card">
-      <p>Portal admins can <strong>add charges</strong>, <strong>add credits</strong>, and <strong>delete charges</strong> on member accounts. Unit staff permissions are controlled in <a href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a>.</p>
+    <div class="portal-panel card portal-program-form">
+      <h2>Post bulk charges</h2>
+      <p class="form-note">Preview matching members first, then post. Amounts come from each child’s billing plan (weekly tuition) or 4Cs agency profile (copay).</p>
+      <form class="portal-form-grid" method="get" action="{% url 'portal_admin_page' page='member-billing' %}">
+        <div class="form-group">
+          <label for="bulk-unit">Unit</label>
+          <select id="bulk-unit" name="unit" class="portal-select">
+            <option value="">All units</option>
+            {% for unit in units %}
+            <option value="{{ unit.slug }}"{% if bulk_filter.unit == unit.slug %} selected{% endif %}>{{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bulk-mode">Charge type</label>
+          <select id="bulk-mode" name="mode" class="portal-select">
+            <option value="weekly_tuition"{% if bulk_filter.mode == 'weekly_tuition' %} selected{% endif %}>Weekly tuition (private pay)</option>
+            <option value="4cs_copay"{% if bulk_filter.mode == '4cs_copay' %} selected{% endif %}>4Cs weekly copay</option>
+            <option value="custom"{% if bulk_filter.mode == 'custom' %} selected{% endif %}>Custom amount (filtered families)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bulk-billing-type">Billing type filter</label>
+          <input id="bulk-billing-type" name="billing_type" type="text" class="portal-input" value="{{ bulk_filter.billing_type }}" placeholder="e.g. private, cash, 4cs">
+          <p class="form-note">Optional — only families whose billing type contains this text.</p>
+        </div>
+        <div class="form-group bulk-custom-fields"{% if bulk_filter.mode != 'custom' %} hidden{% endif %}>
+          <label for="bulk-custom-amount">Custom amount</label>
+          <input id="bulk-custom-amount" name="custom_amount" type="text" class="portal-input" value="{{ bulk_filter.custom_amount }}" placeholder="0.00">
+        </div>
+        <div class="form-group portal-form-full bulk-custom-fields"{% if bulk_filter.mode != 'custom' %} hidden{% endif %}>
+          <label for="bulk-custom-description">Description</label>
+          <input id="bulk-custom-description" name="custom_description" type="text" class="portal-input" value="{{ bulk_filter.custom_description }}" placeholder="Weekly activity fee">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <input type="hidden" name="preview" value="1">
+          <button type="submit" class="btn btn-secondary">Preview charges</button>
+        </div>
+      </form>
+
+      {% if show_bulk_preview %}
+      <div class="portal-table-wrap" style="margin-top:1.5rem;">
+        {% if bulk_preview %}
+        <p><strong>{{ bulk_preview|length }}</strong> charge(s) ready to post.</p>
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Child</th>
+              <th>Billing type</th>
+              <th>Description</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in bulk_preview %}
+            <tr>
+              <td>{{ row.family_name }}</td>
+              <td>{{ row.unit }}</td>
+              <td>{{ row.child_name|default:"—" }}</td>
+              <td>{{ row.billing_type }}</td>
+              <td>{{ row.description }}</td>
+              <td>${{ row.amount_display }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <form method="post" action="{% if portal_live %}{% url 'portal_admin_bulk_billing_post' %}{% else %}#{% endif %}" style="margin-top:1rem;">
+          {% if portal_live %}{% csrf_token %}{% endif %}
+          <input type="hidden" name="unit" value="{{ bulk_filter.unit }}">
+          <input type="hidden" name="mode" value="{{ bulk_filter.mode }}">
+          <input type="hidden" name="billing_type" value="{{ bulk_filter.billing_type }}">
+          <input type="hidden" name="custom_amount" value="{{ bulk_filter.custom_amount }}">
+          <input type="hidden" name="custom_description" value="{{ bulk_filter.custom_description }}">
+          <div class="form-group" style="max-width:16rem;">
+            <label for="bulk-post-date">Charge date</label>
+            <input id="bulk-post-date" name="date" type="date" class="portal-input" value="{{ today|default:'' }}">
+          </div>
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Post {{ bulk_preview|length }} charge(s)</button>
+        </form>
+        {% else %}
+        <p class="form-note">No matching members for these filters. Adjust unit, charge type, or billing type filter.</p>
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
 
-    <div class="portal-table-wrap">
-      <table class="portal-table">
-        <thead>
-          <tr>
-            <th>Family</th>
-            <th>Unit</th>
-            <th>Primary contact</th>
-            <th>Children</th>
-            <th>Balance</th>
-            <th>Billing type</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for family in families %}
-          <tr>
-            <td><strong>{{ family.name }}</strong></td>
-            <td>{{ family.unit|default:"School 18" }}</td>
-            <td>{{ family.primary_contact }}</td>
-            <td>{{ family.children|join:", " }}</td>
-            <td>${{ family.balance }}</td>
-            <td>{{ family.billing_type }}</td>
-            <td>
-              <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}">Manage billing</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="portal-panel card">
+      <h2>Recent charges &amp; payments</h2>
+      <p class="form-note">Open a family to add charges, credits, payments, or delete entries.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Child</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in ledger_entries %}
+            <tr>
+              <td>{{ entry.date }}</td>
+              <td>{{ entry.family_name }}</td>
+              <td>{{ entry.unit }}</td>
+              <td>{{ entry.child }}</td>
+              <td>{{ entry.type }}</td>
+              <td>{{ entry.description }}</td>
+              <td>{% if entry.is_credit %}-{% endif %}${{ entry.amount }}</td>
+              <td>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=entry.family_slug %}">Manage</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8">No ledger activity yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </section>
+<script>
+(function () {
+  var mode = document.getElementById('bulk-mode');
+  if (!mode) return;
+  function toggleCustom() {
+    var show = mode.value === 'custom';
+    document.querySelectorAll('.bulk-custom-fields').forEach(function (el) {
+      el.hidden = !show;
+    });
+  }
+  mode.addEventListener('change', toggleCustom);
+})();
+</script>
 {% endblock %}

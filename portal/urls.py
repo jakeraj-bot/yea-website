@@ -256,6 +256,16 @@ urlpatterns = [
         name="portal_admin_staff_invite",
     ),
     path(
+        "admin/admin/invite/",
+        views_actions.admin_admin_invite,
+        name="portal_admin_admin_invite",
+    ),
+    path(
+        "admin/member-billing/post/",
+        views_actions.admin_bulk_billing_post,
+        name="portal_admin_bulk_billing_post",
+    ),
+    path(
         "admin/profile-change/",
         views_actions.admin_profile_change_action,
         name="portal_admin_profile_change",

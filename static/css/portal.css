@@ -512,6 +512,12 @@
   background: rgba(38, 166, 154, 0.12);
 }
 
+.portal-nav-group-settings > .portal-nav-group-label {
+  color: #5d4037;
+  border-color: #8d6e63;
+  background: rgba(141, 110, 99, 0.12);
+}
+
 .portal-nav-group-billing > .portal-nav-group-label {
   color: #ad1457;
   border-color: #ec407a;
