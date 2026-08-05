@@ -404,6 +404,9 @@ def apply_wizard(request, step="family"):
         return redirect(f"{settings.PORTAL_PARENT_LOGIN_URL}?next={request.get_full_path()}")
 
     if step == "review":
+        from .form_i18n import localize_form
+        from .i18n import get_language
+
         if request.method == "POST":
             if not session_data.get("children"):
                 return redirect("enrollment_apply", step="family")
@@ -429,8 +432,6 @@ def apply_wizard(request, step="family"):
             if not portal_account:
                 portal_form = PortalAccountForm(request.POST)
                 lang = get_language(request)
-                from .form_i18n import localize_form
-
                 localize_form(portal_form, lang)
                 if not portal_form.is_valid():
                     return render(
@@ -478,9 +479,6 @@ def apply_wizard(request, step="family"):
             return redirect("enrollment_confirmation_group", family_group=family_group)
         portal_form = None if portal_account or editing else PortalAccountForm()
         if portal_form:
-            from .form_i18n import localize_form
-            from .i18n import get_language
-
             localize_form(portal_form, get_language(request))
         return render(
             request,
