@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("set-language/", views.set_language, name="enrollment_set_language"),
     path("policies/<slug:slug>/", views.policy_detail, name="enrollment_policy"),
     path("confirmation/<uuid:reference>/", views.confirmation, name="enrollment_confirmation"),
     path("confirmation/group/<uuid:family_group>/", views.confirmation_group, name="enrollment_confirmation_group"),

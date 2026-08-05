@@ -28,6 +28,11 @@ services:
         value: "info@yeanj.org"
       - key: DEFAULT_FROM_EMAIL
         value: "info@yeanj.org"
+      - key: ENROLLMENT_NOTIFICATION_EMAIL
+        value: "jakeraj@yeanj.org"
+      # SMTP — set these in Render dashboard (never commit passwords):
+      # EMAIL_HOST=smtp.gmail.com  EMAIL_PORT=587  EMAIL_USE_TLS=True
+      # EMAIL_HOST_USER=info@yeanj.org  EMAIL_HOST_PASSWORD=<Google App Password>
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL

@@ -3,9 +3,10 @@
 import uuid
 from datetime import date
 
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.text import slugify
+
+from core.email_service import send_site_email
 
 from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import link_applications_by_email
@@ -139,7 +140,8 @@ def _email_parent(app, save_draft):
             f"We'll review it shortly. You can track status in the parent portal.\n\n"
             f"Reference: {app.reference}\n"
         )
-    try:
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [app.primary_email], fail_silently=True)
-    except Exception:
-        pass
+    send_site_email(
+        subject=subject,
+        message=body,
+        recipient_list=[app.primary_email],
+    )

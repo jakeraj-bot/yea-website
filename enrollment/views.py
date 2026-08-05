@@ -1,16 +1,16 @@
 import logging
-import threading
 import uuid
 from datetime import date, datetime
 
 from django.contrib.auth import login
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
+
+from core.email_service import send_site_email
 
 from portal.parent_auth import get_parent_account, parent_login_required
 
@@ -155,6 +155,7 @@ def _notify_staff(application):
     print_url = settings.SITE_URL.rstrip("/") + reverse(
         "enrollment_print", args=[application.reference]
     )
+    admin_url = settings.SITE_URL.rstrip("/") + reverse("portal_admin_page", kwargs={"page": "applications"})
     subject = f"[YEA] New enrollment application — {application.student_first_name} {application.student_last_name}"
     sibling_note = ""
     if application.family_group:
@@ -171,21 +172,37 @@ def _notify_staff(application):
         f"Family: {application.family_name}\n"
         f"Family email: {application.primary_email}\n"
         f"Reference: {application.reference}\n\n"
-        f"Print for your files (staff login required):\n{print_url}\n\n"
-        f"Or open Django admin → Enrollment applications.\n"
+        f"Review in admin portal:\n{admin_url}\n\n"
+        f"Print for your files (staff login required):\n{print_url}\n"
     )
-    send_mail(
+    send_site_email(
         subject=subject,
         message=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[settings.CONTACT_EMAIL],
-        fail_silently=True,
+        recipient_list=[
+            email.strip()
+            for email in settings.ENROLLMENT_NOTIFICATION_EMAIL.split(",")
+            if email.strip()
+        ],
     )
 
 
-def _notify_staff_async(application):
-    thread = threading.Thread(target=_notify_staff, args=(application,), daemon=True)
-    thread.start()
+def _notify_parent(application):
+    portal_url = settings.SITE_URL.rstrip("/") + reverse("portal_parent_login")
+    body = (
+        f"Hello {application.primary_first_name},\n\n"
+        f"Thank you for submitting your enrollment application for "
+        f"{application.student_first_name} {application.student_last_name}.\n\n"
+        f"Reference: {application.reference}\n"
+        f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n\n"
+        f"We'll review your application and contact you if we need anything else. "
+        f"Track status anytime in the parent portal:\n{portal_url}\n\n"
+        f"Youth Education Academy\n"
+    )
+    send_site_email(
+        subject=f"[YEA] Application received — {application.student_first_name} {application.student_last_name}",
+        message=body,
+        recipient_list=[application.primary_email],
+    )
 
 
 def _max_step_index(session_data):
@@ -216,15 +233,18 @@ def _policy_form_fields(form):
 
 
 def _wizard_context(request, step, session_data, **extra):
+    from .i18n import SUPPORTED_LANGUAGES, get_language, localized_step_tab_labels, localized_step_titles
+
     step_idx = _step_index(step)
+    lang = get_language(request)
     _ensure_children(session_data)
     child_index = session_data.get("current_child_index", 0)
     editing_app = _editing_application(session_data)
     step_order = [s for s in STEP_ORDER if s != "add_child"] if editing_app else STEP_ORDER
     return {
         "step": step,
-        "step_titles": STEP_TITLES,
-        "step_tab_labels": STEP_TAB_LABELS,
+        "step_titles": localized_step_titles(lang),
+        "step_tab_labels": localized_step_tab_labels(lang),
         "step_order": step_order,
         "step_index": step_idx,
         "max_step_index": _max_step_index(session_data),
@@ -241,6 +261,8 @@ def _wizard_context(request, step, session_data, **extra):
         ),
         "staff_change_message": editing_app.staff_message if editing_app else "",
         "is_adding_child": bool(session_data.get("adding_to_existing_family")),
+        "enrollment_lang": lang,
+        "enrollment_languages": SUPPORTED_LANGUAGES,
         **extra,
     }
 
@@ -287,10 +309,27 @@ def _start_session_for_existing_family(account):
 
 @require_http_methods(["GET"])
 def apply_start(request):
+    from .i18n import SUPPORTED_LANGUAGES, get_language
+
     account = get_parent_account(request.user) if request.user.is_authenticated else None
+    context = {
+        "enrollment_lang": get_language(request),
+        "enrollment_languages": SUPPORTED_LANGUAGES,
+    }
     if account:
-        return render(request, "enrollment/apply_logged_in.html", {"account": account})
-    return render(request, "enrollment/apply_gate.html")
+        return render(request, "enrollment/apply_logged_in.html", {"account": account, **context})
+    return render(request, "enrollment/apply_gate.html", context)
+
+
+@require_http_methods(["POST"])
+def set_language(request):
+    from .i18n import set_language as store_language
+
+    store_language(request, request.POST.get("lang", "en"))
+    next_url = request.POST.get("next") or reverse("apply")
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("apply")
 
 
 @require_http_methods(["GET"])
@@ -420,7 +459,8 @@ def apply_wizard(request, step="family"):
             if LINK_EXISTING_KEY in request.session:
                 del request.session[LINK_EXISTING_KEY]
             for app in applications:
-                _notify_staff_async(app)
+                _notify_staff(app)
+                _notify_parent(app)
             if linked_existing:
                 child_names = ", ".join(
                     f"{app.student_first_name} {app.student_last_name}".strip() for app in applications
@@ -480,6 +520,9 @@ def apply_wizard(request, step="family"):
 
     if request.method == "POST":
         form = form_class(request.POST)
+        from .i18n import get_language, localize_form_labels
+
+        localize_form_labels(form, get_language(request))
         billing_ok = True
         if emergency_formset is not None:
             billing_ok = emergency_formset.is_valid()
@@ -540,6 +583,9 @@ def apply_wizard(request, step="family"):
         else:
             initial = {k: v for k, v in child_data.items() if k not in ("emergency_contacts", "policies")}
         form = form_class(initial=initial)
+        from .i18n import get_language, localize_form_labels
+
+        localize_form_labels(form, get_language(request))
         if emergency_formset is None and step == "billing":
             emergency_formset = EmergencyContactFormSet(
                 prefix="emergency",

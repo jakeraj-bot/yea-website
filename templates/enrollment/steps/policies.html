@@ -40,12 +40,15 @@
           <a class="policy-open-link" href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
         </div>
         <div class="policy-read-box">
+          {% if enrollment_lang == 'es' %}
+          <p class="apply-policy-lang-note">{% enrollment_t "policies_english_note" %}</p>
+          {% endif %}
           {% with policy.paragraphs|first as first_para %}
           {% if first_para %}
           <p>{{ first_para|truncatechars:500 }}</p>
           {% endif %}
           {% endwith %}
-          <p class="policy-read-more"><a href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Read the full policy before signing ↗</a></p>
+          <p class="policy-read-more"><a href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">{% enrollment_t "policy_read_full" %}</a></p>
         </div>
 
         <div class="form-grid policy-sign-fields">

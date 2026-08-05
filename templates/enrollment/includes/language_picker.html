@@ -1,0 +1,11 @@
+{% load enrollment_extras %}
+<form class="apply-language-picker" method="post" action="{% url 'enrollment_set_language' %}">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <label for="apply-language-select">{% enrollment_t "language_label" %}</label>
+  <select id="apply-language-select" name="lang" class="portal-select" onchange="this.form.submit()">
+    {% for code, label in enrollment_languages.items %}
+    <option value="{{ code }}"{% if enrollment_lang == code %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+</form>

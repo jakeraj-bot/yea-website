@@ -1,8 +1,9 @@
 from django.conf import settings
-from django.core.mail import send_mail
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
+
+from core.email_service import send_site_email
 
 from . import photos
 from .forms import ContactForm
@@ -113,10 +114,9 @@ def _send_contact_notification(contact):
         f"Topic: {topic_label}\n\n"
         f"Message:\n{contact.message}\n"
     )
-    send_mail(
+    send_site_email(
         subject=subject,
         message=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[settings.CONTACT_EMAIL],
         reply_to=[contact.email],
     )

@@ -28,6 +28,9 @@
     </div>
     {% endif %}
     <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
+    <div class="apply-language-bar">
+      {% include "enrollment/includes/language_picker.html" %}
+    </div>
     {% include "enrollment/includes/step_progress.html" %}
 
     <form method="post" class="apply-form">
@@ -49,9 +52,9 @@
 
         <footer class="apply-actions">
           {% if prev_step %}
-          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">Back</a>
+          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step=prev_step %}">{% enrollment_t "back" %}</a>
           {% endif %}
-          <button type="submit" class="btn btn-primary" data-loading-text="Saving…">Continue</button>
+          <button type="submit" class="btn btn-primary" data-loading-text="{% enrollment_t 'saving' %}">{% enrollment_t "continue" %}</button>
         </footer>
       </div>
     </form>

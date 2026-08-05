@@ -49,6 +49,15 @@ def is_radio_select(field):
     return isinstance(field.field.widget, RadioSelect)
 
 
+@register.simple_tag(takes_context=True)
+def enrollment_t(context, key, **kwargs):
+    from enrollment.i18n import get_language, translate
+
+    request = context.get("request")
+    lang = get_language(request) if request else "en"
+    return translate(lang, key, **kwargs)
+
+
 @register.inclusion_tag("enrollment/includes/apply_field.html")
 def apply_field(field, full=False):
     return {"field": field, "full": full}
