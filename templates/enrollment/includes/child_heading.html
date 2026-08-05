@@ -1,8 +1,9 @@
+{% load enrollment_extras %}
 {% if step != "family" and step != "review" %}
 <div class="apply-child-badge">
-  <span class="apply-child-badge-label">Child {{ child_number }}</span>
+  <span class="apply-child-badge-label">{% enrollment_t "child_badge" n=child_number %}</span>
   {% if child_count > 1 %}
-  <span class="apply-child-badge-meta">{{ child_count }} children in this application</span>
+  <span class="apply-child-badge-meta">{% enrollment_t "children_in_application" count=child_count %}</span>
   {% endif %}
 </div>
 {% endif %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load enrollment_extras %}
 
 {% block title %}{{ policy.title }} — Youth Education Academy{% endblock %}
 
@@ -6,7 +7,7 @@
 <section class="page-hero page-hero-compact">
   <div class="container">
     <h1>{{ policy.title }}</h1>
-    <p class="lead">Youth Education Academy — 2026–2027 after-school program</p>
+    <p class="lead">{% enrollment_t "policy_detail_lead" %}</p>
   </div>
 </section>
 
@@ -17,11 +18,11 @@
     {% endfor %}
 
     <div class="policy-sign-footer">
-      <p><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
-      <p>Parent/Guardian signature: __________________________ Date: ______________</p>
+      <p><strong>{% enrollment_t "policy_acknowledgment" %}</strong> {{ policy.acknowledgment }}</p>
+      <p>{% enrollment_t "policy_signature_line" %}</p>
     </div>
 
-    <p><a href="{% url 'apply' %}">← Back to application</a></p>
+    <p><a href="{% url 'apply' %}">{% enrollment_t "back_to_application" %}</a></p>
   </div>
 </section>
 {% endblock %}

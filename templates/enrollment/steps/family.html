@@ -3,18 +3,18 @@
 
 {% block step_content %}
 <div class="apply-tabbed-sections" data-apply-tabs>
-  <nav class="portal-family-tabs apply-section-tabs" aria-label="Family sections" role="tablist">
-    <a class="portal-family-tab is-active" href="#family-info" role="tab" data-tab-target="apply-tab-family-info" aria-selected="true">Family info</a>
-    <a class="portal-family-tab" href="#primary-guardian" role="tab" data-tab-target="apply-tab-primary-guardian" aria-selected="false">Primary guardian</a>
-    <a class="portal-family-tab" href="#secondary-guardian" role="tab" data-tab-target="apply-tab-secondary-guardian" aria-selected="false">Secondary guardian</a>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="{% enrollment_t 'aria_family_sections' %}" role="tablist">
+    <a class="portal-family-tab is-active" href="#family-info" role="tab" data-tab-target="apply-tab-family-info" aria-selected="true">{% enrollment_t "tab_family_info" %}</a>
+    <a class="portal-family-tab" href="#primary-guardian" role="tab" data-tab-target="apply-tab-primary-guardian" aria-selected="false">{% enrollment_t "tab_primary_guardian" %}</a>
+    <a class="portal-family-tab" href="#secondary-guardian" role="tab" data-tab-target="apply-tab-secondary-guardian" aria-selected="false">{% enrollment_t "tab_secondary_guardian" %}</a>
   </nav>
 
   <div class="apply-tab-panels">
     <div class="apply-tab-panel is-active" id="apply-tab-family-info" role="tabpanel" data-tab-panel="apply-tab-family-info">
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Family information</h3>
-          <p class="apply-section-desc">Basic contact details for your household.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_family_info" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_family_info_desc" %}</p>
         </header>
         <div class="form-grid">
           {% apply_field form.family_name %}
@@ -27,8 +27,8 @@
     <div class="apply-tab-panel" id="apply-tab-primary-guardian" role="tabpanel" data-tab-panel="apply-tab-primary-guardian" hidden>
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Primary parent/guardian {% include "enrollment/includes/required_mark.html" %}</h3>
-          <p class="apply-section-desc">This person is the main contact for your family.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_primary_guardian" %} {% include "enrollment/includes/required_mark.html" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_primary_guardian_desc" %}</p>
         </header>
         <div class="form-grid">
           {% for field in form %}
@@ -43,8 +43,8 @@
     <div class="apply-tab-panel" id="apply-tab-secondary-guardian" role="tabpanel" data-tab-panel="apply-tab-secondary-guardian" hidden>
       <section class="apply-section apply-section-flat apply-section-optional">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Secondary parent/guardian <span class="optional-mark">Optional</span></h3>
-          <p class="apply-section-desc">Add another parent or guardian if applicable.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_secondary_guardian" %} <span class="optional-mark">{% enrollment_t "optional" %}</span></h3>
+          <p class="apply-section-desc">{% enrollment_t "section_secondary_guardian_desc" %}</p>
         </header>
         <div class="form-grid">
           {% for field in form %}

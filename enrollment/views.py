@@ -33,6 +33,7 @@ from .forms import (
 )
 from .models import EmergencyContact, EnrollmentApplication, PolicySignature
 from .policies_data import POLICIES, POLICY_BY_SLUG
+from .policies_loader import get_policies, get_policy_by_slug
 from .portal_integration import (
     create_portal_account_from_enrollment,
     link_applications_to_family,
@@ -252,7 +253,7 @@ def _wizard_context(request, step, session_data, **extra):
         "child_index": child_index,
         "child_number": child_index + 1,
         "child_count": _child_count(session_data),
-        "policies": POLICIES if step == "policies" else None,
+        "policies": get_policies(get_language(request)) if step == "policies" else None,
         "is_editing": bool(editing_app),
         "editing_child_name": (
             f"{editing_app.student_first_name} {editing_app.student_last_name}".strip()
@@ -427,6 +428,10 @@ def apply_wizard(request, step="family"):
             portal_form = None
             if not portal_account:
                 portal_form = PortalAccountForm(request.POST)
+                lang = get_language(request)
+                from .form_i18n import localize_form
+
+                localize_form(portal_form, lang)
                 if not portal_form.is_valid():
                     return render(
                         request,
@@ -436,7 +441,7 @@ def apply_wizard(request, step="family"):
                             step,
                             session_data,
                             data=session_data,
-                            policies=POLICIES,
+                            policies=get_policies(get_language(request)),
                             portal_form=portal_form,
                             portal_account=portal_account,
                         ),
@@ -472,6 +477,11 @@ def apply_wizard(request, step="family"):
                 return redirect("portal_parent_page", page="applications")
             return redirect("enrollment_confirmation_group", family_group=family_group)
         portal_form = None if portal_account or editing else PortalAccountForm()
+        if portal_form:
+            from .form_i18n import localize_form
+            from .i18n import get_language
+
+            localize_form(portal_form, get_language(request))
         return render(
             request,
             "enrollment/review.html",
@@ -480,7 +490,7 @@ def apply_wizard(request, step="family"):
                 step,
                 session_data,
                 data=session_data,
-                policies=POLICIES,
+                policies=get_policies(get_language(request)),
                 portal_form=portal_form,
                 portal_account=portal_account,
             ),
@@ -501,6 +511,11 @@ def apply_wizard(request, step="family"):
                 return redirect("enrollment_apply", step="review")
         else:
             form = STEP_FORMS["add_child"]()
+        from .form_i18n import localize_form
+        from .i18n import get_language
+
+        lang = get_language(request)
+        localize_form(form, lang)
         return render(
             request,
             "enrollment/steps/add_child.html",
@@ -520,14 +535,19 @@ def apply_wizard(request, step="family"):
 
     if request.method == "POST":
         form = form_class(request.POST)
-        from .i18n import get_language, localize_form_labels
+        from .form_i18n import localize_form, localize_formset, localize_policy_form
+        from .i18n import get_language
 
-        localize_form_labels(form, get_language(request))
+        lang = get_language(request)
+        localize_form(form, lang)
+        if step == "policies":
+            localize_policy_form(form, lang)
+        localize_formset(emergency_formset, lang)
         billing_ok = True
         if emergency_formset is not None:
             billing_ok = emergency_formset.is_valid()
             if billing_ok:
-                billing_ok = validate_emergency_contacts(emergency_formset, session_data)
+                billing_ok = validate_emergency_contacts(emergency_formset, session_data, lang)
 
         if form.is_valid() and billing_ok:
             cleaned = form.cleaned_data.copy()
@@ -537,7 +557,7 @@ def apply_wizard(request, step="family"):
                         session_data[key] = cleaned[key]
             elif step == "policies":
                 policy_payload = {}
-                for policy in POLICIES:
+                for policy in get_policies(get_language(request)):
                     slug = policy["slug"]
                     extra = {}
                     for field in policy.get("fields", []):
@@ -567,6 +587,10 @@ def apply_wizard(request, step="family"):
                 next_step = "review"
             return redirect("enrollment_apply", step=next_step)
     else:
+        from .form_i18n import localize_form, localize_formset, localize_policy_form
+        from .i18n import get_language
+
+        lang = get_language(request)
         if step == "family":
             initial = {k: session_data.get(k, "") for k in FAMILY_FIELD_NAMES}
         elif step == "policies":
@@ -577,15 +601,16 @@ def apply_wizard(request, step="family"):
                 initial[f"{slug}__date"] = payload.get("date") or today
                 for key, value in payload.get("extra", {}).items():
                     initial[f"{slug}__{key}"] = value
-            for policy in POLICIES:
+            for policy in get_policies(lang):
                 slug = policy["slug"]
                 initial.setdefault(f"{slug}__date", today)
         else:
             initial = {k: v for k, v in child_data.items() if k not in ("emergency_contacts", "policies")}
         form = form_class(initial=initial)
-        from .i18n import get_language, localize_form_labels
-
-        localize_form_labels(form, get_language(request))
+        localize_form(form, lang)
+        if step == "policies":
+            localize_policy_form(form, lang)
+        localize_formset(emergency_formset, lang)
         if emergency_formset is None and step == "billing":
             emergency_formset = EmergencyContactFormSet(
                 prefix="emergency",
@@ -607,7 +632,9 @@ def apply_wizard(request, step="family"):
 
 
 def policy_detail(request, slug):
-    policy = POLICY_BY_SLUG.get(slug)
+    from .i18n import get_language
+
+    policy = get_policy_by_slug(slug, get_language(request))
     if not policy:
         from django.http import Http404
         raise Http404

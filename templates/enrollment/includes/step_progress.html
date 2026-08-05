@@ -1,5 +1,5 @@
 {% load enrollment_extras %}
-<nav class="portal-family-tabs apply-step-tabs apply-step-tabs-colorful apply-step-tabs-scroll" aria-label="Application steps">
+<nav class="portal-family-tabs apply-step-tabs apply-step-tabs-colorful apply-step-tabs-scroll" aria-label="{% enrollment_t 'aria_application_steps' %}">
   {% for s in step_order %}
   {% with tab_index=forloop.counter0 %}
     {% if tab_index <= max_step_index %}

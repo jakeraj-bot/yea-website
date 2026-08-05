@@ -44,6 +44,32 @@ def location_label(value):
     return dict(EnrollmentApplication.LOCATION_CHOICES).get(value, value)
 
 
+@register.simple_tag(takes_context=True)
+def localized_program_label(context, value):
+    from enrollment.form_i18n import PROGRAM_ES
+
+    request = context.get("request")
+    from enrollment.i18n import get_language
+
+    lang = get_language(request) if request else "en"
+    if lang == "es":
+        return dict(PROGRAM_ES).get(value, program_label(value))
+    return program_label(value)
+
+
+@register.simple_tag(takes_context=True)
+def localized_location_label(context, value):
+    from enrollment.form_i18n import LOCATION_ES
+
+    request = context.get("request")
+    from enrollment.i18n import get_language
+
+    lang = get_language(request) if request else "en"
+    if lang == "es":
+        return dict(LOCATION_ES).get(value, location_label(value))
+    return location_label(value)
+
+
 @register.filter
 def is_radio_select(field):
     return isinstance(field.field.widget, RadioSelect)
@@ -51,11 +77,16 @@ def is_radio_select(field):
 
 @register.simple_tag(takes_context=True)
 def enrollment_t(context, key, **kwargs):
+    from django.utils.safestring import mark_safe
+
     from enrollment.i18n import get_language, translate
 
     request = context.get("request")
     lang = get_language(request) if request else "en"
-    return translate(lang, key, **kwargs)
+    text = translate(lang, key, **kwargs)
+    if "<" in text:
+        return mark_safe(text)
+    return text
 
 
 @register.inclusion_tag("enrollment/includes/apply_field.html")

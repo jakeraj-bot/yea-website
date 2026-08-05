@@ -4,8 +4,8 @@
 {% block step_content %}
 <section class="apply-section">
   <header class="apply-section-header">
-    <h3 class="apply-section-title">Add another child? {% include "enrollment/includes/required_mark.html" %}</h3>
-    <p class="apply-section-desc">Choose whether to enroll another child in this same application.</p>
+    <h3 class="apply-section-title">{% enrollment_t "section_add_child" %} {% include "enrollment/includes/required_mark.html" %}</h3>
+    <p class="apply-section-desc">{% enrollment_t "section_add_child_desc" %}</p>
   </header>
   <div class="form-grid">
     {% apply_field form.add_another full=True %}

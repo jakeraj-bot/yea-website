@@ -3,17 +3,17 @@
 
 {% block step_content %}
 <div class="apply-tabbed-sections" data-apply-tabs>
-  <nav class="portal-family-tabs apply-section-tabs" aria-label="Billing sections" role="tablist">
-    <a class="portal-family-tab is-active" href="#billing" role="tab" data-tab-target="apply-tab-billing" aria-selected="true">Billing</a>
-    <a class="portal-family-tab" href="#emergency-contacts" role="tab" data-tab-target="apply-tab-emergency" aria-selected="false">Emergency contacts</a>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="{% enrollment_t 'aria_billing_sections' %}" role="tablist">
+    <a class="portal-family-tab is-active" href="#billing" role="tab" data-tab-target="apply-tab-billing" aria-selected="true">{% enrollment_t "tab_billing" %}</a>
+    <a class="portal-family-tab" href="#emergency-contacts" role="tab" data-tab-target="apply-tab-emergency" aria-selected="false">{% enrollment_t "tab_emergency_contacts" %}</a>
   </nav>
 
   <div class="apply-tab-panels">
     <div class="apply-tab-panel is-active" id="apply-tab-billing" role="tabpanel" data-tab-panel="apply-tab-billing">
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Billing & payment</h3>
-          <p class="apply-section-desc">Payments are made through the EZChildTracking portal. We do not accept cash.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_billing" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_billing_desc" %}</p>
         </header>
         <div class="form-grid">
           {% for field in form %}
@@ -29,17 +29,17 @@
         </div>
 
         <div class="apply-fourcs-block" id="apply-fourcs-block">
-          <h4 class="apply-fourcs-title">4Cs families <span class="optional-mark">Only if using 4Cs</span></h4>
+          <h4 class="apply-fourcs-title">{% enrollment_t "four_cs_title" %} <span class="optional-mark">{% enrollment_t "four_cs_only_if" %}</span></h4>
           <ul class="apply-fourcs-list">
-            <li>If you have 4Cs, email your contract to <a href="mailto:ezchildtracking@yeanj.org">ezchildtracking@yeanj.org</a>. The contract will be filled out and sent back to you by email.</li>
-            <li>Before your child can start, they need:
+            <li>{% enrollment_t "four_cs_1" email="ezchildtracking@yeanj.org" %}</li>
+            <li>{% enrollment_t "four_cs_2" %}
               <ul>
-                <li>Their name in our 4Cs portal</li>
-                <li>A first-week deposit of $70 (refundable once they are in our portal)</li>
+                <li>{% enrollment_t "four_cs_2a" %}</li>
+                <li>{% enrollment_t "four_cs_2b" %}</li>
               </ul>
             </li>
-            <li>If they are not in the portal and you do not want to pay the deposit, they can start once they are in the portal.</li>
-            <li>All 4Cs copays are determined by 4Cs, not YEA. Once your contract appears in our 4Cs portal we will notify you of your copay. You are then responsible to pay weekly, bi-weekly, or monthly depending on your payment plan.</li>
+            <li>{% enrollment_t "four_cs_3" %}</li>
+            <li>{% enrollment_t "four_cs_4" %}</li>
           </ul>
           <div class="form-grid">
             {% apply_field form.four_cs_signature full=True %}
@@ -52,16 +52,16 @@
     <div class="apply-tab-panel" id="apply-tab-emergency" role="tabpanel" data-tab-panel="apply-tab-emergency" hidden>
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Emergency contacts {% include "enrollment/includes/required_mark.html" %}</h3>
-          <p class="apply-section-desc"><strong>Two complete emergency contacts are required.</strong> They must be different people and different from the primary parent/guardian (different name and phone).</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_emergency" %} {% include "enrollment/includes/required_mark.html" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_emergency_desc" %}</p>
         </header>
         {{ emergency_formset.management_form }}
         <div class="apply-contact-list">
           {% for contact_form in emergency_formset %}
           <fieldset class="emergency-contact-block{% if forloop.counter <= 2 %} is-required{% endif %}">
             <legend>
-              Emergency contact #{{ forloop.counter }}
-              {% if forloop.counter <= 2 %}{% include "enrollment/includes/required_mark.html" %}{% else %}<span class="optional-mark">Optional</span>{% endif %}
+              {% enrollment_t "emergency_contact_n" n=forloop.counter %}
+              {% if forloop.counter <= 2 %}{% include "enrollment/includes/required_mark.html" %}{% else %}<span class="optional-mark">{% enrollment_t "optional" %}</span>{% endif %}
             </legend>
             <div class="form-grid">
               {% for field in contact_form %}

@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% load static enrollment_extras %}
 
-{% block title %}Review application — Youth Education Academy{% endblock %}
+{% block title %}{% if is_editing %}{% enrollment_t "review_title_editing" %}{% else %}{% enrollment_t "review_title" %}{% endif %} — Youth Education Academy{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>{% if is_editing %}Review your updates{% else %}Review your application{% endif %}</h1>
+    <h1>{% if is_editing %}{% enrollment_t "review_title_editing" %}{% else %}{% enrollment_t "review_title" %}{% endif %}</h1>
     <p class="lead">
       {% if is_editing %}
-      Confirm your changes, then resubmit for staff review.
+      {% enrollment_t "review_lead_editing" %}
       {% else %}
-      Check your information, create your parent portal login, then submit.
+      {% enrollment_t "review_lead" %}
       {% endif %}
     </p>
   </div>
@@ -20,6 +20,9 @@
 <section class="page-content apply-page">
   <div class="container apply-container">
     <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
+    <div class="apply-language-bar">
+      {% include "enrollment/includes/language_picker.html" %}
+    </div>
     {% include "enrollment/includes/step_progress.html" %}
 
     <form method="post" class="apply-form">
@@ -30,13 +33,13 @@
 
         <header class="apply-step-header">
           <h2 class="apply-step-title">{{ step_titles|get_item:step }}</h2>
-          <p class="apply-step-lead">Confirm everything looks correct before submitting your application.</p>
+          <p class="apply-step-lead">{% enrollment_t "review_confirm_lead" %}</p>
         </header>
 
         {% if not portal_account %}
         {% if portal_form.errors or portal_form.non_field_errors %}
         <div class="apply-error-banner" role="alert" id="apply-error-banner">
-          <p class="apply-error-banner-title">Please complete your parent portal login</p>
+          <p class="apply-error-banner-title">{% enrollment_t "portal_login_error_title" %}</p>
           <ul class="apply-error-list">
             {% for field in portal_form %}
               {% if field.errors %}
@@ -59,43 +62,43 @@
           {% if is_adding_child %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
-              <h3 class="apply-section-title">Your family account</h3>
+              <h3 class="apply-section-title">{% enrollment_t "family_account_section" %}</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. This application will be added to your existing family — no new login needed.</p>
+            <p>{% enrollment_t "family_account_signed_in" username=portal_account.login_username %}</p>
           </section>
           {% elif is_editing %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
-              <h3 class="apply-section-title">Resubmit for review</h3>
+              <h3 class="apply-section-title">{% enrollment_t "resubmit_section" %}</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. After you submit, staff will review your updated application.</p>
+            <p>{% enrollment_t "resubmit_signed_in" username=portal_account.login_username %}</p>
           </section>
           {% elif portal_account %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
-              <h3 class="apply-section-title">Parent portal</h3>
+              <h3 class="apply-section-title">{% enrollment_t "portal_section" %}</h3>
             </header>
-            <p>You're signed in as <strong>{{ portal_account.login_username }}</strong>. This application will appear in your portal after submission.</p>
+            <p>{% enrollment_t "portal_signed_in" username=portal_account.login_username %}</p>
           </section>
           {% elif not portal_account %}
           <section class="apply-section apply-section-flat">
             <header class="apply-section-header">
-              <h3 class="apply-section-title">Create your parent portal login {% include "enrollment/includes/required_mark.html" %}</h3>
-              <p class="apply-section-desc">You'll use this to track your application, view billing, and manage your family account after enrollment.</p>
+              <h3 class="apply-section-title">{% enrollment_t "portal_login_section" %} {% include "enrollment/includes/required_mark.html" %}</h3>
+              <p class="apply-section-desc">{% enrollment_t "portal_login_desc" %}</p>
             </header>
             <div class="form-grid">
               <div class="form-group is-required{% if portal_form.username.errors %} has-error{% endif %}">
-                <label for="{{ portal_form.username.id_for_label }}">Username {% include "enrollment/includes/required_mark.html" %}</label>
+                <label for="{{ portal_form.username.id_for_label }}">{% enrollment_t "username_label" %} {% include "enrollment/includes/required_mark.html" %}</label>
                 {{ portal_form.username }}
                 {{ portal_form.username.errors }}
               </div>
               <div class="form-group form-group-full is-required{% if portal_form.password1.errors %} has-error{% endif %}">
-                <label for="{{ portal_form.password1.id_for_label }}">Password {% include "enrollment/includes/required_mark.html" %}</label>
+                <label for="{{ portal_form.password1.id_for_label }}">{% enrollment_t "password_label" %} {% include "enrollment/includes/required_mark.html" %}</label>
                 {{ portal_form.password1 }}
                 {{ portal_form.password1.errors }}
               </div>
               <div class="form-group form-group-full is-required{% if portal_form.password2.errors %} has-error{% endif %}">
-                <label for="{{ portal_form.password2.id_for_label }}">Confirm password {% include "enrollment/includes/required_mark.html" %}</label>
+                <label for="{{ portal_form.password2.id_for_label }}">{% enrollment_t "confirm_password_label" %} {% include "enrollment/includes/required_mark.html" %}</label>
                 {{ portal_form.password2 }}
                 {{ portal_form.password2.errors }}
               </div>
@@ -106,11 +109,13 @@
 
         <footer class="apply-actions">
           {% if is_editing %}
-          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='policies' %}">Back</a>
+          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='policies' %}">{% enrollment_t "back" %}</a>
           {% else %}
-          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='add_child' %}">Back</a>
+          <a class="btn btn-secondary" href="{% url 'enrollment_apply' step='add_child' %}">{% enrollment_t "back" %}</a>
           {% endif %}
-          <button type="submit" class="btn btn-primary" data-loading-text="Submitting…">{% if is_editing %}Resubmit for review{% elif is_adding_child %}Submit application{% else %}Submit application{{ data.children|length|pluralize }}{% endif %}</button>
+          <button type="submit" class="btn btn-primary" data-loading-text="{% enrollment_t 'submitting' %}">
+            {% if is_editing %}{% enrollment_t "submit_resubmit" %}{% elif data.children|length > 1 %}{% enrollment_t "submit_applications_plural" %}{% else %}{% enrollment_t "submit_application_n" %}{% endif %}
+          </button>
         </footer>
       </div>
     </form>

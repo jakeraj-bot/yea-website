@@ -1,45 +1,51 @@
 {% extends "base.html" %}
 {% load enrollment_extras %}
 
-{% block title %}Application submitted — Youth Education Academy{% endblock %}
+{% block title %}{% enrollment_t "confirmation_title" %} — Youth Education Academy{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>Thank you!</h1>
-    <p class="lead">We received {{ applications|length }} application{{ applications|length|pluralize }} for your family.</p>
+    <h1>{% enrollment_t "confirmation_group_title" %}</h1>
+    <p class="lead">
+      {% if applications|length == 1 %}
+      {% enrollment_t "confirmation_group_lead" count=applications|length %}
+      {% else %}
+      {% enrollment_t "confirmation_group_lead_plural" count=applications|length %}
+      {% endif %}
+    </p>
   </div>
 </section>
 
 <section class="page-content">
   <div class="container apply-container">
-    <p>Each child is reviewed as a separate application in our system, linked to the same family information.</p>
+    <p>{% enrollment_t "confirmation_group_note" %}</p>
     <ul>
       {% for app in applications %}
       <li>
         <strong>{{ app.student_first_name }} {{ app.student_last_name }}</strong> —
-        {{ app.program|program_label }} at {{ app.program_location|location_label }}
-        <br><span class="form-note">Reference: {{ app.reference }}</span>
+        {% localized_program_label app.program %} — {% localized_location_label app.program_location %}
+        <br><span class="form-note">{% enrollment_t "reference_label" ref=app.reference %}</span>
       </li>
       {% endfor %}
     </ul>
-    <p>We will contact you at <strong>{{ applications.0.primary_email }}</strong> with next steps.</p>
+    <p>{% enrollment_t "confirmation_group_contact" email=applications.0.primary_email %}</p>
 
     <div class="card card-accent" style="margin:1.5rem 0;padding:1rem 1.25rem;">
-      <h2 style="margin-top:0;">Your parent portal</h2>
+      <h2 style="margin-top:0;">{% enrollment_t "your_parent_portal" %}</h2>
       {% if user.is_authenticated %}
-      <p>You're signed in. Track application status, billing, and your family profile anytime.</p>
-      <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}">View applications in portal</a>
-      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='dashboard' %}">Go to dashboard</a>
+      <p>{% enrollment_t "portal_track_signed_in" %}</p>
+      <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}">{% enrollment_t "view_applications_portal" %}</a>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='dashboard' %}">{% enrollment_t "go_dashboard" %}</a>
       {% else %}
-      <p>Sign in to your parent portal to track status and manage your account.</p>
-      <a class="btn btn-primary" href="{% url 'portal_parent_login' %}">Sign in to parent portal</a>
+      <p>{% enrollment_t "portal_sign_in_prompt" %}</p>
+      <a class="btn btn-primary" href="{% url 'portal_parent_login' %}">{% enrollment_t "sign_in_parent_portal" %}</a>
       {% endif %}
     </div>
 
     <p>
-      <a class="btn btn-secondary" href="{% url 'home' %}">Return home</a>
-      <a class="btn btn-secondary" href="{% url 'contact' %}">Contact us</a>
+      <a class="btn btn-secondary" href="{% url 'home' %}">{% enrollment_t "return_home" %}</a>
+      <a class="btn btn-secondary" href="{% url 'contact' %}">{% enrollment_t "contact_us" %}</a>
     </p>
   </div>
 </section>

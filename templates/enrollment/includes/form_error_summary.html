@@ -23,7 +23,7 @@
         {% for field in contact_form %}
           {% if field.errors %}
             {% for error in field.errors %}
-            <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+            <li><span class="apply-error-field">{% enrollment_t "emergency_contact_error" n=forloop.parentloop.counter label=field.label %}</span> — {{ error }}</li>
             {% endfor %}
           {% endif %}
         {% endfor %}
@@ -44,7 +44,7 @@
         {% for field in contact_form %}
           {% if field.errors %}
             {% for error in field.errors %}
-            <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+            <li><span class="apply-error-field">{% enrollment_t "emergency_contact_error" n=forloop.parentloop.counter label=field.label %}</span> — {{ error }}</li>
             {% endfor %}
           {% endif %}
         {% endfor %}
@@ -61,7 +61,7 @@
           {% for field in contact_form %}
             {% if field.errors %}
               {% for error in field.errors %}
-              <li><span class="apply-error-field">Emergency contact #{{ forloop.parentloop.counter }} — {{ field.label }}</span> — {{ error }}</li>
+              <li><span class="apply-error-field">{% enrollment_t "emergency_contact_error" n=forloop.parentloop.counter label=field.label %}</span> — {{ error }}</li>
               {% endfor %}
             {% endif %}
           {% endfor %}

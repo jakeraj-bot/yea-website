@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% load static enrollment_extras %}
 
-{% block title %}{% if is_editing %}Update application{% elif is_adding_child %}Add another child{% else %}Enrollment application{% endif %} — Youth Education Academy{% endblock %}
+{% block title %}{% if is_editing %}{% enrollment_t "page_title_editing" %}{% elif is_adding_child %}{% enrollment_t "page_title_add_child" %}{% else %}{% enrollment_t "page_title_default" %}{% endif %} — Youth Education Academy{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>{% if is_editing %}Update application{% elif is_adding_child %}Add another child{% else %}Enrollment application{% endif %}</h1>
+    <h1>{% if is_editing %}{% enrollment_t "page_title_editing" %}{% elif is_adding_child %}{% enrollment_t "page_title_add_child" %}{% else %}{% enrollment_t "page_title_default" %}{% endif %}</h1>
     <p class="lead">
       {% if is_editing %}
-      Staff requested updates for <strong>{{ editing_child_name }}</strong>. Fix the sections below, then resubmit for review.
+      {% enrollment_t "hero_editing" name=editing_child_name %}
       {% elif is_adding_child %}
-      You're adding a new child to your existing family account. Household information is prefilled — complete the steps for your new child.
+      {% enrollment_t "hero_add_child" %}
       {% else %}
-      Complete all steps online. You can print your submitted application for your records.
+      {% enrollment_t "hero_default" %}
       {% endif %}
     </p>
   </div>
@@ -23,7 +23,7 @@
   <div class="container apply-container">
     {% if is_editing and staff_change_message %}
     <div class="apply-error-banner apply-edit-callout" role="status">
-      <p class="apply-error-banner-title">What staff needs from you</p>
+      <p class="apply-error-banner-title">{% enrollment_t "staff_needs_title" %}</p>
       <p>{{ staff_change_message|linebreaksbr }}</p>
     </div>
     {% endif %}

@@ -2,17 +2,17 @@
 {% load static enrollment_extras %}
 
 {% block step_lead %}
-<p class="apply-step-lead">Read each policy, then sign and date for <strong>this child</strong>. Use the section tabs or Next policy to move between policies.</p>
+<p class="apply-step-lead">{% enrollment_t "step_lead_policies" %}</p>
 {% endblock %}
 
 {% block step_content %}
 <div class="apply-tabbed-sections apply-tabbed-sections-policies" data-apply-tabs id="apply-policies">
   <div class="apply-policy-toolbar">
-    <button type="button" class="btn btn-secondary btn-sm" id="policy-prev-btn" disabled>Previous policy</button>
-    <button type="button" class="btn btn-primary btn-sm" id="policy-next-btn">Next policy</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="policy-prev-btn" disabled>{% enrollment_t "previous_policy" %}</button>
+    <button type="button" class="btn btn-primary btn-sm" id="policy-next-btn">{% enrollment_t "next_policy" %}</button>
   </div>
 
-  <nav class="portal-family-tabs apply-section-tabs apply-section-tabs-scroll" aria-label="Policy sections" role="tablist">
+  <nav class="portal-family-tabs apply-section-tabs apply-section-tabs-scroll" aria-label="{% enrollment_t 'aria_policy_sections' %}" role="tablist">
     {% for policy in policies %}
     <a
       class="portal-family-tab{% if forloop.first %} is-active{% endif %}"
@@ -37,12 +37,9 @@
       <section class="policy-sign-block apply-section-flat">
         <div class="policy-sign-header">
           <h3 class="apply-section-title">{{ policy.title }} {% include "enrollment/includes/required_mark.html" %}</h3>
-          <a class="policy-open-link" href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">Open full policy ↗</a>
+          <a class="policy-open-link" href="{% url 'enrollment_policy' policy.slug %}" target="_blank" rel="noopener">{% enrollment_t "open_full_policy" %}</a>
         </div>
         <div class="policy-read-box">
-          {% if enrollment_lang == 'es' %}
-          <p class="apply-policy-lang-note">{% enrollment_t "policies_english_note" %}</p>
-          {% endif %}
           {% with policy.paragraphs|first as first_para %}
           {% if first_para %}
           <p>{{ first_para|truncatechars:500 }}</p>

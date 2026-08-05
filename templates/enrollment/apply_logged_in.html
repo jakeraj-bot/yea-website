@@ -1,33 +1,38 @@
 {% extends "base.html" %}
+{% load enrollment_extras %}
 
-{% block title %}Apply — Youth Education Academy{% endblock %}
+{% block title %}{% enrollment_t "apply_logged_in_title" %} — Youth Education Academy{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>Apply for enrollment</h1>
-    <p class="lead">You're signed in as <strong>{{ account.login_username }}</strong> ({{ account.family.name }} family).</p>
+    <h1>{% enrollment_t "apply_logged_in_title" %}</h1>
+    <p class="lead">{% enrollment_t "apply_logged_in_lead" username=account.login_username family=account.family.name %}</p>
   </div>
 </section>
 
 <section class="page-content">
   <div class="container apply-container">
+    <div class="apply-language-bar">
+      {% include "enrollment/includes/language_picker.html" %}
+    </div>
+
     <div class="card-grid card-grid-2" style="max-width:48rem;margin:0 auto;">
       <article class="card card-accent">
-        <h2>Add to your existing family</h2>
-        <p>Use this if you're enrolling another child for the same household and guardians already on your account.</p>
-        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for my family account</a>
+        <h2>{% enrollment_t "add_existing_family" %}</h2>
+        <p>{% enrollment_t "add_existing_family_desc" %}</p>
+        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">{% enrollment_t "apply_family_account" %}</a>
       </article>
 
       <article class="card">
-        <h2>Different household (same last name is OK)</h2>
-        <p>If this application is for a <strong>separate family</strong> — different parents, address, or billing — sign out first and start a new application with its own portal login.</p>
-        <a class="btn btn-primary" href="{% url 'portal_parent_logout' %}?next={% url 'enrollment_apply' step='family' %}%3Fnew%3D1">Sign out and start new application</a>
+        <h2>{% enrollment_t "different_household" %}</h2>
+        <p>{% enrollment_t "different_household_desc" %}</p>
+        <a class="btn btn-primary" href="{% url 'portal_parent_logout' %}?next={% url 'enrollment_apply' step='family' %}%3Fnew%3D1">{% enrollment_t "sign_out_new_application" %}</a>
       </article>
     </div>
 
     <p class="form-note" style="text-align:center;margin-top:1.5rem;">
-      Families with the same last name are kept separate when each has its own parent portal account.
+      {% enrollment_t "same_last_name_note" %}
     </p>
   </div>
 </section>

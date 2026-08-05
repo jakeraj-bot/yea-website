@@ -2,13 +2,13 @@
 {% load static enrollment_extras %}
 
 {% block step_lead %}
-<p class="apply-step-lead">Choose the program and location for this child. After-school runs September–June at our Paterson sites. Summer camp is July 6 – August 14, 2026 at Caldwell University.</p>
+<p class="apply-step-lead">{% enrollment_t "step_lead_program" %}</p>
 {% endblock %}
 
 {% block step_content %}
 <section class="apply-section">
   <header class="apply-section-header">
-    <h3 class="apply-section-title">Program selection</h3>
+    <h3 class="apply-section-title">{% enrollment_t "section_program_selection" %}</h3>
   </header>
   <div class="form-grid">
     {% apply_field form.program full=True %}
@@ -19,9 +19,13 @@
 <div class="modal" id="dale-ave-bus-modal" hidden role="dialog" aria-modal="true" aria-labelledby="dale-ave-modal-title">
   <div class="modal-backdrop" data-modal-close></div>
   <div class="modal-panel drop-in-box-list">
-    <h3 id="dale-ave-modal-title">Dale Ave program</h3>
+    <h3 id="dale-ave-modal-title">{% enrollment_t "dale_ave_modal_title" %}</h3>
+    {% if enrollment_lang == 'es' %}
+    {% include "includes/dale_ave_bus_info_es.html" %}
+    {% else %}
     {% include "includes/dale_ave_bus_info.html" %}
-    <button type="button" class="btn btn-primary" data-modal-close>Got it</button>
+    {% endif %}
+    <button type="button" class="btn btn-primary" data-modal-close>{% enrollment_t "got_it" %}</button>
   </div>
 </div>
 {% endblock %}

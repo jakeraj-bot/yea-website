@@ -33,7 +33,7 @@
     </div>
 
     <p class="form-note" style="text-align:center;margin-top:1.5rem;">
-      Questions? <a href="{% url 'contact' %}">Contact YEA</a> or call us before you apply.
+      {% url 'contact' as contact_url %}{% enrollment_t "questions_contact" contact_url=contact_url %}
     </p>
   </div>
 </section>

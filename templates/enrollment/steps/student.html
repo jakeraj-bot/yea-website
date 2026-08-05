@@ -3,17 +3,17 @@
 
 {% block step_content %}
 <div class="apply-tabbed-sections" data-apply-tabs>
-  <nav class="portal-family-tabs apply-section-tabs" aria-label="Student sections" role="tablist">
-    <a class="portal-family-tab is-active" href="#student-info" role="tab" data-tab-target="apply-tab-student-info" aria-selected="true">Student info</a>
-    <a class="portal-family-tab" href="#medical-info" role="tab" data-tab-target="apply-tab-medical-info" aria-selected="false">Medical info</a>
+  <nav class="portal-family-tabs apply-section-tabs" aria-label="{% enrollment_t 'aria_student_sections' %}" role="tablist">
+    <a class="portal-family-tab is-active" href="#student-info" role="tab" data-tab-target="apply-tab-student-info" aria-selected="true">{% enrollment_t "tab_student_info" %}</a>
+    <a class="portal-family-tab" href="#medical-info" role="tab" data-tab-target="apply-tab-medical-info" aria-selected="false">{% enrollment_t "tab_medical_info" %}</a>
   </nav>
 
   <div class="apply-tab-panels">
     <div class="apply-tab-panel is-active" id="apply-tab-student-info" role="tabpanel" data-tab-panel="apply-tab-student-info">
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Student information</h3>
-          <p class="apply-section-desc">Details about the child you are enrolling.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_student_info" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_student_info_desc" %}</p>
         </header>
         <div class="form-grid">
           {% for field in form %}
@@ -28,8 +28,8 @@
     <div class="apply-tab-panel" id="apply-tab-medical-info" role="tabpanel" data-tab-panel="apply-tab-medical-info" hidden>
       <section class="apply-section apply-section-flat">
         <header class="apply-section-header">
-          <h3 class="apply-section-title">Medical information</h3>
-          <p class="apply-section-desc">Health statement is required. Other medical fields are optional unless they apply to your child.</p>
+          <h3 class="apply-section-title">{% enrollment_t "section_medical_info" %}</h3>
+          <p class="apply-section-desc">{% enrollment_t "section_medical_info_desc" %}</p>
         </header>
         <div class="form-grid">
           {% for field in form %}
