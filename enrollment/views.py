@@ -10,9 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from core.email_service import send_site_email
-
 from portal.parent_auth import get_parent_account, parent_login_required
+
+from .notifications import send_application_submitted_emails
 
 from .application_edit import (
     application_to_session_data,
@@ -150,60 +150,6 @@ def _create_applications(session_data):
         merged["child_number"] = child_number
         applications.append(_create_application(merged))
     return applications
-
-
-def _notify_staff(application):
-    print_url = settings.SITE_URL.rstrip("/") + reverse(
-        "enrollment_print", args=[application.reference]
-    )
-    admin_url = settings.SITE_URL.rstrip("/") + reverse("portal_admin_page", kwargs={"page": "applications"})
-    subject = f"[YEA] New enrollment application — {application.student_first_name} {application.student_last_name}"
-    sibling_note = ""
-    if application.family_group:
-        sibling_count = EnrollmentApplication.objects.filter(
-            family_group=application.family_group
-        ).count()
-        if sibling_count > 1:
-            sibling_note = f"Child {application.child_number} of {sibling_count} in this family submission.\n"
-    body = (
-        f"A new enrollment application was submitted.\n\n"
-        f"{sibling_note}"
-        f"Student: {application.student_first_name} {application.student_last_name}\n"
-        f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n"
-        f"Family: {application.family_name}\n"
-        f"Family email: {application.primary_email}\n"
-        f"Reference: {application.reference}\n\n"
-        f"Review in admin portal:\n{admin_url}\n\n"
-        f"Print for your files (staff login required):\n{print_url}\n"
-    )
-    send_site_email(
-        subject=subject,
-        message=body,
-        recipient_list=[
-            email.strip()
-            for email in settings.ENROLLMENT_NOTIFICATION_EMAIL.split(",")
-            if email.strip()
-        ],
-    )
-
-
-def _notify_parent(application):
-    portal_url = settings.SITE_URL.rstrip("/") + reverse("portal_parent_login")
-    body = (
-        f"Hello {application.primary_first_name},\n\n"
-        f"Thank you for submitting your enrollment application for "
-        f"{application.student_first_name} {application.student_last_name}.\n\n"
-        f"Reference: {application.reference}\n"
-        f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n\n"
-        f"We'll review your application and contact you if we need anything else. "
-        f"Track status anytime in the parent portal:\n{portal_url}\n\n"
-        f"Youth Education Academy\n"
-    )
-    send_site_email(
-        subject=f"[YEA] Application received — {application.student_first_name} {application.student_last_name}",
-        message=body,
-        recipient_list=[application.primary_email],
-    )
 
 
 def _max_step_index(session_data):
@@ -465,8 +411,7 @@ def apply_wizard(request, step="family"):
             if LINK_EXISTING_KEY in request.session:
                 del request.session[LINK_EXISTING_KEY]
             for app in applications:
-                _notify_staff(app)
-                _notify_parent(app)
+                send_application_submitted_emails(app)
             if linked_existing:
                 child_names = ", ".join(
                     f"{app.student_first_name} {app.student_last_name}".strip() for app in applications

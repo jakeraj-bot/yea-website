@@ -6,8 +6,6 @@ from datetime import date
 from django.conf import settings
 from django.utils.text import slugify
 
-from core.email_service import send_site_email
-
 from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import link_applications_by_email
 
@@ -97,7 +95,6 @@ def create_staff_application(form, unit):
         portal_family=portal_family,
     )
     link_applications_by_email(portal_family, email)
-    _email_parent(app, save_draft)
     return app
 
 
@@ -121,27 +118,4 @@ def _get_or_create_family(unit, family_name, parent_first, parent_last, email, p
         billing_type=billing_type,
         program_label="After-School 2026–27",
         status="Active",
-    )
-
-
-def _email_parent(app, save_draft):
-    subject = "[YEA] Complete your enrollment application"
-    if save_draft:
-        body = (
-            f"Hello {app.primary_first_name},\n\n"
-            f"YEA staff started an enrollment application for {app.student_first_name} {app.student_last_name}. "
-            f"Please sign in to the parent portal to complete medical information, policies, and billing.\n\n"
-            f"Reference: {app.reference}\n"
-        )
-    else:
-        body = (
-            f"Hello {app.primary_first_name},\n\n"
-            f"YEA staff submitted an enrollment application for {app.student_first_name} {app.student_last_name}. "
-            f"We'll review it shortly. You can track status in the parent portal.\n\n"
-            f"Reference: {app.reference}\n"
-        )
-    send_site_email(
-        subject=subject,
-        message=body,
-        recipient_list=[app.primary_email],
     )

@@ -9,13 +9,15 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
+from portal.fee_config import get_fee_amount, get_fee_display
 from portal.models import PortalChild, PortalLedgerEntry
 
 from .application_edit import EDITABLE_STATUSES
 
 logger = logging.getLogger(__name__)
 
-MEMBERSHIP_FEE = Decimal("20.00")
+MEMBERSHIP_FEE_KEY = "membership"
+DEFAULT_MEMBERSHIP_FEE = Decimal("20.00")
 REVIEWABLE_STATUSES = {"under_review", "pending_documents"}
 
 
@@ -69,17 +71,26 @@ def _ensure_child_on_roster(app):
     )
 
 
+def _membership_fee_amount():
+    return get_fee_amount(MEMBERSHIP_FEE_KEY, DEFAULT_MEMBERSHIP_FEE)
+
+
 def _post_membership_fee_if_needed(app):
     family = app.portal_family
     if not family or app.membership_fee_agreed != "yes":
         return
 
+    amount = _membership_fee_amount()
+    if not amount:
+        return
+
     child_name = child_display_name(app)
-    description = f"Membership fee — {child_name}"
+    label = get_fee_display(MEMBERSHIP_FEE_KEY, f"${amount}")
+    description = f"Membership fee ({label}) — {child_name}"
     if PortalLedgerEntry.objects.filter(family=family, description=description).exists():
         return
 
-    family.balance += MEMBERSHIP_FEE
+    family.balance += amount
     family.save(update_fields=["balance"])
     PortalLedgerEntry.objects.create(
         family=family,
@@ -87,7 +98,7 @@ def _post_membership_fee_if_needed(app):
         date=timezone.localdate(),
         entry_type="membership",
         description=description,
-        amount=MEMBERSHIP_FEE,
+        amount=amount,
         is_manual=False,
     )
 

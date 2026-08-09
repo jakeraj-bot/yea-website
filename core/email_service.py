@@ -3,7 +3,7 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,14 @@ def send_site_email(subject, message, recipient_list, *, fail_silently=True, rep
         return 0
 
     try:
-        sent = send_mail(
+        email = EmailMessage(
             subject=subject,
-            message=message,
+            body=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=recipients,
-            fail_silently=False,
-            reply_to=reply_to or [],
+            to=recipients,
+            reply_to=list(reply_to or []),
         )
+        sent = email.send(fail_silently=False)
         logger.info("Email sent: subject=%r recipients=%s", subject, recipients)
         return sent
     except Exception:

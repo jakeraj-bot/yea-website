@@ -1148,10 +1148,43 @@ def staff_create_application(request):
 
     try:
         app = create_staff_application(form, unit)
-        messages.success(
-            request,
-            f"Application created for {app.student_first_name} {app.student_last_name}. Parent notified by email.",
+        from core.email_service import email_is_configured
+        from enrollment.notifications import send_application_submitted_emails
+
+        staff_sent, parent_sent = send_application_submitted_emails(
+            app,
+            staff_created=True,
+            save_draft=form.get("action") == "draft",
         )
+        if not email_is_configured():
+            messages.warning(
+                request,
+                "Application saved, but email is not configured on the server — no notifications were sent. "
+                "Set EMAIL_HOST, EMAIL_HOST_USER, and EMAIL_HOST_PASSWORD in Render.",
+            )
+        elif not staff_sent and not parent_sent:
+            messages.warning(
+                request,
+                "Application saved, but confirmation emails could not be sent. Check Render logs and SMTP settings.",
+            )
+        elif not parent_sent:
+            messages.warning(
+                request,
+                f"Application created for {app.student_first_name} {app.student_last_name}. "
+                "Staff was notified, but the parent confirmation email failed.",
+            )
+        elif not staff_sent:
+            messages.warning(
+                request,
+                f"Application created for {app.student_first_name} {app.student_last_name}. "
+                "Parent was notified, but the staff alert email failed.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Application created for {app.student_first_name} {app.student_last_name}. "
+                "Staff and parent notified by email.",
+            )
     except Exception as exc:
         messages.error(request, f"Could not create application: {exc}")
         return redirect("portal_staff_page", page="create-application")
