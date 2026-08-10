@@ -17,11 +17,30 @@
       {% include "enrollment/includes/language_picker.html" %}
     </div>
 
+    {% if portal_account %}
+    <div class="card apply-signed-in-callout" style="max-width:48rem;margin:0 auto 1.5rem;padding:1rem 1.25rem;">
+      <p style="margin:0;">{% enrollment_t "apply_signed_in_notice" username=portal_account.login_username %}</p>
+    </div>
+    {% endif %}
+
     <div class="card-grid card-grid-2" style="max-width:48rem;margin:0 auto;">
+      {% if portal_account %}
+      <article class="card card-accent">
+        <h2>{% enrollment_t "add_existing_family" %}</h2>
+        <p>{% enrollment_t "add_existing_family_desc" %}</p>
+        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">{% enrollment_t "apply_family_account" %}</a>
+      </article>
+
+      <article class="card">
+        <h2>{% enrollment_t "different_household" %}</h2>
+        <p>{% enrollment_t "different_household_desc" %}</p>
+        <a class="btn btn-primary" href="{% url 'portal_parent_logout' %}?next={% url 'enrollment_apply' step='family' %}%3Fnew%3D1">{% enrollment_t "sign_out_new_application" %}</a>
+      </article>
+      {% else %}
       <article class="card card-accent">
         <h2>{% enrollment_t "already_have_account" %}</h2>
         <p>{% enrollment_t "already_have_account_desc" %}</p>
-        <a class="btn btn-primary" href="{% url 'portal_parent_login' %}?next={% url 'enrollment_apply' step='family' %}">{% enrollment_t "sign_in_parent" %}</a>
+        <a class="btn btn-primary" href="{% url 'portal_parent_login' %}?next={% url 'enrollment_apply_add_child' %}">{% enrollment_t "sign_in_parent" %}</a>
       </article>
 
       <article class="card">
@@ -30,7 +49,16 @@
         <p class="form-note">{% enrollment_t "new_family_note" %}</p>
         <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1">{% enrollment_t "start_application" %}</a>
       </article>
+      {% endif %}
     </div>
+
+    {% if portal_account %}
+    <p class="form-note" style="text-align:center;margin-top:1.5rem;">
+      <a href="{% url 'portal_parent_page' page='dashboard' %}">{% enrollment_t "go_dashboard" %}</a>
+      ·
+      <a href="{% url 'portal_parent_logout' %}?next={% url 'apply' %}">{% enrollment_t "apply_sign_out_link" %}</a>
+    </p>
+    {% endif %}
 
     <p class="form-note" style="text-align:center;margin-top:1.5rem;">
       {% url 'contact' as contact_url %}{% enrollment_t "questions_contact" contact_url=contact_url %}

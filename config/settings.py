@@ -115,8 +115,8 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "info@yeanj.org")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@yeanj.org")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "jakeraj@yeanj.org")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "jakeraj@yeanj.org")
 PORTAL_ALERT_EMAIL = os.environ.get("PORTAL_ALERT_EMAIL", CONTACT_EMAIL)
 
 if os.environ.get("EMAIL_HOST"):

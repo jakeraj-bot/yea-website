@@ -210,6 +210,7 @@ def _wizard_context(request, step, session_data, **extra):
         "is_adding_child": bool(session_data.get("adding_to_existing_family")),
         "enrollment_lang": lang,
         "enrollment_languages": SUPPORTED_LANGUAGES,
+        "four_cs_contact_email": settings.CONTACT_EMAIL,
         **extra,
     }
 
@@ -262,9 +263,8 @@ def apply_start(request):
     context = {
         "enrollment_lang": get_language(request),
         "enrollment_languages": SUPPORTED_LANGUAGES,
+        "portal_account": account,
     }
-    if account:
-        return render(request, "enrollment/apply_logged_in.html", {"account": account, **context})
     return render(request, "enrollment/apply_gate.html", context)
 
 

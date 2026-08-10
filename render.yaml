@@ -25,7 +25,7 @@ services:
       - key: PORTAL_BOOTSTRAP_ON_DEPLOY
         value: "True"
       - key: CONTACT_EMAIL
-        value: "info@yeanj.org"
+        value: "jakeraj@yeanj.org"
       - key: DEFAULT_FROM_EMAIL
         value: "jakeraj@yeanj.org"
       - key: ENROLLMENT_NOTIFICATION_EMAIL

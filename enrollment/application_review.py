@@ -227,7 +227,11 @@ def resubmit_application(app):
                 f"Review in the staff portal:\n{staff_url}\n"
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.CONTACT_EMAIL],
+            recipient_list=[
+                email.strip()
+                for email in settings.ENROLLMENT_NOTIFICATION_EMAIL.split(",")
+                if email.strip()
+            ],
             fail_silently=False,
         )
     except Exception:

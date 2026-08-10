@@ -1,5 +1,5 @@
 {% extends "enrollment/apply_base.html" %}
-{% load enrollment_extras %}
+{% load static enrollment_extras %}
 
 {% block step_content %}
 <div class="apply-tabbed-sections" data-apply-tabs>
@@ -28,10 +28,10 @@
           {% endfor %}
         </div>
 
-        <div class="apply-fourcs-block" id="apply-fourcs-block">
-          <h4 class="apply-fourcs-title">{% enrollment_t "four_cs_title" %} <span class="optional-mark">{% enrollment_t "four_cs_only_if" %}</span></h4>
+        <div class="apply-fourcs-block" id="apply-fourcs-block" hidden>
+          <h4 class="apply-fourcs-title">{% enrollment_t "four_cs_title" %}</h4>
           <ul class="apply-fourcs-list">
-            <li>{% enrollment_t "four_cs_1" email="ezchildtracking@yeanj.org" %}</li>
+            <li>{% enrollment_t "four_cs_1" email=four_cs_contact_email %}</li>
             <li>{% enrollment_t "four_cs_2" %}
               <ul>
                 <li>{% enrollment_t "four_cs_2a" %}</li>
@@ -85,4 +85,9 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/apply-billing.js' %}?v=1"></script>
 {% endblock %}
