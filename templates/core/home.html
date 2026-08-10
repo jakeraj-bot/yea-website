@@ -28,6 +28,7 @@
       <li><span class="trust-dot"></span> 501(c)(3) nonprofit</li>
       <li><span class="trust-dot"></span> Ages 2½–13</li>
       <li><span class="trust-dot"></span> After-school starts Sept 8, 2026</li>
+      <li><span class="trust-dot"></span> Before care waitlist open at School 18</li>
       <li><span class="trust-dot"></span> Summer camp July 6 – Aug 14, 2026</li>
       <li><span class="trust-dot"></span> Drop-in care available</li>
     </ul>
@@ -60,7 +61,7 @@
       <h2>What we offer</h2>
       <p>Year-round support for families through school and community partnerships.</p>
     </div>
-    <div class="card-grid card-grid-2">
+    <div class="card-grid">
       <article class="card card-accent">
         <div class="card-image">
           <img src="{% static 'images/site/programs/after-school.jpg' %}" alt="After-school program">
@@ -69,6 +70,15 @@
         <h3>After-school program</h3>
         <p>Homework help, STEAM, arts, and sports for children 2½–13 at our Paterson school sites.</p>
         <a class="btn btn-secondary" href="{% url 'after_school' %}">Learn more</a>
+      </article>
+      <article class="card card-accent orange">
+        <div class="card-image card-image-focus-top">
+          <img src="{% static school_18_photo %}" alt="Before care at School 18">
+        </div>
+        <span class="date-badge">Waitlist open</span>
+        <h3>Before care</h3>
+        <p>Early morning care 7:00am – 8:30am at School 18. Join the waitlist — no payment required to hold your spot.</p>
+        <a class="btn btn-secondary" href="{% url 'school_18' %}#before-care">Learn more</a>
       </article>
       <article class="card card-accent blue">
         <div class="card-image">

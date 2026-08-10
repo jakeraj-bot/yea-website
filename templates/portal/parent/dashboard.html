@@ -43,6 +43,42 @@
       </div>
     </div>
 
+    <div class="portal-program-cards card-grid card-grid-3">
+      <article class="card card-accent">
+        <h2>After-school</h2>
+        <p class="form-note">Paterson school sites · Ages 2½–13 · Starts Sept 8, 2026</p>
+        {% if parent_authenticated %}
+        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for a child</a>
+        {% else %}
+        <a class="btn btn-primary" href="{% url 'apply' %}">Start application</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{% url 'after_school' %}">Program details</a>
+      </article>
+      <article class="card card-accent orange">
+        <h2>Before care</h2>
+        <p class="form-note">School 18 only · 7:00am – 8:30am · Waitlist open</p>
+        {% if parent_authenticated %}
+        <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Join waitlist</a>
+        {% else %}
+        <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=before_care">Join waitlist</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{% url 'school_18' %}#before-care">Learn more</a>
+      </article>
+      <article class="card card-accent blue">
+        <h2>Summer camp</h2>
+        <p class="form-note">Caldwell University · July 6 – Aug 14, 2026 · Ages 2–13</p>
+        {% if parent_authenticated %}
+        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for a child</a>
+        {% else %}
+        <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=summer_camp">Start application</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{% url 'summer_camp' %}">Camp details</a>
+      </article>
+    </div>
+    {% if parent_authenticated %}
+    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the School 18 waitlist without starting over.</p>
+    {% endif %}
+
     <div class="portal-quick-links card">
       <h2>Quick links</h2>
       <ul class="portal-link-list">
