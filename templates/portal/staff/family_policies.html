@@ -51,31 +51,7 @@
       <section class="portal-child-policy-section">
         <h2 class="portal-policy-child-heading">{{ child.child_name }}</h2>
         <p class="form-note portal-policy-child-meta">{{ child.signed_count }} of {{ child.total_count }} signed · Parent/guardian: {{ child.signed_by }}</p>
-        <div class="portal-policy-list portal-policy-list-print">
-          {% for policy in child.policies %}
-          <details class="portal-policy-item card" {% if policy.signed %}open{% endif %}>
-            <summary class="portal-policy-summary">
-              <span class="portal-policy-title">{{ policy.title }}</span>
-              {% if policy.signed %}
-              <span class="portal-policy-badge portal-policy-badge-signed">Signed {{ policy.signed_date }}</span>
-              {% else %}
-              <span class="portal-policy-badge portal-policy-badge-unsigned">Not signed</span>
-              {% endif %}
-            </summary>
-            <div class="portal-policy-body">
-              {% for paragraph in policy.paragraphs %}
-              <p>{{ paragraph }}</p>
-              {% endfor %}
-              {% if policy.acknowledgment %}
-              <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
-              {% endif %}
-              {% if policy.signed %}
-              <p class="portal-policy-signature"><strong>Signed for {{ child.child_name }} by:</strong> {{ policy.signed_by }} · {{ policy.signed_date }}</p>
-              {% endif %}
-            </div>
-          </details>
-          {% endfor %}
-        </div>
+        {% include "portal/includes/policy_view_sections.html" with policies=child.policies child_name=child.child_name print_expand=True %}
       </section>
       {% endfor %}
     </div>

@@ -603,13 +603,17 @@ def confirmation_group(request, family_group):
 
 @staff_member_required
 def print_application(request, reference):
-    application = get_object_or_404(EnrollmentApplication, reference=reference)
+    from enrollment.policy_display import get_application_policies
+
+    application = get_object_or_404(
+        EnrollmentApplication.objects.prefetch_related("policy_signatures"),
+        reference=reference,
+    )
     return render(
         request,
         "enrollment/print.html",
         {
             "application": application,
-            "policies": POLICIES,
-            "policy_by_slug": POLICY_BY_SLUG,
+            "signed_policies": get_application_policies(application),
         },
     )

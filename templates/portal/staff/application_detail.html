@@ -107,7 +107,9 @@
           <li>{{ c.name }} — {{ c.phone }}</li>
           {% endfor %}
         </ul>
-        <p>{{ application.policies_signed }} policies signed at submission.</p>
+        <h2>Signed policies</h2>
+        <p class="form-note">{{ application.policies_signed }} of {{ application.policies_total }} policies signed electronically at submission.</p>
+        {% include "portal/includes/policy_view_sections.html" with policies=application.signed_policies child_name=application.child_name print_expand=True %}
       </div>
 
       <aside class="portal-review-sidebar">

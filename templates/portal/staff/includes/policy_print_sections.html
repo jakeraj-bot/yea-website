@@ -10,9 +10,12 @@
   {% if policy.acknowledgment %}
   <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
   {% endif %}
+  {% for field in policy.extra_fields %}
+  <p class="portal-policy-extra"><strong>{{ field.label }}:</strong> {{ field.value|linebreaksbr }}</p>
+  {% endfor %}
   {% if policy.signed %}
   <p class="portal-policy-signature">
-    <strong>Signed for {{ child_name|default:policy.child_name }} by:</strong> {{ policy.signed_by }} · {{ policy.signed_date }}
+    <strong>Electronic signature</strong> for {{ child_name|default:policy.child_name }}: {{ policy.signed_by }} · Date: {{ policy.signed_date }}
   </p>
   {% else %}
   <p class="portal-policy-signature portal-policy-signature-missing"><strong>Not signed</strong></p>

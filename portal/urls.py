@@ -96,6 +96,16 @@ urlpatterns = [
         name="portal_parent_policies_print",
     ),
     path(
+        "parent/policies/print/<slug:policy_slug>/",
+        views.parent_policy_print,
+        name="portal_parent_policy_print",
+    ),
+    path(
+        "parent/application/policies/print/<slug:policy_slug>/",
+        views.parent_application_policy_print,
+        name="portal_parent_application_policy_print",
+    ),
+    path(
         "parent/receipts/print/",
         views.parent_receipts_print,
         name="portal_parent_receipts_print",
@@ -310,6 +320,11 @@ urlpatterns = [
         name="portal_staff_family_policies",
     ),
     path(
+        "staff/family/<slug:family_slug>/policies/<slug:policy_slug>/print/",
+        views.staff_family_policy_print,
+        name="portal_staff_family_policy_print",
+    ),
+    path(
         "staff/family/<slug:family_slug>/billing/",
         views.staff_family_billing,
         name="portal_staff_family_billing",
@@ -350,6 +365,11 @@ urlpatterns = [
         name="portal_staff_application_print",
     ),
     path(
+        "staff/application/<slug:app_slug>/policies/<slug:policy_slug>/print/",
+        views.staff_application_policy_print,
+        name="portal_staff_application_policy_print",
+    ),
+    path(
         "staff/application/<slug:app_slug>/",
         views.staff_application_detail,
         name="portal_staff_application_detail",
@@ -370,6 +390,11 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/policies/",
         views.admin_family_policies,
         name="portal_admin_family_policies",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/policies/<slug:policy_slug>/print/",
+        views.admin_family_policy_print,
+        name="portal_admin_family_policy_print",
     ),
     path(
         "admin/member-policies/print/",
@@ -395,6 +420,11 @@ urlpatterns = [
         "admin/application/<slug:app_slug>/print/",
         views.admin_application_print,
         name="portal_admin_application_print",
+    ),
+    path(
+        "admin/application/<slug:app_slug>/policies/<slug:policy_slug>/print/",
+        views.admin_application_policy_print,
+        name="portal_admin_application_policy_print",
     ),
     path(
         "admin/application/<slug:app_slug>/",

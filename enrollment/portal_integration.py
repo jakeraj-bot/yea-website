@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from portal.models import PortalFamily, PortalParentAccount, PortalUnit
 
 from .models import EnrollmentApplication
+from .policy_display import get_application_policies
 
 LOCATION_TO_UNIT_SLUG = {
     "school_18": "school-18",
@@ -123,6 +124,7 @@ def application_to_portal_dict(app):
         }
         for contact in app.emergency_contacts.all()
     ]
+    signed_policies = get_application_policies(app)
     return {
         "reference": str(app.reference),
         "status": STATUS_LABELS.get(app.status, "Under review"),
@@ -144,7 +146,9 @@ def application_to_portal_dict(app):
         "payment_plan": app.get_payment_plan_display(),
         "membership_fee_agreed": "Yes" if app.membership_fee_agreed == "yes" else "No",
         "emergency_contacts": contacts,
-        "policies_signed": app.policy_signatures.count(),
+        "policies_signed": sum(1 for policy in signed_policies if policy["signed"]),
+        "policies_total": len(signed_policies),
+        "signed_policies": signed_policies,
     }
 
 
@@ -250,6 +254,6 @@ def get_application_by_reference(reference):
     return (
         EnrollmentApplication.objects.filter(reference=ref)
         .select_related("portal_family")
-        .prefetch_related("emergency_contacts")
+        .prefetch_related("emergency_contacts", "policy_signatures")
         .first()
     )

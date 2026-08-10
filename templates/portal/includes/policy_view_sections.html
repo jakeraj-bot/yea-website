@@ -1,0 +1,50 @@
+<div class="portal-policy-list{% if print_expand %} portal-policy-list-print{% endif %}">
+  {% for policy in policies %}
+  <details class="portal-policy-item card" {% if policy.signed %}open{% endif %}>
+    <summary class="portal-policy-summary">
+      <span class="portal-policy-title">{{ policy.title }}</span>
+      {% if policy.signed %}
+      <span class="portal-policy-badge portal-policy-badge-signed">Signed {{ policy.signed_date }}</span>
+      {% else %}
+      <span class="portal-policy-badge portal-policy-badge-unsigned">Not signed</span>
+      {% endif %}
+    </summary>
+    <div class="portal-policy-body">
+      {% for paragraph in policy.paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
+      {% if policy.acknowledgment %}
+      <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+      {% endif %}
+      {% for field in policy.extra_fields %}
+      <p class="portal-policy-extra"><strong>{{ field.label }}:</strong> {{ field.value|linebreaksbr }}</p>
+      {% endfor %}
+      {% if policy.signed %}
+      <p class="portal-policy-signature"><strong>Electronic signature</strong> for {{ child_name|default:policy.child_name }}: {{ policy.signed_by }} · Date: {{ policy.signed_date }}</p>
+      {% endif %}
+      {% if policy.signed and policy.print_url %}
+      <div class="portal-policy-actions portal-no-print">
+        <a class="btn btn-secondary btn-sm" href="{{ policy.print_url }}">Print this policy</a>
+      </div>
+      {% elif allow_signing and not policy.signed %}
+      <div class="portal-policy-actions portal-no-print">
+        {% if portal_live and parent_authenticated %}
+        <form method="post" action="{% url 'portal_parent_policy_sign' %}" class="portal-policy-sign-form">
+          {% csrf_token %}
+          <input type="hidden" name="child_name" value="{{ child_name|default:policy.child_name }}">
+          <input type="hidden" name="policy_slug" value="{{ policy.slug }}">
+          <div class="form-group">
+            <label class="visually-hidden" for="sign-{{ child_name|slugify }}-{{ policy.slug }}">Full name</label>
+            <input id="sign-{{ child_name|slugify }}-{{ policy.slug }}" type="text" name="signature_name" class="portal-input portal-input-sm" placeholder="Type your full name to sign" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Sign policy</button>
+        </form>
+        {% else %}
+        <span class="form-note">Signature required — staff will send a signing link when enrollment is approved.</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</div>

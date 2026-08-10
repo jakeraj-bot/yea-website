@@ -1678,6 +1678,41 @@ ADMIN_MEMBER_FAMILIES = FAMILIES + [
 ]
 
 
+def get_demo_application_policies(child_name, signed_by, signed_count, signed_date="September 1, 2026"):
+    from enrollment.policies_data import POLICIES
+
+    policies = []
+    for index, policy in enumerate(POLICIES):
+        signed = index < signed_count
+        policies.append(
+            {
+                "slug": policy["slug"],
+                "title": policy["title"],
+                "paragraphs": policy["paragraphs"],
+                "acknowledgment": policy.get("acknowledgment", ""),
+                "signed": signed,
+                "signed_date": signed_date if signed else None,
+                "signed_by": signed_by if signed else None,
+                "child_name": child_name,
+                "extra_fields": [],
+            }
+        )
+    return policies
+
+
+def enrich_demo_application(application):
+    if application.get("signed_policies"):
+        return application
+    signed_count = application.get("policies_signed", 0)
+    child_name = application.get("child_name", "Student")
+    signed_by = application.get("primary_parent", "")
+    policies = get_demo_application_policies(child_name, signed_by, signed_count)
+    enriched = {**application}
+    enriched["signed_policies"] = policies
+    enriched["policies_total"] = len(policies)
+    return enriched
+
+
 def _child_policies(child_name, signed_by_fallback=""):
     config = CHILD_POLICY_CONFIG.get(
         child_name,
@@ -1697,6 +1732,7 @@ def _child_policies(child_name, signed_by_fallback=""):
                 "signed_date": config.get("signed_date") if signed else None,
                 "signed_by": signed_by if signed else None,
                 "child_name": child_name,
+                "extra_fields": [],
             }
         )
     signed_count = sum(1 for policy in policies if policy["signed"])

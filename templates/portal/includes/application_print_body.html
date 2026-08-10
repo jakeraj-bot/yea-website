@@ -31,5 +31,4 @@
   {% endfor %}
 </ul>
 {% endif %}
-<h2>Policies</h2>
-<p>{{ application.policies_signed }} policies signed electronically at submission.</p>
+{% include "portal/includes/application_policy_sections.html" with application=application %}

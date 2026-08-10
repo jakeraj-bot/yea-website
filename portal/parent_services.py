@@ -335,7 +335,6 @@ def build_parent_preview_live(family, account):
 
 def get_parent_policy_data_live(family):
     from enrollment.models import EnrollmentApplication
-    from enrollment.policies_data import POLICIES
     from portal.demo_data import POLICIES_PER_CHILD, get_family_policies
 
     demo = get_family_policies(family.slug) if _parent_demo_fallbacks_enabled() else None
@@ -347,33 +346,20 @@ def get_parent_policy_data_live(family):
         .prefetch_related("policy_signatures")
         .order_by("-submitted_at")
     )
+    from enrollment.policy_display import get_application_policies
+
     children = []
     for app in apps:
         child_name = f"{app.student_first_name} {app.student_last_name}".strip()
-        signed_by_slug = {sig.policy_slug: sig for sig in app.policy_signatures.all()}
-        policies = []
-        for policy in POLICIES:
-            sig = signed_by_slug.get(policy["slug"])
-            policies.append(
-                {
-                    "slug": policy["slug"],
-                    "title": policy["title"],
-                    "paragraphs": policy["paragraphs"],
-                    "acknowledgment": policy.get("acknowledgment", ""),
-                    "signed": bool(sig),
-                    "signed_date": sig.signed_date.isoformat() if sig else None,
-                    "signed_by": sig.signature_name if sig else None,
-                    "child_name": child_name,
-                }
-            )
+        policies = get_application_policies(app)
         signed_count = sum(1 for policy in policies if policy["signed"])
         children.append(
             {
                 "child_name": child_name,
                 "signed_by": f"{app.primary_first_name} {app.primary_last_name}".strip(),
                 "signed_count": signed_count,
-                "total_count": len(POLICIES),
-                "complete": signed_count == len(POLICIES),
+                "total_count": len(policies),
+                "complete": signed_count == len(policies),
                 "policies": policies,
             }
         )

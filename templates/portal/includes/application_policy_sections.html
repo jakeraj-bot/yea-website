@@ -1,0 +1,3 @@
+<h2>Signed policies</h2>
+<p class="form-note">{{ application.policies_signed }} of {{ application.policies_total|default:application.policies_signed }} policies signed electronically at submission.</p>
+{% include "portal/staff/includes/policy_print_sections.html" with policies=application.signed_policies child_name=application.child_name %}

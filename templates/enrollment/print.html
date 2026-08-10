@@ -102,14 +102,22 @@
     </div>
     {% endfor %}
 
-    <h2>Policy acknowledgments</h2>
-    {% for sig in application.policy_signatures.all %}
+    <h2>Signed policies</h2>
+    {% for policy in signed_policies %}
     <section class="print-policy">
-      <h3>{{ sig.policy_title }}</h3>
-      <p><em>Full policy text signed and on file.</em></p>
-      {% if sig.extra_data.special_accommodations %}<p><strong>Special accommodations:</strong> {{ sig.extra_data.special_accommodations }}</p>{% endif %}
-      {% if sig.extra_data.photo_permission %}<p><strong>Photo permission:</strong> {{ sig.extra_data.photo_permission }}</p>{% endif %}
-      <p class="print-sign">Signed: {{ sig.signature_name }} · Date: {{ sig.signed_date|date:"n/j/Y" }}</p>
+      <h3>{{ policy.title }}</h3>
+      {% for paragraph in policy.paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
+      {% if policy.acknowledgment %}
+      <p><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+      {% endif %}
+      {% for field in policy.extra_fields %}
+      <p><strong>{{ field.label }}:</strong> {{ field.value|linebreaksbr }}</p>
+      {% endfor %}
+      {% if policy.signed %}
+      <p class="print-sign">Electronic signature: {{ policy.signed_by }} · Date: {{ policy.signed_date }}</p>
+      {% endif %}
     </section>
     {% endfor %}
   </article>

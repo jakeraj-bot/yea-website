@@ -94,6 +94,7 @@ from .demo_data import (
     SCHOLARSHIP_FUNDS,
     STAFF_APPLICATION_DETAILS,
     STAFF_APPLICATIONS,
+    enrich_demo_application,
     STAFF_BILLING_PERMISSIONS,
     ADMIN_BILLING_PERMISSIONS,
     ABSENCE_CHARGE_ALERTS,
@@ -358,6 +359,8 @@ def _parent_context(request, page_title, page_slug="", **extra):
         drop_in.setdefault("offered", True)
         drop_in.setdefault("show_program_details", True)
         pending_profile_changes = []
+    if policy_data:
+        _attach_parent_policy_print_urls(policy_data)
     parent_avatar = get_parent_avatar_context(account, preview)
     from .staff_auth import get_portal_auth
 
@@ -557,15 +560,26 @@ def parent_page(request, page):
         if account and app_ref:
             from enrollment.models import EnrollmentApplication
 
-            app = EnrollmentApplication.objects.filter(
-                portal_family=account.family,
-                reference=app_ref,
-            ).first()
+            app = (
+                EnrollmentApplication.objects.filter(
+                    portal_family=account.family,
+                    reference=app_ref,
+                )
+                .prefetch_related("policy_signatures", "emergency_contacts")
+                .first()
+            )
             if app:
-                application = application_to_portal_dict(app)
+                application = _application_with_policy_print_urls(
+                    application_to_portal_dict(app),
+                    "portal_parent_application_policy_print",
+                    query={"ref": app_ref},
+                )
         if not application and portal_preview_mode():
-            application = SAMPLE_APPLICATION
-            application["status_slug"] = "under-review"
+            application = _application_with_policy_print_urls(
+                enrich_demo_application(SAMPLE_APPLICATION),
+                "portal_parent_application_policy_print",
+                query={"ref": "demo"},
+            )
         if not application:
             return render(request, "portal/404.html", status=404)
         context["application"] = application
@@ -753,16 +767,24 @@ def parent_payment_success(request):
 def parent_application_print(request):
     account = get_parent_account(request.user) if request.user.is_authenticated else None
     app_ref = request.GET.get("ref")
-    application = SAMPLE_APPLICATION
+    application = None
     if account and app_ref:
         from enrollment.models import EnrollmentApplication
 
-        app = EnrollmentApplication.objects.filter(
-            portal_family=account.family,
-            reference=app_ref,
-        ).first()
+        app = (
+            EnrollmentApplication.objects.filter(
+                portal_family=account.family,
+                reference=app_ref,
+            )
+            .prefetch_related("policy_signatures", "emergency_contacts")
+            .first()
+        )
         if app:
-            application = application_to_portal_dict(app)
+            application = application_detail_dict(app)
+    if not application and portal_preview_mode():
+        application = enrich_demo_application(SAMPLE_APPLICATION)
+    if not application:
+        return render(request, "portal/404.html", status=404)
     return render(
         request,
         "portal/parent/application_print.html",
@@ -794,6 +816,121 @@ def parent_policies_print(request):
             print_policy_data=policy_data,
         ),
     )
+
+
+def _attach_parent_policy_print_urls(policy_data):
+    from enrollment.policy_display import attach_policy_print_urls
+
+    for child in policy_data.get("children", []):
+        attach_policy_print_urls(
+            child["policies"],
+            "portal_parent_policy_print",
+            query={"child": child["child_name"]},
+        )
+    return policy_data
+
+
+def _attach_family_policy_print_urls(policy_data, url_name, family_slug):
+    from enrollment.policy_display import attach_policy_print_urls
+
+    for child in policy_data.get("children", []):
+        attach_policy_print_urls(
+            child["policies"],
+            url_name,
+            query={"child": child["child_name"]},
+            family_slug=family_slug,
+        )
+    return policy_data
+
+
+def _application_with_policy_print_urls(application, url_name, **url_kwargs):
+    from enrollment.policy_display import attach_policy_print_urls
+
+    application = enrich_demo_application(application)
+    policies = application.get("signed_policies", [])
+    query = url_kwargs.pop("query", None)
+    attach_policy_print_urls(policies, url_name, query=query, **url_kwargs)
+    application["signed_policies"] = policies
+    return application
+
+
+def _policy_from_family_data(policy_data, child_name, policy_slug):
+    for child in policy_data.get("children", []):
+        if child_name and child["child_name"] != child_name:
+            continue
+        for policy in child["policies"]:
+            if policy["slug"] == policy_slug:
+                return child["child_name"], policy
+    return None, None
+
+
+def _render_single_policy_print(request, *, policy, child_name, family_name, breadcrumb, back_url, context_builder):
+    return render(
+        request,
+        "portal/includes/single_policy_print_page.html",
+        context_builder(
+            request,
+            policy["title"],
+            breadcrumb=breadcrumb,
+            back_url=back_url,
+            child_name=child_name,
+            family_name=family_name,
+            policy=policy,
+            policy_list=[policy],
+        ),
+    )
+
+
+@require_GET
+@parent_login_required
+def parent_policy_print(request, policy_slug):
+    child_name = request.GET.get("child", "").strip()
+    account = get_parent_account(request.user)
+    if _parent_live_mode(request) and account:
+        policy_data = get_parent_policy_data_live(account.family)
+    else:
+        policy_data = _parent_policy_data(_parent_preview_key(request))
+    if not policy_data:
+        return render(request, "portal/404.html", status=404)
+    child_name, policy = _policy_from_family_data(policy_data, child_name, policy_slug)
+    if not policy:
+        return render(request, "portal/404.html", status=404)
+    pay_query = _parent_pay_query(request)
+    return _render_single_policy_print(
+        request,
+        policy=policy,
+        child_name=child_name,
+        family_name=policy_data["family_name"],
+        breadcrumb=f'<a href="{reverse("portal_parent_page", kwargs={"page": "policies"})}{pay_query}">Policies</a> / Print',
+        back_url=f"{reverse('portal_parent_page', kwargs={'page': 'policies'})}{pay_query}",
+        context_builder=lambda req, title, **kwargs: _parent_context(req, title, page_slug="policies", **kwargs),
+    )
+
+
+@require_GET
+@parent_login_required
+def parent_application_policy_print(request, policy_slug):
+    app_ref = request.GET.get("ref", "").strip()
+    account = get_parent_account(request.user)
+    if account and app_ref:
+        app = get_application_by_reference(app_ref)
+        if app and app.portal_family_id == account.family_id:
+            from enrollment.policy_display import get_application_policy
+
+            policy = get_application_policy(app, policy_slug)
+            if policy:
+                pay_query = _parent_pay_query(request)
+                app_url = f"{reverse('portal_parent_page', kwargs={'page': 'application'})}{pay_query}&ref={app_ref}"
+                return _render_single_policy_print(
+                    request,
+                    policy=policy,
+                    child_name=f"{app.student_first_name} {app.student_last_name}".strip(),
+                    family_name=app.family_name,
+                    breadcrumb=f'<a href="{app_url}">Application</a> / Print policy',
+                    back_url=app_url,
+                    context_builder=lambda req, title, **kwargs: _parent_context(req, title, page_slug="application", **kwargs),
+                )
+    return render(request, "portal/404.html", status=404)
 
 
 @require_GET
@@ -1034,6 +1171,7 @@ def staff_family_policies(request, family_slug):
     policy_data = get_family_policies_for_staff(family_slug)
     if not policy_data:
         return render(request, "portal/404.html", status=404)
+    _attach_family_policy_print_urls(policy_data, "portal_staff_family_policy_print", family_slug)
     context = _staff_family_context(
         family_slug,
         f"{policy_data['family_name']} — signed policies",
@@ -1043,6 +1181,30 @@ def staff_family_policies(request, family_slug):
     if not context:
         return render(request, "portal/404.html", status=404)
     return render(request, "portal/staff/family_policies.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_policy_print(request, family_slug, policy_slug):
+    from .staff_services import get_family_policies_for_staff
+
+    child_name = request.GET.get("child", "").strip()
+    policy_data = get_family_policies_for_staff(family_slug)
+    if not policy_data:
+        return render(request, "portal/404.html", status=404)
+    child_name, policy = _policy_from_family_data(policy_data, child_name, policy_slug)
+    if not policy:
+        return render(request, "portal/404.html", status=404)
+    back_url = reverse("portal_staff_family_policies", kwargs={"family_slug": family_slug})
+    return _render_single_policy_print(
+        request,
+        policy=policy,
+        child_name=child_name,
+        family_name=policy_data["family_name"],
+        breadcrumb=f'<a href="{back_url}">Signed policies</a> / Print',
+        back_url=back_url,
+        context_builder=lambda req, title, **kwargs: _staff_context(title, **kwargs),
+    )
 
 
 @require_GET
@@ -1329,6 +1491,7 @@ def admin_family_policies(request, family_slug):
     policy_data = get_family_policies(family_slug)
     if not policy_data:
         return render(request, "portal/404.html", status=404)
+    _attach_family_policy_print_urls(policy_data, "portal_admin_family_policy_print", family_slug)
     family_meta = next((f for f in ADMIN_MEMBER_FAMILIES if f["slug"] == family_slug), {})
     return render(
         request,
@@ -1343,6 +1506,31 @@ def admin_family_policies(request, family_slug):
                 family_meta=family_meta,
                 family_slug=family_slug,
             ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_family_policy_print(request, family_slug, policy_slug):
+    child_name = request.GET.get("child", "").strip()
+    policy_data = get_family_policies(family_slug)
+    if not policy_data:
+        return render(request, "portal/404.html", status=404)
+    child_name, policy = _policy_from_family_data(policy_data, child_name, policy_slug)
+    if not policy:
+        return render(request, "portal/404.html", status=404)
+    back_url = reverse("portal_admin_family_policies", kwargs={"family_slug": family_slug})
+    return _render_single_policy_print(
+        request,
+        policy=policy,
+        child_name=child_name,
+        family_name=policy_data["family_name"],
+        breadcrumb=f'<a href="{back_url}">Signed policies</a> / Print',
+        back_url=back_url,
+        context_builder=lambda req, title, **kwargs: _finalize_admin_context(
+            req,
+            _portal_context("admin", title, admin_page_slug="member-policies", **kwargs),
         ),
     )
 
@@ -1433,20 +1621,29 @@ def staff_application_detail(request, app_slug):
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
+            application = _application_with_policy_print_urls(
+                application_detail_dict(app),
+                "portal_staff_application_policy_print",
+                app_slug=app_slug,
+            )
             return render(
                 request,
                 "portal/staff/application_detail.html",
                 _staff_context(
                     f"Application — {app.student_first_name} {app.student_last_name}".strip(),
-                    application=application_detail_dict(app),
+                    application=application,
                     app_slug=app_slug,
                     is_live_application=True,
                     staff_page_slug="applications",
                     application_urls=application_urls,
                 ),
             )
-    application = STAFF_APPLICATION_DETAILS.get(app_slug)
-    if not application:
+    application = _application_with_policy_print_urls(
+        enrich_demo_application(STAFF_APPLICATION_DETAILS.get(app_slug, {})),
+        "portal_staff_application_policy_print",
+        app_slug=app_slug,
+    )
+    if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
     return render(
         request,
@@ -1468,21 +1665,30 @@ def admin_application_detail(request, app_slug):
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
+            application = _application_with_policy_print_urls(
+                application_detail_dict(app),
+                "portal_admin_application_policy_print",
+                app_slug=app_slug,
+            )
             return render(
                 request,
                 "portal/staff/application_detail.html",
                 _portal_context(
                     "admin",
                     f"Application — {app.student_first_name} {app.student_last_name}".strip(),
-                    application=application_detail_dict(app),
+                    application=application,
                     app_slug=app_slug,
                     is_live_application=True,
                     admin_page_slug="applications",
                     application_urls=application_urls,
                 ),
             )
-    application = STAFF_APPLICATION_DETAILS.get(app_slug)
-    if not application:
+    application = _application_with_policy_print_urls(
+        enrich_demo_application(STAFF_APPLICATION_DETAILS.get(app_slug, {})),
+        "portal_admin_application_policy_print",
+        app_slug=app_slug,
+    )
+    if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
     return render(
         request,
@@ -1504,18 +1710,19 @@ def staff_application_print(request, app_slug):
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
+            application = application_detail_dict(app)
             return render(
                 request,
                 "portal/staff/application_print.html",
                 _staff_context(
                     f"Application — {app.student_first_name} {app.student_last_name}".strip(),
-                    application=application_detail_dict(app),
+                    application=application,
                     app_slug=app_slug,
                     application_urls=application_urls,
                 ),
             )
-    application = STAFF_APPLICATION_DETAILS.get(app_slug)
-    if not application:
+    application = enrich_demo_application(STAFF_APPLICATION_DETAILS.get(app_slug, {}))
+    if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
     return render(
         request,
@@ -1526,6 +1733,30 @@ def staff_application_print(request, app_slug):
             app_slug=app_slug,
             application_urls=application_urls,
         ),
+    )
+
+
+@require_GET
+@staff_login_required
+def staff_application_policy_print(request, app_slug, policy_slug):
+    app = get_application_by_reference(app_slug)
+    if not app:
+        return render(request, "portal/404.html", status=404)
+    from enrollment.policy_display import get_application_policy
+
+    policy = get_application_policy(app, policy_slug)
+    if not policy:
+        return render(request, "portal/404.html", status=404)
+    back_url = reverse("portal_staff_application_detail", kwargs={"app_slug": app_slug})
+    child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+    return _render_single_policy_print(
+        request,
+        policy=policy,
+        child_name=child_name,
+        family_name=app.family_name,
+        breadcrumb=f'<a href="{back_url}">Application</a> / Print policy',
+        back_url=back_url,
+        context_builder=lambda req, title, **kwargs: _staff_context(title, **kwargs),
     )
 
 
@@ -1548,8 +1779,8 @@ def admin_application_print(request, app_slug):
                     application_urls=application_urls,
                 ),
             )
-    application = STAFF_APPLICATION_DETAILS.get(app_slug)
-    if not application:
+    application = enrich_demo_application(STAFF_APPLICATION_DETAILS.get(app_slug, {}))
+    if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
     return render(
         request,
@@ -1561,6 +1792,33 @@ def admin_application_print(request, app_slug):
             app_slug=app_slug,
             admin_page_slug="applications",
             application_urls=application_urls,
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_application_policy_print(request, app_slug, policy_slug):
+    app = get_application_by_reference(app_slug)
+    if not app:
+        return render(request, "portal/404.html", status=404)
+    from enrollment.policy_display import get_application_policy
+
+    policy = get_application_policy(app, policy_slug)
+    if not policy:
+        return render(request, "portal/404.html", status=404)
+    back_url = reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug})
+    child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+    return _render_single_policy_print(
+        request,
+        policy=policy,
+        child_name=child_name,
+        family_name=app.family_name,
+        breadcrumb=f'<a href="{back_url}">Application</a> / Print policy',
+        back_url=back_url,
+        context_builder=lambda req, title, **kwargs: _finalize_admin_context(
+            req,
+            _portal_context("admin", title, admin_page_slug="applications", **kwargs),
         ),
     )
 
