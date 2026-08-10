@@ -169,9 +169,15 @@ def _portal_data_live():
     return portal_is_live() and ensure_portal_seeded()
 
 
-def _staff_family_profile(family_slug):
-    if _portal_data_live():
-        live_profile = family_profile_live(family_slug)
+def _portal_families_live():
+    from portal.models import PortalFamily
+
+    return portal_is_live() and PortalFamily.objects.exists()
+
+
+def _staff_family_profile(family_slug, unit=None):
+    if _portal_families_live():
+        live_profile = family_profile_live(family_slug, unit=unit)
         if live_profile:
             return live_profile
     profile = FAMILY_DETAILS.get(family_slug)
@@ -207,12 +213,14 @@ def _staff_family_profile(family_slug):
     }
 
 
-def _staff_family_context(family_slug, page_title, family_tab, **extra):
-    profile = _staff_family_profile(family_slug)
+def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
+    if unit is None and request is not None:
+        unit = _staff_unit(request)
+    profile = _staff_family_profile(family_slug, unit=unit)
     if not profile:
         return None
-    if _portal_data_live():
-        family_meta = family_meta_live(family_slug) or {}
+    if _portal_families_live():
+        family_meta = family_meta_live(family_slug, unit=unit) or {}
     else:
         family_meta = next((f for f in FAMILIES if f["slug"] == family_slug), {})
     if _portal_data_live():
@@ -221,6 +229,7 @@ def _staff_family_context(family_slug, page_title, family_tab, **extra):
         family_incidents = get_incidents_for_family(family_slug)
     return _staff_context(
         page_title,
+        request=request,
         profile=profile,
         family_meta=family_meta,
         family_slug=family_slug,
@@ -1176,6 +1185,7 @@ def staff_family_policies(request, family_slug):
         family_slug,
         f"{policy_data['family_name']} — signed policies",
         "policies",
+        request=request,
         policy_data=policy_data,
     )
     if not context:
@@ -1416,7 +1426,7 @@ def staff_family_billing(request, family_slug):
 
     permissions = billing_permissions_for_staff(get_staff_account(request.user))
     unit = _staff_unit(request)
-    if _portal_data_live() and unit:
+    if _portal_families_live() and unit:
         family = get_family_for_billing(family_slug, unit)
         if not family:
             return render(request, "portal/404.html", status=404)
@@ -1432,11 +1442,13 @@ def staff_family_billing(request, family_slug):
         family_slug,
         f"{billing['family_name']} billing",
         "billing",
+        request=request,
+        unit=unit,
         billing=billing,
         billing_permissions=permissions,
         charge_types=BILLING_CHARGE_TYPES,
         families=families,
-        billing_live=_portal_data_live(),
+        billing_live=_portal_families_live(),
         today=date.today().isoformat(),
     )
     if not context:
@@ -1451,7 +1463,7 @@ def admin_family_billing(request, family_slug):
     from .staff_auth import billing_permissions_for_staff
 
     permissions = billing_permissions_for_staff(None, portal_area="admin")
-    if _portal_data_live():
+    if _portal_families_live():
         from .admin_services import get_member_families_live
 
         family = get_family_for_billing(family_slug, unit=None)
@@ -1478,7 +1490,7 @@ def admin_family_billing(request, family_slug):
                 billing_permissions=permissions,
                 charge_types=BILLING_CHARGE_TYPES,
                 families=families,
-                billing_live=_portal_data_live(),
+                billing_live=_portal_families_live(),
                 family_slug=family_slug,
                 today=date.today().isoformat(),
             ),
@@ -1496,7 +1508,7 @@ def admin_family_policies(request, family_slug):
         return render(request, "portal/404.html", status=404)
     _attach_family_policy_print_urls(policy_data, "portal_admin_family_policy_print", family_slug)
     family_meta = next((f for f in ADMIN_MEMBER_FAMILIES if f["slug"] == family_slug), {})
-    if _portal_data_live():
+    if _portal_families_live():
         from .models import PortalFamily
 
         live_family = PortalFamily.objects.filter(slug=family_slug).select_related("unit").first()
@@ -1552,14 +1564,15 @@ def admin_family_policy_print(request, family_slug, policy_slug):
 
 @require_GET
 def staff_family_pickup(request, family_slug):
-    profile = _staff_family_profile(family_slug)
+    profile = _staff_family_profile(family_slug, unit=_staff_unit(request))
     if not profile:
         return render(request, "portal/404.html", status=404)
-    pickup_data = family_authorized_pickup(profile, family_slug=family_slug if _portal_data_live() else None)
+    pickup_data = family_authorized_pickup(profile, family_slug=family_slug if _portal_families_live() else None)
     context = _staff_family_context(
         family_slug,
         f"{profile['family_name']} — Authorized pickup",
         "pickup",
+        request=request,
         pickup_data=pickup_data,
     )
     return render(request, "portal/staff/family_pickup.html", context)
@@ -1593,13 +1606,16 @@ def staff_pickup_report(request):
 
 @require_GET
 def staff_family_detail(request, family_slug):
-    profile = _staff_family_profile(family_slug)
+    unit = _staff_unit(request)
+    profile = _staff_family_profile(family_slug, unit=unit)
     if not profile:
         return render(request, "portal/404.html", status=404)
     context = _staff_family_context(
         family_slug,
         f"{profile['family_name']} family",
         "profile",
+        request=request,
+        unit=unit,
         medical_alert_types=MEDICAL_ALERT_TYPES,
     )
     return render(request, "portal/staff/family_detail.html", context)
@@ -1607,7 +1623,8 @@ def staff_family_detail(request, family_slug):
 
 @require_GET
 def staff_family_incidents(request, family_slug):
-    profile = _staff_family_profile(family_slug)
+    unit = _staff_unit(request)
+    profile = _staff_family_profile(family_slug, unit=unit)
     if not profile:
         return render(request, "portal/404.html", status=404)
     if _portal_data_live():
@@ -1620,6 +1637,8 @@ def staff_family_incidents(request, family_slug):
         family_slug,
         f"{profile['family_name']} — incidents",
         "incidents",
+        request=request,
+        unit=unit,
         family_incidents=family_incidents,
         incident_print_children=[
             {"child": name, "count": len(incs)}

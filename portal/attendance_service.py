@@ -57,7 +57,9 @@ def get_active_program(unit):
 
 
 def ensure_portal_seeded():
-    return PortalChild.objects.exists()
+    from portal.models import PortalFamily
+
+    return PortalChild.objects.exists() or PortalFamily.objects.exists()
 
 
 def record_for_row(record):

@@ -12,25 +12,36 @@ class ProgramStepForm(forms.Form):
         label="Which program are you applying for?",
     )
     program_location = forms.ChoiceField(
-        choices=EnrollmentApplication.LOCATION_CHOICES,
+        choices=[],
         label="Which location?",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from enrollment.locations import get_enrollment_location_choices
+
+        self.fields["program_location"].choices = get_enrollment_location_choices()
 
     def clean(self):
         cleaned = super().clean()
         program = cleaned.get("program")
         location = cleaned.get("program_location")
-        after_school_locations = {"school_18", "school_26", "dale_ave"}
-        if program == "after_school" and location == "caldwell":
-            self.add_error(
-                "program_location",
-                "Caldwell University is for summer camp only. Choose an after-school location.",
-            )
-        if program == "summer_camp" and location in after_school_locations:
-            self.add_error(
-                "program_location",
-                "School 18, School 26, and Dale Ave are after-school locations only.",
-            )
+        if not program or not location:
+            return cleaned
+        from enrollment.locations import get_unit_for_enrollment_key, unit_allows_program
+
+        unit = get_unit_for_enrollment_key(location)
+        if unit and not unit_allows_program(unit, program):
+            if program == "summer_camp":
+                self.add_error(
+                    "program_location",
+                    f"{unit.name} is not available for summer camp. Choose a summer camp location.",
+                )
+            else:
+                self.add_error(
+                    "program_location",
+                    f"{unit.name} is not available for after-school. Choose an after-school location.",
+                )
         return cleaned
 
 

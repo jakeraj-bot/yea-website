@@ -9,6 +9,7 @@ from portal.models import PortalFamily, PortalParentAccount, PortalUnit
 
 from .models import EnrollmentApplication
 from .policy_display import get_application_policies
+from .locations import applications_queryset_for_unit, get_location_label
 
 LOCATION_TO_UNIT_SLUG = {
     "school_18": "school-18",
@@ -33,11 +34,16 @@ STATUS_LABELS = {
 
 
 def _unit_for_location(program_location):
+    from .locations import get_unit_for_enrollment_key
+
+    unit = get_unit_for_enrollment_key(program_location)
+    if unit:
+        return unit
     slug = LOCATION_TO_UNIT_SLUG.get(program_location, "school-18")
     unit = PortalUnit.objects.filter(slug=slug, is_active=True).first()
     if unit:
         return unit
-    return PortalUnit.objects.filter(is_active=True).first()
+    return PortalUnit.objects.filter(is_active=True).order_by("id").first()
 
 
 def _unique_family_slug(unit, family_name):
@@ -134,7 +140,7 @@ def application_to_portal_dict(app):
         "submitted_short": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "child_name": f"{app.student_first_name} {app.student_last_name}",
         "program": app.get_program_display(),
-        "location": app.get_program_location_display(),
+        "location": get_location_label(app.program_location),
         "family_name": app.family_name,
         "student_dob": app.student_dob.strftime("%B %d, %Y"),
         "grade": app.get_student_grade_display(),
@@ -191,11 +197,18 @@ def _application_family_label(app):
 
 
 def staff_application_row(app):
+    from .locations import get_unit_for_enrollment_key
+
     unit_name = ""
     unit_slug = ""
     if app.portal_family_id and getattr(app.portal_family, "unit_id", None):
         unit_name = app.portal_family.unit.name
         unit_slug = app.portal_family.unit.slug
+    elif app.program_location:
+        unit = get_unit_for_enrollment_key(app.program_location)
+        if unit:
+            unit_name = unit.name
+            unit_slug = unit.slug
     return {
         "slug": str(app.reference),
         "child": f"{app.student_first_name} {app.student_last_name}".strip(),
@@ -230,22 +243,31 @@ def staff_application_detail(app):
 
 
 def applications_for_staff(unit=None):
-    qs = EnrollmentApplication.objects.select_related("portal_family", "portal_family__unit").prefetch_related(
-        "emergency_contacts"
+    qs = (
+        applications_queryset_for_unit(unit)
+        if unit
+        else EnrollmentApplication.objects.none()
     )
-    if unit:
-        family_ids = PortalFamily.objects.filter(unit=unit).values_list("id", flat=True)
-        qs = qs.filter(portal_family_id__in=family_ids)
-    return [staff_application_row(app) for app in qs.order_by("-submitted_at")]
+    return [
+        staff_application_row(app)
+        for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
+            "-submitted_at"
+        )
+    ]
 
 
 def applications_for_admin(unit_slug=None):
-    qs = EnrollmentApplication.objects.select_related("portal_family", "portal_family__unit").prefetch_related(
-        "emergency_contacts"
-    )
     if unit_slug:
-        qs = qs.filter(portal_family__unit__slug=unit_slug)
-    return [staff_application_row(app) for app in qs.order_by("-submitted_at")]
+        unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first()
+        qs = applications_queryset_for_unit(unit) if unit else EnrollmentApplication.objects.none()
+    else:
+        qs = EnrollmentApplication.objects.all()
+    return [
+        staff_application_row(app)
+        for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
+            "-submitted_at"
+        )
+    ]
 
 
 def get_application_by_reference(reference):

@@ -41,7 +41,9 @@ def program_label(value):
 
 @register.filter
 def location_label(value):
-    return dict(EnrollmentApplication.LOCATION_CHOICES).get(value, value)
+    from enrollment.locations import get_location_label
+
+    return get_location_label(value)
 
 
 @register.simple_tag(takes_context=True)
@@ -60,14 +62,15 @@ def localized_program_label(context, value):
 @register.simple_tag(takes_context=True)
 def localized_location_label(context, value):
     from enrollment.form_i18n import LOCATION_ES
+    from enrollment.locations import get_location_label
 
     request = context.get("request")
     from enrollment.i18n import get_language
 
     lang = get_language(request) if request else "en"
     if lang == "es":
-        return dict(LOCATION_ES).get(value, location_label(value))
-    return location_label(value)
+        return dict(LOCATION_ES).get(value, get_location_label(value))
+    return get_location_label(value)
 
 
 @register.filter

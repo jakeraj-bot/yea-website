@@ -27,6 +27,12 @@ GRADE_MAP = {
 }
 
 
+def _program_location_for_unit(unit):
+    from enrollment.locations import enrollment_key_for_unit
+
+    return enrollment_key_for_unit(unit)
+
+
 def _split_name(full_name):
     parts = (full_name or "").strip().split()
     if not parts:
@@ -58,7 +64,7 @@ def create_staff_application(form, unit):
         family_group=uuid.uuid4(),
         child_number=1,
         program="after_school",
-        program_location="school_18",
+        program_location=_program_location_for_unit(unit),
         family_name=family_name,
         primary_email=email,
         home_address=address or "Address pending",

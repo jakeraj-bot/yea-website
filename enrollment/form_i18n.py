@@ -198,7 +198,11 @@ def localize_form(form, lang):
     for name, field in form.fields.items():
         if name in FORM_LABELS_ES:
             field.label = FORM_LABELS_ES[name]
-        if name in FIELD_CHOICES_ES:
+        if name == "program_location":
+            from enrollment.locations import get_enrollment_location_choices
+
+            field.choices = get_enrollment_location_choices()
+        elif name in FIELD_CHOICES_ES:
             field.choices = FIELD_CHOICES_ES[name]
         if name.endswith("__signature") and getattr(field, "help_text", None):
             field.help_text = SIGNATURE_HELP_ES

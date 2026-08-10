@@ -511,6 +511,7 @@ def _medical_from_application(app):
 
 
 def _child_from_application(app):
+    from enrollment.locations import get_location_label
     from enrollment.portal_integration import STATUS_LABELS
 
     child_name = f"{app.student_first_name} {app.student_last_name}".strip()
@@ -520,7 +521,7 @@ def _child_from_application(app):
         "dob": app.student_dob.strftime("%B %d, %Y"),
         "grade": app.get_student_grade_display(),
         "program": app.get_program_display(),
-        "location": app.get_program_location_display(),
+        "location": get_location_label(app.program_location),
         "note": status_label,
         "enrollment_status": status_label,
         "pending": app.status in {"under_review", "pending_documents", "approved"},
@@ -529,11 +530,13 @@ def _child_from_application(app):
     }
 
 
-def family_meta_live(family_slug):
+def family_meta_live(family_slug, unit=None):
     from enrollment.portal_integration import family_display_label
     from portal.models import PortalFamily
 
-    unit = get_unit()
+    unit = unit or get_unit()
+    if not unit:
+        return None
     family = PortalFamily.objects.filter(unit=unit, slug=family_slug).prefetch_related("children").first()
     if not family:
         return None
@@ -560,12 +563,14 @@ def family_meta_live(family_slug):
     }
 
 
-def family_profile_live(family_slug):
+def family_profile_live(family_slug, unit=None):
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import STATUS_LABELS, family_display_label
     from portal.models import PortalFamily, PortalParentAccount
 
-    unit = get_unit()
+    unit = unit or get_unit()
+    if not unit:
+        return None
     family = PortalFamily.objects.filter(unit=unit, slug=family_slug).prefetch_related("children").first()
     if not family:
         return None
