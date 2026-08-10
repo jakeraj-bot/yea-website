@@ -26,6 +26,15 @@
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Reject</button>
       {% endif %}
       <a class="btn btn-secondary" href="{{ application_urls.print }}">Print PDF</a>
+      {% if application.family_slug %}
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_family_billing' family_slug=application.family_slug %}">Billing</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=application.family_slug %}">Policies</a>
+      {% else %}
+      <a class="btn btn-secondary" href="{% url 'portal_staff_family_billing' family_slug=application.family_slug %}">Billing</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_family_policies' family_slug=application.family_slug %}">Policies</a>
+      {% endif %}
+      {% endif %}
     </div>
 
     {% if application.staff_message %}

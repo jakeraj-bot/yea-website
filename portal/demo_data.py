@@ -1247,6 +1247,7 @@ STAFF_APPLICATIONS = [
         "slug": "jordan-jacobs",
         "child": "Jordan Jacobs",
         "family": "Jacobs",
+        "family_slug": "jacobs",
         "submitted": "Sep 8, 2026",
         "program": "After-school",
         "status": "Under review",
@@ -1256,6 +1257,7 @@ STAFF_APPLICATIONS = [
         "slug": "nia-patel",
         "child": "Nia Patel",
         "family": "Patel",
+        "family_slug": "patel",
         "submitted": "Sep 9, 2026",
         "program": "After-school",
         "status": "Under review",
@@ -1265,6 +1267,7 @@ STAFF_APPLICATIONS = [
         "slug": "marcus-lee",
         "child": "Marcus Lee",
         "family": "Lee",
+        "family_slug": "lee",
         "submitted": "Sep 7, 2026",
         "program": "After-school",
         "status": "Approved",
@@ -1284,6 +1287,7 @@ STAFF_APPLICATIONS = [
 STAFF_APPLICATION_DETAILS = {
     "jordan-jacobs": {
         **SAMPLE_APPLICATION,
+        "family_slug": "jacobs",
         "returning_member": False,
         "membership_required": True,
         "internal_note": "",
@@ -1310,6 +1314,7 @@ STAFF_APPLICATION_DETAILS = {
             {"name": "Anita Patel", "phone": "973-555-0146"},
         ],
         "policies_signed": 12,
+        "family_slug": "patel",
         "returning_member": False,
         "membership_required": True,
         "internal_note": "Verify 4Cs authorization #",
@@ -1333,6 +1338,7 @@ STAFF_APPLICATION_DETAILS = {
         "membership_fee_agreed": "Yes",
         "emergency_contacts": [{"name": "James Lee", "phone": "973-555-0167"}],
         "policies_signed": 12,
+        "family_slug": "lee",
         "returning_member": True,
         "membership_required": False,
         "internal_note": "Returning — membership waived for fall",
@@ -1700,16 +1706,22 @@ def get_demo_application_policies(child_name, signed_by, signed_count, signed_da
     return policies
 
 
+
 def enrich_demo_application(application):
     if application.get("signed_policies"):
-        return application
-    signed_count = application.get("policies_signed", 0)
-    child_name = application.get("child_name", "Student")
-    signed_by = application.get("primary_parent", "")
-    policies = get_demo_application_policies(child_name, signed_by, signed_count)
-    enriched = {**application}
-    enriched["signed_policies"] = policies
-    enriched["policies_total"] = len(policies)
+        enriched = {**application}
+    else:
+        signed_count = application.get("policies_signed", 0)
+        child_name = application.get("child_name", "Student")
+        signed_by = application.get("primary_parent", "")
+        policies = get_demo_application_policies(child_name, signed_by, signed_count)
+        enriched = {**application}
+        enriched["signed_policies"] = policies
+        enriched["policies_total"] = len(policies)
+    if not enriched.get("family_slug"):
+        family_name = (application.get("family_name") or "").strip().lower()
+        if family_name in {"jacobs", "patel", "lee", "martinez", "williams", "chen", "johnson"}:
+            enriched["family_slug"] = family_name
     return enriched
 
 

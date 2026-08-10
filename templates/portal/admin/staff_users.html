@@ -186,6 +186,13 @@
             <td>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='staff' %}?edit={{ user.id }}">Edit</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing</a>
+              {% if portal_live %}
+              <form method="post" action="{% url 'portal_admin_staff_delete' %}" class="portal-inline-form" onsubmit="return confirm('Delete {{ user.name }}? This removes their portal login permanently.')">
+                {% csrf_token %}
+                <input type="hidden" name="staff_id" value="{{ user.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+              </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

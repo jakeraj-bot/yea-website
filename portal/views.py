@@ -1479,6 +1479,7 @@ def admin_family_billing(request, family_slug):
                 charge_types=BILLING_CHARGE_TYPES,
                 families=families,
                 billing_live=_portal_data_live(),
+                family_slug=family_slug,
                 today=date.today().isoformat(),
             ),
         ),
@@ -1488,11 +1489,23 @@ def admin_family_billing(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_policies(request, family_slug):
-    policy_data = get_family_policies(family_slug)
+    from .staff_services import get_family_policies_for_staff
+
+    policy_data = get_family_policies_for_staff(family_slug)
     if not policy_data:
         return render(request, "portal/404.html", status=404)
     _attach_family_policy_print_urls(policy_data, "portal_admin_family_policy_print", family_slug)
     family_meta = next((f for f in ADMIN_MEMBER_FAMILIES if f["slug"] == family_slug), {})
+    if _portal_data_live():
+        from .models import PortalFamily
+
+        live_family = PortalFamily.objects.filter(slug=family_slug).select_related("unit").first()
+        if live_family:
+            family_meta = {
+                "slug": live_family.slug,
+                "name": live_family.name,
+                "unit": live_family.unit.name if live_family.unit_id else "",
+            }
     return render(
         request,
         "portal/staff/family_policies.html",
@@ -1513,8 +1526,10 @@ def admin_family_policies(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_policy_print(request, family_slug, policy_slug):
+    from .staff_services import get_family_policies_for_staff
+
     child_name = request.GET.get("child", "").strip()
-    policy_data = get_family_policies(family_slug)
+    policy_data = get_family_policies_for_staff(family_slug)
     if not policy_data:
         return render(request, "portal/404.html", status=404)
     child_name, policy = _policy_from_family_data(policy_data, child_name, policy_slug)
@@ -2223,11 +2238,13 @@ def admin_page(request, page):
             context["today"] = date.today().isoformat()
     if page == "billing-settings":
         if context.get("portal_live"):
-            from .admin_services import get_member_families_live
+            from .admin_services import get_member_families_live, get_parent_accounts_live
 
             context["families"] = get_member_families_live()
+            context["parent_accounts"] = get_parent_accounts_live()
         else:
             context["families"] = ADMIN_MEMBER_FAMILIES
+            context["parent_accounts"] = []
     if page == "families":
         if context.get("portal_live"):
             from .admin_services import get_admin_families_live, get_units_live
@@ -2290,14 +2307,15 @@ def admin_page(request, page):
     if page == "member-policies":
         if context.get("portal_live"):
             from .admin_config import get_org_policies_admin
-            from .admin_services import get_member_families_live
+            from .admin_services import get_member_families_live, get_member_policy_summaries_live
 
             families = get_member_families_live()
             context["org_policies"] = get_org_policies_admin()
+            context["member_summaries"] = get_member_policy_summaries_live()
         else:
             families = ADMIN_MEMBER_FAMILIES
             context["org_policies"] = []
-        context["member_summaries"] = get_member_policy_summaries(families)
+            context["member_summaries"] = get_member_policy_summaries(families)
         context["policies_per_child"] = POLICIES_PER_CHILD
         if context.get("portal_live"):
             from .admin_config import get_units_admin
@@ -2372,9 +2390,21 @@ def admin_financial_report(request):
 @require_GET
 @admin_login_required
 def admin_member_policies_print(request):
+    from .staff_services import get_family_policies_for_staff
+
     families_data = []
-    for summary in get_member_policy_summaries(ADMIN_MEMBER_FAMILIES):
-        families_data.append(get_family_policies(summary["slug"]))
+    if _portal_data_live():
+        from .admin_services import get_member_policy_summaries_live
+
+        for summary in get_member_policy_summaries_live():
+            data = get_family_policies_for_staff(summary["slug"])
+            if data:
+                families_data.append(data)
+    else:
+        for summary in get_member_policy_summaries(ADMIN_MEMBER_FAMILIES):
+            data = get_family_policies(summary["slug"])
+            if data:
+                families_data.append(data)
     return render(
         request,
         "portal/admin/member_policies_print.html",
@@ -2475,6 +2505,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
                 application_list_item(app) for app in get_applications_for_family(account.family)
             ]
         if page == "policies":
+            _attach_parent_policy_print_urls(context["policy_data"])
             context["policies_signed_count"] = context["policy_data"]["signed_count"]
             context["policies_total"] = context["policy_data"]["total_count"]
         if page == "tax-statements":

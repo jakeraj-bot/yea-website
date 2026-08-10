@@ -19,6 +19,8 @@
   <div class="container">
     {% if portal_area != 'admin' %}
     {% include "portal/staff/includes/family_tabs.html" %}
+    {% else %}
+    {% include "portal/admin/includes/family_tabs.html" with family_tab='billing' %}
     {% endif %}
     <div class="portal-balance-banner card card-accent orange">
       <div>

@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
 
@@ -13,6 +14,7 @@ from .models import (
     PortalAgencyProfile,
     PortalChild,
     PortalFamily,
+    PortalParentAccount,
     PortalProfileChangeRequest,
     PortalProgram,
     PortalStaffAccount,
@@ -173,6 +175,103 @@ def get_member_families_live():
             }
         )
     return rows
+
+
+def get_member_policy_summaries_live():
+    from .parent_services import get_parent_policy_data_live
+
+    summaries = []
+    for family in PortalFamily.objects.select_related("unit").order_by("unit__name", "name"):
+        data = get_parent_policy_data_live(family)
+        if not data:
+            continue
+        child_summary = ", ".join(
+            f"{child['child_name'].split()[0]} {child['signed_count']}/{child['total_count']}"
+            for child in data["children"]
+        )
+        summaries.append(
+            {
+                "slug": family.slug,
+                "family_name": data["family_name"],
+                "primary_contact": family.primary_contact or family.name,
+                "children": [child["child_name"] for child in data["children"]],
+                "child_count": data["child_count"],
+                "unit": data["unit"],
+                "signed_count": data["signed_count"],
+                "total_count": data["total_count"],
+                "policies_per_child": data["policies_per_child"],
+                "complete": data["complete"],
+                "program_year": data["program_year"],
+                "child_summary": child_summary,
+            }
+        )
+    return summaries
+
+
+def get_parent_accounts_live():
+    from .usernames import display_username
+
+    rows = []
+    for account in PortalParentAccount.objects.select_related("user", "family", "family__unit").order_by(
+        "family__unit__name", "family__name"
+    ):
+        user = account.user
+        rows.append(
+            {
+                "id": account.pk,
+                "user_id": user.pk,
+                "family_slug": account.family.slug,
+                "family_name": account.family.name,
+                "unit": account.family.unit.name if account.family.unit_id else "—",
+                "username": display_username(user.username),
+                "email": user.email,
+                "primary_contact": account.family.primary_contact or "—",
+                "last_login": _format_login(user),
+                "is_active": user.is_active,
+            }
+        )
+    return rows
+
+
+@transaction.atomic
+def delete_parent_login(parent_account_id, *, delete_family=False):
+    account = (
+        PortalParentAccount.objects.filter(pk=parent_account_id)
+        .select_related("user", "family")
+        .first()
+    )
+    if not account:
+        raise ValueError("Parent account not found.")
+    family = account.family
+    user = account.user
+    label = f"{account.login_username} ({family.name})"
+    account.delete()
+    user.delete()
+    if delete_family:
+        family.delete()
+    return label
+
+
+@transaction.atomic
+def delete_staff_login(staff_account_id, *, current_user_id=None):
+    account = PortalStaffAccount.objects.filter(pk=staff_account_id).select_related("user").first()
+    if not account:
+        raise ValueError("Staff account not found.")
+    if current_user_id and account.user_id == current_user_id:
+        raise ValueError("You cannot delete your own account while signed in.")
+    if account.role == "Portal admin":
+        remaining = (
+            PortalStaffAccount.objects.filter(role="Portal admin", is_active=True)
+            .exclude(pk=account.pk)
+            .count()
+        )
+        if remaining == 0:
+            raise ValueError("Cannot delete the last active portal admin account.")
+    label = account.display_name or account.login_username
+    user = account.user
+    account.delete()
+    user.delete()
+    return label
 
 
 def get_admin_families_live():

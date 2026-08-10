@@ -48,6 +48,10 @@
             <td class="portal-row-actions">
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
+              {% if app.family_slug %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=app.family_slug %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=app.family_slug %}">Policies</a>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

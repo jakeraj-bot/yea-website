@@ -41,12 +41,58 @@
             <td>{{ family.billing_type }}</td>
             <td>
               <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}">Manage billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}">Policies</a>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if portal_live %}
+    <div class="portal-panel card" style="margin-top:2rem;">
+      <h2>Parent portal logins</h2>
+      <p class="form-note">Remove a parent login to revoke portal access. The family record, applications, and billing history stay unless you also delete the family.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Last login</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in parent_accounts %}
+            <tr>
+              <td><strong>{{ account.family_name }}</strong></td>
+              <td>{{ account.unit }}</td>
+              <td><code>{{ account.username }}</code></td>
+              <td>{{ account.email|default:"—" }}</td>
+              <td>{{ account.last_login }}</td>
+              <td class="portal-row-actions">
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=account.family_slug %}">Billing</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=account.family_slug %}">Policies</a>
+                <form method="post" action="{% url 'portal_admin_parent_delete' %}" class="portal-inline-form" onsubmit="return confirm('Delete login for {{ account.username }}? They will no longer be able to sign in.')">
+                  {% csrf_token %}
+                  <input type="hidden" name="parent_account_id" value="{{ account.id }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Delete login</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6">No parent portal accounts yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

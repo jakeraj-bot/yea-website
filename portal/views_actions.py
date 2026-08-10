@@ -382,6 +382,36 @@ def admin_admin_invite(request):
 
 @admin_login_required_post
 @require_POST
+def admin_staff_delete(request):
+    from .admin_services import delete_staff_login
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="staff")
+    try:
+        label = delete_staff_login(request.POST.get("staff_id"), current_user_id=request.user.pk)
+        messages.success(request, f"Deleted portal login for {label}.")
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="staff")
+
+
+@admin_login_required_post
+@require_POST
+def admin_parent_delete(request):
+    from .admin_services import delete_parent_login
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="billing-settings")
+    try:
+        label = delete_parent_login(request.POST.get("parent_account_id"))
+        messages.success(request, f"Deleted parent login for {label}.")
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="billing-settings")
+
+
+@admin_login_required_post
+@require_POST
 def admin_bulk_billing_post(request):
     from django.urls import reverse
 

@@ -149,6 +149,7 @@ def application_to_portal_dict(app):
         "policies_signed": sum(1 for policy in signed_policies if policy["signed"]),
         "policies_total": len(signed_policies),
         "signed_policies": signed_policies,
+        "family_slug": app.portal_family.slug if app.portal_family_id else "",
     }
 
 
@@ -199,6 +200,7 @@ def staff_application_row(app):
         "slug": str(app.reference),
         "child": f"{app.student_first_name} {app.student_last_name}".strip(),
         "family": _application_family_label(app),
+        "family_slug": app.portal_family.slug if app.portal_family_id else "",
         "unit": unit_name or "—",
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),

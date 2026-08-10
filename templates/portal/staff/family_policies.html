@@ -19,6 +19,8 @@
   <div class="container">
     {% if portal_area != 'admin' %}
     {% include "portal/staff/includes/family_tabs.html" %}
+    {% else %}
+    {% include "portal/admin/includes/family_tabs.html" with family_tab='policies' %}
     {% endif %}
     <div class="portal-toolbar portal-no-print">
       <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
