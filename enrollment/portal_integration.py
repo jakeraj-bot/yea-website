@@ -140,6 +140,7 @@ def application_to_portal_dict(app):
         "submitted_short": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "child_name": f"{app.student_first_name} {app.student_last_name}",
         "program": app.get_program_display(),
+        "program_location": app.program_location,
         "location": get_location_label(app.program_location),
         "family_name": app.family_name,
         "student_dob": app.student_dob.strftime("%B %d, %Y"),

@@ -80,6 +80,15 @@ def unit_allows_program(unit, program):
     return program_type in {"after_school", "both", "all", ""}
 
 
+def all_enrollment_location_keys():
+    from portal.models import PortalUnit
+
+    keys = set()
+    for portal_unit in PortalUnit.objects.filter(is_active=True):
+        keys.update(enrollment_keys_for_unit(portal_unit))
+    return keys
+
+
 def applications_queryset_for_unit(unit):
     from enrollment.models import EnrollmentApplication
 
@@ -87,6 +96,12 @@ def applications_queryset_for_unit(unit):
         return EnrollmentApplication.objects.none()
     family_ids = unit.families.values_list("id", flat=True)
     location_keys = enrollment_keys_for_unit(unit)
-    return EnrollmentApplication.objects.filter(
-        Q(portal_family_id__in=family_ids) | Q(portal_family__isnull=True, program_location__in=location_keys)
-    )
+    known_keys = all_enrollment_location_keys()
+    by_location = Q(program_location__in=location_keys)
+    # Legacy or invalid location keys: show where the family account lives until staff corrects it.
+    by_family_fallback = Q()
+    if known_keys:
+        by_family_fallback = Q(portal_family_id__in=family_ids) & ~Q(program_location__in=known_keys)
+    elif family_ids:
+        by_family_fallback = Q(portal_family_id__in=family_ids)
+    return EnrollmentApplication.objects.filter(by_location | by_family_fallback)

@@ -10,9 +10,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from portal.fee_config import get_fee_amount, get_fee_display
-from portal.models import PortalChild, PortalLedgerEntry
+from portal.models import PortalChild, PortalFamily, PortalLedgerEntry
 
 from .application_edit import EDITABLE_STATUSES
+from .locations import get_enrollment_location_choices, get_location_label, get_unit_for_enrollment_key, unit_allows_program
+from .models import EnrollmentApplication
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +112,54 @@ def _activate_family_if_needed(family):
 
 
 @transaction.atomic
-def approve_application(app):
+def assign_application_location(app, program_location):
+    from .portal_integration import _unique_family_slug
+
+    program_location = (program_location or "").strip()
+    valid_keys = {key for key, _ in get_enrollment_location_choices()}
+    if not program_location:
+        raise ValueError("Choose a location before saving.")
+    if program_location not in valid_keys:
+        raise ValueError("Choose a valid location from the list.")
+
+    unit = get_unit_for_enrollment_key(program_location)
+    if not unit:
+        raise ValueError("That location is not set up in the portal yet.")
+    if not unit_allows_program(unit, app.program):
+        raise ValueError(
+            f"{unit.name} is not available for {app.get_program_display().lower()}."
+        )
+
+    app.program_location = program_location
+    app.needs_dale_ave_bus = program_location == "dale_ave"
+    app.save(update_fields=["program_location", "needs_dale_ave_bus"])
+
+    family = app.portal_family
+    if family and family.unit_id != unit.id:
+        new_slug = family.slug
+        if PortalFamily.objects.filter(unit=unit, slug=family.slug).exclude(pk=family.pk).exists():
+            new_slug = _unique_family_slug(unit, family.name)
+        family.unit = unit
+        family.slug = new_slug
+        family.save(update_fields=["unit", "slug"])
+
+        sibling_updates = {
+            "program_location": program_location,
+            "needs_dale_ave_bus": app.needs_dale_ave_bus,
+        }
+        EnrollmentApplication.objects.filter(portal_family=family).exclude(pk=app.pk).update(**sibling_updates)
+
+    return app
+
+
+@transaction.atomic
+def approve_application(app, program_location=None):
     if app.status not in REVIEWABLE_STATUSES:
         raise ValueError("This application has already been reviewed.")
+
+    if program_location and program_location.strip() != app.program_location:
+        assign_application_location(app, program_location.strip())
+        app.refresh_from_db()
 
     _ensure_child_on_roster(app)
     _post_membership_fee_if_needed(app)
@@ -130,7 +177,7 @@ def approve_application(app):
         (
             f"Hi {app.primary_first_name},\n\n"
             f"Great news — {child_name}'s enrollment application for {app.get_program_display()} "
-            f"at {app.get_program_location_display()} has been approved.\n\n"
+            f"at {get_location_label(app.program_location)} has been approved.\n\n"
             f"Sign in to your parent portal to view billing and your family profile:\n"
             f"{_portal_applications_url()}\n\n"
             f"Youth Education Academy"

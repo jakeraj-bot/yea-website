@@ -272,6 +272,23 @@ def _application_portal_urls(area, app_slug):
     }
 
 
+def _application_location_context(app):
+    from enrollment.locations import get_enrollment_location_choices, get_location_label
+
+    choices = list(get_enrollment_location_choices())
+    current = app.program_location or ""
+    choice_values = {value for value, _ in choices}
+    if current and current not in choice_values:
+        label = get_location_label(current)
+        choices.insert(0, (current, f"{label} (update required)"))
+    elif not current:
+        choices.insert(0, ("", "Choose a location"))
+    return {
+        "location_choices": choices,
+        "program_location": current,
+    }
+
+
 def _portal_context(area, page_title, **extra):
     from .attendance_service import portal_is_live
 
@@ -1670,6 +1687,7 @@ def staff_application_detail(request, app_slug):
                     is_live_application=True,
                     staff_page_slug="applications",
                     application_urls=application_urls,
+                    **_application_location_context(app),
                 ),
             )
     application = _application_with_policy_print_urls(
@@ -1715,6 +1733,7 @@ def admin_application_detail(request, app_slug):
                     is_live_application=True,
                     admin_page_slug="applications",
                     application_urls=application_urls,
+                    **_application_location_context(app),
                 ),
             )
     application = _application_with_policy_print_urls(

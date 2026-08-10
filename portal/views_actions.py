@@ -952,6 +952,7 @@ def parent_profile_photo_remove(request):
 def staff_application_review(request, app_slug):
     from enrollment.application_review import (
         approve_application,
+        assign_application_location,
         reject_application,
         request_application_changes,
         save_internal_note,
@@ -965,10 +966,14 @@ def staff_application_review(request, app_slug):
         return redirect("portal_staff_page", page="applications")
 
     action = request.POST.get("action", "")
+    program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
-            approve_application(app)
+            approve_application(app, program_location=program_location or None)
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
+        elif action == "update_location":
+            assign_application_location(app, program_location)
+            messages.success(request, "Application location updated.")
         elif action == "request_changes":
             request_application_changes(app, request.POST.get("staff_message", ""))
             messages.success(request, "Change request sent to the parent by email and in their portal.")
@@ -991,6 +996,7 @@ def staff_application_review(request, app_slug):
 def admin_application_review(request, app_slug):
     from enrollment.application_review import (
         approve_application,
+        assign_application_location,
         reject_application,
         request_application_changes,
         save_internal_note,
@@ -1004,10 +1010,14 @@ def admin_application_review(request, app_slug):
         return redirect("portal_admin_page", page="applications")
 
     action = request.POST.get("action", "")
+    program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
-            approve_application(app)
+            approve_application(app, program_location=program_location or None)
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
+        elif action == "update_location":
+            assign_application_location(app, program_location)
+            messages.success(request, "Application location updated.")
         elif action == "request_changes":
             request_application_changes(app, request.POST.get("staff_message", ""))
             messages.success(request, "Change request sent to the parent by email and in their portal.")

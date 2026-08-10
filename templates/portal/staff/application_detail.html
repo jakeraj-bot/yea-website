@@ -13,10 +13,11 @@
     <div class="portal-toolbar portal-review-actions">
       <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
       {% if is_live_application and application.can_review %}
-      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form">
+      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
-        <button type="submit" class="btn btn-primary" onclick="return confirm('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
+        <input type="hidden" name="program_location" id="approve-program-location" value="{{ program_location }}">
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
       </form>
       <a class="btn btn-secondary" href="#request-changes-panel">Request changes</a>
       <a class="btn btn-secondary" href="#reject-panel">Reject</a>
@@ -46,6 +47,28 @@
 
     {% if is_live_application and application.can_review %}
     <div class="portal-review-panels">
+      {% if location_choices %}
+      <section class="card portal-review-panel" id="location-panel">
+        <h2>Application location</h2>
+        <p class="form-note">Correct the location if the parent chose the wrong site, left it blank, or picked a retired location. Saving also moves the family account to that unit when needed.</p>
+        <form method="post" action="{{ application_urls.review }}" class="portal-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_location">
+          <div class="form-group portal-form-full">
+            <label for="app-program-location">Location</label>
+            <select id="app-program-location" name="program_location" class="portal-select" required>
+              {% for value, label in location_choices %}
+              <option value="{{ value }}" {% if value == program_location %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group portal-form-full">
+            <button type="submit" class="btn btn-secondary">Save location</button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+
       <section class="card portal-review-panel" id="request-changes-panel">
         <h2>Request changes</h2>
         <p class="form-note">Tell the parent exactly what to fix or send in. They can update and resubmit the application online from their portal. Status changes to <strong>Pending documents</strong>.</p>
@@ -78,6 +101,19 @@
         </form>
       </section>
     </div>
+    {% endif %}
+
+    {% if is_live_application and application.can_review and location_choices %}
+    <script>
+      function syncApplicationLocationForApprove(message) {
+        var select = document.getElementById("app-program-location");
+        var hidden = document.getElementById("approve-program-location");
+        if (select && hidden) {
+          hidden.value = select.value;
+        }
+        return confirm(message);
+      }
+    </script>
     {% endif %}
 
     <div class="portal-review-grid">
