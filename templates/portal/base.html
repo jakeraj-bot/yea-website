@@ -100,7 +100,7 @@
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=2"></script>
   <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
-  {% if portal_area == 'staff' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
+  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
   {% block extra_js %}{% endblock %}
 </body>

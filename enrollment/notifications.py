@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from core.email_service import send_site_email
 
+from .locations import get_location_label
 from .models import EnrollmentApplication
 
 
@@ -33,7 +34,8 @@ def notify_staff_new_application(application):
         f"A new enrollment application was {source}.\n\n"
         f"{sibling_note}"
         f"Student: {application.student_first_name} {application.student_last_name}\n"
-        f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n"
+        f"Program: {application.get_program_display()} — {get_location_label(application.program_location)}\n"
+        f"Status: {application.get_status_display()}\n"
         f"Family: {application.family_name}\n"
         f"Family email: {application.primary_email}\n"
         f"Reference: {application.reference}\n\n"
@@ -75,22 +77,34 @@ def notify_parent_application_received(application, *, staff_created=False, save
             f"Hello {application.primary_first_name},\n\n"
             f"Your enrollment application for {child_name} has been submitted to Youth Education Academy.\n\n"
             f"Reference: {application.reference}\n"
-            f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n\n"
+            f"Program: {application.get_program_display()} — {get_location_label(application.program_location)}\n\n"
             f"We'll review your application and contact you if we need anything else. "
             f"Track status anytime in the parent portal:\n{portal_url}\n\n"
             f"Youth Education Academy\n"
         )
     else:
         subject = f"[YEA] Application received — {child_name}"
-        body = (
-            f"Hello {application.primary_first_name},\n\n"
-            f"Thank you for submitting your enrollment application for {child_name}.\n\n"
-            f"Reference: {application.reference}\n"
-            f"Program: {application.get_program_display()} — {application.get_program_location_display()}\n\n"
-            f"We'll review your application and contact you if we need anything else. "
-            f"Track status anytime in the parent portal:\n{portal_url}\n\n"
-            f"Youth Education Academy\n"
-        )
+        location_label = get_location_label(application.program_location)
+        if application.program == "before_care" or application.status == "waitlist":
+            body = (
+                f"Hello {application.primary_first_name},\n\n"
+                f"Thank you for joining the before care waitlist at School 18 for {child_name}.\n\n"
+                f"Reference: {application.reference}\n"
+                f"Program: {application.get_program_display()} — {location_label}\n\n"
+                f"Families on the waitlist are contacted in the order requests were received when a spot opens. "
+                f"Track status anytime in the parent portal:\n{portal_url}\n\n"
+                f"Youth Education Academy\n"
+            )
+        else:
+            body = (
+                f"Hello {application.primary_first_name},\n\n"
+                f"Thank you for submitting your enrollment application for {child_name}.\n\n"
+                f"Reference: {application.reference}\n"
+                f"Program: {application.get_program_display()} — {location_label}\n\n"
+                f"We'll review your application and contact you if we need anything else. "
+                f"Track status anytime in the parent portal:\n{portal_url}\n\n"
+                f"Youth Education Academy\n"
+            )
 
     return bool(
         send_site_email(

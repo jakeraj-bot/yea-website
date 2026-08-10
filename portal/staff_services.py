@@ -241,7 +241,7 @@ def build_dashboard_live(unit, program):
     roster = build_roster(unit, program, today) if unit and program else []
     session = build_session_context(unit, program, today, roster) if unit and program else {}
     apps = applications_for_staff(unit) if unit else []
-    open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents")]
+    open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents", "Waitlist")]
     past_due = PortalFamily.objects.filter(unit=unit, balance__gt=Decimal("0")).count()
     unread = count_messages_unread_live(for_admin=False)
 

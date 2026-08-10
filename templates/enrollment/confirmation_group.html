@@ -20,6 +20,11 @@
 <section class="page-content">
   <div class="container apply-container">
     <p>{% enrollment_t "confirmation_group_note" %}</p>
+    {% if has_before_care_waitlist %}
+    <div class="card card-accent" style="margin:1rem 0;padding:1rem 1.25rem;">
+      <p style="margin:0;"><strong>{% enrollment_t "before_care_waitlist_title" %}</strong> {% enrollment_t "before_care_waitlist_note" %}</p>
+    </div>
+    {% endif %}
     <ul>
       {% for app in applications %}
       <li>

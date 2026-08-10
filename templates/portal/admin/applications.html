@@ -21,6 +21,8 @@
       </label>
     </form>
 
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Approved,Pending documents,Declined" search_placeholder="Child or family" search_id="admin-app-search" %}
+
     <div class="portal-table-wrap">
       <table class="portal-table" id="admin-applications-table">
         <thead>

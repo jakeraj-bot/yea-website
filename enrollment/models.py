@@ -22,6 +22,7 @@ class EnrollmentApplication(models.Model):
     ]
     PROGRAM_CHOICES = [
         ("after_school", "After-school program"),
+        ("before_care", "Before care (waitlist)"),
         ("summer_camp", "Summer camp"),
     ]
     ETHNICITY_CHOICES = [
@@ -160,6 +161,7 @@ class EnrollmentApplication(models.Model):
 
     STATUS_CHOICES = [
         ("under_review", "Under review"),
+        ("waitlist", "Waitlist"),
         ("approved", "Approved"),
         ("pending_documents", "Pending documents"),
         ("enrolled", "Enrolled"),

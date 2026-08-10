@@ -1340,7 +1340,8 @@
 }
 
 .portal-status-under-review,
-.portal-status-pending-documents {
+.portal-status-pending-documents,
+.portal-status-waitlist {
   background: #fff8e1;
   color: #f57f17;
 }

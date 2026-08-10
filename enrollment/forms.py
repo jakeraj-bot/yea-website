@@ -6,10 +6,10 @@ from .policies_data import POLICIES
 
 
 class ProgramStepForm(forms.Form):
-    program = forms.ChoiceField(
+    programs = forms.MultipleChoiceField(
         choices=EnrollmentApplication.PROGRAM_CHOICES,
-        widget=forms.RadioSelect,
-        label="Which program are you applying for?",
+        widget=forms.CheckboxSelectMultiple,
+        label="Which program(s) are you applying for?",
     )
     program_location = forms.ChoiceField(
         choices=[],
@@ -21,27 +21,54 @@ class ProgramStepForm(forms.Form):
         from enrollment.locations import get_enrollment_location_choices
 
         self.fields["program_location"].choices = get_enrollment_location_choices()
+        if self.initial.get("programs"):
+            self.initial["programs"] = list(self.initial["programs"])
+        elif self.initial.get("program"):
+            self.initial["programs"] = [self.initial["program"]]
 
     def clean(self):
         cleaned = super().clean()
-        program = cleaned.get("program")
+        programs = cleaned.get("programs") or []
         location = cleaned.get("program_location")
-        if not program or not location:
+        if not programs:
+            self.add_error("programs", "Select at least one program.")
             return cleaned
-        from enrollment.locations import get_unit_for_enrollment_key, unit_allows_program
+        if "summer_camp" in programs and len(programs) > 1:
+            self.add_error(
+                "programs",
+                "Summer camp must be applied for separately from after-school and before care.",
+            )
+        if not location:
+            return cleaned
+        from enrollment.locations import get_unit_for_enrollment_key, location_keys_for_program, unit_allows_program
 
-        unit = get_unit_for_enrollment_key(location)
-        if unit and not unit_allows_program(unit, program):
-            if program == "summer_camp":
+        for program in programs:
+            allowed_keys = location_keys_for_program(program)
+            if location not in allowed_keys:
                 self.add_error(
                     "program_location",
-                    f"{unit.name} is not available for summer camp. Choose a summer camp location.",
+                    "That location is not available for one of the selected programs.",
                 )
-            else:
-                self.add_error(
-                    "program_location",
-                    f"{unit.name} is not available for after-school. Choose an after-school location.",
-                )
+                break
+            unit = get_unit_for_enrollment_key(location)
+            if unit and not unit_allows_program(unit, program):
+                if program == "summer_camp":
+                    self.add_error(
+                        "program_location",
+                        f"{unit.name} is not available for summer camp. Choose a summer camp location.",
+                    )
+                elif program == "before_care":
+                    self.add_error(
+                        "program_location",
+                        f"{unit.name} is not available for before care. Before care is offered at School 18 only.",
+                    )
+                else:
+                    self.add_error(
+                        "program_location",
+                        f"{unit.name} is not available for after-school. Choose an after-school location.",
+                    )
+                break
+        cleaned["program"] = programs[0]
         return cleaned
 
 

@@ -1,7 +1,7 @@
 {% extends "portal/base.html" %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
-  <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child.</p></div>
+  <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child and program.</p></div>
 </section>
 <section class="page-content">
   <div class="container">
@@ -31,6 +31,9 @@
               {% if app.can_edit %}
               <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_edit' reference=app.reference %}">Edit</a>
               {% endif %}
+              {% if app.can_add_before_care %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_before_care' reference=app.reference %}">+ Before care</a>
+              {% endif %}
               {% endif %}
             </td>
           </tr>
@@ -44,7 +47,7 @@
       {% include "portal/includes/add_child_button.html" %}
     </div>
     {% endif %}
-    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a> — it uses your existing account.</p>
+    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a>. Already applied for after-school? Use <strong>+ Before care</strong> on that child's row to join the School 18 waitlist without starting over.</p>
   </div>
 </section>
 {% endblock %}

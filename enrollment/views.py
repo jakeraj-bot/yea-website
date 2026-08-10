@@ -115,9 +115,28 @@ def _child_count(session_data):
     return len(session_data.get("children", []))
 
 
+def _apply_program_preset(request, session_data):
+    preset = (request.GET.get("program") or "").strip()
+    valid_programs = {choice[0] for choice in EnrollmentApplication.PROGRAM_CHOICES}
+    if preset not in valid_programs:
+        return session_data
+    session_data = _ensure_children(session_data)
+    child, _ = _current_child(session_data)
+    child["programs"] = [preset]
+    child["program"] = preset
+    from .locations import location_keys_for_program
+
+    keys = location_keys_for_program(preset)
+    if keys:
+        child["program_location"] = keys[0]
+    return session_data
+
+
 def _create_application(data):
     data = _deserialize_for_model(data)
     data["needs_dale_ave_bus"] = data.get("program_location") == "dale_ave"
+    if data.get("program") == "before_care" and not data.get("status"):
+        data["status"] = "waitlist"
     emergency_data = data.pop("emergency_contacts", [])
     policy_data = data.pop("policies", {})
 
@@ -141,14 +160,19 @@ def _create_application(data):
 
 
 def _create_applications(session_data):
+    from .add_program import programs_for_child_data
+
     family_group = uuid.uuid4()
     family_fields = {k: session_data[k] for k in FAMILY_FIELD_NAMES if k in session_data}
     applications = []
-    for child_number, child_data in enumerate(session_data.get("children", []), start=1):
-        merged = {**family_fields, **child_data}
-        merged["family_group"] = family_group
-        merged["child_number"] = child_number
-        applications.append(_create_application(merged))
+    for child_index, child_data in enumerate(session_data.get("children", []), start=1):
+        programs = programs_for_child_data(child_data)
+        for program in programs:
+            merged = {**family_fields, **child_data, "program": program}
+            merged.pop("programs", None)
+            merged["family_group"] = family_group
+            merged["child_number"] = child_index
+            applications.append(_create_application(merged))
     return applications
 
 
@@ -188,6 +212,11 @@ def _wizard_context(request, step, session_data, **extra):
     child_index = session_data.get("current_child_index", 0)
     editing_app = _editing_application(session_data)
     step_order = [s for s in STEP_ORDER if s != "add_child"] if editing_app else STEP_ORDER
+    program_location_rules = ""
+    if step == "program":
+        from .locations import program_location_rules_json
+
+        program_location_rules = program_location_rules_json()
     return {
         "step": step,
         "step_titles": localized_step_titles(lang),
@@ -211,6 +240,7 @@ def _wizard_context(request, step, session_data, **extra):
         "enrollment_lang": lang,
         "enrollment_languages": SUPPORTED_LANGUAGES,
         "four_cs_contact_email": settings.CONTACT_EMAIL,
+        "program_location_rules": program_location_rules,
         **extra,
     }
 
@@ -324,6 +354,7 @@ def apply_wizard(request, step="family"):
         return redirect("enrollment_apply", step="family")
 
     session_data = _get_session_data(request)
+    session_data = _apply_program_preset(request, session_data)
     _ensure_children(session_data)
     step_idx = _step_index(step)
     portal_account = get_parent_account(request.user) if request.user.is_authenticated else None
@@ -549,6 +580,11 @@ def apply_wizard(request, step="family"):
                 initial.setdefault(f"{slug}__date", today)
         else:
             initial = {k: v for k, v in child_data.items() if k not in ("emergency_contacts", "policies")}
+            if step == "program":
+                if child_data.get("programs"):
+                    initial["programs"] = list(child_data["programs"])
+                elif child_data.get("program"):
+                    initial["programs"] = [child_data["program"]]
         form = form_class(initial=initial)
         localize_form(form, lang)
         if step == "policies":
@@ -597,7 +633,54 @@ def confirmation_group(request, family_group):
     return render(
         request,
         "enrollment/confirmation_group.html",
-        {"applications": applications, "family_group": family_group},
+        {
+            "applications": applications,
+            "family_group": family_group,
+            "has_before_care_waitlist": applications.filter(program="before_care").exists(),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+@parent_login_required
+def apply_add_before_care(request, reference):
+    from .add_program import can_add_before_care_for_application, create_before_care_from_application
+    from .locations import get_location_label, location_keys_for_program
+
+    account = get_parent_account(request.user)
+    application = get_object_or_404(EnrollmentApplication, reference=reference)
+    if application.portal_family_id != account.family_id:
+        messages.error(request, "You can only add before care for children on your family account.")
+        return redirect("portal_parent_page", page="applications")
+
+    if not can_add_before_care_for_application(application):
+        messages.error(request, "Before care is already on the waitlist for this child, or is not available.")
+        return redirect("portal_parent_page", page="applications")
+
+    child_name = f"{application.student_first_name} {application.student_last_name}".strip()
+    location_keys = location_keys_for_program("before_care")
+    location_label = get_location_label(location_keys[0]) if location_keys else "School 18"
+
+    if request.method == "POST":
+        try:
+            new_app = create_before_care_from_application(application)
+            messages.success(
+                request,
+                f"Before care waitlist request submitted for {child_name}. We'll contact you when a spot opens.",
+            )
+            return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'application'})}?ref={new_app.reference}")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("portal_parent_page", page="applications")
+
+    return render(
+        request,
+        "enrollment/add_before_care_confirm.html",
+        {
+            "application": application,
+            "child_name": child_name,
+            "location_label": location_label,
+        },
     )
 
 

@@ -1,0 +1,104 @@
+"""Add program requests for children who already have an enrollment application."""
+
+import uuid
+
+from django.db import transaction
+
+from .locations import location_keys_for_program
+from .models import EmergencyContact, EnrollmentApplication, PolicySignature
+from .notifications import send_application_submitted_emails
+
+
+def programs_for_child_data(child_data):
+    programs = child_data.get("programs")
+    if programs:
+        return list(programs)
+    program = child_data.get("program")
+    return [program] if program else []
+
+
+def child_has_before_care(family, first_name, last_name):
+    if not family:
+        return False
+    return (
+        EnrollmentApplication.objects.filter(
+            portal_family=family,
+            program="before_care",
+            student_first_name__iexact=first_name.strip(),
+            student_last_name__iexact=last_name.strip(),
+        )
+        .exclude(status="declined")
+        .exists()
+    )
+
+
+def can_add_before_care_for_application(app):
+    if not app or not app.portal_family_id or app.program == "before_care":
+        return False
+    return not child_has_before_care(app.portal_family, app.student_first_name, app.student_last_name)
+
+
+def _clone_field_names():
+    skip = {
+        "id",
+        "reference",
+        "submitted_at",
+        "status",
+        "reviewed_at",
+        "staff_message",
+        "internal_note",
+        "program",
+        "program_location",
+        "needs_dale_ave_bus",
+    }
+    return [field.name for field in EnrollmentApplication._meta.fields if field.name not in skip]
+
+
+@transaction.atomic
+def create_before_care_from_application(source):
+    if source.program == "before_care":
+        raise ValueError("This application is already for before care.")
+    if child_has_before_care(source.portal_family, source.student_first_name, source.student_last_name):
+        raise ValueError("Before care is already on the waitlist for this child.")
+
+    location_keys = location_keys_for_program("before_care")
+    if not location_keys:
+        raise ValueError("Before care is not available right now.")
+
+    data = {name: getattr(source, name) for name in _clone_field_names()}
+    data.update(
+        {
+            "reference": uuid.uuid4(),
+            "family_group": source.family_group or uuid.uuid4(),
+            "program": "before_care",
+            "program_location": location_keys[0],
+            "needs_dale_ave_bus": False,
+            "status": "waitlist",
+            "portal_family": source.portal_family,
+        }
+    )
+    app = EnrollmentApplication.objects.create(**data)
+
+    for contact in source.emergency_contacts.all():
+        EmergencyContact.objects.create(
+            application=app,
+            order=contact.order,
+            first_name=contact.first_name,
+            last_name=contact.last_name,
+            phone=contact.phone,
+            relationship=contact.relationship,
+            authorized_pickup=contact.authorized_pickup,
+        )
+
+    for signature in source.policy_signatures.all():
+        PolicySignature.objects.create(
+            application=app,
+            policy_slug=signature.policy_slug,
+            policy_title=signature.policy_title,
+            signature_name=signature.signature_name,
+            signed_date=signature.signed_date,
+            extra_data=signature.extra_data or {},
+        )
+
+    send_application_submitted_emails(app)
+    return app

@@ -45,6 +45,12 @@
     </div>
     {% endif %}
 
+    {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
+    <div class="portal-callout card">
+      <p><strong>Waitlist.</strong> Approve when a before care spot opens — the child is added to the roster and the family is notified. No new application is needed.</p>
+    </div>
+    {% endif %}
+
     {% if is_live_application and application.can_review %}
     <div class="portal-review-panels">
       {% if location_choices %}
@@ -175,7 +181,11 @@
         <div class="card">
           <h2>On approval</h2>
           <ul class="portal-link-list">
+            {% if application.status_slug == "waitlist" %}
+            <li>Move child from waitlist to the roster</li>
+            {% else %}
             <li>Add child to program roster</li>
+            {% endif %}
             <li>Activate family account if pending</li>
             <li>Post membership fee if required ($20)</li>
             <li>Email parent welcome notification</li>

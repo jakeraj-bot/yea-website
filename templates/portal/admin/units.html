@@ -26,7 +26,9 @@
           <label for="unit-type">Program type</label>
           <select id="unit-type" name="program_type" class="portal-select">
             <option value="after_school" {% if editing_unit.program_type == 'after_school' %}selected{% endif %}>After-school</option>
+            <option value="before_care" {% if editing_unit.program_type == 'before_care' %}selected{% endif %}>Before care</option>
             <option value="summer_camp" {% if editing_unit.program_type == 'summer_camp' %}selected{% endif %}>Summer camp</option>
+            <option value="both" {% if editing_unit.program_type == 'both' %}selected{% endif %}>After-school &amp; before care</option>
             <option value="drop_in" {% if editing_unit.program_type == 'drop_in' %}selected{% endif %}>Drop-in center</option>
           </select>
         </div>

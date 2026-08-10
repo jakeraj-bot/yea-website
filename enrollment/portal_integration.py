@@ -26,6 +26,7 @@ PAYMENT_TO_BILLING_TYPE = {
 
 STATUS_LABELS = {
     "under_review": "Under review",
+    "waitlist": "Waitlist",
     "approved": "Approved",
     "pending_documents": "Pending documents",
     "enrolled": "Enrolled",
@@ -161,6 +162,8 @@ def application_to_portal_dict(app):
 
 
 def application_list_item(app):
+    from .add_program import can_add_before_care_for_application
+
     data = application_to_portal_dict(app)
     return {
         "reference": data["reference"],
@@ -171,6 +174,7 @@ def application_list_item(app):
         "status": data["status"],
         "status_slug": data["status_slug"],
         "can_edit": app.status == "pending_documents",
+        "can_add_before_care": can_add_before_care_for_application(app),
     }
 
 
@@ -233,7 +237,7 @@ def staff_application_detail(app):
             "membership_required": app.membership_fee_agreed == "yes",
             "internal_note": app.internal_note or "",
             "staff_message": app.staff_message or "",
-            "can_review": app.status in {"under_review", "pending_documents"},
+            "can_review": app.status in {"under_review", "pending_documents", "waitlist"},
             "status_slug": (app.status or "under_review").replace("_", "-"),
             "reviewed_at": timezone.localtime(app.reviewed_at).strftime("%B %d, %Y at %-I:%M %p")
             if app.reviewed_at

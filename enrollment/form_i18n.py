@@ -14,6 +14,7 @@ RELATIONSHIP_ES = [
 PHONE_TYPE_ES = [("cell", "Teléfono celular"), ("home", "Teléfono de casa")]
 PROGRAM_ES = [
     ("after_school", "Programa después de la escuela"),
+    ("before_care", "Cuidado antes de la escuela (lista de espera)"),
     ("summer_camp", "Campamento de verano"),
 ]
 LOCATION_ES = [
@@ -174,6 +175,7 @@ FIELD_CHOICES_ES = {
     "secondary_email_subscription": [("", "---------")] + YES_NO_ES,
     "secondary_authorized_pickup": [("", "---------")] + YES_NO_ES,
     "program": PROGRAM_ES,
+    "programs": PROGRAM_ES,
     "program_location": LOCATION_ES,
     "student_ethnicity": ETHNICITY_ES,
     "student_race": RACE_ES,
@@ -202,6 +204,8 @@ def localize_form(form, lang):
             from enrollment.locations import get_enrollment_location_choices
 
             field.choices = get_enrollment_location_choices()
+        elif name in {"program", "programs"} and name in FIELD_CHOICES_ES:
+            field.choices = FIELD_CHOICES_ES[name]
         elif name in FIELD_CHOICES_ES:
             field.choices = FIELD_CHOICES_ES[name]
         if name.endswith("__signature") and getattr(field, "help_text", None):

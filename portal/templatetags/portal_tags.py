@@ -46,3 +46,10 @@ def child_medical_card(child_name, child=None):
         "alerts": _alerts_for_child(child_name),
         "medical": medical,
     }
+
+
+@register.filter
+def split_csv(value, separator=","):
+    if not value:
+        return []
+    return [part.strip() for part in str(value).split(separator) if part.strip()]

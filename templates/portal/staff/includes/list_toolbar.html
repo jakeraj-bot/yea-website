@@ -1,4 +1,5 @@
 <nav class="portal-list-toolbar portal-no-print" data-staff-list-toolbar>
+  {% load portal_tags %}
   <div class="portal-list-toolbar-group">
     <label>Sort</label>
     <select class="portal-select portal-list-sort">
@@ -8,7 +9,13 @@
   <div class="portal-list-toolbar-group">
     <label>Filter</label>
     <select class="portal-select portal-list-filter">
+      {% if filter_options %}
+        {% for option in filter_options|split_csv %}
+        <option>{{ option }}</option>
+        {% endfor %}
+      {% else %}
       <option>All</option>
+      {% endif %}
     </select>
   </div>
   {% if search_placeholder %}

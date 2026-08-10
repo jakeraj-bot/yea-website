@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Add before care waitlist — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Add before care waitlist</h1>
+    <p class="lead">Use your existing application information — no need to fill everything out again.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <div class="card" style="max-width:40rem;margin:0 auto;padding:1.25rem;">
+      <h2 style="margin-top:0;">{{ child_name }}</h2>
+      <p>Submit a before care waitlist request for <strong>{{ location_label }}</strong>.</p>
+      <ul>
+        <li>We reuse your family, student, medical, emergency contact, and policy information from your existing application.</li>
+        <li>Status will be <strong>Waitlist</strong> until staff approves a spot.</li>
+        <li>Before care does not start until you receive approval.</li>
+      </ul>
+      <form method="post" class="apply-actions" style="margin-top:1.25rem;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Submit before care waitlist</button>
+        <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='applications' %}">Cancel</a>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

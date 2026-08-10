@@ -62,6 +62,7 @@ def application_to_session_data(app):
         }
         for signature in app.policy_signatures.all()
     }
+    child_data["programs"] = [app.program]
 
     return {
         **family_data,

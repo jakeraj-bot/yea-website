@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 MEMBERSHIP_FEE_KEY = "membership"
 DEFAULT_MEMBERSHIP_FEE = Decimal("20.00")
-REVIEWABLE_STATUSES = {"under_review", "pending_documents"}
+REVIEWABLE_STATUSES = {"under_review", "pending_documents", "waitlist"}
 
 
 def child_display_name(app):

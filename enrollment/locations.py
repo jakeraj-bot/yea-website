@@ -71,13 +71,60 @@ def enrollment_keys_for_unit(unit):
     return keys
 
 
+def unit_offers_before_care(unit):
+    if not unit:
+        return False
+    slug = (unit.slug or "").replace("_", "-").lower()
+    name = (unit.name or "").lower()
+    program_type = (unit.program_type or "").lower()
+    if program_type in {"before_care", "both", "all"}:
+        return True
+    return slug in {"school-18"} or "school 18" in name
+
+
 def unit_allows_program(unit, program):
     if not unit:
         return True
     program_type = (unit.program_type or "after_school").lower()
+    if program == "before_care":
+        return program_type in {"before_care", "both", "all", "after_school", ""} or unit_offers_before_care(unit)
     if program == "summer_camp":
         return program_type in {"summer_camp", "summer", "camp", "both", "all"}
-    return program_type in {"after_school", "both", "all", ""}
+    if program == "after_school":
+        return program_type in {"after_school", "both", "all", ""}
+    return True
+
+
+def location_keys_for_program(program):
+    from enrollment.models import EnrollmentApplication
+    from portal.models import PortalUnit
+
+    keys = []
+    for unit in PortalUnit.objects.filter(is_active=True).order_by("name"):
+        if program == "before_care":
+            if unit_offers_before_care(unit):
+                keys.append(enrollment_key_for_unit(unit))
+        elif unit_allows_program(unit, program):
+            keys.append(enrollment_key_for_unit(unit))
+    if keys:
+        return keys
+    if program == "before_care":
+        return ["school_18"]
+    if program == "summer_camp":
+        return ["caldwell"]
+    return [key for key, _ in EnrollmentApplication.LOCATION_CHOICES if key != "caldwell"]
+
+
+def program_location_rules_json():
+    import json
+
+    from enrollment.models import EnrollmentApplication
+
+    rules = {
+        program: location_keys_for_program(program)
+        for program, _ in EnrollmentApplication.PROGRAM_CHOICES
+    }
+    return json.dumps(rules)
 
 
 def all_enrollment_location_keys():

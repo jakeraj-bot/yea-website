@@ -11,7 +11,7 @@
     <h3 class="apply-section-title">{% enrollment_t "section_program_selection" %}</h3>
   </header>
   <div class="form-grid">
-    {% apply_field form.program full=True %}
+    {% apply_field form.programs full=True %}
     {% apply_field form.program_location full=True %}
   </div>
 </section>
@@ -32,5 +32,6 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'js/apply-program.js' %}?v=3"></script>
+<script type="application/json" id="program-location-rules">{{ program_location_rules|safe }}</script>
+<script src="{% static 'js/apply-program.js' %}?v=5"></script>
 {% endblock %}

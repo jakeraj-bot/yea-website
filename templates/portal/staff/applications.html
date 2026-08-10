@@ -13,7 +13,7 @@
       <a class="btn btn-primary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
     </div>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Approved,Pending documents" search_placeholder="Child or family" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Approved,Pending documents" search_placeholder="Child or family" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table">
