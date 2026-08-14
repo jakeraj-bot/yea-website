@@ -14,3 +14,14 @@ class ContactForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={"autocomplete": "email"}))
     topic = forms.ChoiceField(choices=TOPIC_CHOICES)
     message = forms.CharField(widget=forms.Textarea(attrs={"rows": 5}))
+    company = forms.CharField(
+        required=False,
+        label="Company",
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "off",
+                "tabindex": "-1",
+                "aria-hidden": "true",
+            }
+        ),
+    )

@@ -119,6 +119,24 @@ CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "jakeraj@yeanj.org")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "jakeraj@yeanj.org")
 PORTAL_ALERT_EMAIL = os.environ.get("PORTAL_ALERT_EMAIL", CONTACT_EMAIL)
 
+# Contact form anti-spam (honeypot + timing always on; Turnstile optional)
+CONTACT_FORM_MIN_SECONDS = int(os.environ.get("CONTACT_FORM_MIN_SECONDS", "3"))
+CONTACT_FORM_MAX_SECONDS = int(os.environ.get("CONTACT_FORM_MAX_SECONDS", "7200"))
+CONTACT_FORM_RATE_LIMIT = int(os.environ.get("CONTACT_FORM_RATE_LIMIT", "5"))
+CONTACT_FORM_RATE_WINDOW_SECONDS = int(os.environ.get("CONTACT_FORM_RATE_WINDOW_SECONDS", "3600"))
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+
+CACHES = {
+    "default": {
+        "BACKEND": os.environ.get(
+            "DJANGO_CACHE_BACKEND",
+            "django.core.cache.backends.locmem.LocMemCache",
+        ),
+        "LOCATION": os.environ.get("DJANGO_CACHE_LOCATION", "yea-default"),
+    }
+}
+
 if os.environ.get("EMAIL_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:

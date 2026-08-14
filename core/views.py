@@ -8,6 +8,17 @@ from core.email_service import send_site_email
 from . import photos
 from .forms import ContactForm
 from .models import ContactMessage
+from .spam_protection import (
+    CONTACT_FORM_SESSION_KEY,
+    is_contact_form_too_fast,
+    is_contact_rate_limited,
+    is_honeypot_triggered,
+    mark_contact_form_started,
+    record_contact_submission,
+    turnstile_enabled,
+    verify_turnstile,
+    get_client_ip,
+)
 
 
 def home(request):
@@ -122,6 +133,10 @@ def _send_contact_notification(contact):
     )
 
 
+def _contact_success_redirect():
+    return redirect(f"{reverse('contact')}?sent=1")
+
+
 @require_http_methods(["GET", "POST"])
 def contact(request):
     form = ContactForm()
@@ -130,16 +145,47 @@ def contact(request):
     if request.method == "POST":
         form = ContactForm(request.POST)
         if form.is_valid():
-            contact_message = ContactMessage.objects.create(
-                name=form.cleaned_data["name"],
-                email=form.cleaned_data["email"],
-                topic=form.cleaned_data["topic"],
-                message=form.cleaned_data["message"],
-            )
-            _send_contact_notification(contact_message)
-            return redirect(f"{reverse('contact')}?sent=1")
+            if is_contact_rate_limited(request):
+                form.add_error(
+                    None,
+                    "Too many messages were sent from your connection. Please wait an hour and try again, or email info@yeanj.org directly.",
+                )
+            elif is_honeypot_triggered(form.cleaned_data) or is_contact_form_too_fast(request):
+                if CONTACT_FORM_SESSION_KEY in request.session:
+                    del request.session[CONTACT_FORM_SESSION_KEY]
+                return _contact_success_redirect()
+            elif turnstile_enabled() and not verify_turnstile(
+                request.POST.get("cf-turnstile-response"),
+                get_client_ip(request),
+            ):
+                form.add_error(
+                    None,
+                    "Please complete the security check and try again.",
+                )
+            else:
+                contact_message = ContactMessage.objects.create(
+                    name=form.cleaned_data["name"],
+                    email=form.cleaned_data["email"],
+                    topic=form.cleaned_data["topic"],
+                    message=form.cleaned_data["message"],
+                )
+                _send_contact_notification(contact_message)
+                record_contact_submission(request)
+                if CONTACT_FORM_SESSION_KEY in request.session:
+                    del request.session[CONTACT_FORM_SESSION_KEY]
+                return _contact_success_redirect()
+    else:
+        mark_contact_form_started(request)
 
-    return render(request, "core/contact.html", {"form": form, "submitted": submitted})
+    return render(
+        request,
+        "core/contact.html",
+        {
+            "form": form,
+            "submitted": submitted,
+            "turnstile_site_key": settings.TURNSTILE_SITE_KEY if turnstile_enabled() else "",
+        },
+    )
 
 
 def safety(request):
