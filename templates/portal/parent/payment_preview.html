@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -59,17 +60,24 @@
           {% endif %}
           <input type="hidden" name="booking_id" value="{{ request.GET.booking_id|default:'' }}">
           <button type="submit" class="btn btn-primary">Pay ${{ payment_totals.total }} with Stripe</button>
-          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}{% if is_dropin_payment %}&amp;source=dropin&amp;child={{ dropin.child|urlencode }}&amp;program_label={{ dropin.program|urlencode }}&amp;location={{ dropin.location|urlencode }}&amp;date={{ dropin.date|urlencode }}{% endif %}">Back to edit</a>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{% append_query parent_pay_query amount=payment_amount source=is_dropin_payment|yesno:'dropin,' child=dropin.child program_label=dropin.program location=dropin.location date=dropin.date %}">Back to edit</a>
           <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
         </form>
+        {% elif portal_live and parent_authenticated %}
+        <div class="portal-callout card portal-callout-warning">
+          <p><strong>Online card payments are not enabled yet.</strong> Your balance of <strong>${{ payment_amount }}</strong> is on your account. Please contact YEA at <a href="mailto:info@yeanj.org">info@yeanj.org</a> or <a href="tel:6093578608">609-357-8608</a> to pay by card in the office, or check back soon for online checkout.</p>
+        </div>
+        <div class="portal-form-actions">
+          <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Back to billing</a>
+        </div>
         {% else %}
         <div class="portal-callout card">
           <p><strong>Preview mode.</strong> Submitting records a sample receipt for design review. Stripe charges are not processed yet.</p>
         </div>
 
         <div class="portal-form-actions">
-          <a class="btn btn-primary" href="{% url 'portal_parent_payment_complete' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}&amp;method={{ payment_method|urlencode }}{% if is_dropin_payment %}&amp;source=dropin{% endif %}">Submit payment</a>
-          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}&amp;amount={{ payment_amount }}{% if is_dropin_payment %}&amp;source=dropin&amp;child={{ dropin.child|urlencode }}&amp;program_label={{ dropin.program|urlencode }}&amp;location={{ dropin.location|urlencode }}&amp;date={{ dropin.date|urlencode }}{% endif %}">Back to edit</a>
+          <a class="btn btn-primary" href="{% url 'portal_parent_payment_complete' %}{% append_query parent_pay_query amount=payment_amount method=payment_method source=is_dropin_payment|yesno:'dropin,' %}">Submit payment</a>
+          <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{% append_query parent_pay_query amount=payment_amount source=is_dropin_payment|yesno:'dropin,' child=dropin.child program_label=dropin.program location=dropin.location date=dropin.date %}">Back to edit</a>
           <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
         </div>
         {% endif %}

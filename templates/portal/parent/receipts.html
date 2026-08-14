@@ -1,5 +1,5 @@
 {% extends "portal/base.html" %}
-{% load static %}
+{% load static portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -46,7 +46,7 @@
             <td><code class="portal-ref-code">{{ receipt.reference }}</code></td>
             <td>
               {% if "RCPT" in receipt.reference %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}&amp;ref={{ receipt.reference }}">View receipt</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{% append_query parent_pay_query ref=receipt.reference %}">View receipt</a>
               {% else %}
               <span class="form-note">Invoice — not paid yet</span>
               {% endif %}

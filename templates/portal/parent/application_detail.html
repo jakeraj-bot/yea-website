@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -11,7 +12,7 @@
   <div class="container">
     <div class="portal-toolbar">
       <span class="portal-status portal-status-{{ application.status_slug|default:'under-review' }}">{{ application.status }}</span>
-      <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{{ parent_pay_query }}{% if application.reference %}&amp;ref={{ application.reference }}{% endif %}">Download PDF</a>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{% append_query parent_pay_query ref=application.reference %}">Download PDF</a>
     </div>
 
     {% if application.staff_message %}

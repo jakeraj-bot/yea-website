@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child and program.</p></div>
@@ -27,7 +28,7 @@
               {% if app.demo %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}">View</a>
               {% else %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}&amp;ref={{ app.reference }}">View</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{% append_query parent_pay_query ref=app.reference %}">View</a>
               {% if app.can_edit %}
               <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_edit' reference=app.reference %}">Edit</a>
               {% endif %}

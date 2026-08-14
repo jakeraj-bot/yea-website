@@ -360,6 +360,31 @@ def _parent_policy_data(preview_key):
     return get_family_policies(slug)
 
 
+def append_query_params(existing_query="", **kwargs):
+    from urllib.parse import urlencode
+
+    params = {
+        key: value
+        for key, value in kwargs.items()
+        if value is not None and str(value) != ""
+    }
+    if not params:
+        return existing_query or ""
+    encoded = urlencode(params)
+    if existing_query:
+        separator = "&" if existing_query.startswith("?") else "?"
+        return f"{existing_query}{separator}{encoded}"
+    return f"?{encoded}"
+
+
+def _parent_pay_query(request):
+    if _parent_live_mode(request):
+        return ""
+    preview_key = _parent_preview_key(request)
+    demo_key = preview_key if preview_key in PARENT_PAYMENT_PREVIEWS else "private-pay"
+    return f"?pay={demo_key}"
+
+
 def _parent_context(request, page_title, page_slug="", **extra):
     preview_key = _parent_preview_key(request)
     account = get_parent_account(request.user) if request.user.is_authenticated else None
@@ -946,7 +971,7 @@ def parent_application_policy_print(request, policy_slug):
             policy = get_application_policy(app, policy_slug)
             if policy:
                 pay_query = _parent_pay_query(request)
-                app_url = f"{reverse('portal_parent_page', kwargs={'page': 'application'})}{pay_query}&ref={app_ref}"
+                app_url = f"{reverse('portal_parent_page', kwargs={'page': 'application'})}{append_query_params(pay_query, ref=app_ref)}"
                 return _render_single_policy_print(
                     request,
                     policy=policy,

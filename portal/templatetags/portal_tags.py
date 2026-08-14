@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django import template
 
 from portal.demo_data import CHILD_MEDICAL, MEDICAL_ALERT_TYPES
@@ -53,3 +55,20 @@ def split_csv(value, separator=","):
     if not value:
         return []
     return [part.strip() for part in str(value).split(separator) if part.strip()]
+
+
+@register.simple_tag
+def append_query(existing_query="", **kwargs):
+    """Append URL-encoded GET params to an optional existing query string."""
+    params = {
+        key: value
+        for key, value in kwargs.items()
+        if value is not None and str(value) != ""
+    }
+    if not params:
+        return existing_query or ""
+    encoded = urlencode(params)
+    if existing_query:
+        separator = "&" if existing_query.startswith("?") else "?"
+        return f"{existing_query}{separator}{encoded}"
+    return f"?{encoded}"
