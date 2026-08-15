@@ -172,7 +172,11 @@ def confirm_checkout_payment(session_id):
         return payment
     method_label = "Card"
     payment_intent = getattr(session, "payment_intent", None)
-    payment_method_id = getattr(payment_intent, "payment_method", None) if payment_intent else None
+    intent_id = payment_intent if isinstance(payment_intent, str) else getattr(payment_intent, "id", "")
+    if intent_id and not payment.stripe_payment_intent_id:
+        payment.stripe_payment_intent_id = intent_id
+        payment.save(update_fields=["stripe_payment_intent_id"])
+    payment_method_id = getattr(payment_intent, "payment_method", None) if payment_intent and not isinstance(payment_intent, str) else None
     if payment_method_id:
         try:
             pm = stripe.PaymentMethod.retrieve(payment_method_id)
@@ -239,3 +243,47 @@ def handle_member_stripe_webhook(payload, signature):
     if session_id:
         confirm_checkout_payment(session_id)
     return True
+
+
+def refund_stripe_payment(payment, amount):
+    """Refund a parent card payment in Stripe. Returns the refunded Decimal amount."""
+    if not stripe_configured():
+        raise ValueError("Member Stripe is not configured.")
+    if payment.status != payment.STATUS_PAID:
+        raise ValueError("Only paid card payments can be refunded.")
+    remaining = (payment.amount or Decimal("0")) - (payment.refunded_amount or Decimal("0"))
+    if remaining <= 0:
+        raise ValueError("This payment has already been fully refunded.")
+    if amount > remaining:
+        raise ValueError(f"Refund cannot exceed the remaining ${remaining:.2f}.")
+
+    stripe = _stripe()
+    intent_id = payment.stripe_payment_intent_id
+    if not intent_id and payment.stripe_session_id:
+        try:
+            session = stripe.checkout.Session.retrieve(payment.stripe_session_id)
+        except Exception as exc:
+            raise ValueError(f"Could not look up this Stripe payment: {exc}") from exc
+        payment_intent = getattr(session, "payment_intent", None)
+        intent_id = payment_intent if isinstance(payment_intent, str) else getattr(payment_intent, "id", "")
+        if intent_id:
+            payment.stripe_payment_intent_id = intent_id
+            payment.save(update_fields=["stripe_payment_intent_id"])
+    if not intent_id:
+        raise ValueError("This payment has no Stripe card charge to refund.")
+
+    charged = payment.total_charged or payment.amount
+    already_refunded = payment.refunded_amount or Decimal("0")
+    stripe_remaining = charged - already_refunded
+    if amount >= remaining:
+        stripe_amount = stripe_remaining
+    else:
+        stripe_amount = amount
+    cents = int((stripe_amount * 100).quantize(Decimal("1")))
+    if cents <= 0:
+        raise ValueError("Refund amount is too small.")
+    try:
+        stripe.Refund.create(payment_intent=intent_id, amount=cents)
+    except Exception as exc:
+        raise ValueError(f"Stripe could not refund this payment: {exc}") from exc
+    return amount

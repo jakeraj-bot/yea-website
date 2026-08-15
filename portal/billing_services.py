@@ -501,3 +501,59 @@ def get_scheduled_plan_charges(limit=50):
             }
         )
     return rows
+
+
+def get_refundable_payments(family):
+    from .models import PortalPayment
+
+    payments = PortalPayment.objects.filter(family=family, status=PortalPayment.STATUS_PAID).order_by("-paid_at")
+    rows = []
+    for payment in payments:
+        remaining = (payment.amount or Decimal("0")) - (payment.refunded_amount or Decimal("0"))
+        if remaining <= 0:
+            continue
+        rows.append(
+            {
+                "id": payment.pk,
+                "receipt_no": payment.receipt_no,
+                "date": timezone.localtime(payment.paid_at).strftime("%b %d, %Y") if payment.paid_at else "",
+                "amount": f"{payment.amount:.2f}",
+                "charged": f"{(payment.total_charged or payment.amount):.2f}",
+                "refunded": f"{(payment.refunded_amount or Decimal('0')):.2f}",
+                "remaining": f"{remaining:.2f}",
+                "method": payment.method_label or "Card",
+                "can_refund_card": bool(payment.stripe_session_id or payment.stripe_payment_intent_id),
+            }
+        )
+    return rows
+
+
+@transaction.atomic
+def refund_family_payment(family, payment_id, amount, reason=""):
+    from .models import PortalPayment
+    from .stripe_services import refund_stripe_payment
+
+    payment = PortalPayment.objects.select_related("family").filter(pk=payment_id, family=family).first()
+    if not payment:
+        raise ValueError("Payment not found on this family account.")
+    amount = _parse_amount(amount)
+    remaining = (payment.amount or Decimal("0")) - (payment.refunded_amount or Decimal("0"))
+    if amount > remaining:
+        raise ValueError(f"Refund cannot exceed the remaining ${remaining:.2f}.")
+    if payment.stripe_session_id or payment.stripe_payment_intent_id:
+        refund_stripe_payment(payment, amount)
+    payment.refunded_amount = (payment.refunded_amount or Decimal("0")) + amount
+    payment.save(update_fields=["refunded_amount"])
+    family.balance = family.balance + amount
+    family.save(update_fields=["balance"])
+    note = reason.strip() or f"Refund of {payment.receipt_no or 'card payment'}"
+    PortalLedgerEntry.objects.create(
+        family=family,
+        child_name="",
+        date=timezone.localdate(),
+        entry_type="refund",
+        description=note,
+        amount=amount,
+        is_manual=False,
+    )
+    return payment

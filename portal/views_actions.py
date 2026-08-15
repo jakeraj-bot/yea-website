@@ -1136,6 +1136,18 @@ def staff_billing_action(request, family_slug):
                 raise ValueError("Your role cannot delete ledger entries.")
             delete_ledger_entry(family, request.POST.get("entry_id"))
             messages.success(request, "Ledger entry removed.")
+        elif action == "refund":
+            if area != "admin":
+                raise ValueError("Only portal admin can send refunds.")
+            from .billing_services import refund_family_payment
+
+            refund_family_payment(
+                family,
+                request.POST.get("payment_id"),
+                request.POST.get("amount", ""),
+                request.POST.get("reason", ""),
+            )
+            messages.success(request, "Refund sent and the family balance was updated.")
         elif action == "update_plan":
             if area != "admin":
                 raise ValueError("Only portal admin can edit billing plans.")

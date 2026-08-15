@@ -1524,12 +1524,14 @@ def admin_family_billing(request, family_slug):
         MONTH_DAYS,
         WEEKDAYS,
         get_family_for_billing,
+        get_refundable_payments,
         prepare_billing_for_staff,
     )
     from .staff_auth import billing_permissions_for_staff
 
     plan_weekdays = WEEKDAYS
     plan_month_days = MONTH_DAYS
+    refundable_payments = []
 
     permissions = billing_permissions_for_staff(None, portal_area="admin")
     if _portal_families_live():
@@ -1544,6 +1546,7 @@ def admin_family_billing(request, family_slug):
             return render(request, "portal/404.html", status=404)
         billing = prepare_billing_for_staff(family, permissions)
         families = get_member_families_live()
+        refundable_payments = get_refundable_payments(family)
     else:
         billing = FAMILIES_BILLING.get(family_slug)
         if not billing:
@@ -1568,6 +1571,7 @@ def admin_family_billing(request, family_slug):
                 today=date.today().isoformat(),
                 plan_weekdays=plan_weekdays,
                 plan_month_days=plan_month_days,
+                refundable_payments=refundable_payments,
             ),
         ),
     )
