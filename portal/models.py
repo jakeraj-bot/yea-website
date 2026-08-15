@@ -644,3 +644,60 @@ class PortalWaivedAbsenceCharge(models.Model):
         ordering = ["-waived_at"]
         unique_together = [("family_slug", "child_name", "week_label", "charge_description")]
 
+
+class PortalFieldTrip(models.Model):
+    unit = models.ForeignKey(
+        PortalUnit,
+        on_delete=models.CASCADE,
+        related_name="field_trips",
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=180)
+    slug = models.SlugField(unique=True)
+    trip_date = models.DateField()
+    location = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    permission_slip = models.TextField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-trip_date", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class PortalFieldTripSignup(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_SIGNED = "signed"
+    STATUS_PAID = "paid"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Needs signature"),
+        (STATUS_SIGNED, "Signed — pay now"),
+        (STATUS_PAID, "Paid"),
+    ]
+
+    trip = models.ForeignKey(PortalFieldTrip, on_delete=models.CASCADE, related_name="signups")
+    child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="field_trip_signups")
+    family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="field_trip_signups")
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    signature_name = models.CharField(max_length=120, blank=True)
+    signed_at = models.DateTimeField(null=True, blank=True)
+    payment = models.ForeignKey(
+        PortalPayment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="field_trip_signups",
+    )
+
+    class Meta:
+        ordering = ["child__name"]
+        unique_together = [("trip", "child")]
+
+    def __str__(self):
+        return f"{self.child.name} · {self.trip.title}"
+

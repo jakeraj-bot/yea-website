@@ -130,6 +130,43 @@ def create_dropin_checkout_session(request, payment):
     return session
 
 
+def create_field_trip_checkout_session(request, payment, signup):
+    stripe = _stripe()
+    totals = calculate_card_processing_fee(str(payment.amount))
+    total_cents = int(Decimal(str(totals["total"])) * 100)
+    trip = signup.trip
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        customer=get_or_create_customer(payment.family.parent_account).id,
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": f"Field trip — {trip.title}",
+                        "description": f"{signup.child.name} · {trip.location} · {trip.trip_date.isoformat()}",
+                    },
+                    "unit_amount": total_cents,
+                },
+                "quantity": 1,
+            }
+        ],
+        success_url=_checkout_success_url(request),
+        cancel_url=request.build_absolute_uri("/portal/parent/field-trips/"),
+        metadata={
+            "portal_payment_id": str(payment.pk),
+            "family_slug": payment.family.slug,
+            "payment_kind": "field_trip",
+            "field_trip_signup_id": str(signup.pk),
+        },
+    )
+    payment.stripe_session_id = session.id
+    payment.fee_amount = Decimal(str(totals["fee"]))
+    payment.total_charged = Decimal(str(totals["total"]))
+    payment.save(update_fields=["stripe_session_id", "fee_amount", "total_charged"])
+    return session
+
+
 def create_setup_checkout_session(request, account):
     stripe = _stripe()
     customer = get_or_create_customer(account)

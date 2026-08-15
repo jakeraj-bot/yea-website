@@ -755,6 +755,34 @@ def admin_policy_create(request):
 
 @admin_login_required_post
 @require_POST
+def admin_field_trip_save(request):
+    from .field_trip_services import create_field_trip
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="field-trips")
+    try:
+        trip = create_field_trip(
+            {
+                "title": request.POST.get("title", ""),
+                "trip_date": parse_date(request.POST.get("trip_date") or ""),
+                "location": request.POST.get("location", ""),
+                "description": request.POST.get("description", ""),
+                "fee_amount": request.POST.get("fee_amount", "0"),
+                "permission_slip": request.POST.get("permission_slip", ""),
+                "unit": request.POST.get("unit", ""),
+            }
+        )
+        messages.success(
+            request,
+            f"Field trip “{trip.title}” published. Parents will sign the slip, then pay in Stripe.",
+        )
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="field-trips")
+
+
+@admin_login_required_post
+@require_POST
 def admin_newsletter_delete(request):
     from .models import PortalNewsletter
 
@@ -1419,6 +1447,65 @@ def parent_policy_sign(request):
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("portal_parent_page", page="policies")
+
+
+@require_POST
+def parent_field_trip_sign(request):
+    from .field_trip_services import sign_field_trip, start_field_trip_payment
+    from .parent_auth import get_parent_account, portal_preview_mode
+
+    if portal_preview_mode():
+        return redirect("portal_parent_page", page="field-trips")
+    account = get_parent_account(request.user)
+    if not account:
+        return redirect("portal_parent_login")
+    try:
+        signup = sign_field_trip(
+            account.family,
+            request.POST.get("signup_id"),
+            request.POST.get("signature_name", ""),
+        )
+        if signup.status == signup.STATUS_PAID:
+            messages.success(request, f"Permission slip signed for {signup.child.name}.")
+            return redirect("portal_parent_page", page="field-trips")
+        session = start_field_trip_payment(request, account.family, signup)
+        if session:
+            return redirect(session.url, code=303)
+        messages.success(request, "Permission slip signed.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_parent_page", page="field-trips")
+
+
+@require_POST
+def parent_field_trip_pay(request):
+    from .field_trip_services import start_field_trip_payment
+    from .models import PortalFieldTripSignup
+    from .parent_auth import get_parent_account, portal_preview_mode
+
+    if portal_preview_mode():
+        return redirect("portal_parent_page", page="field-trips")
+    account = get_parent_account(request.user)
+    if not account:
+        return redirect("portal_parent_login")
+    signup = PortalFieldTripSignup.objects.select_related("trip", "child", "family").filter(
+        pk=request.POST.get("signup_id"),
+        family=account.family,
+    ).first()
+    if not signup:
+        messages.error(request, "Field trip not found.")
+        return redirect("portal_parent_page", page="field-trips")
+    if signup.status == signup.STATUS_PENDING:
+        messages.error(request, "Sign the permission slip before paying.")
+        return redirect("portal_parent_page", page="field-trips")
+    try:
+        session = start_field_trip_payment(request, account.family, signup)
+        if session:
+            return redirect(session.url, code=303)
+        messages.success(request, "This trip does not require payment.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_parent_page", page="field-trips")
 
 
 @require_POST

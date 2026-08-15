@@ -1,0 +1,49 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Field trips</h1>
+    <p class="lead">Sign the permission slip, then pay the trip fee if there is one.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% for trip in field_trips %}
+    <article class="card" style="margin-bottom:1.25rem;">
+      <h2>{{ trip.title }}</h2>
+      <p class="form-note">{{ trip.child }} · {{ trip.trip_date }}{% if trip.location %} · {{ trip.location }}{% endif %} · ${{ trip.fee }}</p>
+      {% if trip.description %}<p>{{ trip.description }}</p>{% endif %}
+      <p><strong>Status:</strong> {{ trip.status_label }}</p>
+
+      {% if trip.status == "pending" %}
+      <div class="portal-callout card">
+        <p>{{ trip.permission_slip }}</p>
+      </div>
+      <form method="post" action="{% url 'portal_parent_field_trip_sign' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="signup_id" value="{{ trip.id }}">
+        <div class="form-group portal-form-full">
+          <label for="slip-name-{{ trip.id }}">Type your full name to sign</label>
+          <input id="slip-name-{{ trip.id }}" name="signature_name" type="text" class="portal-input" required>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">{% if trip.needs_payment %}Sign and pay ${{ trip.fee }}{% else %}Sign permission slip{% endif %}</button>
+        </div>
+      </form>
+      {% elif trip.status == "signed" and trip.needs_payment %}
+      <p class="form-note">Signed by {{ trip.signature_name }}. Continue to Stripe to finish payment.</p>
+      <form method="post" action="{% url 'portal_parent_field_trip_pay' %}">
+        {% csrf_token %}
+        <input type="hidden" name="signup_id" value="{{ trip.id }}">
+        <button type="submit" class="btn btn-primary">Pay ${{ trip.fee }} with Stripe</button>
+      </form>
+      {% else %}
+      <p class="form-note">You’re all set{% if trip.signature_name %} — signed by {{ trip.signature_name }}{% endif %}.</p>
+      {% endif %}
+    </article>
+    {% empty %}
+    <p class="form-note">No field trips are assigned to your children right now.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

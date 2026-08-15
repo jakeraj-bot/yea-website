@@ -136,6 +136,16 @@ urlpatterns = [
         name="portal_parent_policy_sign",
     ),
     path(
+        "parent/field-trip/sign/",
+        views_actions.parent_field_trip_sign,
+        name="portal_parent_field_trip_sign",
+    ),
+    path(
+        "parent/field-trip/pay/",
+        views_actions.parent_field_trip_pay,
+        name="portal_parent_field_trip_pay",
+    ),
+    path(
         "parent/drop-in/register/",
         views_actions.parent_dropin_register,
         name="portal_parent_dropin_register",
@@ -305,6 +315,7 @@ urlpatterns = [
     path("admin/default-rule/save/", views_actions.admin_default_rule_save, name="portal_admin_default_rule_save"),
     path("admin/waive-charge/", views_actions.admin_waive_charge, name="portal_admin_waive_charge"),
     path("admin/policy/create/", views_actions.admin_policy_create, name="portal_admin_policy_create"),
+    path("admin/field-trip/save/", views_actions.admin_field_trip_save, name="portal_admin_field_trip_save"),
     path("admin/newsletter/delete/", views_actions.admin_newsletter_delete, name="portal_admin_newsletter_delete"),
     path(
         "admin/parent-preview/<slug:family_slug>/",

@@ -285,6 +285,8 @@ def _profile_from_application(family, account):
 def _payment_description(payment):
     if payment.payment_kind == "dropin":
         return f"Drop-in — {payment.dropin_child} · {payment.dropin_program}"
+    if payment.payment_kind == "field_trip":
+        return f"Field trip — {payment.dropin_child} · {payment.dropin_program}"
     return "Family balance payment"
 
 
@@ -431,6 +433,10 @@ def record_successful_payment(payment, method_label="Card"):
                 description=f"Online payment — {method_label}",
                 amount=-payment.amount,
             )
+        elif payment.payment_kind == "field_trip":
+            from .field_trip_services import mark_field_trip_paid
+
+            mark_field_trip_paid(payment)
         elif payment.payment_kind == "dropin" and payment.dropin_booking_id:
             from dropin.models import DropInBooking
 

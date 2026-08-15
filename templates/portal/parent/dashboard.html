@@ -78,6 +78,11 @@
     {% if parent_authenticated %}
     <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the School 18 waitlist without starting over.</p>
     {% endif %}
+    {% if pending_field_trips %}
+    <div class="portal-callout card card-accent">
+      <p><strong>{{ pending_field_trips }} field trip{{ pending_field_trips|pluralize }} need a signature or payment.</strong> <a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Open field trips</a></p>
+    </div>
+    {% endif %}
 
     <div class="portal-quick-links card">
       <h2>Quick links</h2>
@@ -92,6 +97,7 @@
         <li><a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a></li>
         <li><a href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policies</a> ({{ dashboard.policies_signed }}/{{ dashboard.policies_total }})</li>
         <li><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
+        <li><a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Field trips</a></li>
         <li><a href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
       </ul>
     </div>

@@ -559,6 +559,7 @@ def parent_page(request, page):
         "billing": "portal/parent/billing.html",
         "receipts": "portal/parent/receipts.html",
         "drop-in": "portal/parent/drop_in.html",
+        "field-trips": "portal/parent/field_trips.html",
         "account": "portal/parent/account.html",
         "tax-statements": "portal/parent/tax_statements.html",
         "support": "portal/support/support.html",
@@ -576,6 +577,19 @@ def parent_page(request, page):
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
         context["dashboard"] = context["parent_preview"]["dashboard"]
+        account = get_parent_account(request.user) if request.user.is_authenticated else None
+        if account and _parent_live_mode(request):
+            from .field_trip_services import pending_field_trip_count
+
+            context["pending_field_trips"] = pending_field_trip_count(account.family)
+    if page == "field-trips":
+        account = get_parent_account(request.user) if request.user.is_authenticated else None
+        if account and _parent_live_mode(request):
+            from .field_trip_services import get_family_field_trips
+
+            context["field_trips"] = get_family_field_trips(account.family)
+        else:
+            context["field_trips"] = []
     if page == "applications":
         account = get_parent_account(request.user) if request.user.is_authenticated else None
         if account:
@@ -2046,6 +2060,7 @@ def admin_page(request, page):
         "billing-permissions": "portal/admin/billing_permissions.html",
         "scholarships": "portal/admin/scholarships.html",
         "member-policies": "portal/admin/member_policies.html",
+        "field-trips": "portal/admin/field_trips.html",
         "checkin-settings": "portal/admin/checkin_settings.html",
         "reports": "portal/admin/reports.html",
         "messages": "portal/messages/messages.html",
@@ -2433,6 +2448,19 @@ def admin_page(request, page):
             context["units"] = get_units_admin()
         else:
             context["units"] = UNITS
+    if page == "field-trips":
+        from .field_trip_services import DEFAULT_PERMISSION_SLIP
+
+        context["default_permission_slip"] = DEFAULT_PERMISSION_SLIP
+        if context.get("portal_live"):
+            from .admin_services import get_units_live
+            from .field_trip_services import get_admin_field_trips
+
+            context["units"] = get_units_live()
+            context["field_trips"] = get_admin_field_trips()
+        else:
+            context["units"] = UNITS
+            context["field_trips"] = []
     if page == "reports":
         context["reports"] = ADMIN_REPORTS
     return render(request, template, _finalize_admin_context(request, context))
@@ -2559,6 +2587,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         "billing": "portal/parent/billing.html",
         "receipts": "portal/parent/receipts.html",
         "drop-in": "portal/parent/drop_in.html",
+        "field-trips": "portal/parent/field_trips.html",
         "account": "portal/parent/account.html",
         "tax-statements": "portal/parent/tax_statements.html",
         "support": "portal/support/support.html",
@@ -2610,6 +2639,10 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             context["profile"] = preview["profile"]
         if page == "dashboard":
             context["dashboard"] = preview["dashboard"]
+        if page == "field-trips":
+            from .field_trip_services import get_family_field_trips
+
+            context["field_trips"] = get_family_field_trips(family)
         if page == "applications" and account:
             context["parent_applications"] = [
                 application_list_item(app) for app in get_applications_for_family(account.family)

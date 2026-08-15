@@ -1,0 +1,91 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Field trips</h1>
+    <p class="lead">Create a trip with a permission slip. After a parent signs, they go to Stripe to pay the fee.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-panel card portal-program-form">
+      <h2>New field trip</h2>
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_field_trip_save' %}{% else %}#{% endif %}" class="portal-form-grid">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group portal-form-full">
+          <label for="trip-title">Trip name</label>
+          <input id="trip-title" name="title" type="text" class="portal-input" placeholder="Liberty Science Center" required>
+        </div>
+        <div class="form-group">
+          <label for="trip-date">Date</label>
+          <input id="trip-date" name="trip_date" type="date" class="portal-input" required>
+        </div>
+        <div class="form-group">
+          <label for="trip-fee">Fee per child ($)</label>
+          <input id="trip-fee" name="fee_amount" type="text" class="portal-input" placeholder="25.00" value="0.00">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="trip-location">Destination</label>
+          <input id="trip-location" name="location" type="text" class="portal-input" placeholder="Jersey City, NJ">
+        </div>
+        <div class="form-group">
+          <label for="trip-unit">Who is invited</label>
+          <select id="trip-unit" name="unit" class="portal-select">
+            <option value="">All units</option>
+            {% for unit in units %}
+            <option value="{{ unit.slug }}">{{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="trip-description">Details for parents</label>
+          <textarea id="trip-description" name="description" class="portal-input portal-textarea" rows="2" placeholder="Leave at 9:00am, return by 2:00pm. Pack a lunch."></textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="trip-slip">Permission slip</label>
+          <textarea id="trip-slip" name="permission_slip" class="portal-input portal-textarea" rows="5">{{ default_permission_slip }}</textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Publish trip</button>
+        </div>
+      </form>
+    </div>
+
+    {% for trip in field_trips %}
+    <article class="card" style="margin-top:1.25rem;">
+      <div class="portal-unit-card-header">
+        <h2>{{ trip.title }}</h2>
+        <strong>${{ trip.fee }}</strong>
+      </div>
+      <dl class="portal-dl portal-dl-2col">
+        <dt>Date</dt><dd>{{ trip.trip_date }}</dd>
+        <dt>Destination</dt><dd>{{ trip.location|default:"—" }}</dd>
+        <dt>Unit</dt><dd>{{ trip.unit }}</dd>
+        <dt>Signed / paid</dt><dd>{{ trip.signed }} signed · {{ trip.paid }} paid · {{ trip.total }} invited</dd>
+      </dl>
+      {% if trip.signups %}
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Child</th><th>Family</th><th>Status</th><th>Signed</th></tr>
+          </thead>
+          <tbody>
+            {% for signup in trip.signups %}
+            <tr>
+              <td>{{ signup.child }}</td>
+              <td>{{ signup.family }}</td>
+              <td>{{ signup.status }}</td>
+              <td>{{ signup.signed_at|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </article>
+    {% empty %}
+    <p class="form-note">No field trips yet. Publish one above to send permission slips to parents.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
