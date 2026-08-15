@@ -692,9 +692,9 @@ def parent_payment(request):
         }
         page_title = "Pay for drop-in"
     else:
-        amount = request.GET.get("amount") or billing["running_balance"]
+        amount = request.GET.get("amount") or billing.get("balance_due") or billing["running_balance"]
         dropin_context = None
-        page_title = "Pay balance"
+        page_title = "Pay or add credit"
     payment_totals = calculate_card_processing_fee(amount)
     return render(
         request,
@@ -723,15 +723,19 @@ def parent_payment_preview(request):
         preview_key = preview_key_for_family(account.family)
     else:
         billing = PARENT_PAYMENT_PREVIEWS[preview_key]["billing"]
-    balance = float(billing["running_balance"])
+    balance = float(billing.get("balance_due") or max(float(billing["running_balance"]), 0))
     is_dropin = request.GET.get("source") == "dropin"
-    amount_raw = request.GET.get("amount", billing["running_balance"])
+    amount_raw = request.GET.get("amount", billing.get("balance_due") or billing["running_balance"])
     try:
         pay_amount = float(str(amount_raw).replace(",", ""))
     except (TypeError, ValueError):
         pay_amount = balance
     if pay_amount <= 0:
-        pay_amount = balance if not is_dropin else float(request.GET.get("amount") or 35)
+        if is_dropin:
+            pay_amount = float(request.GET.get("amount") or 35)
+        else:
+            messages.error(request, "Enter an amount to pay or add as account credit.")
+            return redirect("portal_parent_payment")
     credit_amount = 0.0 if is_dropin else max(0.0, round(pay_amount - balance, 2))
     payment_totals = calculate_card_processing_fee(str(pay_amount))
     method = request.GET.get("method", "Visa ending 4242")
@@ -1479,6 +1483,11 @@ def staff_family_billing(request, family_slug):
     permissions = billing_permissions_for_staff(get_staff_account(request.user))
     unit = _staff_unit(request)
     if _portal_families_live() and unit:
+        from .billing_services import run_due_plan_charges
+
+        posted = run_due_plan_charges()
+        if posted:
+            messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
         family = get_family_for_billing(family_slug, unit)
         if not family:
             return render(request, "portal/404.html", status=404)
@@ -1511,13 +1520,25 @@ def staff_family_billing(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_billing(request, family_slug):
-    from .billing_services import get_family_for_billing, prepare_billing_for_staff
+    from .billing_services import (
+        MONTH_DAYS,
+        WEEKDAYS,
+        get_family_for_billing,
+        prepare_billing_for_staff,
+    )
     from .staff_auth import billing_permissions_for_staff
+
+    plan_weekdays = WEEKDAYS
+    plan_month_days = MONTH_DAYS
 
     permissions = billing_permissions_for_staff(None, portal_area="admin")
     if _portal_families_live():
         from .admin_services import get_member_families_live
+        from .billing_services import run_due_plan_charges
 
+        posted = run_due_plan_charges()
+        if posted:
+            messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
         family = get_family_for_billing(family_slug, unit=None)
         if not family:
             return render(request, "portal/404.html", status=404)
@@ -1545,6 +1566,8 @@ def admin_family_billing(request, family_slug):
                 billing_live=_portal_families_live(),
                 family_slug=family_slug,
                 today=date.today().isoformat(),
+                plan_weekdays=plan_weekdays,
+                plan_month_days=plan_month_days,
             ),
         ),
     )
@@ -2276,9 +2299,18 @@ def admin_page(request, page):
         show_preview = request.GET.get("preview") == "1"
         if context.get("portal_live"):
             from .admin_services import get_units_live
-            from .billing_services import build_bulk_charge_preview, get_org_ledger_live
+            from .billing_services import (
+                build_bulk_charge_preview,
+                get_org_ledger_live,
+                get_scheduled_plan_charges,
+                run_due_plan_charges,
+            )
 
+            posted = run_due_plan_charges()
+            if posted:
+                messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
             context["units"] = get_units_live()
+            context["scheduled_plan_charges"] = get_scheduled_plan_charges()
             context["bulk_filter"] = {
                 "unit": unit_slug,
                 "mode": charge_mode,
@@ -2308,6 +2340,7 @@ def admin_page(request, page):
             context["bulk_preview"] = []
             context["ledger_entries"] = []
             context["show_bulk_preview"] = False
+            context["scheduled_plan_charges"] = []
             context["today"] = date.today().isoformat()
     if page == "billing-settings":
         if context.get("portal_live"):

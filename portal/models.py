@@ -70,6 +70,11 @@ class PortalChild(models.Model):
     note = models.CharField(max_length=255, blank=True)
     billing_plan = models.CharField(max_length=64, default="Weekly")
     billing_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    auto_charge = models.BooleanField(default=False)
+    next_charge_date = models.DateField(null=True, blank=True)
+    last_auto_charge_date = models.DateField(null=True, blank=True)
+    charge_weekday = models.PositiveSmallIntegerField(null=True, blank=True)
+    charge_month_day = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]

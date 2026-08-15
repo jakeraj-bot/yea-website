@@ -8,8 +8,8 @@
     <p class="lead">{{ dropin.child }} · {{ dropin.program }} · {{ dropin.location }}{% if dropin.date %} · {{ dropin.date }}{% endif %}</p>
     {% else %}
     <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing</a> / Pay balance</p>
-    <h1>Pay balance</h1>
-    <p class="lead">{{ parent_preview.family_name }} family · balance due ${{ billing.running_balance }}</p>
+    <h1>Pay or add credit</h1>
+    <p class="lead">{{ parent_preview.family_name }} family · {% if billing.has_credit %}${{ billing.account_credit }} credit on account{% else %}balance due ${{ billing.balance_due|default:billing.running_balance }}{% endif %}</p>
     {% endif %}
   </div>
 </section>
@@ -42,23 +42,25 @@
           <div class="form-group portal-form-full">
             <label>How much would you like to pay?</label>
             <div class="portal-payment-amount-options">
+              {% if billing.balance_due and billing.balance_due != "0.00" %}
               <label class="portal-payment-amount-option">
-                <input type="radio" name="amount_choice" value="full" checked data-amount="{{ billing.running_balance }}">
-                Pay full balance — <strong>${{ billing.running_balance }}</strong>
+                <input type="radio" name="amount_choice" value="full" checked data-amount="{{ billing.balance_due }}">
+                Pay full balance — <strong>${{ billing.balance_due }}</strong>
               </label>
+              {% endif %}
               <label class="portal-payment-amount-option">
-                <input type="radio" name="amount_choice" value="custom">
-                Pay a different amount (partial or extra for account credit)
+                <input type="radio" name="amount_choice" value="custom"{% if not billing.balance_due or billing.balance_due == "0.00" %} checked{% endif %}>
+                {% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead (adds account credit){% else %}Pay a different amount (partial or extra for account credit){% endif %}
               </label>
             </div>
           </div>
-          <div class="form-group" id="custom-amount-wrap" hidden>
+          <div class="form-group" id="custom-amount-wrap"{% if billing.balance_due and billing.balance_due != "0.00" %} hidden{% endif %}>
             <label for="pay-amount">Payment amount</label>
             <div class="portal-input-prefix">
               <span>$</span>
-              <input id="pay-amount" name="amount" type="number" min="1" step="0.01" class="portal-input" value="{{ payment_amount|default:billing.running_balance }}">
+              <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" class="portal-input" value="{% if billing.balance_due and billing.balance_due != '0.00' %}{{ payment_amount|default:billing.balance_due }}{% endif %}" required>
             </div>
-            <p class="form-note" id="credit-note" hidden></p>
+            <p class="form-note" id="credit-note">{% if billing.has_credit %}You already have ${{ billing.account_credit }} credit. This payment will add more.{% endif %}</p>
           </div>
           {% endif %}
 
@@ -139,10 +141,11 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if not is_dropin_payment and not parent_stripe_enabled %}
+{% if not is_dropin_payment %}
 <script>
 (function () {
-  var balance = parseFloat("{{ billing.running_balance }}");
+  var balance = parseFloat("{{ billing.balance_due|default:billing.running_balance }}") || 0;
+  var existingCredit = parseFloat("{{ billing.account_credit|default:'0' }}") || 0;
   var form = document.getElementById("parent-payment-form");
   var customWrap = document.getElementById("custom-amount-wrap");
   var amountInput = document.getElementById("pay-amount");
@@ -158,10 +161,12 @@
   }
 
   function updateCreditNote() {
+    if (!creditNote) return;
     var amount = selectedAmount();
-    if (amount > balance) {
+    var credit = existingCredit + Math.max(0, amount - balance);
+    if (credit > 0 && (amount > balance || existingCredit > 0)) {
       creditNote.hidden = false;
-      creditNote.textContent = "You will have a $" + (amount - balance).toFixed(2) + " account credit after this payment.";
+      creditNote.textContent = "After this payment you will have $" + credit.toFixed(2) + " account credit for future charges.";
     } else {
       creditNote.hidden = true;
     }
@@ -197,9 +202,12 @@
     });
   }
 
-  form.addEventListener("submit", function () {
-    amountInput.value = selectedAmount().toFixed(2);
-  });
+  if (form) {
+    form.addEventListener("submit", function () {
+      if (amountInput) amountInput.value = selectedAmount().toFixed(2);
+    });
+  }
+  updateCreditNote();
 })();
 </script>
 {% elif not parent_stripe_enabled %}

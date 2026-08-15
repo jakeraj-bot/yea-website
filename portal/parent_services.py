@@ -47,6 +47,8 @@ def _child_balances_from_ledger(family):
 
     portal_children = list(family.children.filter(is_active=True))
     if portal_children:
+        from .billing_services import plan_repeat_label
+
         return [
             {
                 "name": child.name,
@@ -55,6 +57,11 @@ def _child_balances_from_ledger(family):
                 "amount": f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—",
                 "type": family.billing_type or "Private pay",
                 "child_id": child.pk,
+                "auto_charge": child.auto_charge,
+                "next_charge_date": child.next_charge_date.isoformat() if child.next_charge_date else "",
+                "charge_weekday": "" if child.charge_weekday is None else child.charge_weekday,
+                "charge_month_day": "" if child.charge_month_day is None else child.charge_month_day,
+                "auto_charge_label": plan_repeat_label(child),
             }
             for child in portal_children
         ]
@@ -100,10 +107,14 @@ def get_billing_live(family):
 
     children = _child_balances_from_ledger(family)
     payment_type = demo.get("payment_type") or family.billing_type or "Private pay"
+    has_credit = family.balance < 0
     return {
         "family_name": family.name,
         "slug": family.slug,
         "running_balance": f"{family.balance:.2f}",
+        "balance_due": f"{max(family.balance, Decimal('0')):.2f}",
+        "account_credit": f"{abs(family.balance):.2f}" if has_credit else "0.00",
+        "has_credit": has_credit,
         "payment_type": payment_type,
         "payment_type_note": demo.get("account_note", demo.get("payment_type_note", "")),
         "agency_name": demo.get("agency_name", ""),
@@ -410,7 +421,7 @@ def record_successful_payment(payment, method_label="Card"):
 
         family = payment.family
         if payment.payment_kind == "balance":
-            family.balance = max(Decimal("0"), family.balance - payment.amount)
+            family.balance = family.balance - payment.amount
             family.save(update_fields=["balance"])
             PortalLedgerEntry.objects.create(
                 family=family,

@@ -824,7 +824,7 @@ def parent_payment_checkout(request):
     except (InvalidOperation, TypeError):
         amount = Decimal("0")
     if amount <= 0:
-        messages.error(request, "Enter a valid payment amount.")
+        messages.error(request, "Enter an amount to pay or add as account credit.")
         return redirect("portal_parent_payment")
 
     payment = PortalPayment.objects.create(
@@ -1137,14 +1137,18 @@ def staff_billing_action(request, family_slug):
             delete_ledger_entry(family, request.POST.get("entry_id"))
             messages.success(request, "Ledger entry removed.")
         elif action == "update_plan":
-            if area != "admin" and not permissions.get("can_edit_family_plans"):
-                raise ValueError("Your role cannot edit billing plans.")
+            if area != "admin":
+                raise ValueError("Only portal admin can edit billing plans.")
             update_child_billing_plan(
                 family,
                 request.POST.get("child_name", "").strip(),
                 request.POST.get("billing_plan", "Weekly"),
                 request.POST.get("billing_amount"),
                 request.POST.get("billing_type"),
+                auto_charge=request.POST.get("auto_charge") == "on",
+                next_charge_date=parse_date(request.POST.get("next_charge_date") or "") or None,
+                charge_weekday=request.POST.get("charge_weekday"),
+                charge_month_day=request.POST.get("charge_month_day"),
             )
             messages.success(request, "Billing plan updated.")
         else:

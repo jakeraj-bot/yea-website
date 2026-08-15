@@ -16,11 +16,11 @@
 
     <div class="portal-balance-banner card card-accent">
       <div>
-        <span class="portal-stat-label">Family running balance</span>
-        <p class="portal-balance-total">${{ billing.running_balance }}</p>
+        <span class="portal-stat-label">{% if billing.has_credit %}Account credit{% else %}Family running balance{% endif %}</span>
+        <p class="portal-balance-total">{% if billing.has_credit %}${{ billing.account_credit }} credit{% else %}${{ billing.running_balance }}{% endif %}</p>
         <span class="portal-payment-badge portal-payment-badge-{{ billing.payment_type|slugify }}">{{ billing.payment_type }}</span>
       </div>
-      <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">Pay balance</a>
+      <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">{% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead{% else %}Pay balance{% endif %}</a>
     </div>
 
     <section class="card portal-profile-full">

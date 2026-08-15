@@ -101,6 +101,43 @@
       {% endif %}
     </div>
 
+    {% if scheduled_plan_charges %}
+    <div class="portal-panel card">
+      <h2>Scheduled automatic charges</h2>
+      <p class="form-note">These child plans post on the date you set. Opening this page also posts any charges that are already due.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Next date</th>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Child</th>
+              <th>Plan</th>
+              <th>Repeats</th>
+              <th>Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in scheduled_plan_charges %}
+            <tr>
+              <td>{{ row.next_charge_date }}</td>
+              <td>{{ row.family_name }}</td>
+              <td>{{ row.unit }}</td>
+              <td>{{ row.child_name }}</td>
+              <td>{{ row.plan }}</td>
+              <td>{{ row.repeat }}</td>
+              <td>${{ row.amount }}</td>
+              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}">Edit plan</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="portal-panel card">
       <h2>Recent charges &amp; payments</h2>
       <p class="form-note">Open a family to add charges, credits, payments, or delete entries.</p>
