@@ -11,6 +11,11 @@ def stripe_configured():
     return member_stripe_configured()
 
 
+def _checkout_success_url(request):
+    """Stripe requires a literal {CHECKOUT_SESSION_ID} — build_absolute_uri encodes braces."""
+    return request.build_absolute_uri("/portal/parent/payment/success/") + "?session_id={CHECKOUT_SESSION_ID}"
+
+
 def _stripe():
     return member_stripe()
 
@@ -69,9 +74,7 @@ def create_balance_checkout_session(request, payment):
                 "quantity": 1,
             }
         ],
-        success_url=request.build_absolute_uri(
-            f"/portal/parent/payment/success/?session_id={{CHECKOUT_SESSION_ID}}"
-        ),
+        success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/"),
         metadata={
             "portal_payment_id": str(payment.pk),
@@ -109,9 +112,7 @@ def create_dropin_checkout_session(request, payment):
                 "quantity": 1,
             }
         ],
-        success_url=request.build_absolute_uri(
-            f"/portal/parent/payment/success/?session_id={{CHECKOUT_SESSION_ID}}"
-        ),
+        success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/?source=dropin"),
         metadata={
             "portal_payment_id": str(payment.pk),
@@ -143,11 +144,16 @@ def create_setup_checkout_session(request, account):
 def confirm_checkout_payment(session_id):
     if not stripe_configured() or not session_id:
         return None
+    if session_id in {"{CHECKOUT_SESSION_ID}", "%7BCHECKOUT_SESSION_ID%7D"}:
+        return None
     from .models import PortalPayment
     from .parent_services import record_successful_payment
 
     stripe = _stripe()
-    session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
+    try:
+        session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
+    except Exception:
+        return None
     if session.payment_status != "paid":
         return None
     payment_id = session.metadata.get("portal_payment_id")

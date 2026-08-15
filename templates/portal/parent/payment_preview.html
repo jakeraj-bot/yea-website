@@ -39,7 +39,9 @@
           {% if credit_amount != "0.00" %}
           <dt>Account credit after payment</dt><dd class="portal-amount-credit">${{ credit_amount }}</dd>
           {% endif %}
+          {% if not parent_stripe_enabled %}
           <dt>Payment method</dt><dd>{{ payment_method }}</dd>
+          {% endif %}
           <dt>{{ stripe_fee.label }}</dt><dd>${{ payment_totals.fee }}</dd>
           <dt><strong>Total charged to card</strong></dt><dd><strong>${{ payment_totals.total }}</strong></dd>
         </dl>
