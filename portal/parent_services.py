@@ -311,6 +311,12 @@ def _policies_counts_for_family(family):
 
 
 def build_parent_preview_live(family, account):
+    from .stripe_services import reconcile_pending_stripe_payments_for_family, stripe_configured
+
+    if stripe_configured():
+        reconciled = reconcile_pending_stripe_payments_for_family(family)
+    else:
+        reconciled = []
     billing = get_billing_live(family)
     profile = get_profile_live(family, account)
     balance = billing["running_balance"]
@@ -330,6 +336,7 @@ def build_parent_preview_live(family, account):
         "billing": billing,
         "profile": profile,
         "dashboard": dashboard,
+        "stripe_reconciled": reconciled,
     }
 
 

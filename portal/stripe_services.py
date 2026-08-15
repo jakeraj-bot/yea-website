@@ -157,14 +157,68 @@ def confirm_checkout_payment(session_id):
     if session.payment_status != "paid":
         return None
     payment_id = session.metadata.get("portal_payment_id")
-    if not payment_id:
+    payment = None
+    if payment_id:
+        payment = PortalPayment.objects.filter(pk=payment_id).select_related("family").first()
+    if not payment:
+        payment = PortalPayment.objects.filter(stripe_session_id=session_id).select_related("family").first()
+    if not payment:
         return None
-    payment = PortalPayment.objects.filter(pk=payment_id).select_related("family").first()
-    if not payment or payment.status == PortalPayment.STATUS_PAID:
+    if payment.status == PortalPayment.STATUS_PAID:
         return payment
     method_label = "Card"
     if session.payment_intent and getattr(session.payment_intent, "payment_method", None):
-        pm = stripe.PaymentMethod.retrieve(session.payment_intent.payment_method)
-        if pm.card:
-            method_label = f"{(pm.card.brand or 'Card').title()} ending {pm.card.last4}"
+        try:
+            pm = stripe.PaymentMethod.retrieve(session.payment_intent.payment_method)
+            if pm.card:
+                method_label = f"{(pm.card.brand or 'Card').title()} ending {pm.card.last4}"
+        except Exception:
+            pass
     return record_successful_payment(payment, method_label=method_label)
+
+
+def reconcile_pending_stripe_payments_for_family(family):
+    """Apply paid Stripe checkout sessions that never reached the success page."""
+    if not stripe_configured():
+        return []
+    from .models import PortalPayment
+
+    pending = PortalPayment.objects.filter(
+        family=family,
+        status=PortalPayment.STATUS_PENDING,
+    ).exclude(stripe_session_id="")
+    reconciled = []
+    for payment in pending:
+        confirmed = confirm_checkout_payment(payment.stripe_session_id)
+        if confirmed and confirmed.status == PortalPayment.STATUS_PAID:
+            reconciled.append(confirmed)
+    return reconciled
+
+
+def handle_member_stripe_webhook(payload, signature):
+    """Process Stripe webhook events for member portal payments."""
+    if not stripe_configured():
+        return False
+    stripe = _stripe()
+    secret = settings.MEMBER_STRIPE_WEBHOOK_SECRET
+    if secret:
+        try:
+            event = stripe.Webhook.construct_event(payload, signature, secret)
+        except Exception:
+            return False
+    else:
+        import json
+
+        try:
+            event = json.loads(payload)
+        except (TypeError, ValueError):
+            return False
+    if event.get("type") != "checkout.session.completed":
+        return True
+    session = event.get("data", {}).get("object") or {}
+    if session.get("payment_status") != "paid":
+        return True
+    session_id = session.get("id")
+    if session_id:
+        confirm_checkout_payment(session_id)
+    return True

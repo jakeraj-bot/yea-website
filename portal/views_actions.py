@@ -1458,3 +1458,20 @@ def parent_dropin_book(request):
         messages.warning(request, str(exc))
     return redirect("portal_parent_page", page="drop-in")
 
+
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+
+@csrf_exempt
+@require_POST
+def member_stripe_webhook(request):
+    from .stripe_services import handle_member_stripe_webhook
+
+    payload = request.body
+    signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+    if handle_member_stripe_webhook(payload, signature):
+        return HttpResponse(status=200)
+    return HttpResponse(status=400)
+

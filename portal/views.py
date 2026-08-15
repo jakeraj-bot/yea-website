@@ -570,6 +570,8 @@ def parent_page(request, page):
     context = _parent_context(request, page.replace("-", " ").title(), page_slug=page)
     if page == "billing":
         context["billing"] = context["parent_preview"]["billing"]
+        for payment in context["parent_preview"].get("stripe_reconciled") or []:
+            messages.success(request, f"Payment recorded — receipt {payment.receipt_no}.")
     if page == "profile":
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
@@ -789,10 +791,16 @@ def parent_payment_complete(request):
 def parent_payment_success(request):
     session_id = request.GET.get("session_id")
     payment = None
-    if session_id and stripe_configured():
-        from .stripe_services import confirm_checkout_payment
+    account = get_parent_account(request.user)
+    if stripe_configured():
+        from .stripe_services import confirm_checkout_payment, reconcile_pending_stripe_payments_for_family
 
-        payment = confirm_checkout_payment(session_id)
+        if session_id:
+            payment = confirm_checkout_payment(session_id)
+        if not payment and account:
+            reconciled = reconcile_pending_stripe_payments_for_family(account.family)
+            if reconciled:
+                payment = reconciled[-1]
     if not payment:
         messages.error(request, "We could not confirm your payment. Contact YEA if you were charged.")
         return redirect("portal_parent_page", page="billing")

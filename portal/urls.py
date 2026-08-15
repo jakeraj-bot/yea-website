@@ -71,6 +71,11 @@ urlpatterns = [
         name="portal_parent_payment_checkout",
     ),
     path(
+        "stripe/webhook/",
+        views_actions.member_stripe_webhook,
+        name="portal_member_stripe_webhook",
+    ),
+    path(
         "parent/card/setup/",
         views_actions.parent_card_setup,
         name="portal_parent_card_setup",
