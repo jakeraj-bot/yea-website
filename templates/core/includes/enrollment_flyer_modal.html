@@ -1,0 +1,27 @@
+{% load static %}
+<div class="modal flyer-modal" id="enrollment-flyer-modal" hidden role="dialog" aria-modal="true" aria-labelledby="enrollment-flyer-title">
+  <div class="modal-backdrop" data-modal-close></div>
+  <div class="modal-panel flyer-panel">
+    <button type="button" class="flyer-close" data-modal-close aria-label="Close enrollment flyer">&times;</button>
+
+    {% if enrollment_flyer %}
+    <a class="flyer-image-link" href="{% url 'apply' %}" data-flyer-apply>
+      <img class="flyer-image" src="{% static enrollment_flyer %}" alt="Now enrolling at Youth Education Academy for the 2026–27 school year">
+    </a>
+    {% else %}
+    <div class="flyer-card">
+      <p class="flyer-kicker">Now enrolling</p>
+      <h2 id="enrollment-flyer-title" class="flyer-title">2026–27 school year</h2>
+      <p class="flyer-lead">After-school starts <strong>September 8, 2026</strong> at School 18, School 26, and Dale Ave.</p>
+      <p class="flyer-ages">Ages 2½–13 · Paterson, NJ</p>
+    </div>
+    {% endif %}
+
+    {% if enrollment_flyer %}
+    <h2 id="enrollment-flyer-title" class="visually-hidden">Now enrolling for the 2026–27 school year</h2>
+    {% endif %}
+
+    <a class="btn btn-primary flyer-apply" href="{% url 'apply' %}" data-flyer-apply>Apply now</a>
+    <button type="button" class="flyer-later" data-modal-close>Maybe later</button>
+  </div>
+</div>

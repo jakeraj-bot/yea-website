@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.staticfiles.finders import find
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -20,6 +21,20 @@ from .spam_protection import (
     get_client_ip,
 )
 
+ENROLLMENT_FLYER_CANDIDATES = (
+    "images/site/enrollment-flyer.jpg",
+    "images/site/enrollment-flyer.jpeg",
+    "images/site/enrollment-flyer.png",
+    "images/site/enrollment-flyer.webp",
+)
+
+
+def enrollment_flyer_static_path():
+    for name in ENROLLMENT_FLYER_CANDIDATES:
+        if find(name):
+            return name
+    return ""
+
 
 def home(request):
     return render(
@@ -29,6 +44,7 @@ def home(request):
             "gallery_photos": photos.HOME_GALLERY,
             "school_18_photo": photos.SCHOOL_18_FEATURED,
             "dale_ave_photo": photos.DALE_AVE_FEATURED,
+            "enrollment_flyer": enrollment_flyer_static_path(),
         },
     )
 

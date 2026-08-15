@@ -258,4 +258,57 @@
     </div>
   </div>
 </section>
+
+{% include "core/includes/enrollment_flyer_modal.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var KEY = "yea_enroll_flyer_2026";
+  var modal = document.getElementById("enrollment-flyer-modal");
+  if (!modal) return;
+
+  var force = false;
+  try {
+    force = new URLSearchParams(window.location.search).get("flyer") === "1";
+  } catch (e) {}
+
+  var seen = false;
+  try {
+    seen = window.localStorage.getItem(KEY) === "1";
+  } catch (e) {}
+
+  function markSeen() {
+    try {
+      window.localStorage.setItem(KEY, "1");
+    } catch (e) {}
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+    markSeen();
+  }
+
+  modal.querySelectorAll("[data-modal-close]").forEach(function (el) {
+    el.addEventListener("click", closeModal);
+  });
+  modal.querySelectorAll("[data-flyer-apply]").forEach(function (el) {
+    el.addEventListener("click", markSeen);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !modal.hidden) closeModal();
+  });
+
+  if (force || !seen) {
+    window.setTimeout(openModal, 350);
+  }
+})();
+</script>
 {% endblock %}
