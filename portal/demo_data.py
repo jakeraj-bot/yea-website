@@ -1851,6 +1851,32 @@ def _unit_for_location(location_label):
     return UNITS[0]
 
 
+def _received_by_label(manager_name):
+    name = (manager_name or "").strip()
+    if not name:
+        return "Site Director"
+    if "director" in name.lower() or "manager" in name.lower():
+        return name
+    return f"{name} — Site Director"
+
+
+def _live_portal_unit(location_label):
+    try:
+        from portal.models import PortalUnit
+    except Exception:
+        return None
+    units = PortalUnit.objects.all()
+    if location_label:
+        first = location_label.split(",")[0].strip()
+        unit = units.filter(name__iexact=first).first()
+        if unit:
+            return unit
+        unit = units.filter(name__icontains=first).first()
+        if unit:
+            return unit
+    return None
+
+
 def _amount_in_words(amount_str):
     try:
         dollars = int(float(str(amount_str).replace(",", "")))
@@ -1898,11 +1924,15 @@ def _amount_in_words(amount_str):
     return word
 
 
-def enrich_receipt_for_print(receipt, preview_key):
+def enrich_receipt_for_print(receipt, preview_key, family=None):
     preview = PARENT_PAYMENT_PREVIEWS.get(preview_key, PARENT_PAYMENT_PREVIEWS["private-pay"])
     profile = preview["profile"]
     child_name = receipt.get("child", "")
-    location_label = receipt.get("location", "School 18")
+    location_label = receipt.get("location", "")
+    if family and getattr(family, "unit_id", None) and not location_label:
+        location_label = family.unit.name
+    if not location_label:
+        location_label = "School 18"
     program = receipt.get("program", "After-School Program 2026–27")
     for child in profile.get("children", []):
         if child.get("name") == child_name:
@@ -1910,6 +1940,12 @@ def enrich_receipt_for_print(receipt, preview_key):
             program = receipt.get("program") or child.get("program", program)
             break
     unit = _unit_for_location(location_label)
+    live_unit = family.unit if family and getattr(family, "unit_id", None) else _live_portal_unit(location_label)
+    manager_name = ""
+    if live_unit:
+        manager_name = getattr(live_unit, "manager_name", "") or ""
+    if not manager_name:
+        manager_name = unit.get("manager", "")
     is_paid = "RCPT" in receipt.get("reference", "")
     amount = receipt.get("amount", "0.00")
     paid_through = "Other"
@@ -1943,9 +1979,13 @@ def enrich_receipt_for_print(receipt, preview_key):
         "program": program,
         "paid_through": paid_through,
         "paid_through_detail": method if paid_through in ("Other", "Card") else "",
-        "received_by": "Maria Santos — Site Director",
-        "location_name": unit["name"],
-        "location_address": f'{unit["address"]}, {unit["city"]}',
+        "received_by": receipt.get("received_by") or _received_by_label(manager_name),
+        "location_name": getattr(live_unit, "name", None) or unit["name"],
+        "location_address": (
+            ", ".join(part for part in [getattr(live_unit, "address", ""), getattr(live_unit, "city", "")] if part)
+            if live_unit and (getattr(live_unit, "address", "") or getattr(live_unit, "city", ""))
+            else f'{unit["address"]}, {unit["city"]}'
+        ),
         "company_name": YEA_COMPANY["name"],
         "company_address_line1": YEA_COMPANY["address_line1"],
         "company_city_state_zip": YEA_COMPANY["city_state_zip"],

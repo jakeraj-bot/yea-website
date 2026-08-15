@@ -152,6 +152,7 @@ def get_receipts_live(family):
     if payments.exists():
         receipts = []
         for payment in payments:
+            unit = family.unit if getattr(family, "unit_id", None) else None
             receipts.append(
                 {
                     "date": timezone.localtime(payment.paid_at).strftime("%b %d, %Y") if payment.paid_at else "",
@@ -160,6 +161,9 @@ def get_receipts_live(family):
                     "method": payment.method_label,
                     "description": _payment_description(payment),
                     "status": "Paid",
+                    "location": payment.dropin_location or (unit.name if unit else ""),
+                    "child": payment.dropin_child if payment.payment_kind == "dropin" else "",
+                    "program": payment.dropin_program,
                 }
             )
         return receipts
@@ -436,17 +440,19 @@ def _next_receipt_no():
 
 
 def payment_to_receipt_dict(payment, preview_key):
+    family = payment.family
+    unit = family.unit if getattr(family, "unit_id", None) else None
     receipt = {
         "reference": payment.receipt_no,
         "date": timezone.localtime(payment.paid_at).date().isoformat() if payment.paid_at else "",
-        "amount": f"{payment.amount:.2f}",
+        "amount": f"{payment.total_charged or payment.amount:.2f}",
         "method": f"Card — {payment.method_label}",
         "description": _payment_description(payment),
         "child": payment.dropin_child if payment.payment_kind == "dropin" else "",
         "program": payment.dropin_program,
-        "location": payment.dropin_location,
+        "location": payment.dropin_location or (unit.name if unit else ""),
     }
-    return enrich_receipt_for_print(receipt, preview_key)
+    return enrich_receipt_for_print(receipt, preview_key, family=family)
 
 
 def seed_parent_accounts(unit):

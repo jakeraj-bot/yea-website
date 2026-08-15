@@ -651,10 +651,12 @@ def parent_page(request, page):
     if page == "receipts":
         preview_key = _parent_preview_key(request)
         account = get_parent_account(request.user) if request.user.is_authenticated else None
+        family = None
         if _parent_live_mode(request) and account:
             preview_key = preview_key_for_family(account.family)
+            family = account.family
         paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
-        context["receipt_previews"] = [enrich_receipt_for_print(r, preview_key) for r in paid_receipts[:2]]
+        context["receipt_previews"] = [enrich_receipt_for_print(r, preview_key, family=family) for r in paid_receipts[:2]]
     if page == "support":
         preview_key = _parent_preview_key(request)
         family_slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
@@ -2585,7 +2587,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         if page == "receipts":
             paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
             context["receipt_previews"] = [
-                enrich_receipt_for_print(r, preview_key_for_family(family)) for r in paid_receipts[:2]
+                enrich_receipt_for_print(r, preview_key_for_family(family), family=family) for r in paid_receipts[:2]
             ]
         if page == "support":
             context = _support_context("parent", "Support", request, preview_family=family_slug)
