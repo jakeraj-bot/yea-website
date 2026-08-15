@@ -126,7 +126,10 @@ def get_account_live(account):
     if account.stripe_customer_id:
         from .stripe_services import list_saved_payment_methods
 
-        payment_methods = list_saved_payment_methods(account.stripe_customer_id)
+        try:
+            payment_methods = list_saved_payment_methods(account.stripe_customer_id)
+        except Exception:
+            payment_methods = []
     if not payment_methods:
         payment_methods = demo.get("payment_methods", [])
 
@@ -313,10 +316,12 @@ def _policies_counts_for_family(family):
 def build_parent_preview_live(family, account):
     from .stripe_services import reconcile_pending_stripe_payments_for_family, stripe_configured
 
+    reconciled = []
     if stripe_configured():
-        reconciled = reconcile_pending_stripe_payments_for_family(family)
-    else:
-        reconciled = []
+        try:
+            reconciled = reconcile_pending_stripe_payments_for_family(family)
+        except Exception:
+            reconciled = []
     billing = get_billing_live(family)
     profile = get_profile_live(family, account)
     balance = billing["running_balance"]

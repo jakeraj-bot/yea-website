@@ -38,7 +38,10 @@ def list_saved_payment_methods(customer_id):
     if not stripe_configured() or not customer_id:
         return []
     stripe = _stripe()
-    methods = stripe.PaymentMethod.list(customer=customer_id, type="card")
+    try:
+        methods = stripe.PaymentMethod.list(customer=customer_id, type="card")
+    except Exception:
+        return []
     cards = []
     for index, pm in enumerate(methods.data):
         brand = (pm.card.brand or "Card").title()
@@ -156,7 +159,8 @@ def confirm_checkout_payment(session_id):
         return None
     if session.payment_status != "paid":
         return None
-    payment_id = session.metadata.get("portal_payment_id")
+    metadata = getattr(session, "metadata", None) or {}
+    payment_id = metadata.get("portal_payment_id") if hasattr(metadata, "get") else None
     payment = None
     if payment_id:
         payment = PortalPayment.objects.filter(pk=payment_id).select_related("family").first()
@@ -167,29 +171,42 @@ def confirm_checkout_payment(session_id):
     if payment.status == PortalPayment.STATUS_PAID:
         return payment
     method_label = "Card"
-    if session.payment_intent and getattr(session.payment_intent, "payment_method", None):
+    payment_intent = getattr(session, "payment_intent", None)
+    payment_method_id = getattr(payment_intent, "payment_method", None) if payment_intent else None
+    if payment_method_id:
         try:
-            pm = stripe.PaymentMethod.retrieve(session.payment_intent.payment_method)
+            pm = stripe.PaymentMethod.retrieve(payment_method_id)
             if pm.card:
                 method_label = f"{(pm.card.brand or 'Card').title()} ending {pm.card.last4}"
         except Exception:
             pass
-    return record_successful_payment(payment, method_label=method_label)
+    try:
+        return record_successful_payment(payment, method_label=method_label)
+    except Exception:
+        return None
 
 
 def reconcile_pending_stripe_payments_for_family(family):
     """Apply paid Stripe checkout sessions that never reached the success page."""
-    if not stripe_configured():
+    if not stripe_configured() or not family:
         return []
     from .models import PortalPayment
 
-    pending = PortalPayment.objects.filter(
-        family=family,
-        status=PortalPayment.STATUS_PENDING,
-    ).exclude(stripe_session_id="")
+    try:
+        pending = list(
+            PortalPayment.objects.filter(
+                family=family,
+                status=PortalPayment.STATUS_PENDING,
+            ).exclude(stripe_session_id="")
+        )
+    except Exception:
+        return []
     reconciled = []
     for payment in pending:
-        confirmed = confirm_checkout_payment(payment.stripe_session_id)
+        try:
+            confirmed = confirm_checkout_payment(payment.stripe_session_id)
+        except Exception:
+            continue
         if confirmed and confirmed.status == PortalPayment.STATUS_PAID:
             reconciled.append(confirmed)
     return reconciled
