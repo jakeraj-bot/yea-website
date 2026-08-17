@@ -2,8 +2,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Billing permissions</h1>
-    <p class="lead">Yes/No per staff member — charges, credits, and charge types. Billing plans are admin-only.</p>
+    <h1>Staff permissions</h1>
+    <p class="lead">Yes/No per staff member — billing and application approval. Waitlist and application approval stay admin-only until you turn them on here.</p>
   </div>
 </section>
 <section class="page-content">
@@ -27,6 +27,8 @@
               <th>Delete charge</th>
               <th>Add credit</th>
               <th>Edit family plans</th>
+              <th>Approve applications</th>
+              <th>Approve waitlist</th>
             </tr>
           </thead>
           <tbody>
@@ -59,10 +61,22 @@
                   <span data-yesno-label>{% if user.can_edit_family_plans %}Yes{% else %}No{% endif %}</span>
                 </label>
               </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="approve_apps_{{ user.id }}" {% if user.can_approve_applications %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_approve_applications %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="approve_waitlist_{{ user.id }}" {% if user.can_approve_waitlist %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_approve_waitlist %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
             </tr>
             {% if billing_charge_types %}
             <tr class="portal-table-subrow">
-              <td colspan="7">
+              <td colspan="9">
                 <strong class="portal-table-meta">Charge types for {{ user.name }}:</strong>
                 {% for ct in billing_charge_types %}
                 <label class="portal-check-label" style="margin-right:1rem;">
@@ -97,6 +111,8 @@
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_charge" {% if rule.can_delete_charge %}checked{% endif %}> Delete charge</label></li>
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_add_credit" {% if rule.can_add_credit %}checked{% endif %}> Add credit</label></li>
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_edit_family_plans" {% if rule.can_edit_family_plans %}checked{% endif %}> Edit family plans</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_applications" {% if rule.can_approve_applications %}checked{% endif %}> Approve applications</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_waitlist" {% if rule.can_approve_waitlist %}checked{% endif %}> Approve waitlist</label></li>
           </ul>
           <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Save rule</button>
         </form>
@@ -106,6 +122,8 @@
           <li>{% if rule.can_delete_charge %}✓{% else %}✗{% endif %} Delete charge</li>
           <li>{% if rule.can_add_credit %}✓{% else %}✗{% endif %} Add credit</li>
           <li>{% if rule.can_edit_family_plans %}✓{% else %}✗{% endif %} Edit family plans</li>
+          <li>{% if rule.can_approve_applications %}✓{% else %}✗{% endif %} Approve applications</li>
+          <li>{% if rule.can_approve_waitlist %}✓{% else %}✗{% endif %} Approve waitlist</li>
         </ul>
         {% endif %}
       </section>

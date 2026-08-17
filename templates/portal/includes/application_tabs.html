@@ -1,0 +1,9 @@
+<nav class="portal-family-tabs portal-family-tabs-scroll portal-staff-family-tabs" aria-label="Application sections">
+  {% if portal_area == 'admin' %}
+  <a class="portal-family-tab {% if applications_tab != 'waitlist' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='applications' %}">Applications</a>
+  <a class="portal-family-tab {% if applications_tab == 'waitlist' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='waitlist' %}">Waitlist</a>
+  {% else %}
+  <a class="portal-family-tab {% if applications_tab != 'waitlist' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='applications' %}">Applications</a>
+  <a class="portal-family-tab {% if applications_tab == 'waitlist' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='waitlist' %}">Waitlist</a>
+  {% endif %}
+</nav>

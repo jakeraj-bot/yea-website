@@ -60,7 +60,7 @@ class ProgramStepForm(forms.Form):
                 elif program == "before_care":
                     self.add_error(
                         "program_location",
-                        f"{unit.name} is not available for before care. Before care is offered at School 18 only.",
+                        f"{unit.name} is not available for before care. Before care waitlist is open at School 18 and School 26.",
                     )
                 else:
                     self.add_error(

@@ -55,7 +55,7 @@ def _clone_field_names():
 
 
 @transaction.atomic
-def create_before_care_from_application(source):
+def create_before_care_from_application(source, program_location=None):
     if source.program == "before_care":
         raise ValueError("This application is already for before care.")
     if child_has_before_care(source.portal_family, source.student_first_name, source.student_last_name):
@@ -65,13 +65,24 @@ def create_before_care_from_application(source):
     if not location_keys:
         raise ValueError("Before care is not available right now.")
 
+    chosen = (program_location or "").strip()
+    if not chosen:
+        if source.program_location in location_keys:
+            chosen = source.program_location
+        elif source.program_location == "dale_ave" and "school_18" in location_keys:
+            chosen = "school_18"
+        else:
+            chosen = location_keys[0]
+    elif chosen not in location_keys:
+        raise ValueError("That location is not available for before care.")
+
     data = {name: getattr(source, name) for name in _clone_field_names()}
     data.update(
         {
             "reference": uuid.uuid4(),
             "family_group": source.family_group or uuid.uuid4(),
             "program": "before_care",
-            "program_location": location_keys[0],
+            "program_location": chosen,
             "needs_dale_ave_bus": False,
             "status": "waitlist",
             "portal_family": source.portal_family,

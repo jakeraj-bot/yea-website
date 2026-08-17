@@ -127,7 +127,10 @@ def _apply_program_preset(request, session_data):
     from .locations import location_keys_for_program
 
     keys = location_keys_for_program(preset)
-    if keys:
+    location = (request.GET.get("location") or "").strip()
+    if location and location in keys:
+        child["program_location"] = location
+    elif keys:
         child["program_location"] = keys[0]
     return session_data
 
@@ -645,7 +648,7 @@ def confirmation_group(request, family_group):
 @parent_login_required
 def apply_add_before_care(request, reference):
     from .add_program import can_add_before_care_for_application, create_before_care_from_application
-    from .locations import get_location_label, location_keys_for_program
+    from .locations import get_enrollment_location_choices, get_location_label, location_keys_for_program
 
     account = get_parent_account(request.user)
     application = get_object_or_404(EnrollmentApplication, reference=reference)
@@ -659,11 +662,20 @@ def apply_add_before_care(request, reference):
 
     child_name = f"{application.student_first_name} {application.student_last_name}".strip()
     location_keys = location_keys_for_program("before_care")
-    location_label = get_location_label(location_keys[0]) if location_keys else "School 18"
+    location_choices = [(key, label) for key, label in get_enrollment_location_choices() if key in location_keys]
+    default_location = application.program_location if application.program_location in location_keys else ""
+    if not default_location and application.program_location == "dale_ave" and "school_18" in location_keys:
+        default_location = "school_18"
+    if not default_location and location_keys:
+        default_location = location_keys[0]
+    location_label = get_location_label(default_location) if default_location else "School 18"
 
     if request.method == "POST":
         try:
-            new_app = create_before_care_from_application(application)
+            new_app = create_before_care_from_application(
+                application,
+                program_location=request.POST.get("program_location", "").strip() or None,
+            )
             messages.success(
                 request,
                 f"Before care waitlist request submitted for {child_name}. We'll contact you when a spot opens.",
@@ -680,6 +692,8 @@ def apply_add_before_care(request, reference):
             "application": application,
             "child_name": child_name,
             "location_label": location_label,
+            "location_choices": location_choices,
+            "default_location": default_location,
         },
     )
 

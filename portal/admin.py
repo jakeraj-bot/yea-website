@@ -88,6 +88,8 @@ class PortalBillingDefaultRuleAdmin(admin.ModelAdmin):
         "can_delete_charge",
         "can_add_credit",
         "can_edit_family_plans",
+        "can_approve_applications",
+        "can_approve_waitlist",
     )
 
 

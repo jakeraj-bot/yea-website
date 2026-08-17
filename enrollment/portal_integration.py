@@ -275,6 +275,36 @@ def applications_for_admin(unit_slug=None):
     ]
 
 
+def _waitlist_rows(qs):
+    rows = []
+    ordered = (
+        qs.filter(status="waitlist")
+        .select_related("portal_family", "portal_family__unit")
+        .prefetch_related("emergency_contacts")
+        .order_by("submitted_at", "id")
+    )
+    for index, app in enumerate(ordered, start=1):
+        row = staff_application_row(app)
+        row["waitlist_position"] = index
+        row["submitted"] = timezone.localtime(app.submitted_at).strftime("%b %d, %Y %-I:%M %p")
+        rows.append(row)
+    return rows
+
+
+def waitlist_for_staff(unit=None):
+    qs = applications_queryset_for_unit(unit) if unit else EnrollmentApplication.objects.none()
+    return _waitlist_rows(qs)
+
+
+def waitlist_for_admin(unit_slug=None):
+    if unit_slug:
+        unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first()
+        qs = applications_queryset_for_unit(unit) if unit else EnrollmentApplication.objects.none()
+    else:
+        qs = EnrollmentApplication.objects.all()
+    return _waitlist_rows(qs)
+
+
 def get_application_by_reference(reference):
     try:
         ref = reference if hasattr(reference, "hex") else __import__("uuid").UUID(str(reference))

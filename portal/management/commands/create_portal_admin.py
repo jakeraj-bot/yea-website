@@ -71,6 +71,8 @@ class Command(BaseCommand):
                 "can_delete_charge": True,
                 "can_add_credit": True,
                 "can_edit_family_plans": True,
+                "can_approve_applications": True,
+                "can_approve_waitlist": True,
                 "is_active": True,
             },
         )

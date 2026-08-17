@@ -29,7 +29,7 @@
     programs.forEach(function (program) {
       var keys = locationRules[program] && locationRules[program].length ? locationRules[program].slice() : [];
       if (program === "summer_camp" && !keys.length) keys = ["caldwell"];
-      if (program === "before_care" && !keys.length) keys = ["school_18"];
+      if (program === "before_care" && !keys.length) keys = ["school_18", "school_26"];
       if (program === "after_school" && !keys.length) keys = ["school_18", "school_26", "dale_ave"];
       if (allowed === null) {
         allowed = keys;

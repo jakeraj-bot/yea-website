@@ -1,0 +1,13 @@
+<div class="card card-accent" id="before-care" style="margin:1.5rem 0;padding:1.25rem;">
+  <h2 style="margin-top:0;">Before care waitlist</h2>
+  <p>We are opening a waitlist for before care at {{ site_name }} for the 2026–2027 school year. Before care runs <strong>7:00am – 8:30am</strong>, Monday through Friday, when school is in session.</p>
+  <ul>
+    <li>Submit a waitlist request online — no payment required to join the list</li>
+    <li>Families are contacted in the order requests were received when a spot opens</li>
+    <li>After-school enrollment is separate — you may apply for both</li>
+  </ul>
+  <p>
+    <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=before_care{% if location_key %}&amp;location={{ location_key }}{% endif %}">Join before care waitlist</a>
+    <a class="btn btn-secondary" href="{% url 'apply' %}">Apply for after-school</a>
+  </p>
+</div>

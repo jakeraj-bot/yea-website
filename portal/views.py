@@ -159,6 +159,8 @@ from enrollment.portal_integration import (
     get_application_by_reference,
     get_applications_for_family,
     staff_application_detail as application_detail_dict,
+    waitlist_for_admin,
+    waitlist_for_staff,
 )
 from .pickup_services import family_authorized_pickup, pickup_report_data, pickup_report_programs
 from .models import PortalUnit
@@ -289,6 +291,49 @@ def _application_location_context(app):
     }
 
 
+def _demo_waitlist_rows():
+    rows = []
+    for index, row in enumerate(STAFF_APPLICATIONS, start=1):
+        status = (row.get("status") or "").lower()
+        if "waitlist" not in status:
+            continue
+        item = {
+            **row,
+            "unit": row.get("unit", "School 18"),
+            "unit_slug": row.get("unit_slug", ""),
+            "status_slug": "waitlist",
+            "waitlist_position": len(rows) + 1,
+        }
+        rows.append(item)
+    if rows:
+        return rows
+    return [
+        {
+            "slug": "jordan-jacobs",
+            "child": "Jordan Jacobs",
+            "family": "Jacobs",
+            "family_slug": "jacobs",
+            "unit": "School 18",
+            "submitted": "Sep 8, 2026 9:12 AM",
+            "program": "Before care (waitlist)",
+            "status": "Waitlist",
+            "status_slug": "waitlist",
+            "waitlist_position": 1,
+            "returning": False,
+        }
+    ]
+
+
+def _can_approve_this_application(request, app, portal_area):
+    from .staff_auth import can_approve_enrollment_application, get_staff_account
+
+    if portal_area == "admin":
+        return True
+    if not app:
+        return False
+    return can_approve_enrollment_application(get_staff_account(request.user), app, portal_area)
+
+
 def _portal_context(area, page_title, **extra):
     from .attendance_service import portal_is_live
 
@@ -306,6 +351,9 @@ def _portal_context(area, page_title, **extra):
         "still_demo_labels": STILL_DEMO_LABELS if live else [],
         **extra,
     }
+    if area == "admin":
+        context.setdefault("can_approve_applications", True)
+        context.setdefault("can_approve_waitlist", True)
     if "portal_back_fallback" not in context:
         pay_query = context.get("parent_pay_query", "")
         context["portal_back_fallback"] = _portal_back_fallback(area, pay_query)
@@ -325,11 +373,18 @@ def _staff_context(page_title, request=None, **extra):
     staff_unit = unit.name if unit else "School 18"
     ctx = _portal_context("staff", page_title, staff_unit=staff_unit, **extra)
     if request is not None:
-        from .staff_auth import billing_permissions_for_staff, get_staff_account, is_staff_portal_authenticated, staff_accessible_units
+        from .staff_auth import (
+            application_permissions_for_staff,
+            billing_permissions_for_staff,
+            get_staff_account,
+            is_staff_portal_authenticated,
+            staff_accessible_units,
+        )
 
         account = get_staff_account(request.user)
         ctx["staff_account"] = account
         ctx["billing_permissions"] = billing_permissions_for_staff(account)
+        ctx.update(application_permissions_for_staff(account, portal_area="staff"))
         ctx["staff_authenticated"] = is_staff_portal_authenticated(request) or portal_preview_mode()
         ctx["staff_units"] = list(staff_accessible_units(request.user)) if request.user.is_authenticated else []
         ctx["staff_unit_slug"] = unit.slug if unit else ""
@@ -1074,6 +1129,7 @@ def staff_page(request, page):
         "programs": "portal/staff/programs.html",
         "attendance": "portal/staff/attendance.html",
         "applications": "portal/staff/applications.html",
+        "waitlist": "portal/staff/waitlist.html",
         "create-application": "portal/staff/create_application.html",
         "families": "portal/staff/families.html",
         "member-policies": "portal/staff/member_policies.html",
@@ -1149,11 +1205,19 @@ def staff_page(request, page):
             context["show_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1"
             context["show_bulk_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1"
     if page == "applications":
+        context["applications_tab"] = "all"
         if portal_is_live():
             unit = _staff_unit(request)
             context["applications"] = applications_for_staff(unit) if unit else []
         else:
             context["applications"] = STAFF_APPLICATIONS
+    if page == "waitlist":
+        context["applications_tab"] = "waitlist"
+        if portal_is_live():
+            unit = _staff_unit(request)
+            context["applications"] = waitlist_for_staff(unit) if unit else []
+        else:
+            context["applications"] = _demo_waitlist_rows()
     if page == "agency":
         unit = _staff_unit(request)
         context["today"] = date.today().isoformat()
@@ -1758,11 +1822,13 @@ def staff_application_detail(request, app_slug):
                 "portal/staff/application_detail.html",
                 _staff_context(
                     f"Application — {app.student_first_name} {app.student_last_name}".strip(),
+                    request=request,
                     application=application,
                     app_slug=app_slug,
                     is_live_application=True,
                     staff_page_slug="applications",
                     application_urls=application_urls,
+                    can_approve_this_application=_can_approve_this_application(request, app, "staff"),
                     **_application_location_context(app),
                 ),
             )
@@ -1782,6 +1848,7 @@ def staff_application_detail(request, app_slug):
             app_slug=app_slug,
             staff_page_slug="applications",
             application_urls=application_urls,
+            can_approve_this_application=False,
         ),
     )
 
@@ -1809,6 +1876,7 @@ def admin_application_detail(request, app_slug):
                     is_live_application=True,
                     admin_page_slug="applications",
                     application_urls=application_urls,
+                    can_approve_this_application=True,
                     **_application_location_context(app),
                 ),
             )
@@ -1829,6 +1897,7 @@ def admin_application_detail(request, app_slug):
             app_slug=app_slug,
             admin_page_slug="applications",
             application_urls=application_urls,
+            can_approve_this_application=True,
         ),
     )
 
@@ -2053,6 +2122,7 @@ def admin_page(request, page):
         "staff": "portal/admin/staff_users.html",
         "families": "portal/admin/families.html",
         "applications": "portal/admin/applications.html",
+        "waitlist": "portal/admin/waitlist.html",
         "agencies": "portal/admin/agencies.html",
         "fees": "portal/admin/fees.html",
         "member-billing": "portal/admin/member_billing.html",
@@ -2389,6 +2459,7 @@ def admin_page(request, page):
             context["units"] = UNITS
     if page == "applications":
         unit_filter = request.GET.get("unit", "")
+        context["applications_tab"] = "all"
         if context.get("portal_live"):
             context["applications"] = applications_for_admin(unit_filter or None)
             from .admin_services import get_units_live
@@ -2397,6 +2468,19 @@ def admin_page(request, page):
             context["applications_unit_filter"] = unit_filter
         else:
             context["applications"] = [{**row, "unit": row.get("unit", "School 18"), "unit_slug": row.get("unit_slug", ""), "status_slug": row.get("status", "under-review").lower().replace(" ", "-")} for row in STAFF_APPLICATIONS]
+            context["units"] = UNITS
+            context["applications_unit_filter"] = unit_filter
+    if page == "waitlist":
+        unit_filter = request.GET.get("unit", "")
+        context["applications_tab"] = "waitlist"
+        if context.get("portal_live"):
+            context["applications"] = waitlist_for_admin(unit_filter or None)
+            from .admin_services import get_units_live
+
+            context["units"] = get_units_live()
+            context["applications_unit_filter"] = unit_filter
+        else:
+            context["applications"] = _demo_waitlist_rows()
             context["units"] = UNITS
             context["applications_unit_filter"] = unit_filter
     if page == "billing-permissions":
@@ -2416,6 +2500,8 @@ def admin_page(request, page):
             "Delete charge — remove a posted charge.",
             "Add credit — post a credit/adjustment that reduces balance.",
             "Edit family plans — change billing plan and amount on a child account.",
+            "Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal.",
+            "Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
         ]
     if page == "scholarships":
         if context.get("portal_live"):

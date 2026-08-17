@@ -71,15 +71,18 @@ def enrollment_keys_for_unit(unit):
     return keys
 
 
+BEFORE_CARE_UNIT_SLUGS = {"school-18", "school-26"}
+
+
 def unit_offers_before_care(unit):
     if not unit:
         return False
-    slug = (unit.slug or "").replace("_", "-").lower()
-    name = (unit.name or "").lower()
     program_type = (unit.program_type or "").lower()
     if program_type in {"before_care", "both", "all"}:
         return True
-    return slug in {"school-18"} or "school 18" in name
+    slug = (unit.slug or "").replace("_", "-").lower()
+    name = (unit.name or "").lower()
+    return slug in BEFORE_CARE_UNIT_SLUGS or "school 18" in name or "school 26" in name
 
 
 def unit_allows_program(unit, program):
@@ -87,7 +90,7 @@ def unit_allows_program(unit, program):
         return True
     program_type = (unit.program_type or "after_school").lower()
     if program == "before_care":
-        return program_type in {"before_care", "both", "all", "after_school", ""} or unit_offers_before_care(unit)
+        return unit_offers_before_care(unit)
     if program == "summer_camp":
         return program_type in {"summer_camp", "summer", "camp", "both", "all"}
     if program == "after_school":
@@ -109,7 +112,7 @@ def location_keys_for_program(program):
     if keys:
         return keys
     if program == "before_care":
-        return ["school_18"]
+        return ["school_18", "school_26"]
     if program == "summer_camp":
         return ["caldwell"]
     return [key for key, _ in EnrollmentApplication.LOCATION_CHOICES if key != "caldwell"]

@@ -88,7 +88,7 @@ def notify_parent_application_received(application, *, staff_created=False, save
         if application.program == "before_care" or application.status == "waitlist":
             body = (
                 f"Hello {application.primary_first_name},\n\n"
-                f"Thank you for joining the before care waitlist at School 18 for {child_name}.\n\n"
+                f"Thank you for joining the before care waitlist at {location_label} for {child_name}.\n\n"
                 f"Reference: {application.reference}\n"
                 f"Program: {application.get_program_display()} — {location_label}\n\n"
                 f"Families on the waitlist are contacted in the order requests were received when a spot opens. "

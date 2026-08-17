@@ -300,6 +300,8 @@ def admin_billing_permissions(request):
                 _perm_yes(request.POST, f"add_credit_{sid}"),
                 _perm_yes(request.POST, f"edit_plans_{sid}"),
                 charge_perms,
+                _perm_yes(request.POST, f"approve_apps_{sid}"),
+                _perm_yes(request.POST, f"approve_waitlist_{sid}"),
             )
             updated += 1
         messages.success(request, f"Billing permissions saved for {updated} staff member(s).")
@@ -997,6 +999,11 @@ def staff_application_review(request, app_slug):
     program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
+            from .staff_auth import can_approve_enrollment_application, get_staff_account
+
+            if not can_approve_enrollment_application(get_staff_account(request.user), app, "staff"):
+                messages.error(request, "You don't have permission to approve this application.")
+                return redirect(redirect_url)
             approve_application(app, program_location=program_location or None)
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
         elif action == "update_location":

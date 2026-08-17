@@ -104,6 +104,31 @@ def billing_permissions_for_staff(account=None, portal_area="staff"):
     }
 
 
+def application_permissions_for_staff(account=None, portal_area="staff"):
+    if portal_area == "admin":
+        return {
+            "can_approve_applications": True,
+            "can_approve_waitlist": True,
+        }
+    if not account:
+        return {
+            "can_approve_applications": False,
+            "can_approve_waitlist": False,
+        }
+    return {
+        "can_approve_applications": bool(account.can_approve_applications),
+        "can_approve_waitlist": bool(account.can_approve_waitlist),
+    }
+
+
+def can_approve_enrollment_application(account, app, portal_area="staff"):
+    perms = application_permissions_for_staff(account, portal_area)
+    status = getattr(app, "status", "") or ""
+    if status == "waitlist":
+        return perms["can_approve_waitlist"]
+    return perms["can_approve_applications"]
+
+
 def staff_login_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):

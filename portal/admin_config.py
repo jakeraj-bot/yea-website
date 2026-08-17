@@ -81,12 +81,12 @@ def ensure_admin_config_minimal():
     for role in PORTAL_STAFF_ROLES:
         PortalStaffRole.objects.update_or_create(name=role, defaults={"is_system": True})
     defaults = [
-        ("Unit staff", True, False, False, False),
-        ("Unit director", True, True, False, False),
-        ("Portal admin", True, True, True, True),
-        ("Front desk staff", True, False, False, False),
+        ("Unit staff", True, False, False, False, False, False),
+        ("Unit director", True, True, False, False, False, False),
+        ("Portal admin", True, True, True, True, True, True),
+        ("Front desk staff", True, False, False, False, False, False),
     ]
-    for role_name, add, delete, credit, plans in defaults:
+    for role_name, add, delete, credit, plans, approve_apps, approve_waitlist in defaults:
         PortalBillingDefaultRule.objects.get_or_create(
             role_name=role_name,
             defaults={
@@ -94,6 +94,8 @@ def ensure_admin_config_minimal():
                 "can_delete_charge": delete,
                 "can_add_credit": credit,
                 "can_edit_family_plans": plans,
+                "can_approve_applications": approve_apps,
+                "can_approve_waitlist": approve_waitlist,
                 "is_custom": False,
             },
         )
@@ -614,6 +616,8 @@ def save_custom_role(name):
             "can_delete_charge": False,
             "can_add_credit": False,
             "can_edit_family_plans": False,
+            "can_approve_applications": False,
+            "can_approve_waitlist": False,
             "is_custom": True,
         },
     )
@@ -634,6 +638,8 @@ def save_default_billing_rule(data):
     rule.can_delete_charge = data.get("can_delete_charge") == "on"
     rule.can_add_credit = data.get("can_add_credit") == "on"
     rule.can_edit_family_plans = data.get("can_edit_family_plans") == "on"
+    rule.can_approve_applications = data.get("can_approve_applications") == "on"
+    rule.can_approve_waitlist = data.get("can_approve_waitlist") == "on"
     rule.save()
     return rule
 

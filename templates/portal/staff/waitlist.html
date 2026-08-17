@@ -3,29 +3,26 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Applications</h1>
-    <p class="lead">{{ staff_unit }} — review applications for your unit. Waitlist approval is in the admin portal unless you have permission.</p>
+    <h1>Waitlist</h1>
+    <p class="lead">{{ staff_unit }} — families waiting for a before care spot, in the order requests were received.{% if not can_approve_waitlist %} Approval is done in the admin portal.{% endif %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     {% include "portal/includes/application_tabs.html" %}
-    <div class="portal-toolbar">
-      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
-    </div>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Approved,Pending documents" search_placeholder="Child or family" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Request order" filter_options="All" search_placeholder="Child or family" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>Child</th>
             <th>Medical</th>
             <th>Family</th>
-            <th>Submitted</th>
+            <th>Requested</th>
             <th>Program</th>
-            <th>Returning</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -33,17 +30,21 @@
         <tbody>
           {% for app in applications %}
           <tr>
+            <td>{{ app.waitlist_position }}</td>
             <td><strong>{{ app.child }}</strong></td>
             <td class="portal-medical-cell">{% medical_badges app.child %}</td>
             <td>{{ app.family }}</td>
             <td>{{ app.submitted }}</td>
             <td>{{ app.program }}</td>
-            <td>{% if app.returning %}Yes{% else %}No{% endif %}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
             <td>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_application_detail' app_slug=app.slug %}">Review</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_application_detail' app_slug=app.slug %}">{% if can_approve_waitlist %}Review{% else %}View{% endif %}</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_application_print' app_slug=app.slug %}">PDF</a>
             </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="form-note">No waitlist requests for this unit.</td>
           </tr>
           {% endfor %}
         </tbody>

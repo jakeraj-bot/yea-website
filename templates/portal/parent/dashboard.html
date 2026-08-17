@@ -56,7 +56,7 @@
       </article>
       <article class="card card-accent orange">
         <h2>Before care</h2>
-        <p class="form-note">School 18 only · 7:00am – 8:30am · Waitlist open</p>
+        <p class="form-note">School 18 &amp; School 26 · 7:00am – 8:30am · Waitlist open</p>
         {% if parent_authenticated %}
         <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Join waitlist</a>
         {% else %}
@@ -76,7 +76,7 @@
       </article>
     </div>
     {% if parent_authenticated %}
-    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the School 18 waitlist without starting over.</p>
+    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the waitlist at School 18 or School 26 without starting over.</p>
     {% endif %}
     {% if pending_field_trips %}
     <div class="portal-callout card card-accent">

@@ -7,7 +7,7 @@
   <div class="container">
     <span class="badge">Now enrolling</span>
     <h1>School 26</h1>
-    <p class="lead">Paterson · After-school · Ages 2½–13 · Opening fall 2026</p>
+    <p class="lead">Paterson · After-school · Before care waitlist · Ages 2½–13 · Opening fall 2026</p>
   </div>
 </section>
 
@@ -19,8 +19,11 @@
 
     <h2>Programs offered</h2>
     <ul>
-      <li>After-school program</li>
+      <li><strong>After-school program</strong> — 3:00pm – 6:00pm · Starts September 8, 2026</li>
+      <li><strong>Before care</strong> — 7:00am – 8:30am · <em>Waitlist open</em></li>
     </ul>
+
+    {% include "includes/before_care_waitlist.html" with site_name="School 26" location_key="school_26" %}
 
     <h2>Contact</h2>
     <ul class="drop-in-details-list">
@@ -32,9 +35,10 @@
     <p>1 East 32nd Street, Paterson, NJ 07514</p>
 
     <h2>Hours</h2>
-    <ul class="drop-in-details-list">
-      <li>After-school: 3:00pm – 6:00pm</li>
-    </ul>
+    <p>
+      Before care: 7:00am – 8:30am (waitlist)<br>
+      After-school: 3:00pm – 6:00pm
+    </p>
 
     <p>
       <a class="btn btn-primary" href="{% url 'apply' %}">Apply now</a>

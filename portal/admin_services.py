@@ -151,6 +151,8 @@ def get_staff_users_live():
                 "can_delete_charge": account.can_delete_charge,
                 "can_add_credit": account.can_add_credit,
                 "can_edit_family_plans": account.can_edit_family_plans,
+                "can_approve_applications": account.can_approve_applications,
+                "can_approve_waitlist": account.can_approve_waitlist,
                 "all_units_access": account.all_units_access,
                 "unit_slug": account.unit.slug,
             }
@@ -384,7 +386,16 @@ def get_pending_profile_changes_admin():
     )
 
 
-def save_billing_permissions(staff_id, can_add_charge, can_delete_charge, can_add_credit, can_edit_family_plans=False, charge_type_permissions=None):
+def save_billing_permissions(
+    staff_id,
+    can_add_charge,
+    can_delete_charge,
+    can_add_credit,
+    can_edit_family_plans=False,
+    charge_type_permissions=None,
+    can_approve_applications=False,
+    can_approve_waitlist=False,
+):
     account = PortalStaffAccount.objects.filter(pk=staff_id).first()
     if not account:
         raise ValueError("Staff account not found.")
@@ -392,6 +403,8 @@ def save_billing_permissions(staff_id, can_add_charge, can_delete_charge, can_ad
     account.can_delete_charge = can_delete_charge
     account.can_add_credit = can_add_credit
     account.can_edit_family_plans = can_edit_family_plans
+    account.can_approve_applications = can_approve_applications
+    account.can_approve_waitlist = can_approve_waitlist
     if charge_type_permissions is not None:
         account.charge_type_permissions = charge_type_permissions
     account.save(
@@ -400,6 +413,8 @@ def save_billing_permissions(staff_id, can_add_charge, can_delete_charge, can_ad
             "can_delete_charge",
             "can_add_credit",
             "can_edit_family_plans",
+            "can_approve_applications",
+            "can_approve_waitlist",
             "charge_type_permissions",
         ]
     )
@@ -454,6 +469,8 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
             "can_delete_charge": default_rule.can_delete_charge if default_rule else False,
             "can_add_credit": default_rule.can_add_credit if default_rule else False,
             "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else False,
+            "can_approve_applications": default_rule.can_approve_applications if default_rule else False,
+            "can_approve_waitlist": default_rule.can_approve_waitlist if default_rule else False,
         },
     )
     if all_units_access:
@@ -513,6 +530,8 @@ def invite_admin_user(name, username, email="", password=None):
             "can_delete_charge": default_rule.can_delete_charge if default_rule else True,
             "can_add_credit": default_rule.can_add_credit if default_rule else True,
             "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else True,
+            "can_approve_applications": default_rule.can_approve_applications if default_rule else True,
+            "can_approve_waitlist": default_rule.can_approve_waitlist if default_rule else True,
         },
     )
     account.accessible_units.clear()

@@ -254,6 +254,8 @@ class PortalBillingDefaultRule(models.Model):
     can_delete_charge = models.BooleanField(default=False)
     can_add_credit = models.BooleanField(default=False)
     can_edit_family_plans = models.BooleanField(default=False)
+    can_approve_applications = models.BooleanField(default=False)
+    can_approve_waitlist = models.BooleanField(default=False)
     is_custom = models.BooleanField(default=False)
 
     class Meta:
@@ -278,6 +280,8 @@ class PortalStaffAccount(models.Model):
     can_delete_charge = models.BooleanField(default=False)
     can_add_credit = models.BooleanField(default=False)
     can_edit_family_plans = models.BooleanField(default=False)
+    can_approve_applications = models.BooleanField(default=False)
+    can_approve_waitlist = models.BooleanField(default=False)
     charge_type_permissions = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

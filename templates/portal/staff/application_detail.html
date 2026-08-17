@@ -12,17 +12,21 @@
   <div class="container">
     <div class="portal-toolbar portal-review-actions">
       <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
-      {% if is_live_application and application.can_review %}
+      {% if is_live_application and application.can_review and can_approve_this_application %}
       <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
         <input type="hidden" name="program_location" id="approve-program-location" value="{{ program_location }}">
         <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
       </form>
+      {% endif %}
+      {% if is_live_application and application.can_review %}
       <a class="btn btn-secondary" href="#request-changes-panel">Request changes</a>
       <a class="btn btn-secondary" href="#reject-panel">Reject</a>
       {% elif not is_live_application %}
+      {% if can_approve_this_application %}
       <button type="button" class="btn btn-primary" disabled title="Demo application only">Approve</button>
+      {% endif %}
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Request changes</button>
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Reject</button>
       {% endif %}
@@ -47,7 +51,15 @@
 
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
+      {% if can_approve_this_application %}
       <p><strong>Waitlist.</strong> Approve when a before care spot opens — the child is added to the roster and the family is notified. No new application is needed.</p>
+      {% else %}
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.</p>
+      {% endif %}
+    </div>
+    {% elif is_live_application and application.can_review and not can_approve_this_application %}
+    <div class="portal-callout card">
+      <p><strong>View only for approval.</strong> You can request changes or leave notes. Application approval is done in the admin portal unless a portal admin gives you approval permission.</p>
     </div>
     {% endif %}
 
@@ -109,7 +121,7 @@
     </div>
     {% endif %}
 
-    {% if is_live_application and application.can_review and location_choices %}
+    {% if is_live_application and application.can_review and can_approve_this_application %}
     <script>
       function syncApplicationLocationForApprove(message) {
         var select = document.getElementById("app-program-location");
@@ -190,7 +202,11 @@
             <li>Post membership fee if required ($20)</li>
             <li>Email parent welcome notification</li>
           </ul>
+          {% if not can_approve_this_application %}
+          <p class="form-note">Staff can view this application. Approval is available in the admin portal, or here if you have been given permission.</p>
+          {% else %}
           <p class="form-note">Parent portal login is already created when they apply online.</p>
+          {% endif %}
         </div>
       </aside>
     </div>

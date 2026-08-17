@@ -14,14 +14,24 @@
   <div class="container apply-container">
     <div class="card" style="max-width:40rem;margin:0 auto;padding:1.25rem;">
       <h2 style="margin-top:0;">{{ child_name }}</h2>
-      <p>Submit a before care waitlist request for <strong>{{ location_label }}</strong>.</p>
+      <p>Submit a before care waitlist request{% if location_choices|length == 1 %} for <strong>{{ location_label }}</strong>{% endif %}.</p>
       <ul>
         <li>We reuse your family, student, medical, emergency contact, and policy information from your existing application.</li>
-        <li>Status will be <strong>Waitlist</strong> until staff approves a spot.</li>
+        <li>Status will be <strong>Waitlist</strong> until a spot is approved.</li>
         <li>Before care does not start until you receive approval.</li>
       </ul>
       <form method="post" class="apply-actions" style="margin-top:1.25rem;">
         {% csrf_token %}
+        {% if location_choices %}
+        <div class="form-group" style="margin-bottom:1rem;text-align:left;">
+          <label for="before-care-location">Before care location</label>
+          <select id="before-care-location" name="program_location" class="portal-select" required>
+            {% for value, label in location_choices %}
+            <option value="{{ value }}"{% if value == default_location %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
         <button type="submit" class="btn btn-primary">Submit before care waitlist</button>
         <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='applications' %}">Cancel</a>
       </form>
