@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -11,28 +12,31 @@
   <div class="container">
     {% include "portal/admin/includes/family_tabs.html" with family_tab='applications' family_slug=family.slug family_id=family.pk %}
 
-    <h2>Linked applications</h2>
-    <div class="portal-table-wrap">
-      <table class="portal-table">
-        <thead>
-          <tr><th>Child</th><th>School attending</th><th>Program</th><th>Submitted</th><th>Status</th><th></th></tr>
-        </thead>
-        <tbody>
-          {% for app in linked_applications %}
-          <tr>
-            <td>{{ app.child }}</td>
-            <td>{{ app.school }}</td>
-            <td>{{ app.program }}</td>
-            <td>{{ app.submitted }}</td>
-            <td>{{ app.status }}</td>
-            <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Open</a></td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="form-note">No applications are linked to this family yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <p class="form-note">Approved applications leave the review queue. The full application for each child is here so you can view or edit it from this family account.</p>
+
+    {% if family_applications|length > 1 %}
+    <nav class="portal-family-app-jump" aria-label="Children on this account">
+      {% for item in family_applications %}
+      <a class="btn btn-secondary btn-sm" href="#app-{{ item.app_slug }}">{{ item.application.child_name }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+
+    {% for item in family_applications %}
+    <article class="portal-family-app" id="app-{{ item.app_slug }}">
+      <div class="portal-toolbar portal-review-actions">
+        <h2 class="portal-family-app-title">{{ item.application.child_name }}</h2>
+        <span class="portal-status portal-status-{{ item.application.status|slugify }}">{{ item.application.status }}</span>
+        <span class="form-note">Ref {{ item.application.reference }} · {{ item.application.submitted }}</span>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_application_print' app_slug=item.app_slug %}">Print PDF</a>
+        <a class="btn btn-secondary" href="#edit-application-panel-{{ item.app_slug }}">Edit</a>
+      </div>
+      {% include "portal/includes/application_full_body.html" with application=item.application %}
+      {% include "portal/includes/application_edit_form.html" with application=item.application app_slug=item.app_slug id_suffix=item.app_slug location_choices=item.location_choices program_location=item.program_location next_url=request.get_full_path %}
+    </article>
+    {% empty %}
+    <p class="form-note">No applications are linked to this family yet.</p>
+    {% endfor %}
 
     {% if unmatched_applications %}
     <h2>Possible matches (not linked)</h2>

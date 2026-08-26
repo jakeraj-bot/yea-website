@@ -272,7 +272,19 @@ def staff_application_detail(app):
             "requires_medication": app.get_requires_medication_display() if app.requires_medication else "",
             "doctor_name": app.doctor_name or "",
             "doctor_phone": app.doctor_phone or "",
+            "insurance_provider": app.insurance_provider or "",
+            "insurance_policy_group": app.insurance_policy_group or "",
+            "no_insurance": app.no_insurance,
+            "health_statement": app.get_health_statement_display() if app.health_statement else "",
+            "student_gender": app.get_student_gender_display() if app.student_gender else "",
+            "student_ethnicity": app.get_student_ethnicity_display() if app.student_ethnicity else "",
+            "student_race": app.get_student_race_display() if app.student_race else "",
+            "primary_relationship": app.get_primary_relationship_display() if app.primary_relationship else "",
+            "primary_phone_type": app.get_primary_phone_type_display() if app.primary_phone_type else "",
+            "primary_authorized_pickup": app.get_primary_authorized_pickup_display() if app.primary_authorized_pickup else "",
             "secondary_parent": f"{app.secondary_first_name} {app.secondary_last_name}".strip(),
+            "secondary_first_name": app.secondary_first_name or "",
+            "secondary_last_name": app.secondary_last_name or "",
             "secondary_email": app.secondary_email_address or "",
             "secondary_phone": app.secondary_phone or "",
             "program_key": app.program,
@@ -290,10 +302,12 @@ def staff_application_detail(app):
 OPEN_REVIEW_STATUSES = ("under_review", "pending_documents", "waitlist")
 
 
-def application_neighbors(app, unit=None):
+def application_neighbors(app, unit=None, open_only=True):
     qs = EnrollmentApplication.objects.all()
     if unit:
         qs = applications_queryset_for_unit(unit)
+    if open_only:
+        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
     slugs = [str(row.reference) for row in qs.order_by("-submitted_at")]
     current = str(app.reference)
     try:
@@ -316,12 +330,14 @@ def next_reviewable_application(app, unit=None):
     return following or qs.order_by("-submitted_at").first()
 
 
-def applications_for_staff(unit=None):
+def applications_for_staff(unit=None, include_closed=False):
     qs = (
         applications_queryset_for_unit(unit)
         if unit
         else EnrollmentApplication.objects.none()
     )
+    if not include_closed:
+        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
     return [
         staff_application_row(app)
         for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
@@ -330,12 +346,14 @@ def applications_for_staff(unit=None):
     ]
 
 
-def applications_for_admin(unit_slug=None):
+def applications_for_admin(unit_slug=None, include_closed=False):
     if unit_slug:
         unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first()
         qs = applications_queryset_for_unit(unit) if unit else EnrollmentApplication.objects.none()
     else:
         qs = EnrollmentApplication.objects.all()
+    if not include_closed:
+        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
     return [
         staff_application_row(app)
         for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(

@@ -1033,6 +1033,26 @@
   padding: 1.5rem;
 }
 
+.portal-family-app {
+  margin: 0 0 2.25rem;
+}
+
+.portal-family-app-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.portal-family-app-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.portal-family-app .portal-application {
+  margin-bottom: 1rem;
+}
+
 .portal-checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

@@ -42,6 +42,7 @@
       <a class="btn btn-secondary" href="{{ application_urls.print }}">Print PDF</a>
       {% if application.family_slug %}
       {% if portal_area == 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_family_applications' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Family account</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_family_billing' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Billing</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Policies</a>
       {% else %}
@@ -50,7 +51,7 @@
       {% endif %}
       {% endif %}
       {% if portal_area == 'admin' and is_live_application %}
-      <a class="btn btn-secondary" href="#edit-application-panel">Edit application</a>
+      <a class="btn btn-secondary" href="#edit-application-panel-{{ app_slug }}">Edit application</a>
       {% if not application.has_parent_login %}
       <a class="btn btn-secondary" href="#create-login-panel">Create parent login</a>
       {% endif %}
@@ -156,112 +157,7 @@
     {% endif %}
 
     {% if portal_area == 'admin' and is_live_application %}
-    <section class="card portal-review-panel" id="edit-application-panel">
-      <h2>Edit application</h2>
-      <p class="form-note">Update names, school, program, billing, and contact details if the family cannot finish this themselves.</p>
-      <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="update_application">
-        <input type="hidden" name="app_slug" value="{{ app_slug }}">
-        <div class="form-group">
-          <label for="edit-first">Child first name</label>
-          <input id="edit-first" name="student_first_name" class="portal-input" value="{{ application.student_first_name }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-last">Child last name</label>
-          <input id="edit-last" name="student_last_name" class="portal-input" value="{{ application.student_last_name }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-school">School attending</label>
-          <input id="edit-school" name="student_school" class="portal-input" value="{{ application.student_school }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-grade">Grade</label>
-          <select id="edit-grade" name="student_grade" class="portal-select">
-            {% for value, label in application.grade_choices %}
-            <option value="{{ value }}"{% if value == application.student_grade %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="edit-dob">Date of birth</label>
-          <input id="edit-dob" name="student_dob" type="date" class="portal-input" value="{{ application.student_dob_iso }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-program">Program</label>
-          <select id="edit-program" name="program" class="portal-select">
-            {% for value, label in application.program_choices %}
-            <option value="{{ value }}"{% if value == application.program_key %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        {% if location_choices %}
-        <div class="form-group">
-          <label for="edit-location">Program location</label>
-          <select id="edit-location" name="program_location" class="portal-select">
-            {% for value, label in location_choices %}
-            <option value="{{ value }}"{% if value == program_location %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        {% endif %}
-        <div class="form-group">
-          <label for="edit-family">Family name</label>
-          <input id="edit-family" name="family_name" class="portal-input" value="{{ application.family_name }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-pfirst">Parent first name</label>
-          <input id="edit-pfirst" name="primary_first_name" class="portal-input" value="{{ application.primary_first_name }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-plast">Parent last name</label>
-          <input id="edit-plast" name="primary_last_name" class="portal-input" value="{{ application.primary_last_name }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-email">Primary email</label>
-          <input id="edit-email" name="primary_email" type="email" class="portal-input" value="{{ application.primary_email }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-phone">Primary phone</label>
-          <input id="edit-phone" name="primary_phone" class="portal-input" value="{{ application.primary_phone }}">
-        </div>
-        <div class="form-group portal-form-full">
-          <label for="edit-address">Home address</label>
-          <input id="edit-address" name="home_address" class="portal-input" value="{{ application.home_address }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-pay">Payment method</label>
-          <select id="edit-pay" name="payment_method" class="portal-select">
-            {% for value, label in application.payment_method_choices %}
-            <option value="{{ value }}"{% if value == application.payment_method_key %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="edit-other">If other, specify</label>
-          <input id="edit-other" name="payment_method_other" class="portal-input" value="{{ application.payment_method_other }}">
-        </div>
-        <div class="form-group">
-          <label for="edit-plan">Payment plan</label>
-          <select id="edit-plan" name="payment_plan" class="portal-select">
-            {% for value, label in application.payment_plan_choices %}
-            <option value="{{ value }}"{% if value == application.payment_plan_key %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group portal-form-full">
-          <label for="edit-allergies">Allergies</label>
-          <textarea id="edit-allergies" name="allergies" class="portal-input portal-textarea" rows="2">{{ application.allergies }}</textarea>
-        </div>
-        <div class="form-group portal-form-full">
-          <label for="edit-medical">Medical notes</label>
-          <textarea id="edit-medical" name="medical_condition_explain" class="portal-input portal-textarea" rows="2">{{ application.medical_condition_explain }}</textarea>
-        </div>
-        <div class="portal-form-actions portal-form-full">
-          <button type="submit" class="btn btn-primary">Save application changes</button>
-        </div>
-      </form>
-    </section>
+    {% include "portal/includes/application_edit_form.html" with id_suffix=app_slug %}
 
     {% if not application.has_parent_login %}
     <section class="card portal-review-panel" id="create-login-panel">
@@ -288,63 +184,7 @@
     {% endif %}
 
     <div class="portal-review-grid">
-      <div class="card portal-application">
-        <h2>Enrollment details</h2>
-        <dl class="portal-dl portal-dl-2col">
-          <dt>Program</dt><dd>{{ application.program }}</dd>
-          <dt>Location (program site)</dt><dd>{{ application.location }}</dd>
-          <dt>School attending</dt><dd>{{ application.student_school|default:"—" }}</dd>
-          <dt>Grade</dt><dd>{{ application.grade }}</dd>
-          <dt>DOB</dt><dd>{{ application.student_dob }}</dd>
-          <dt>Returning member</dt><dd>{% if application.returning_member %}Yes{% else %}No{% endif %}</dd>
-          <dt>Membership fee</dt><dd>{% if application.membership_required %}$20 required{% else %}Waived (returning){% endif %}</dd>
-        </dl>
-
-        <h2>Medical information</h2>
-        <p class="form-note">Hover each icon for details.</p>
-        <div class="portal-application-medical">
-          {% medical_badges application.child_name size="lg" %}
-        </div>
-
-        <h2>Guardians</h2>
-        <dl class="portal-dl portal-dl-2col">
-          <dt>Primary</dt><dd>{{ application.primary_parent }}</dd>
-          <dt>Email</dt><dd>{{ application.primary_email }}</dd>
-          <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
-          <dt>Address</dt><dd>{{ application.home_address }}</dd>
-        </dl>
-        <h2>Billing preferences</h2>
-        <dl class="portal-dl portal-dl-2col">
-          <dt>Method</dt><dd>{{ application.payment_method }}{% if application.payment_method_other %} — {{ application.payment_method_other }}{% endif %}</dd>
-          <dt>Plan</dt><dd>{{ application.payment_plan }}</dd>
-        </dl>
-        {% if application.secondary_parent %}
-        <h2>Secondary guardian</h2>
-        <dl class="portal-dl portal-dl-2col">
-          <dt>Name</dt><dd>{{ application.secondary_parent }}</dd>
-          <dt>Email</dt><dd>{{ application.secondary_email|default:"—" }}</dd>
-          <dt>Phone</dt><dd>{{ application.secondary_phone|default:"—" }}</dd>
-        </dl>
-        {% endif %}
-        <h2>Health details</h2>
-        <dl class="portal-dl portal-dl-2col">
-          <dt>Doctor</dt><dd>{{ application.doctor_name|default:"—" }}{% if application.doctor_phone %} · {{ application.doctor_phone }}{% endif %}</dd>
-          <dt>Allergies</dt><dd>{% if application.no_known_allergies %}No known allergies{% else %}{{ application.allergies|default:"—" }}{% endif %}</dd>
-          <dt>Disability</dt><dd>{{ application.has_disability|default:"—" }}</dd>
-          <dt>Special needs</dt><dd>{{ application.has_special_needs|default:"—" }}</dd>
-          <dt>Medication</dt><dd>{{ application.requires_medication|default:"—" }}</dd>
-          <dt>Condition notes</dt><dd>{{ application.medical_condition_explain|default:"—" }}</dd>
-        </dl>
-        <h2>Emergency contacts</h2>
-        <ul class="portal-link-list">
-          {% for c in application.emergency_contacts %}
-          <li>{{ c.name }} — {{ c.phone }}</li>
-          {% endfor %}
-        </ul>
-        <h2>Signed policies</h2>
-        <p class="form-note">{{ application.policies_signed }} of {{ application.policies_total }} policies signed electronically at submission.</p>
-        {% include "portal/includes/policy_view_sections.html" with policies=application.signed_policies child_name=application.child_name print_expand=True %}
-      </div>
+      {% include "portal/includes/application_full_body.html" %}
 
       <aside class="portal-review-sidebar">
         <div class="card">

@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Applications</h1>
-    <p class="lead">All units — review, approve, or request changes. Approved children are added to the unit roster.</p>
+    <p class="lead">Review queue for applications that still need a decision. After you approve, the child leaves this list — open the family Applications tab to view or edit their full application.</p>
   </div>
 </section>
 <section class="page-content">
@@ -22,7 +22,7 @@
       </label>
     </form>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Approved,Pending documents,Declined" search_placeholder="Child or family" search_id="admin-app-search" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Pending documents" search_placeholder="Child or family" search_id="admin-app-search" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table" id="admin-applications-table">
@@ -69,7 +69,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="9" class="form-note">No applications{% if applications_unit_filter %} for this unit{% endif %}.</td>
+            <td colspan="9" class="form-note">No open applications{% if applications_unit_filter %} for this unit{% endif %}. Approved members stay on their family Applications tab.</td>
           </tr>
           {% endfor %}
         </tbody>

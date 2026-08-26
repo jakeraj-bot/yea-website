@@ -1730,6 +1730,20 @@ def admin_family_applications(request, family_slug):
         return render(request, "portal/404.html", status=404)
     linked, extras = applications_for_family_admin(family)
     extra = _admin_family_ops_context(family)
+    family_applications = []
+    for app in linked:
+        app_slug = str(app.reference)
+        family_applications.append(
+            {
+                "app_slug": app_slug,
+                "application": _application_with_policy_print_urls(
+                    application_detail_dict(app),
+                    "portal_admin_application_policy_print",
+                    app_slug=app_slug,
+                ),
+                **_application_location_context(app),
+            }
+        )
     return render(
         request,
         "portal/admin/family_applications.html",
@@ -1742,7 +1756,7 @@ def admin_family_applications(request, family_slug):
                 family=family,
                 family_slug=family.slug,
                 family_tab="applications",
-                linked_applications=[staff_application_row(app) for app in linked],
+                family_applications=family_applications,
                 unmatched_applications=[staff_application_row(app) for app in extras],
                 **extra,
             ),

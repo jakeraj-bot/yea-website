@@ -1075,7 +1075,7 @@ def admin_application_review(request, app_slug):
     try:
         if action == "approve":
             approve_application(app, program_location=program_location or None)
-            messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
+            messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster. Open the family Applications tab to view or edit their full application.")
         elif action == "update_location":
             assign_application_location(app, program_location)
             messages.success(request, "Application location updated.")
@@ -1759,10 +1759,18 @@ def admin_member_ops(request):
                     "payment_plan": request.POST.get("payment_plan", app.payment_plan),
                     "allergies": request.POST.get("allergies", app.allergies),
                     "medical_condition_explain": request.POST.get("medical_condition_explain", app.medical_condition_explain),
+                    "doctor_name": request.POST.get("doctor_name", app.doctor_name),
+                    "doctor_phone": request.POST.get("doctor_phone", app.doctor_phone),
+                    "insurance_provider": request.POST.get("insurance_provider", app.insurance_provider),
+                    "secondary_first_name": request.POST.get("secondary_first_name", app.secondary_first_name),
+                    "secondary_last_name": request.POST.get("secondary_last_name", app.secondary_last_name),
+                    "secondary_phone": request.POST.get("secondary_phone", app.secondary_phone),
+                    "secondary_email_address": request.POST.get("secondary_email_address", app.secondary_email_address),
                 },
             )
             messages.success(request, "Application updated.")
-            next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
+            if not request.POST.get("next"):
+                next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
         elif action == "link_application":
             app = get_application_by_reference(request.POST.get("app_slug", ""))
             if not app or not family:

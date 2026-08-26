@@ -1,0 +1,135 @@
+<section class="card portal-review-panel" id="edit-application-panel-{{ id_suffix }}">
+  <h2>Edit application</h2>
+  <p class="form-note">Update names, school, program, billing, and contact details if the family cannot finish this themselves.</p>
+  <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update_application">
+    <input type="hidden" name="app_slug" value="{{ app_slug }}">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    <div class="form-group">
+      <label for="edit-first-{{ id_suffix }}">Child first name</label>
+      <input id="edit-first-{{ id_suffix }}" name="student_first_name" class="portal-input" value="{{ application.student_first_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-last-{{ id_suffix }}">Child last name</label>
+      <input id="edit-last-{{ id_suffix }}" name="student_last_name" class="portal-input" value="{{ application.student_last_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-school-{{ id_suffix }}">School attending</label>
+      <input id="edit-school-{{ id_suffix }}" name="student_school" class="portal-input" value="{{ application.student_school }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-grade-{{ id_suffix }}">Grade</label>
+      <select id="edit-grade-{{ id_suffix }}" name="student_grade" class="portal-select">
+        {% for value, label in application.grade_choices %}
+        <option value="{{ value }}"{% if value == application.student_grade %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="edit-dob-{{ id_suffix }}">Date of birth</label>
+      <input id="edit-dob-{{ id_suffix }}" name="student_dob" type="date" class="portal-input" value="{{ application.student_dob_iso }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-program-{{ id_suffix }}">Program</label>
+      <select id="edit-program-{{ id_suffix }}" name="program" class="portal-select">
+        {% for value, label in application.program_choices %}
+        <option value="{{ value }}"{% if value == application.program_key %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if location_choices %}
+    <div class="form-group">
+      <label for="edit-location-{{ id_suffix }}">Program location</label>
+      <select id="edit-location-{{ id_suffix }}" name="program_location" class="portal-select">
+        {% for value, label in location_choices %}
+        <option value="{{ value }}"{% if value == program_location %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-group">
+      <label for="edit-family-{{ id_suffix }}">Family name</label>
+      <input id="edit-family-{{ id_suffix }}" name="family_name" class="portal-input" value="{{ application.family_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-pfirst-{{ id_suffix }}">Parent first name</label>
+      <input id="edit-pfirst-{{ id_suffix }}" name="primary_first_name" class="portal-input" value="{{ application.primary_first_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-plast-{{ id_suffix }}">Parent last name</label>
+      <input id="edit-plast-{{ id_suffix }}" name="primary_last_name" class="portal-input" value="{{ application.primary_last_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-email-{{ id_suffix }}">Primary email</label>
+      <input id="edit-email-{{ id_suffix }}" name="primary_email" type="email" class="portal-input" value="{{ application.primary_email }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-phone-{{ id_suffix }}">Primary phone</label>
+      <input id="edit-phone-{{ id_suffix }}" name="primary_phone" class="portal-input" value="{{ application.primary_phone }}">
+    </div>
+    <div class="form-group portal-form-full">
+      <label for="edit-address-{{ id_suffix }}">Home address</label>
+      <input id="edit-address-{{ id_suffix }}" name="home_address" class="portal-input" value="{{ application.home_address }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-sfirst-{{ id_suffix }}">Secondary first name</label>
+      <input id="edit-sfirst-{{ id_suffix }}" name="secondary_first_name" class="portal-input" value="{{ application.secondary_first_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-slast-{{ id_suffix }}">Secondary last name</label>
+      <input id="edit-slast-{{ id_suffix }}" name="secondary_last_name" class="portal-input" value="{{ application.secondary_last_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-semail-{{ id_suffix }}">Secondary email</label>
+      <input id="edit-semail-{{ id_suffix }}" name="secondary_email_address" type="email" class="portal-input" value="{{ application.secondary_email }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-sphone-{{ id_suffix }}">Secondary phone</label>
+      <input id="edit-sphone-{{ id_suffix }}" name="secondary_phone" class="portal-input" value="{{ application.secondary_phone }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-pay-{{ id_suffix }}">Payment method</label>
+      <select id="edit-pay-{{ id_suffix }}" name="payment_method" class="portal-select">
+        {% for value, label in application.payment_method_choices %}
+        <option value="{{ value }}"{% if value == application.payment_method_key %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="edit-other-{{ id_suffix }}">If other, specify</label>
+      <input id="edit-other-{{ id_suffix }}" name="payment_method_other" class="portal-input" value="{{ application.payment_method_other }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-plan-{{ id_suffix }}">Payment plan</label>
+      <select id="edit-plan-{{ id_suffix }}" name="payment_plan" class="portal-select">
+        {% for value, label in application.payment_plan_choices %}
+        <option value="{{ value }}"{% if value == application.payment_plan_key %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="edit-doctor-{{ id_suffix }}">Doctor name</label>
+      <input id="edit-doctor-{{ id_suffix }}" name="doctor_name" class="portal-input" value="{{ application.doctor_name }}">
+    </div>
+    <div class="form-group">
+      <label for="edit-dphone-{{ id_suffix }}">Doctor phone</label>
+      <input id="edit-dphone-{{ id_suffix }}" name="doctor_phone" class="portal-input" value="{{ application.doctor_phone }}">
+    </div>
+    <div class="form-group portal-form-full">
+      <label for="edit-ins-{{ id_suffix }}">Insurance provider</label>
+      <input id="edit-ins-{{ id_suffix }}" name="insurance_provider" class="portal-input" value="{{ application.insurance_provider }}">
+    </div>
+    <div class="form-group portal-form-full">
+      <label for="edit-allergies-{{ id_suffix }}">Allergies</label>
+      <textarea id="edit-allergies-{{ id_suffix }}" name="allergies" class="portal-input portal-textarea" rows="2">{{ application.allergies }}</textarea>
+    </div>
+    <div class="form-group portal-form-full">
+      <label for="edit-medical-{{ id_suffix }}">Medical notes</label>
+      <textarea id="edit-medical-{{ id_suffix }}" name="medical_condition_explain" class="portal-input portal-textarea" rows="2">{{ application.medical_condition_explain }}</textarea>
+    </div>
+    <div class="portal-form-actions portal-form-full">
+      <button type="submit" class="btn btn-primary">Save application changes</button>
+    </div>
+  </form>
+</section>

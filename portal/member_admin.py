@@ -407,7 +407,10 @@ def member_reports():
 
 def applications_for_family_admin(family):
     linked = list(
-        EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
+        EnrollmentApplication.objects.filter(portal_family=family)
+        .select_related("portal_family")
+        .prefetch_related("emergency_contacts")
+        .order_by("-submitted_at")
     )
     seen = {app.pk for app in linked}
     extras = []
@@ -457,6 +460,13 @@ def update_application_fields(application, data):
         "payment_plan",
         "allergies",
         "medical_condition_explain",
+        "doctor_name",
+        "doctor_phone",
+        "insurance_provider",
+        "secondary_first_name",
+        "secondary_last_name",
+        "secondary_phone",
+        "secondary_email_address",
     ]
     for field in fields:
         if field not in data:
