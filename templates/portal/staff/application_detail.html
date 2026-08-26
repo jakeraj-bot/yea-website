@@ -3,7 +3,7 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{{ application_urls.list }}">Applications</a> / {{ application.child_name }}</p>
+    <p class="portal-breadcrumb"><a href="{{ application_urls.list }}">{{ application_urls.list_label|default:"Applications" }}</a> / {{ application.child_name }}</p>
     <h1>{{ application.child_name }}</h1>
     <p class="lead">Ref {{ application.reference }} · {{ application.submitted }}{% if application.reviewed_at %} · Reviewed {{ application.reviewed_at }}{% endif %}</p>
   </div>
@@ -26,7 +26,19 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
         <input type="hidden" name="program_location" id="approve-program-location" value="{{ program_location }}">
+        {% if application.status_slug == "waitlist" %}
+        <input type="hidden" name="next" value="{{ application_urls.list }}">
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('A spot opened — approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve — add to roster</button>
+        {% else %}
         <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
+        {% endif %}
+      </form>
+      {% endif %}
+      {% if is_live_application and application.can_review and application.status_slug != "waitlist" %}
+      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="waitlist">
+        <button type="submit" class="btn btn-secondary" onclick="return confirm('Add {{ application.child_name }} to the waitlist? They will not be added to the roster until you approve them from the Waitlist tab.')">Place on waitlist</button>
       </form>
       {% endif %}
       {% if is_live_application and application.can_review %}
@@ -74,7 +86,7 @@
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
       {% if can_approve_this_application %}
-      <p><strong>Waitlist.</strong> Approve when a before care spot opens — the child is added to the roster and the family is notified. No new application is needed.</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.</p>
       {% else %}
       <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.</p>
       {% endif %}

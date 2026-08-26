@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Applications</h1>
-    <p class="lead">Review queue for applications that still need a decision. After you approve, the child leaves this list — open the family Applications tab to view or edit their full application.</p>
+    <p class="lead">Review queue for applications that still need a decision. Waitlist requests live on the Waitlist tab — approve them there when a spot opens. After you approve onto the roster, the child leaves this list.</p>
   </div>
 </section>
 <section class="page-content">
@@ -22,7 +22,7 @@
       </label>
     </form>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Pending documents" search_placeholder="Child or family" search_id="admin-app-search" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" search_id="admin-app-search" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table" id="admin-applications-table">

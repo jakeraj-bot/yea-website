@@ -306,7 +306,7 @@ def staff_application_detail(app):
     return data
 
 
-OPEN_REVIEW_STATUSES = ("under_review", "pending_documents", "waitlist")
+OPEN_REVIEW_STATUSES = ("under_review", "pending_documents")
 
 
 def application_neighbors(app, unit=None, open_only=True):

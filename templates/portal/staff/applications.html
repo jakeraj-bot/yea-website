@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Applications</h1>
-    <p class="lead">{{ staff_unit }} — review queue for applications that still need a decision. Approved children leave this list once they are on the roster.</p>
+    <p class="lead">{{ staff_unit }} — review queue for applications that still need a decision. Waitlist requests are on the Waitlist tab.</p>
   </div>
 </section>
 <section class="page-content">
@@ -14,7 +14,7 @@
       <a class="btn btn-primary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
     </div>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Waitlist,Under review,Pending documents" search_placeholder="Child or family" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table">

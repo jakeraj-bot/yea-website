@@ -1,0 +1,17 @@
+{% if can_approve_waitlist %}
+{% if portal_area == 'admin' %}
+{% url 'portal_admin_application_review' app_slug=app.slug as waitlist_review_url %}
+{% else %}
+{% url 'portal_staff_application_review' app_slug=app.slug as waitlist_review_url %}
+{% endif %}
+{% if portal_live %}
+<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form" onsubmit="return confirm('A spot opened — approve {{ app.child }} and add them to the roster?');">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="approve">
+  <input type="hidden" name="next" value="{{ waitlist_next }}">
+  <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+</form>
+{% else %}
+<button type="button" class="btn btn-primary btn-sm" disabled title="Demo only">Approve</button>
+{% endif %}
+{% endif %}

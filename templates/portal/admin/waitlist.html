@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Waitlist</h1>
-    <p class="lead">Before care waitlist in request order. Approve from this list when a spot opens.</p>
+    <p class="lead">Before care waitlist in request order. When a spot opens, Approve here to add the child to the roster.</p>
   </div>
 </section>
 <section class="page-content">
@@ -51,6 +51,7 @@
             <td>{{ app.program }}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
             <td class="portal-row-actions">
+              {% include "portal/includes/waitlist_approve_form.html" %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
             </td>

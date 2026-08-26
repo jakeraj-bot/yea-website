@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 MEMBERSHIP_FEE_KEY = "membership"
 DEFAULT_MEMBERSHIP_FEE = Decimal("20.00")
 REVIEWABLE_STATUSES = {"under_review", "pending_documents", "waitlist"}
+WAITLISTABLE_STATUSES = {"under_review", "pending_documents"}
 
 
 def child_display_name(app):
@@ -254,6 +255,35 @@ def approve_application(app, program_location=None):
             f"Great news — {child_name}'s enrollment application for {app.get_program_display()} "
             f"at {get_location_label(app.program_location)} has been approved.\n\n"
             f"Sign in to your parent portal to view billing and your family profile:\n"
+            f"{_portal_applications_url()}\n\n"
+            f"Youth Education Academy"
+        ),
+    )
+    return app
+
+
+@transaction.atomic
+def place_on_waitlist(app):
+    if app.status == "waitlist":
+        return app
+    if app.status not in WAITLISTABLE_STATUSES:
+        raise ValueError("This application cannot be moved to the waitlist.")
+
+    app.status = "waitlist"
+    app.reviewed_at = timezone.now()
+    app.save(update_fields=["status", "reviewed_at"])
+
+    child_name = child_display_name(app)
+    _email_parent(
+        app,
+        f"You're on the waitlist — {child_name}",
+        (
+            f"Hi {app.primary_first_name},\n\n"
+            f"{child_name} is on the waitlist for {app.get_program_display()} "
+            f"at {get_location_label(app.program_location)}.\n\n"
+            f"We contact families in the order requests were received when a spot opens. "
+            f"No new application is needed.\n\n"
+            f"Track status in your parent portal:\n"
             f"{_portal_applications_url()}\n\n"
             f"Youth Education Academy"
         ),

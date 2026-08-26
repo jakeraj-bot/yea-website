@@ -260,17 +260,21 @@ def _portal_back_fallback(area, pay_query=""):
     return reverse("portal_home")
 
 
-def _application_portal_urls(area, app_slug):
+def _application_portal_urls(area, app_slug, *, waitlist=False):
+    list_page = "waitlist" if waitlist else "applications"
+    list_label = "Waitlist" if waitlist else "Applications"
     if area == "admin":
         return {
-            "list": reverse("portal_admin_page", kwargs={"page": "applications"}),
+            "list": reverse("portal_admin_page", kwargs={"page": list_page}),
+            "list_label": list_label,
             "review": reverse("portal_admin_application_review", kwargs={"app_slug": app_slug}),
             "print": reverse("portal_admin_application_print", kwargs={"app_slug": app_slug}),
             "edit": reverse("portal_admin_member_ops"),
             "detail": reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug}),
         }
     return {
-        "list": reverse("portal_staff_page", kwargs={"page": "applications"}),
+        "list": reverse("portal_staff_page", kwargs={"page": list_page}),
+        "list_label": list_label,
         "review": reverse("portal_staff_application_review", kwargs={"app_slug": app_slug}),
         "print": reverse("portal_staff_application_print", kwargs={"app_slug": app_slug}),
         "detail": reverse("portal_staff_application_detail", kwargs={"app_slug": app_slug}),
@@ -1233,6 +1237,7 @@ def staff_page(request, page):
             context["applications"] = STAFF_APPLICATIONS
     if page == "waitlist":
         context["applications_tab"] = "waitlist"
+        context["waitlist_next"] = request.get_full_path()
         if portal_is_live():
             unit = _staff_unit(request)
             context["applications"] = waitlist_for_staff(unit) if unit else []
@@ -1925,10 +1930,11 @@ def staff_family_incidents(request, family_slug):
 
 @require_GET
 def staff_application_detail(request, app_slug):
-    application_urls = _application_portal_urls("staff", app_slug)
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
+            on_waitlist = app.status == "waitlist"
+            application_urls = _application_portal_urls("staff", app_slug, waitlist=on_waitlist)
             application = _application_with_policy_print_urls(
                 application_detail_dict(app),
                 "portal_staff_application_policy_print",
@@ -1943,7 +1949,7 @@ def staff_application_detail(request, app_slug):
                     application=application,
                     app_slug=app_slug,
                     is_live_application=True,
-                    staff_page_slug="applications",
+                    staff_page_slug="waitlist" if on_waitlist else "applications",
                     application_urls=application_urls,
                     can_approve_this_application=_can_approve_this_application(request, app, "staff"),
                     **_application_location_context(app),
@@ -1956,6 +1962,7 @@ def staff_application_detail(request, app_slug):
     )
     if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
+    on_waitlist = (application.get("status_slug") or "") == "waitlist"
     return render(
         request,
         "portal/staff/application_detail.html",
@@ -1963,8 +1970,8 @@ def staff_application_detail(request, app_slug):
             f"Application — {application['child_name']}",
             application=application,
             app_slug=app_slug,
-            staff_page_slug="applications",
-            application_urls=application_urls,
+            staff_page_slug="waitlist" if on_waitlist else "applications",
+            application_urls=_application_portal_urls("staff", app_slug, waitlist=on_waitlist),
             can_approve_this_application=False,
         ),
     )
@@ -1973,10 +1980,11 @@ def staff_application_detail(request, app_slug):
 @require_GET
 @admin_login_required
 def admin_application_detail(request, app_slug):
-    application_urls = _application_portal_urls("admin", app_slug)
     if _portal_data_live():
         app = get_application_by_reference(app_slug)
         if app:
+            on_waitlist = app.status == "waitlist"
+            application_urls = _application_portal_urls("admin", app_slug, waitlist=on_waitlist)
             application = _application_with_policy_print_urls(
                 application_detail_dict(app),
                 "portal_admin_application_policy_print",
@@ -1991,7 +1999,7 @@ def admin_application_detail(request, app_slug):
                     application=application,
                     app_slug=app_slug,
                     is_live_application=True,
-                    admin_page_slug="applications",
+                    admin_page_slug="waitlist" if on_waitlist else "applications",
                     application_urls=application_urls,
                     can_approve_this_application=True,
                     **_application_location_context(app),
@@ -2004,6 +2012,7 @@ def admin_application_detail(request, app_slug):
     )
     if not application.get("child_name"):
         return render(request, "portal/404.html", status=404)
+    on_waitlist = (application.get("status_slug") or "") == "waitlist"
     return render(
         request,
         "portal/staff/application_detail.html",
@@ -2012,8 +2021,8 @@ def admin_application_detail(request, app_slug):
             f"Application — {application['child_name']}",
             application=application,
             app_slug=app_slug,
-            admin_page_slug="applications",
-            application_urls=application_urls,
+            admin_page_slug="waitlist" if on_waitlist else "applications",
+            application_urls=_application_portal_urls("admin", app_slug, waitlist=on_waitlist),
             can_approve_this_application=True,
         ),
     )
@@ -2605,6 +2614,7 @@ def admin_page(request, page):
     if page == "waitlist":
         unit_filter = request.GET.get("unit", "")
         context["applications_tab"] = "waitlist"
+        context["waitlist_next"] = request.get_full_path()
         if context.get("portal_live"):
             context["applications"] = waitlist_for_admin(unit_filter or None)
             from .admin_services import get_units_live

@@ -51,9 +51,23 @@ def _with_family_id(url, family):
     return f"{url}{sep}id={family.pk}"
 
 
+def _portal_next_url(request, fallback):
+    nxt = (request.POST.get("next") or "").strip()
+    if nxt.startswith("/portal/"):
+        return nxt
+    return fallback
+
+
 def _application_after_review_url(area, app, action):
     from enrollment.portal_integration import next_reviewable_application
 
+    if action == "waitlist":
+        nxt = next_reviewable_application(app)
+        if nxt:
+            name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
+            return reverse(name, kwargs={"app_slug": str(nxt.reference)})
+        list_name = "portal_admin_page" if area == "admin" else "portal_staff_page"
+        return reverse(list_name, kwargs={"page": "waitlist"})
     if action in {"approve", "reject"}:
         nxt = next_reviewable_application(app)
         if nxt:
@@ -1008,6 +1022,7 @@ def staff_application_review(request, app_slug):
     from enrollment.application_review import (
         approve_application,
         assign_application_location,
+        place_on_waitlist,
         reject_application,
         request_application_changes,
         save_internal_note,
@@ -1031,6 +1046,12 @@ def staff_application_review(request, app_slug):
                 return redirect(redirect_url)
             approve_application(app, program_location=program_location or None)
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
+        elif action == "waitlist":
+            place_on_waitlist(app)
+            messages.success(
+                request,
+                f"{app.student_first_name} {app.student_last_name} is on the waitlist. Approve them from the Waitlist tab when a spot opens.",
+            )
         elif action == "update_location":
             assign_application_location(app, program_location)
             messages.success(request, "Application location updated.")
@@ -1049,7 +1070,7 @@ def staff_application_review(request, app_slug):
         messages.error(request, str(exc))
         return redirect(redirect_url)
 
-    return redirect(_application_after_review_url("staff", app, action))
+    return redirect(_portal_next_url(request, _application_after_review_url("staff", app, action)))
 
 
 @require_POST
@@ -1058,6 +1079,7 @@ def admin_application_review(request, app_slug):
     from enrollment.application_review import (
         approve_application,
         assign_application_location,
+        place_on_waitlist,
         reject_application,
         request_application_changes,
         save_internal_note,
@@ -1076,6 +1098,12 @@ def admin_application_review(request, app_slug):
         if action == "approve":
             approve_application(app, program_location=program_location or None)
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster. Open the family Applications tab to view or edit their full application.")
+        elif action == "waitlist":
+            place_on_waitlist(app)
+            messages.success(
+                request,
+                f"{app.student_first_name} {app.student_last_name} is on the waitlist. Approve them from the Waitlist tab when a spot opens.",
+            )
         elif action == "update_location":
             assign_application_location(app, program_location)
             messages.success(request, "Application location updated.")
@@ -1094,7 +1122,7 @@ def admin_application_review(request, app_slug):
         messages.error(request, str(exc))
         return redirect(redirect_url)
 
-    return redirect(_application_after_review_url("admin", app, action))
+    return redirect(_portal_next_url(request, _application_after_review_url("admin", app, action)))
 
 
 @require_POST
