@@ -193,6 +193,9 @@ def get_staff_users_live():
 
 
 def get_member_families_live():
+    from enrollment.application_review import repair_family_units_from_applications
+
+    repair_family_units_from_applications()
     rows = []
     for family in PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("unit__name", "name"):
         child_names = [c.name for c in family.children.all() if c.is_active]
@@ -310,9 +313,11 @@ def delete_staff_login(staff_account_id, *, current_user_id=None):
 
 
 def get_admin_families_live():
+    from enrollment.application_review import repair_family_units_from_applications
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
 
+    repair_family_units_from_applications()
     rows = []
     for family in PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("unit__name", "name"):
         enrolled = [child.name for child in family.children.filter(is_active=True)]

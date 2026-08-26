@@ -215,9 +215,11 @@ def undo_absent(child_id, program, attendance_date):
 
 
 def families_for_staff(unit):
+    from enrollment.application_review import repair_family_units_from_applications
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
 
+    repair_family_units_from_applications()
     families = PortalFamily.objects.filter(unit=unit).prefetch_related("children")
     rows = []
     for family in families:

@@ -118,10 +118,70 @@ def _activate_family_if_needed(family):
         family.save(update_fields=["status"])
 
 
-@transaction.atomic
-def assign_application_location(app, program_location):
+def _move_family_to_unit(family, unit):
     from .portal_integration import _unique_family_slug
 
+    if not family or not unit or family.unit_id == unit.id:
+        return family
+    new_slug = family.slug
+    if PortalFamily.objects.filter(unit=unit, slug=family.slug).exclude(pk=family.pk).exists():
+        new_slug = _unique_family_slug(unit, family.name)
+    family.unit = unit
+    family.slug = new_slug
+    family.save(update_fields=["unit", "slug"])
+    return family
+
+
+def _sync_family_to_application_unit(app):
+    """Keep the family account on the same program site as the application."""
+    from portal.member_admin import is_placeholder_unit
+
+    family = app.portal_family
+    if not family or not app.program_location:
+        return family
+    unit = get_unit_for_enrollment_key(app.program_location)
+    if not unit or is_placeholder_unit(unit):
+        return family
+    return _move_family_to_unit(family, unit)
+
+
+def preferred_application_for_family(family):
+    apps = list(
+        EnrollmentApplication.objects.filter(portal_family=family)
+        .exclude(program_location="")
+        .exclude(status="declined")
+        .order_by("-reviewed_at", "-submitted_at")
+    )
+    if not apps:
+        return None
+    for status in ("enrolled", "approved", "under_review", "pending_documents", "waitlist"):
+        match = next((row for row in apps if row.status == status), None)
+        if match:
+            return match
+    return apps[0]
+
+
+def repair_family_units_from_applications():
+    """Move family accounts off Main location (or the wrong site) onto the application site."""
+    from portal.member_admin import is_placeholder_unit
+
+    moved = 0
+    for family in PortalFamily.objects.select_related("unit"):
+        app = preferred_application_for_family(family)
+        if not app:
+            continue
+        unit = get_unit_for_enrollment_key(app.program_location)
+        if not unit or is_placeholder_unit(unit):
+            continue
+        if family.unit_id == unit.id:
+            continue
+        _move_family_to_unit(family, unit)
+        moved += 1
+    return moved
+
+
+@transaction.atomic
+def assign_application_location(app, program_location):
     program_location = (program_location or "").strip()
     valid_keys = {key for key, _ in get_enrollment_location_choices()}
     if not program_location:
@@ -143,13 +203,7 @@ def assign_application_location(app, program_location):
 
     family = app.portal_family
     if family and family.unit_id != unit.id:
-        new_slug = family.slug
-        if PortalFamily.objects.filter(unit=unit, slug=family.slug).exclude(pk=family.pk).exists():
-            new_slug = _unique_family_slug(unit, family.name)
-        family.unit = unit
-        family.slug = new_slug
-        family.save(update_fields=["unit", "slug"])
-
+        _move_family_to_unit(family, unit)
         sibling_updates = {
             "program_location": program_location,
             "needs_dale_ave_bus": app.needs_dale_ave_bus,
@@ -164,9 +218,11 @@ def approve_application(app, program_location=None):
     if app.status not in REVIEWABLE_STATUSES:
         raise ValueError("This application has already been reviewed.")
 
-    if program_location and program_location.strip() != app.program_location:
+    if program_location and program_location.strip() != (app.program_location or ""):
         assign_application_location(app, program_location.strip())
         app.refresh_from_db()
+    else:
+        _sync_family_to_application_unit(app)
 
     _ensure_child_on_roster(app)
     _post_membership_fee_if_needed(app)

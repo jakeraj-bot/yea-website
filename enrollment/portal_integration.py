@@ -36,14 +36,21 @@ STATUS_LABELS = {
 
 def _unit_for_location(program_location):
     from .locations import get_unit_for_enrollment_key
+    from portal.member_admin import is_placeholder_unit, program_units
+
+    def _usable(unit):
+        return unit and not is_placeholder_unit(unit)
 
     unit = get_unit_for_enrollment_key(program_location)
-    if unit:
+    if _usable(unit):
         return unit
     slug = LOCATION_TO_UNIT_SLUG.get(program_location, "school-18")
     unit = PortalUnit.objects.filter(slug=slug, is_active=True).first()
-    if unit:
+    if _usable(unit):
         return unit
+    units = program_units()
+    if units:
+        return units[0]
     return PortalUnit.objects.filter(is_active=True).order_by("id").first()
 
 
