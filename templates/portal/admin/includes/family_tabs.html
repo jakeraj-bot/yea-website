@@ -1,4 +1,6 @@
 <nav class="portal-family-tabs portal-family-tabs-scroll portal-staff-family-tabs" aria-label="Family sections">
-  <a class="portal-family-tab portal-family-tab--billing {% if family_tab == 'billing' %}is-active{% endif %}" href="{% url 'portal_admin_family_billing' family_slug=family_slug %}">Billing</a>
-  <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_admin_family_policies' family_slug=family_slug %}">Policies</a>
+  <a class="portal-family-tab portal-family-tab--billing {% if family_tab == 'billing' %}is-active{% endif %}" href="{% url 'portal_admin_family_billing' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% elif billing.id %}?id={{ billing.id }}{% endif %}">Billing</a>
+  <a class="portal-family-tab {% if family_tab == 'applications' %}is-active{% endif %}" href="{% url 'portal_admin_family_applications' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% elif billing.id %}?id={{ billing.id }}{% endif %}">Applications</a>
+  <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_admin_family_policies' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% elif billing.id %}?id={{ billing.id }}{% endif %}">Policies</a>
+  <a class="portal-family-tab" href="{% url 'portal_admin_page' page='parent-emails' %}{% if family_id %}?family_id={{ family_id }}{% elif billing.id %}?family_id={{ billing.id }}{% endif %}">Email parent</a>
 </nav>

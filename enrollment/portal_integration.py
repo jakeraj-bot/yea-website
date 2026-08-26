@@ -150,7 +150,10 @@ def application_to_portal_dict(app):
         "primary_email": app.primary_email,
         "primary_phone": app.primary_phone,
         "home_address": app.home_address,
+        "student_school": app.student_school or "",
         "payment_method": app.get_payment_method_display(),
+        "payment_method_key": app.payment_method,
+        "payment_method_other": app.payment_method_other or "",
         "payment_plan": app.get_payment_plan_display(),
         "membership_fee_agreed": "Yes" if app.membership_fee_agreed == "yes" else "No",
         "emergency_contacts": contacts,
@@ -158,6 +161,7 @@ def application_to_portal_dict(app):
         "policies_total": len(signed_policies),
         "signed_policies": signed_policies,
         "family_slug": app.portal_family.slug if app.portal_family_id else "",
+        "family_id": app.portal_family_id or "",
     }
 
 
@@ -219,10 +223,16 @@ def staff_application_row(app):
         "child": f"{app.student_first_name} {app.student_last_name}".strip(),
         "family": _application_family_label(app),
         "family_slug": app.portal_family.slug if app.portal_family_id else "",
+        "family_id": app.portal_family_id or "",
+        "has_parent_login": bool(
+            app.portal_family_id
+            and PortalParentAccount.objects.filter(family_id=app.portal_family_id).exists()
+        ),
         "unit": unit_name or "—",
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "program": app.get_program_display().replace(" program", ""),
+        "school": app.student_school or "—",
         "status": STATUS_LABELS.get(app.status, "Under review"),
         "status_slug": (app.status or "under_review").replace("_", "-"),
         "returning": False,
@@ -233,6 +243,12 @@ def staff_application_detail(app):
     data = application_to_portal_dict(app)
     data.update(
         {
+            "id": app.pk,
+            "family_id": app.portal_family_id or "",
+            "has_parent_login": bool(
+                app.portal_family_id
+                and PortalParentAccount.objects.filter(family_id=app.portal_family_id).exists()
+            ),
             "returning_member": False,
             "membership_required": app.membership_fee_agreed == "yes",
             "internal_note": app.internal_note or "",
@@ -242,9 +258,62 @@ def staff_application_detail(app):
             "reviewed_at": timezone.localtime(app.reviewed_at).strftime("%B %d, %Y at %-I:%M %p")
             if app.reviewed_at
             else "",
+            "student_first_name": app.student_first_name,
+            "student_last_name": app.student_last_name,
+            "student_grade": app.student_grade,
+            "student_dob_iso": app.student_dob.isoformat() if app.student_dob else "",
+            "primary_first_name": app.primary_first_name,
+            "primary_last_name": app.primary_last_name,
+            "allergies": app.allergies or "",
+            "no_known_allergies": app.no_known_allergies,
+            "medical_condition_explain": app.medical_condition_explain or "",
+            "has_disability": app.get_has_disability_display() if app.has_disability else "",
+            "has_special_needs": app.get_has_special_needs_display() if app.has_special_needs else "",
+            "requires_medication": app.get_requires_medication_display() if app.requires_medication else "",
+            "doctor_name": app.doctor_name or "",
+            "doctor_phone": app.doctor_phone or "",
+            "secondary_parent": f"{app.secondary_first_name} {app.secondary_last_name}".strip(),
+            "secondary_email": app.secondary_email_address or "",
+            "secondary_phone": app.secondary_phone or "",
+            "program_key": app.program,
+            "payment_plan_key": app.payment_plan,
+            "grade_choices": EnrollmentApplication.GRADE_CHOICES,
+            "program_choices": EnrollmentApplication.PROGRAM_CHOICES,
+            "payment_method_choices": EnrollmentApplication.PAYMENT_METHOD_CHOICES,
+            "payment_plan_choices": EnrollmentApplication.PAYMENT_PLAN_CHOICES,
+            **application_neighbors(app),
         }
     )
     return data
+
+
+OPEN_REVIEW_STATUSES = ("under_review", "pending_documents", "waitlist")
+
+
+def application_neighbors(app, unit=None):
+    qs = EnrollmentApplication.objects.all()
+    if unit:
+        qs = applications_queryset_for_unit(unit)
+    slugs = [str(row.reference) for row in qs.order_by("-submitted_at")]
+    current = str(app.reference)
+    try:
+        idx = slugs.index(current)
+    except ValueError:
+        return {"prev_slug": "", "next_slug": "", "queue_position": 0, "queue_total": len(slugs)}
+    return {
+        "prev_slug": slugs[idx - 1] if idx > 0 else "",
+        "next_slug": slugs[idx + 1] if idx < len(slugs) - 1 else "",
+        "queue_position": idx + 1,
+        "queue_total": len(slugs),
+    }
+
+
+def next_reviewable_application(app, unit=None):
+    qs = EnrollmentApplication.objects.filter(status__in=OPEN_REVIEW_STATUSES).exclude(pk=app.pk)
+    if unit:
+        qs = applications_queryset_for_unit(unit).filter(status__in=OPEN_REVIEW_STATUSES).exclude(pk=app.pk)
+    following = qs.filter(submitted_at__lte=app.submitted_at).order_by("-submitted_at").first()
+    return following or qs.order_by("-submitted_at").first()
 
 
 def applications_for_staff(unit=None):

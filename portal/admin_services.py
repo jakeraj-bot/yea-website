@@ -27,9 +27,13 @@ def _demo_unit(slug):
 
 
 def get_admin_dashboard_live():
-    enrolled = PortalChild.objects.filter(is_active=True).count()
-    families = PortalFamily.objects.count()
-    open_apps = EnrollmentApplication.objects.exclude(status__in=("enrolled", "declined")).count()
+    enrolled = PortalChild.objects.filter(is_active=True).exclude(
+        family__unit__slug__in=("main-location", "main_location")
+    ).count()
+    families = PortalFamily.objects.exclude(unit__slug__in=("main-location", "main_location")).count()
+    open_apps = EnrollmentApplication.objects.filter(
+        status__in=("under_review", "pending_documents", "waitlist")
+    ).count()
     overdue_qs = PortalFamily.objects.filter(balance__gt=0)
     overdue_total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")
     staff_count = PortalStaffAccount.objects.filter(is_active=True).count()
@@ -37,7 +41,13 @@ def get_admin_dashboard_live():
     total_apps = max(EnrollmentApplication.objects.count(), 1)
     policy_pct = min(100, int(signed_apps / total_apps * 100)) if total_apps else 0
     active_programs = PortalProgram.objects.filter(is_active=True).count()
+    from .member_admin import pending_4cs_children
+
     agency_children = PortalAgencyProfile.objects.count()
+    pending_4cs = pending_4cs_children()
+    approved_4cs = PortalChild.objects.filter(is_active=True, family__billing_type__iexact="4Cs").exclude(
+        family__unit__slug__in=("main-location", "main_location")
+    ).count()
     return {
         "total_enrolled": enrolled,
         "total_families": families,
@@ -48,23 +58,45 @@ def get_admin_dashboard_live():
         "staff_count": staff_count,
         "active_programs": active_programs,
         "agency_children": agency_children,
+        "pending_4cs_count": len(pending_4cs),
+        "approved_4cs_count": approved_4cs,
+        "pending_4cs": [
+            {
+                "child": child.name,
+                "family": child.family.name,
+                "unit": child.family.unit.name,
+                "family_slug": child.family.slug,
+                "family_id": child.family_id,
+            }
+            for child in pending_4cs
+        ],
     }
 
 
 def get_enrollment_by_unit_live():
+    from .member_admin import is_placeholder_unit
+
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
+        if is_placeholder_unit(unit):
+            continue
         enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
         capacity = unit.capacity or enrolled
         programs = PortalProgram.objects.filter(unit=unit, is_active=True).count()
         open_apps = EnrollmentApplication.objects.filter(
             portal_family__unit=unit,
-        ).exclude(status__in=("enrolled", "declined")).count()
+            status__in=("under_review", "pending_documents", "waitlist"),
+        ).count()
+        approved = EnrollmentApplication.objects.filter(
+            portal_family__unit=unit,
+            status__in=("approved", "enrolled"),
+        ).count()
         rows.append(
             {
                 "unit": unit.name,
                 "slug": unit.slug,
                 "enrolled": enrolled,
+                "approved_applications": approved,
                 "capacity": capacity,
                 "programs": programs,
                 "open_apps": open_apps,
@@ -166,6 +198,7 @@ def get_member_families_live():
         child_names = [c.name for c in family.children.all() if c.is_active]
         rows.append(
             {
+                "id": family.pk,
                 "name": family.name,
                 "slug": family.slug,
                 "unit": family.unit.name,
@@ -173,7 +206,7 @@ def get_member_families_live():
                 "children": child_names,
                 "balance": f"{family.balance:.2f}",
                 "billing_type": family.billing_type or "Private pay",
-                "status": family.status,
+                "status": "Suspended" if family.is_suspended else family.status,
             }
         )
     return rows
@@ -291,16 +324,24 @@ def get_admin_families_live():
                 pending_children.append(child_name)
         rows.append(
             {
+                "id": family.pk,
                 "slug": family.slug,
                 "name": family_display_label(family),
                 "unit": family.unit.name,
                 "unit_slug": family.unit.slug,
                 "primary_contact": family.primary_contact or "—",
                 "children": enrolled + pending_children,
+                "school": ", ".join(
+                    sorted({child.school for child in family.children.filter(is_active=True) if child.school})
+                )
+                or "—",
                 "balance": format(family.balance, ".2f"),
                 "program": family.program_label or "—",
                 "billing_type": family.billing_type or "Private pay",
-                "status": family.status,
+                "status": "Suspended" if family.is_suspended else family.status,
+                "is_suspended": family.is_suspended,
+                "has_parent_login": PortalParentAccount.objects.filter(family=family).exists(),
+                "has_application": family.enrollment_applications.exists(),
             }
         )
     return rows
@@ -335,7 +376,9 @@ def get_admin_alerts_live():
     from .live_services import count_messages_unread_live
 
     alerts = []
-    open_apps = EnrollmentApplication.objects.exclude(status__in=("enrolled", "declined")).count()
+    open_apps = EnrollmentApplication.objects.filter(
+        status__in=("under_review", "pending_documents", "waitlist")
+    ).count()
     if open_apps:
         alerts.append(
             {
@@ -373,6 +416,17 @@ def get_admin_alerts_live():
                 "text": f"{unread} unread staff message(s)",
                 "link_name": "portal_admin_page",
                 "link_arg": "messages",
+            }
+        )
+    from .member_admin import pending_4cs_children
+
+    pending_4cs = pending_4cs_children()
+    if pending_4cs:
+        alerts.append(
+            {
+                "text": f"{len(pending_4cs)} approved 4Cs child(ren) waiting for authorization / copay info",
+                "link_name": "portal_admin_page",
+                "link_arg": "agencies",
             }
         )
     return alerts

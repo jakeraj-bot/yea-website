@@ -40,6 +40,31 @@ def _admin_needs_live(request):
     return True
 
 
+def _family_id_param(request):
+    return request.POST.get("family_id") or request.GET.get("id") or request.GET.get("family_id")
+
+
+def _with_family_id(url, family):
+    if not family:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}id={family.pk}"
+
+
+def _application_after_review_url(area, app, action):
+    from enrollment.portal_integration import next_reviewable_application
+
+    if action in {"approve", "reject"}:
+        nxt = next_reviewable_application(app)
+        if nxt:
+            name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
+            return reverse(name, kwargs={"app_slug": str(nxt.reference)})
+        list_name = "portal_admin_page" if area == "admin" else "portal_staff_page"
+        return reverse(list_name, kwargs={"page": "applications"})
+    name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
+    return reverse(name, kwargs={"app_slug": str(app.reference)})
+
+
 @require_POST
 def staff_incident_save(request):
     if not _needs_live(request):
@@ -1022,8 +1047,9 @@ def staff_application_review(request, app_slug):
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
         messages.error(request, str(exc))
+        return redirect(redirect_url)
 
-    return redirect(redirect_url)
+    return redirect(_application_after_review_url("staff", app, action))
 
 
 @require_POST
@@ -1066,8 +1092,9 @@ def admin_application_review(request, app_slug):
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
         messages.error(request, str(exc))
+        return redirect(redirect_url)
 
-    return redirect(redirect_url)
+    return redirect(_application_after_review_url("admin", app, action))
 
 
 @require_POST
@@ -1117,12 +1144,14 @@ def staff_billing_action(request, family_slug):
     if not _needs_live(request):
         return redirect(redirect_url)
 
-    family = get_family_for_billing(family_slug, unit)
+    family = get_family_for_billing(family_slug, unit, family_id=_family_id_param(request))
     if not family:
         messages.error(request, "Family not found.")
         if area == "admin":
             return redirect("portal_admin_page", page="billing-settings")
         return redirect("portal_staff_page", page="families")
+
+    redirect_url = _with_family_id(redirect_url, family)
 
     action = request.POST.get("action", "")
     entry_date = parse_date(request.POST.get("date") or "") or default_entry_date()
@@ -1231,6 +1260,7 @@ def staff_create_application(request):
         "grade": request.POST.get("grade", "1"),
         "returning_member": request.POST.get("returning_member", "no"),
         "payment_method": request.POST.get("payment_method", "private_pay"),
+        "payment_method_other": request.POST.get("payment_method_other", ""),
         "action": request.POST.get("action", "submit"),
     }
     if not all([form["family_name"], form["email"], form["student_first_name"], form["student_last_name"]]):
@@ -1584,4 +1614,203 @@ def member_stripe_webhook(request):
     if handle_member_stripe_webhook(payload, signature):
         return HttpResponse(status=200)
     return HttpResponse(status=400)
+
+
+@require_POST
+@admin_login_required_post
+def admin_member_ops(request):
+    from enrollment.portal_integration import get_application_by_reference
+
+    from .member_admin import (
+        add_prior_balance,
+        apply_discount_to_family,
+        create_account_from_application,
+        create_parent_account_for_family,
+        delete_application_record,
+        delete_family_record,
+        link_application_to_family,
+        link_prior_balance,
+        resolve_family,
+        save_discount_plan,
+        send_parent_emails,
+        suspend_family,
+        unsuspend_family,
+        update_application_fields,
+    )
+    from .models import PortalDiscountPlan, PortalPriorBalance
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="families")
+
+    action = request.POST.get("action", "")
+    next_url = request.POST.get("next") or reverse("portal_admin_page", kwargs={"page": "families"})
+    family = resolve_family(
+        family_slug=request.POST.get("family_slug"),
+        family_id=request.POST.get("family_id"),
+    )
+
+    try:
+        if action == "add_prior_balance":
+            add_prior_balance(
+                request.POST.get("name", ""),
+                request.POST.get("amount", ""),
+                request.POST.get("child_name", ""),
+                request.POST.get("notes", ""),
+            )
+            messages.success(request, "Prior balance added to collections.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "collections"})
+        elif action == "link_prior_balance":
+            if not family:
+                raise ValueError("Choose a family to link this balance to.")
+            link_prior_balance(request.POST.get("balance_id"), family)
+            messages.success(request, f"Prior balance linked to {family.name} and posted to their ledger.")
+            next_url = _with_family_id(
+                reverse("portal_admin_family_billing", kwargs={"family_slug": family.slug}),
+                family,
+            )
+        elif action == "delete_prior_balance":
+            row = PortalPriorBalance.objects.filter(pk=request.POST.get("balance_id"), linked_family__isnull=True).first()
+            if not row:
+                raise ValueError("Unlinked collection record not found.")
+            row.delete()
+            messages.success(request, "Collection record deleted.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "collections"})
+        elif action == "suspend":
+            if not family:
+                raise ValueError("Family not found.")
+            sent = suspend_family(family, request.POST.get("reason"), request.POST.get("note", ""))
+            if sent:
+                messages.success(request, f"{family.name} is suspended. A notice was emailed to the primary parent.")
+            else:
+                messages.warning(request, f"{family.name} is suspended, but no parent email was on file to notify.")
+            next_url = _with_family_id(
+                reverse("portal_admin_family_billing", kwargs={"family_slug": family.slug}),
+                family,
+            )
+        elif action == "unsuspend":
+            if not family:
+                raise ValueError("Family not found.")
+            unsuspend_family(family)
+            messages.success(request, f"{family.name} is no longer suspended.")
+            next_url = _with_family_id(
+                reverse("portal_admin_family_billing", kwargs={"family_slug": family.slug}),
+                family,
+            )
+        elif action == "create_parent_account":
+            if not family:
+                raise ValueError("Family not found.")
+            username, password = create_parent_account_for_family(
+                family,
+                request.POST.get("username", ""),
+                request.POST.get("password", ""),
+                request.POST.get("email", ""),
+            )
+            messages.success(request, f"Parent login created: {username}. Share the password with the family.")
+        elif action == "create_account_from_application":
+            app = get_application_by_reference(request.POST.get("app_slug", ""))
+            if not app:
+                raise ValueError("Application not found.")
+            family, username = create_account_from_application(
+                app,
+                request.POST.get("username", "") or app.family_name or "parent",
+                request.POST.get("password", "") or "ChangeMe123!",
+            )
+            messages.success(
+                request,
+                f"Portal account created for {family.name}. Username: {username}.",
+            )
+            next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
+        elif action == "delete_family":
+            if not family:
+                raise ValueError("Family not found.")
+            label = delete_family_record(family)
+            messages.success(request, f"Deleted family {label}.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "families"})
+        elif action == "delete_application":
+            app = get_application_by_reference(request.POST.get("app_slug", ""))
+            if not app:
+                raise ValueError("Application not found.")
+            label = delete_application_record(app)
+            messages.success(request, f"Deleted application for {label}.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "applications"})
+        elif action == "update_application":
+            app = get_application_by_reference(request.POST.get("app_slug", ""))
+            if not app:
+                raise ValueError("Application not found.")
+            dob = parse_date(request.POST.get("student_dob") or "")
+            update_application_fields(
+                app,
+                {
+                    "family_name": request.POST.get("family_name", app.family_name),
+                    "primary_email": request.POST.get("primary_email", app.primary_email),
+                    "home_address": request.POST.get("home_address", app.home_address),
+                    "primary_first_name": request.POST.get("primary_first_name", app.primary_first_name),
+                    "primary_last_name": request.POST.get("primary_last_name", app.primary_last_name),
+                    "primary_phone": request.POST.get("primary_phone", app.primary_phone),
+                    "student_first_name": request.POST.get("student_first_name", app.student_first_name),
+                    "student_last_name": request.POST.get("student_last_name", app.student_last_name),
+                    "student_school": request.POST.get("student_school", app.student_school),
+                    "student_grade": request.POST.get("student_grade", app.student_grade),
+                    "student_dob": dob,
+                    "program": request.POST.get("program", app.program),
+                    "program_location": request.POST.get("program_location", app.program_location),
+                    "payment_method": request.POST.get("payment_method", app.payment_method),
+                    "payment_method_other": request.POST.get("payment_method_other", app.payment_method_other),
+                    "payment_plan": request.POST.get("payment_plan", app.payment_plan),
+                    "allergies": request.POST.get("allergies", app.allergies),
+                    "medical_condition_explain": request.POST.get("medical_condition_explain", app.medical_condition_explain),
+                },
+            )
+            messages.success(request, "Application updated.")
+            next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
+        elif action == "link_application":
+            app = get_application_by_reference(request.POST.get("app_slug", ""))
+            if not app or not family:
+                raise ValueError("Choose an application and family to link.")
+            link_application_to_family(app, family)
+            messages.success(request, f"Linked {app.student_first_name} {app.student_last_name} to {family.name}.")
+            next_url = _with_family_id(
+                reverse("portal_admin_family_applications", kwargs={"family_slug": family.slug}),
+                family,
+            )
+        elif action == "send_parent_emails":
+            emails = request.POST.getlist("emails")
+            sent, total = send_parent_emails(request.POST.get("subject"), request.POST.get("body"), emails)
+            messages.success(request, f"Sent {sent} of {total} parent email(s).")
+            next_url = reverse("portal_admin_page", kwargs={"page": "parent-emails"})
+        elif action == "save_discount":
+            plan = save_discount_plan(
+                request.POST.get("name", ""),
+                request.POST.get("kind", "amount"),
+                request.POST.get("value", ""),
+                request.POST.get("description", ""),
+                plan_id=request.POST.get("plan_id") or None,
+            )
+            messages.success(request, f"Discount plan “{plan.name}” saved.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "discounts"})
+        elif action == "toggle_discount":
+            plan = PortalDiscountPlan.objects.filter(pk=request.POST.get("plan_id")).first()
+            if not plan:
+                raise ValueError("Discount plan not found.")
+            plan.is_active = not plan.is_active
+            plan.save(update_fields=["is_active"])
+            messages.success(request, f"Discount plan “{plan.name}” {'activated' if plan.is_active else 'archived'}.")
+            next_url = reverse("portal_admin_page", kwargs={"page": "discounts"})
+        elif action == "apply_discount":
+            if not family:
+                raise ValueError("Choose a family.")
+            apply_discount_to_family(family, request.POST.get("plan_id"), request.POST.get("child_name", ""))
+            messages.success(request, f"Discount applied to {family.name}.")
+            next_url = _with_family_id(
+                reverse("portal_admin_family_billing", kwargs={"family_slug": family.slug}),
+                family,
+            )
+        else:
+            messages.error(request, "Unknown action.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    except Exception as exc:
+        messages.error(request, str(exc))
+
+    return redirect(next_url)
 

@@ -91,13 +91,14 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-members"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'waitlist' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' or admin_page_slug == 'field-trips' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-members"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'waitlist' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' or admin_page_slug == 'field-trips' or admin_page_slug == 'collections' %} open{% endif %}>
       <summary class="portal-nav-group-label">Members</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-families{% if admin_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}">All families</a></li>
         <li><a class="portal-nav-link portal-nav-admin-applications{% if admin_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='applications' %}">Applications</a></li>
         <li><a class="portal-nav-link{% if admin_page_slug == 'waitlist' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='waitlist' %}">Waitlist</a></li>
         <li><a class="portal-nav-link portal-nav-admin-billing{% if admin_page_slug == 'member-billing' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a></li>
+        <li><a class="portal-nav-link{% if admin_page_slug == 'collections' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='collections' %}">Collections</a></li>
         <li><a class="portal-nav-link portal-nav-admin-policies{% if admin_page_slug == 'member-policies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-policies' %}">Member policies</a></li>
         <li><a class="portal-nav-link{% if admin_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='field-trips' %}">Field trips</a></li>
       </ul>
@@ -111,20 +112,22 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-billing"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'scholarships' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-billing"{% if admin_page_slug == 'agencies' or admin_page_slug == 'fees' or admin_page_slug == 'scholarships' or admin_page_slug == 'discounts' %} open{% endif %}>
       <summary class="portal-nav-group-label">Billing &amp; fees</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-agencies{% if admin_page_slug == 'agencies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='agencies' %}">Agencies (4Cs)</a></li>
         <li><a class="portal-nav-link portal-nav-admin-fees{% if admin_page_slug == 'fees' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='fees' %}">Fees &amp; billing rules</a></li>
         <li><a class="portal-nav-link portal-nav-admin-scholarships{% if admin_page_slug == 'scholarships' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a></li>
+        <li><a class="portal-nav-link{% if admin_page_slug == 'discounts' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='discounts' %}">Discount plans</a></li>
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-communications"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'support' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-communications"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'parent-emails' or admin_page_slug == 'support' %} open{% endif %}>
       <summary class="portal-nav-group-label">Communications</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-messages{% if admin_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='messages' %}">Team messages</a></li>
         <li><a class="portal-nav-link portal-nav-admin-comms{% if admin_page_slug == 'communications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='communications' %}">Parent comms</a></li>
+        <li><a class="portal-nav-link{% if admin_page_slug == 'parent-emails' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='parent-emails' %}">Email parents</a></li>
         <li><a class="portal-nav-link portal-nav-admin-support{% if admin_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='support' %}">Support inbox</a></li>
       </ul>
     </details>

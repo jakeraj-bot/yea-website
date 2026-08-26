@@ -93,8 +93,10 @@ def get_member_summaries_for_unit(unit):
     return summaries
 
 
-def get_family_policies_for_staff(family_slug):
-    family = PortalFamily.objects.filter(slug=family_slug).first()
+def get_family_policies_for_staff(family_slug, family_id=None):
+    from .member_admin import resolve_family
+
+    family = resolve_family(family_slug=family_slug, family_id=family_id)
     if family:
         live = get_parent_policy_data_live(family)
         if live:

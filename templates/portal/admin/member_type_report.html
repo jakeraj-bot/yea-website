@@ -1,0 +1,77 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_admin_page' page='reports' %}">Organization reports</a> / Member types</p>
+    <h1>Member types &amp; payment plans</h1>
+    <p class="lead">4Cs, private pay, other — and weekly, bi-weekly, monthly payers.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="portal-toolbar portal-form-inline portal-no-print">
+      <label class="portal-filter-label">
+        Billing
+        <select class="portal-select" name="billing" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for type in billing_types %}
+          <option value="{{ type }}"{% if billing_filter == type %} selected{% endif %}>{{ type }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="portal-filter-label">
+        Payment plan
+        <select class="portal-select" name="plan" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for plan in payment_plans %}
+          <option value="{{ plan }}"{% if plan_filter == plan %} selected{% endif %}>{{ plan }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_member_type_report' %}?billing={{ billing_filter }}&amp;plan={{ plan_filter }}&amp;format=csv">Download CSV</a>
+    </form>
+
+    <div class="portal-medical-report-sheet card">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Member type report</h2>
+          <p class="portal-medical-report-meta">{{ member_rows|length }} children{% if billing_filter %} · {{ billing_filter }}{% endif %}{% if plan_filter %} · {{ plan_filter }}{% endif %}</p>
+        </div>
+      </header>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Unit / program site</th>
+              <th>School attending</th>
+              <th>Billing</th>
+              <th>Payment plan</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in member_rows %}
+            <tr>
+              <td>{{ row.child }}</td>
+              <td><a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}?id={{ row.family_id }}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span></td>
+              <td>{{ row.unit }}</td>
+              <td>{{ row.school }}</td>
+              <td>{{ row.billing }}</td>
+              <td>{{ row.plan }}</td>
+              <td>{{ row.status }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="form-note">No members match this filter.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

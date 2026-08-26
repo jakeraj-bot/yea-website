@@ -24,8 +24,13 @@ def enrollment_key_for_unit(unit):
 
 def get_enrollment_location_choices():
     from portal.models import PortalUnit
+    from portal.member_admin import is_placeholder_unit
 
-    units = list(PortalUnit.objects.filter(is_active=True).order_by("name"))
+    units = [
+        unit
+        for unit in PortalUnit.objects.filter(is_active=True).order_by("name")
+        if not is_placeholder_unit(unit)
+    ]
     if units:
         return [(enrollment_key_for_unit(unit), _unit_label(unit)) for unit in units]
     from enrollment.models import EnrollmentApplication
@@ -104,6 +109,10 @@ def location_keys_for_program(program):
 
     keys = []
     for unit in PortalUnit.objects.filter(is_active=True).order_by("name"):
+        from portal.member_admin import is_placeholder_unit
+
+        if is_placeholder_unit(unit):
+            continue
         if program == "before_care":
             if unit_offers_before_care(unit):
                 keys.append(enrollment_key_for_unit(unit))

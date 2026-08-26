@@ -230,14 +230,20 @@ def families_for_staff(unit):
                 pending_children.append(child_name)
         rows.append(
             {
+                "id": family.pk,
                 "slug": family.slug,
                 "name": family_display_label(family),
                 "primary_contact": family.primary_contact,
                 "children": enrolled + pending_children,
+                "school": ", ".join(
+                    sorted({child.school for child in family.children.filter(is_active=True) if child.school})
+                )
+                or "—",
                 "balance": format(family.balance, ".2f"),
                 "program": family.program_label,
                 "billing_type": family.billing_type,
-                "status": family.status,
+                "status": "Suspended" if family.is_suspended else family.status,
+                "has_application": family.enrollment_applications.exists(),
             }
         )
     return rows

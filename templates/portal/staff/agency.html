@@ -12,6 +12,18 @@
       <p><strong>Two separate accounts per 4Cs family:</strong> the <em>regular family billing</em> account covers membership and parent copays. The <em>4Cs agency billing</em> account tracks what the agency owes and pays (weekly agency rate + remittance). Agency payments never mix with private-pay tuition.</p>
     </div>
 
+    {% if agency.pending_4cs %}
+    <div class="portal-alerts card">
+      <h2>Approved 4Cs children waiting for information</h2>
+      <p class="form-note">These children were approved on 4Cs payment. Add their authorization number and copay with <strong>+ Add 4Cs child</strong> using the same child name.</p>
+      <ul class="portal-link-list">
+        {% for row in agency.pending_4cs %}
+        <li>{{ row.child }} — {{ row.family }}{% if row.school %} · {{ row.school }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
     <div class="portal-toolbar">
       <button type="button" class="btn btn-primary" id="toggle-add-child">+ Add 4Cs child</button>
       <button type="button" class="btn btn-primary" id="toggle-remittance">Record agency remittance</button>

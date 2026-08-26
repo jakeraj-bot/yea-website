@@ -120,6 +120,10 @@ def get_billing_live(family):
         "agency_name": demo.get("agency_name", ""),
         "children": children,
         "ledger": ledger,
+        "id": family.pk,
+        "is_suspended": family.is_suspended,
+        "suspend_reason": family.suspend_reason,
+        "suspend_note": family.suspend_note,
     }
 
 

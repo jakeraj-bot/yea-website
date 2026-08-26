@@ -266,11 +266,31 @@ def _application_portal_urls(area, app_slug):
             "list": reverse("portal_admin_page", kwargs={"page": "applications"}),
             "review": reverse("portal_admin_application_review", kwargs={"app_slug": app_slug}),
             "print": reverse("portal_admin_application_print", kwargs={"app_slug": app_slug}),
+            "edit": reverse("portal_admin_member_ops"),
+            "detail": reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug}),
         }
     return {
         "list": reverse("portal_staff_page", kwargs={"page": "applications"}),
         "review": reverse("portal_staff_application_review", kwargs={"app_slug": app_slug}),
         "print": reverse("portal_staff_application_print", kwargs={"app_slug": app_slug}),
+        "detail": reverse("portal_staff_application_detail", kwargs={"app_slug": app_slug}),
+    }
+
+
+def _family_id_from_request(request):
+    return request.GET.get("id") or request.GET.get("family_id") or ""
+
+
+def _admin_family_ops_context(family):
+    from .member_admin import SUSPEND_REASONS, matching_prior_balances
+    from .models import PortalDiscountPlan, PortalPriorBalance
+
+    return {
+        "family_id": family.pk,
+        "suspend_reasons": SUSPEND_REASONS,
+        "matching_prior_balances": matching_prior_balances(family),
+        "discount_plans": PortalDiscountPlan.objects.filter(is_active=True),
+        "unlinked_prior_balances": PortalPriorBalance.objects.filter(linked_family__isnull=True),
     }
 
 
@@ -1566,7 +1586,7 @@ def staff_family_billing(request, family_slug):
         posted = run_due_plan_charges()
         if posted:
             messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
-        family = get_family_for_billing(family_slug, unit)
+        family = get_family_for_billing(family_slug, unit, family_id=_family_id_from_request(request))
         if not family:
             return render(request, "portal/404.html", status=404)
         billing = prepare_billing_for_staff(family, permissions)
@@ -1611,6 +1631,8 @@ def admin_family_billing(request, family_slug):
     plan_month_days = MONTH_DAYS
     refundable_payments = []
 
+    extra = {}
+    live_family = None
     permissions = billing_permissions_for_staff(None, portal_area="admin")
     if _portal_families_live():
         from .admin_services import get_member_families_live
@@ -1619,12 +1641,14 @@ def admin_family_billing(request, family_slug):
         posted = run_due_plan_charges()
         if posted:
             messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
-        family = get_family_for_billing(family_slug, unit=None)
+        family = get_family_for_billing(family_slug, unit=None, family_id=_family_id_from_request(request))
         if not family:
             return render(request, "portal/404.html", status=404)
+        live_family = family
         billing = prepare_billing_for_staff(family, permissions)
         families = get_member_families_live()
         refundable_payments = get_refundable_payments(family)
+        extra = _admin_family_ops_context(family)
     else:
         billing = FAMILIES_BILLING.get(family_slug)
         if not billing:
@@ -1639,7 +1663,7 @@ def admin_family_billing(request, family_slug):
             _portal_context(
                 "admin",
                 f"{billing['family_name']} billing",
-                admin_page_slug="billing-settings",
+                admin_page_slug="families",
                 billing=billing,
                 billing_permissions=permissions,
                 charge_types=BILLING_CHARGE_TYPES,
@@ -1650,6 +1674,7 @@ def admin_family_billing(request, family_slug):
                 plan_weekdays=plan_weekdays,
                 plan_month_days=plan_month_days,
                 refundable_payments=refundable_payments,
+                **extra,
             ),
         ),
     )
@@ -1660,17 +1685,18 @@ def admin_family_billing(request, family_slug):
 def admin_family_policies(request, family_slug):
     from .staff_services import get_family_policies_for_staff
 
-    policy_data = get_family_policies_for_staff(family_slug)
+    policy_data = get_family_policies_for_staff(family_slug, family_id=_family_id_from_request(request) or None)
     if not policy_data:
         return render(request, "portal/404.html", status=404)
     _attach_family_policy_print_urls(policy_data, "portal_admin_family_policy_print", family_slug)
     family_meta = next((f for f in ADMIN_MEMBER_FAMILIES if f["slug"] == family_slug), {})
     if _portal_families_live():
-        from .models import PortalFamily
+        from .member_admin import resolve_family
 
-        live_family = PortalFamily.objects.filter(slug=family_slug).select_related("unit").first()
+        live_family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
         if live_family:
             family_meta = {
+                "id": live_family.pk,
                 "slug": live_family.slug,
                 "name": live_family.name,
                 "unit": live_family.unit.name if live_family.unit_id else "",
@@ -1687,6 +1713,83 @@ def admin_family_policies(request, family_slug):
                 policy_data=policy_data,
                 family_meta=family_meta,
                 family_slug=family_slug,
+                family_id=family_meta.get("id"),
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_family_applications(request, family_slug):
+    from enrollment.portal_integration import staff_application_row
+    from .member_admin import applications_for_family_admin, resolve_family
+
+    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
+    if not family:
+        return render(request, "portal/404.html", status=404)
+    linked, extras = applications_for_family_admin(family)
+    extra = _admin_family_ops_context(family)
+    return render(
+        request,
+        "portal/admin/family_applications.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                f"{family.name} — applications",
+                admin_page_slug="families",
+                family=family,
+                family_slug=family.slug,
+                family_tab="applications",
+                linked_applications=[staff_application_row(app) for app in linked],
+                unmatched_applications=[staff_application_row(app) for app in extras],
+                **extra,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_member_type_report(request):
+    import csv
+
+    from django.http import HttpResponse
+
+    from .member_admin import member_reports
+
+    rows = member_reports() if _portal_data_live() else []
+    billing_filter = request.GET.get("billing", "").strip()
+    plan_filter = request.GET.get("plan", "").strip()
+    if billing_filter:
+        rows = [row for row in rows if row["billing"].lower() == billing_filter.lower()]
+    if plan_filter:
+        rows = [row for row in rows if plan_filter.lower() in row["plan"].lower()]
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="member-type-report.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["Child", "Family", "Unit", "School", "Billing", "Payment plan", "Status"])
+        for row in rows:
+            writer.writerow([row["child"], row["family"], row["unit"], row["school"], row["billing"], row["plan"], row["status"]])
+        return response
+    billing_types = sorted({row["billing"] for row in member_reports()} if _portal_data_live() else {"4Cs", "Private pay", "Other"})
+    plans = sorted({row["plan"] for row in member_reports()} if _portal_data_live() else {"Weekly", "Bi-Weekly", "Monthly"})
+    return render(
+        request,
+        "portal/admin/member_type_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Member type & payment plan report",
+                admin_page_slug="reports",
+                member_rows=rows,
+                billing_filter=billing_filter,
+                plan_filter=plan_filter,
+                billing_types=billing_types,
+                payment_plans=plans,
             ),
         ),
     )
@@ -2129,12 +2232,15 @@ def admin_page(request, page):
         "billing-settings": "portal/admin/billing_settings.html",
         "billing-permissions": "portal/admin/billing_permissions.html",
         "scholarships": "portal/admin/scholarships.html",
+        "discounts": "portal/admin/discounts.html",
+        "collections": "portal/admin/collections.html",
         "member-policies": "portal/admin/member_policies.html",
         "field-trips": "portal/admin/field_trips.html",
         "checkin-settings": "portal/admin/checkin_settings.html",
         "reports": "portal/admin/reports.html",
         "messages": "portal/messages/messages.html",
         "communications": "portal/admin/communications.html",
+        "parent-emails": "portal/admin/parent_emails.html",
         "lesson-planner": "portal/admin/lesson_planner.html",
         "staff-compliance": "portal/admin/staff_compliance.html",
         "licensing": "portal/admin/licensing.html",
@@ -2343,11 +2449,15 @@ def admin_page(request, page):
             context["agency_child_rates"] = get_agency_child_rates()
             context["units"] = get_units_admin()
             context["editing_agency"] = next((a for a in context["agencies"] if str(a.get("pk")) == edit_id), None)
+            from .member_admin import pending_4cs_children
+
+            context["pending_4cs"] = pending_4cs_children()
         else:
             context["agencies"] = ADMIN_AGENCIES
             context["units"] = UNITS
             context["agency_child_rates"] = []
             context["editing_agency"] = None
+            context["pending_4cs"] = []
     if page == "fees":
         if context.get("portal_live"):
             from .admin_config import (
@@ -2443,9 +2553,12 @@ def admin_page(request, page):
     if page == "families":
         if context.get("portal_live"):
             from .admin_services import get_admin_families_live, get_units_live
+            from .member_admin import families_without_applications, families_without_parent_login
 
             context["families"] = get_admin_families_live()
             context["units"] = get_units_live()
+            context["families_without_login"] = families_without_parent_login()
+            context["families_without_applications"] = families_without_applications()
         else:
             context["families"] = [
                 {
@@ -2457,19 +2570,24 @@ def admin_page(request, page):
                 for row in ADMIN_MEMBER_FAMILIES
             ]
             context["units"] = UNITS
+            context["families_without_login"] = []
+            context["families_without_applications"] = []
     if page == "applications":
         unit_filter = request.GET.get("unit", "")
         context["applications_tab"] = "all"
         if context.get("portal_live"):
-            context["applications"] = applications_for_admin(unit_filter or None)
             from .admin_services import get_units_live
+            from .member_admin import applications_without_accounts
 
+            context["applications"] = applications_for_admin(unit_filter or None)
             context["units"] = get_units_live()
             context["applications_unit_filter"] = unit_filter
+            context["applications_without_accounts"] = applications_without_accounts()
         else:
             context["applications"] = [{**row, "unit": row.get("unit", "School 18"), "unit_slug": row.get("unit_slug", ""), "status_slug": row.get("status", "under-review").lower().replace(" ", "-")} for row in STAFF_APPLICATIONS]
             context["units"] = UNITS
             context["applications_unit_filter"] = unit_filter
+            context["applications_without_accounts"] = []
     if page == "waitlist":
         unit_filter = request.GET.get("unit", "")
         context["applications_tab"] = "waitlist"
@@ -2547,6 +2665,36 @@ def admin_page(request, page):
         else:
             context["units"] = UNITS
             context["field_trips"] = []
+    if page == "collections":
+        if context.get("portal_live"):
+            from .admin_services import get_admin_families_live
+            from .models import PortalPriorBalance
+
+            context["prior_balances"] = PortalPriorBalance.objects.select_related("linked_family", "linked_family__unit")
+            context["families"] = get_admin_families_live()
+        else:
+            context["prior_balances"] = []
+            context["families"] = ADMIN_MEMBER_FAMILIES
+    if page == "parent-emails":
+        if context.get("portal_live"):
+            from .member_admin import parent_email_recipients
+
+            context["parent_recipients"] = parent_email_recipients()
+        else:
+            context["parent_recipients"] = []
+        context["preselect_family_id"] = request.GET.get("family_id", "")
+    if page == "discounts":
+        if context.get("portal_live"):
+            from .admin_services import get_member_families_live
+            from .models import PortalDiscountAssignment, PortalDiscountPlan
+
+            context["discount_plans"] = PortalDiscountPlan.objects.all()
+            context["discount_assignments"] = PortalDiscountAssignment.objects.select_related("family", "plan", "family__unit")[:50]
+            context["families"] = get_member_families_live()
+        else:
+            context["discount_plans"] = []
+            context["discount_assignments"] = []
+            context["families"] = ADMIN_MEMBER_FAMILIES
     if page == "reports":
         context["reports"] = ADMIN_REPORTS
     return render(request, template, _finalize_admin_context(request, context))

@@ -80,6 +80,12 @@
         return billing.indexOf("private") !== -1;
       case "pending-membership":
         return status.indexOf("pending membership") !== -1;
+      case "no-application":
+        return row.getAttribute("data-has-application") === "0";
+      case "no-login":
+        return row.getAttribute("data-has-login") === "0";
+      case "suspended":
+        return status.indexOf("suspended") !== -1;
       default:
         return true;
     }

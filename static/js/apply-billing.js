@@ -1,16 +1,30 @@
 (function () {
   var paymentSelect = document.querySelector('select[name="payment_method"]');
   var fourCsBlock = document.getElementById("apply-fourcs-block");
-  if (!paymentSelect || !fourCsBlock) return;
+  var otherInput = document.querySelector('[name="payment_method_other"]');
+  var otherGroup = otherInput ? otherInput.closest(".form-group") : null;
+  if (!paymentSelect) return;
 
-  function toggleFourCsBlock() {
+  function togglePaymentExtras() {
     var isFourCs = paymentSelect.value === "4cs";
-    fourCsBlock.hidden = !isFourCs;
-    fourCsBlock.querySelectorAll("input, select, textarea").forEach(function (input) {
-      input.disabled = !isFourCs;
-    });
+    var isOther = paymentSelect.value === "other";
+    if (fourCsBlock) {
+      fourCsBlock.hidden = !isFourCs;
+      fourCsBlock.querySelectorAll("input, select, textarea").forEach(function (input) {
+        input.disabled = !isFourCs;
+      });
+    }
+    if (otherGroup) {
+      otherGroup.hidden = !isOther;
+    }
+    if (otherInput) {
+      otherInput.required = isOther;
+      if (!isOther) {
+        otherInput.setCustomValidity("");
+      }
+    }
   }
 
-  paymentSelect.addEventListener("change", toggleFourCsBlock);
-  toggleFourCsBlock();
+  paymentSelect.addEventListener("change", togglePaymentExtras);
+  togglePaymentExtras();
 })();

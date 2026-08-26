@@ -60,15 +60,22 @@ def _ensure_child_on_roster(app):
     name = child_display_name(app)
     child = family.children.filter(name__iexact=name).first()
     if child:
+        fields = []
         if not child.is_active:
             child.is_active = True
-            child.save(update_fields=["is_active"])
+            fields.append("is_active")
+        if app.student_school and not child.school:
+            child.school = app.student_school
+            fields.append("school")
+        if fields:
+            child.save(update_fields=fields)
         return child
 
     return PortalChild.objects.create(
         family=family,
         name=name,
         grade=app.get_student_grade_display(),
+        school=app.student_school or "",
         is_active=True,
     )
 
@@ -165,6 +172,18 @@ def approve_application(app, program_location=None):
     _post_membership_fee_if_needed(app)
     if app.portal_family:
         _activate_family_if_needed(app.portal_family)
+        from enrollment.portal_integration import PAYMENT_TO_BILLING_TYPE
+
+        billing_type = PAYMENT_TO_BILLING_TYPE.get(app.payment_method, app.portal_family.billing_type)
+        updates = []
+        if billing_type and app.portal_family.billing_type != billing_type:
+            app.portal_family.billing_type = billing_type
+            updates.append("billing_type")
+        if app.get_program_display() and not app.portal_family.program_label:
+            app.portal_family.program_label = app.get_program_display()
+            updates.append("program_label")
+        if updates:
+            app.portal_family.save(update_fields=updates)
 
     app.status = "approved"
     app.reviewed_at = timezone.now()

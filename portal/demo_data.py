@@ -625,6 +625,12 @@ ADMIN_REPORTS = [
         "slug": "financial",
     },
     {
+        "name": "Member types & payment plans",
+        "description": "4Cs, private pay, and other members — plus weekly, bi-weekly, and monthly payers",
+        "format": "PDF / CSV",
+        "slug": "members",
+    },
+    {
         "name": "Outstanding balances (all units)",
         "description": "Every family with balance due — sorted by amount",
         "format": "PDF / Excel",

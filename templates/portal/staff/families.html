@@ -18,6 +18,7 @@
             <th data-col="family">Family</th>
             <th data-col="contact">Primary contact</th>
             <th data-col="children">Children</th>
+            <th data-col="school">School attending</th>
             <th data-col="medical">Medical</th>
             <th data-col="program">Program</th>
             <th data-col="billing">Billing</th>
@@ -42,6 +43,7 @@
             <td data-col="family"><strong>{{ family.name }}</strong></td>
             <td data-col="contact">{{ family.primary_contact }}</td>
             <td data-col="children">{{ family.children|join:", " }}</td>
+            <td data-col="school">{{ family.school|default:"—" }}</td>
             <td data-col="medical" class="portal-medical-cell">
               {% for child_name in family.children %}
               {% medical_badges child_name %}
@@ -54,7 +56,7 @@
             <td data-col="actions" class="portal-row-actions">
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">Profile</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_policies' family_slug=family.slug %}">Policies</a>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
             </td>
           </tr>
           {% endfor %}

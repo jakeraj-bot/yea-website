@@ -1,0 +1,70 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_admin_page' page='families' %}">All families</a> / {{ family.name }}</p>
+    <h1>{{ family.name }} — applications</h1>
+    <p class="lead">{{ family.unit.name }} · {{ family.primary_contact }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/admin/includes/family_tabs.html" with family_tab='applications' family_slug=family.slug family_id=family.pk %}
+
+    <h2>Linked applications</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Child</th><th>School attending</th><th>Program</th><th>Submitted</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for app in linked_applications %}
+          <tr>
+            <td>{{ app.child }}</td>
+            <td>{{ app.school }}</td>
+            <td>{{ app.program }}</td>
+            <td>{{ app.submitted }}</td>
+            <td>{{ app.status }}</td>
+            <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Open</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="form-note">No applications are linked to this family yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if unmatched_applications %}
+    <h2>Possible matches (not linked)</h2>
+    <p class="form-note">These applications use the same email or family name. Link them if they belong to this account.</p>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Child</th><th>Family on application</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for app in unmatched_applications %}
+          <tr>
+            <td>{{ app.child }}</td>
+            <td>{{ app.family }}</td>
+            <td>{{ app.status }}</td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Open</a>
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="link_application">
+                <input type="hidden" name="app_slug" value="{{ app.slug }}">
+                <input type="hidden" name="family_id" value="{{ family.pk }}">
+                <input type="hidden" name="family_slug" value="{{ family.slug }}">
+                <button type="submit" class="btn btn-primary btn-sm">Link to this family</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

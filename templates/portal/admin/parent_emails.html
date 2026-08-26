@@ -1,0 +1,73 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Email parents</h1>
+    <p class="lead">Send a message to one parent or a selected group. Choose the recipients below.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid card portal-panel">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_parent_emails">
+      <div class="form-group portal-form-full">
+        <label for="email-subject">Subject</label>
+        <input id="email-subject" name="subject" type="text" class="portal-input" required>
+      </div>
+      <div class="form-group portal-form-full">
+        <label for="email-body">Message</label>
+        <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
+      </div>
+      <div class="form-group portal-form-full">
+        <label>Recipients</label>
+        <p class="form-note">Search and check the parents you want to include. Unchecked parents will not receive the email.</p>
+        <div class="portal-toolbar">
+          <input type="search" class="portal-input" id="parent-email-search" placeholder="Search family or email" autocomplete="off">
+          <button type="button" class="btn btn-secondary btn-sm" id="parent-email-select-all">Select all visible</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="parent-email-clear">Clear</button>
+        </div>
+        <div class="portal-email-recipients" id="parent-email-list">
+          {% for row in parent_recipients %}
+          <label class="portal-check-label" data-email-row data-search="{{ row.family|lower }} {{ row.email|lower }} {{ row.unit|lower }}">
+            <input type="checkbox" name="emails" value="{{ row.email }}" {% if preselect_family_id and preselect_family_id == row.family_id|stringformat:"s" %}checked{% endif %}>
+            <span><strong>{{ row.family }}</strong> · {{ row.email }} · {{ row.unit }}{% if row.suspended %} · Suspended{% endif %}</span>
+          </label>
+          {% empty %}
+          <p class="form-note">No parent emails on file yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="portal-form-actions portal-form-full">
+        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Send email</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var search = document.getElementById("parent-email-search");
+  var list = document.getElementById("parent-email-list");
+  if (!search || !list) return;
+  var rows = list.querySelectorAll("[data-email-row]");
+  search.addEventListener("input", function () {
+    var q = search.value.trim().toLowerCase();
+    rows.forEach(function (row) {
+      row.hidden = q && (row.getAttribute("data-search") || "").indexOf(q) === -1;
+    });
+  });
+  document.getElementById("parent-email-select-all").addEventListener("click", function () {
+    rows.forEach(function (row) {
+      if (!row.hidden) row.querySelector("input").checked = true;
+    });
+  });
+  document.getElementById("parent-email-clear").addEventListener("click", function () {
+    rows.forEach(function (row) {
+      row.querySelector("input").checked = false;
+    });
+  });
+})();
+</script>
+{% endblock %}

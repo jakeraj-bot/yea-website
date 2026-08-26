@@ -32,7 +32,8 @@
         {% if portal_area == 'admin' %}
         <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-settings' %}">All members</a>
         <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Bulk billing</a>
-        <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}">Policies</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Policies</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='parent-emails' %}{% if billing.id %}?family_id={{ billing.id }}{% endif %}">Email parent</a>
         {% else %}
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>
         {% endif %}
@@ -69,6 +70,91 @@
       {% endfor %}
     </div>
 
+    {% if portal_area == 'admin' and portal_live %}
+    <div class="portal-profile-grid">
+      <section class="card">
+        <h2>{% if billing.is_suspended %}Suspended{% else %}Suspend member{% endif %}</h2>
+        {% if billing.is_suspended %}
+        <p>This family is suspended{% if billing.suspend_note %}: {{ billing.suspend_note }}{% endif %}.</p>
+        <form method="post" action="{% url 'portal_admin_member_ops' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="unsuspend">
+          <input type="hidden" name="family_id" value="{{ billing.id }}">
+          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
+          <button type="submit" class="btn btn-primary">Lift suspension</button>
+        </form>
+        {% else %}
+        <p class="form-note">Emails the primary parent that the child is suspended until the balance is satisfied.</p>
+        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="suspend">
+          <input type="hidden" name="family_id" value="{{ billing.id }}">
+          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
+          <div class="form-group portal-form-full">
+            <label for="suspend-reason">Reason</label>
+            <select id="suspend-reason" name="reason" class="portal-select">
+              {% for value, label in suspend_reasons %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="suspend-note">Note to parent (optional)</label>
+            <textarea id="suspend-note" name="note" class="portal-input portal-textarea" rows="3"></textarea>
+          </div>
+          <div class="portal-form-actions portal-form-full">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Suspend this family and email the primary parent?')">Suspend and email parent</button>
+          </div>
+        </form>
+        {% endif %}
+      </section>
+
+      {% if matching_prior_balances %}
+      <section class="card">
+        <h2>Matching collections</h2>
+        <p class="form-note">Prior balances that look like this family. Link to post them to the ledger.</p>
+        {% for row in matching_prior_balances %}
+        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="link_prior_balance">
+          <input type="hidden" name="balance_id" value="{{ row.pk }}">
+          <input type="hidden" name="family_id" value="{{ billing.id }}">
+          <p>{{ row.name }}{% if row.child_name %} ({{ row.child_name }}){% endif %} — ${{ row.amount }}</p>
+          <button type="submit" class="btn btn-primary btn-sm">Link this balance</button>
+        </form>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if discount_plans %}
+      <section class="card">
+        <h2>Apply discount</h2>
+        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="apply_discount">
+          <input type="hidden" name="family_id" value="{{ billing.id }}">
+          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
+          <div class="form-group portal-form-full">
+            <label for="bill-disc">Plan</label>
+            <select id="bill-disc" name="plan_id" class="portal-select" required>
+              {% for plan in discount_plans %}
+              <option value="{{ plan.pk }}">{{ plan.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="bill-disc-child">Child (optional)</label>
+            <input id="bill-disc-child" name="child_name" class="portal-input">
+          </div>
+          <div class="portal-form-actions portal-form-full">
+            <button type="submit" class="btn btn-secondary">Apply discount</button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if portal_area == 'admin' %}
     <div class="portal-panel card" id="edit-plan-panel" hidden>
       <h2>Edit billing plan</h2>
@@ -76,6 +162,7 @@
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
         <input type="hidden" name="action" value="update_plan">
         <div class="form-group">
           <label for="plan-child">Child</label>
@@ -161,6 +248,7 @@
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
         <input type="hidden" name="action" value="charge">
         <div class="form-group">
           <label for="charge-child">Child</label>
@@ -205,6 +293,7 @@
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
         <input type="hidden" name="action" value="credit">
         <div class="form-group">
           <label for="credit-child">Child (optional)</label>
@@ -241,6 +330,7 @@
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
         <input type="hidden" name="action" value="payment">
         <div class="form-group">
           <label for="pay-child">Child</label>
@@ -310,6 +400,7 @@
                 <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-form-grid" style="grid-template-columns: 7rem 1fr auto; margin:0;">
                   {% csrf_token %}
                   <input type="hidden" name="portal_area" value="admin">
+                  {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
                   <input type="hidden" name="action" value="refund">
                   <input type="hidden" name="payment_id" value="{{ payment.id }}">
                   <input name="amount" type="text" class="portal-input" value="{{ payment.remaining }}" required>
@@ -360,6 +451,7 @@
               <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="display:inline;">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge" onclick="return confirm('Remove this ledger entry?')">Delete</button>

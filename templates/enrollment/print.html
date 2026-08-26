@@ -87,7 +87,7 @@
     <h2>Billing & payment plan</h2>
     <div class="print-grid">
       <div><span class="print-label">Membership fee agreed:</span> {{ application.get_membership_fee_agreed_display }}</div>
-      <div><span class="print-label">Payment method:</span> {{ application.get_payment_method_display }}</div>
+      <div><span class="print-label">Payment method:</span> {{ application.get_payment_method_display }}{% if application.payment_method_other %} — {{ application.payment_method_other }}{% endif %}</div>
       <div><span class="print-label">Payment plan:</span> {{ application.get_payment_plan_display }}</div>
       <div><span class="print-label">Payment plan signature:</span> {{ application.payment_plan_signature }} ({{ application.payment_plan_signed_date|date:"n/j/Y" }})</div>
     </div>

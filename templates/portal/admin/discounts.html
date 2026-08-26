@@ -1,0 +1,126 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Discount plans</h1>
+    <p class="lead">Create discount plans, then apply them to a family account. Applied discounts post as a credit on the ledger.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="card portal-panel">
+      <h2>New discount plan</h2>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_admin_member_ops' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_discount">
+        <div class="form-group">
+          <label for="disc-name">Plan name</label>
+          <input id="disc-name" name="name" type="text" class="portal-input" required placeholder="Sibling discount">
+        </div>
+        <div class="form-group">
+          <label for="disc-kind">Type</label>
+          <select id="disc-kind" name="kind" class="portal-select">
+            <option value="amount">Fixed dollar amount</option>
+            <option value="percent">Percent of plan / balance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="disc-value">Value</label>
+          <input id="disc-value" name="value" type="text" class="portal-input" required placeholder="10.00">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="disc-desc">Description</label>
+          <input id="disc-desc" name="description" type="text" class="portal-input">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save plan</button>
+        </div>
+      </form>
+    </div>
+
+    <h2>Plans</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Value</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for plan in discount_plans %}
+          <tr>
+            <td><strong>{{ plan.name }}</strong>{% if plan.description %}<br><span class="form-note">{{ plan.description }}</span>{% endif %}</td>
+            <td>{{ plan.get_kind_display }}</td>
+            <td>{% if plan.kind == 'percent' %}{{ plan.value }}%{% else %}${{ plan.value }}{% endif %}</td>
+            <td>{% if plan.is_active %}Active{% else %}Archived{% endif %}</td>
+            <td>
+              <form method="post" action="{% url 'portal_admin_member_ops' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_discount">
+                <input type="hidden" name="plan_id" value="{{ plan.pk }}">
+                <button type="submit" class="btn btn-secondary btn-sm">{% if plan.is_active %}Archive{% else %}Activate{% endif %}</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="form-note">No discount plans yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card portal-panel">
+      <h2>Apply a plan to a family</h2>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_admin_member_ops' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="apply_discount">
+        <div class="form-group">
+          <label for="apply-family">Family</label>
+          <select id="apply-family" name="family_id" class="portal-select" required>
+            <option value="">Choose family…</option>
+            {% for family in families %}
+            <option value="{{ family.id }}">{{ family.name }} · {{ family.unit }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="apply-plan">Plan</label>
+          <select id="apply-plan" name="plan_id" class="portal-select" required>
+            {% for plan in discount_plans %}
+            {% if plan.is_active %}
+            <option value="{{ plan.pk }}">{{ plan.name }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="apply-child">Child (optional)</label>
+          <input id="apply-child" name="child_name" type="text" class="portal-input">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Apply discount</button>
+        </div>
+      </form>
+    </div>
+
+    <h2>Recent assignments</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Family</th><th>Plan</th><th>Child</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for row in discount_assignments %}
+          <tr>
+            <td>{{ row.family.name }}</td>
+            <td>{{ row.plan.name }}</td>
+            <td>{{ row.child_name|default:"—" }}</td>
+            <td>{{ row.created_at|date:"M j, Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="form-note">No discounts applied yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

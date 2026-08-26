@@ -19,6 +19,7 @@
             <th data-col="family">Family</th>
             <th data-col="contact">Primary contact</th>
             <th data-col="children">Children</th>
+            <th data-col="school">School attending</th>
             <th data-col="medical">Medical</th>
             <th data-col="program">Program</th>
             <th data-col="billing">Billing</th>
@@ -41,11 +42,14 @@
             data-billing="{{ family.billing_type|lower }}"
             data-balance="{{ family.balance }}"
             data-status="{{ family.status|lower }}"
+            data-has-application="{% if family.has_application %}1{% else %}0{% endif %}"
+            data-has-login="{% if family.has_parent_login %}1{% else %}0{% endif %}"
           >
             <td data-col="unit">{{ family.unit }}</td>
             <td data-col="family"><strong>{{ family.name }}</strong></td>
             <td data-col="contact">{{ family.primary_contact }}</td>
             <td data-col="children">{{ family.children|join:", " }}</td>
+            <td data-col="school">{{ family.school|default:"—" }}</td>
             <td data-col="medical" class="portal-medical-cell">
               {% for child_name in family.children %}
               {% medical_badges child_name %}
@@ -56,8 +60,18 @@
             <td data-col="balance">${{ family.balance }}</td>
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}">Billing</a>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}">Policies</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_applications' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Applications</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Policies</a>
+              {% if portal_live and family.id %}
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form" onsubmit="return confirm('Delete {{ family.name }} and their parent login? Applications will be unlinked, not deleted.');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_family">
+                <input type="hidden" name="family_id" value="{{ family.id }}">
+                <input type="hidden" name="family_slug" value="{{ family.slug }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+              </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -65,10 +79,68 @@
       </table>
     </div>
     <p class="form-note portal-families-empty" id="families-empty-state" hidden>No families match your search or filter.</p>
+
+    {% if portal_live and families_without_login %}
+    <h2>Families without a parent login</h2>
+    <p class="form-note">These families have a portal record but no username yet. Create a login they can use.</p>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead><tr><th>Family</th><th>Unit</th><th>Create login</th></tr></thead>
+        <tbody>
+          {% for family in families_without_login %}
+          <tr>
+            <td>{{ family.name }}</td>
+            <td>{{ family.unit.name }}</td>
+            <td>
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid portal-inline-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_parent_account">
+                <input type="hidden" name="family_id" value="{{ family.pk }}">
+                <input type="hidden" name="family_slug" value="{{ family.slug }}">
+                <input type="hidden" name="next" value="{% url 'portal_admin_page' page='families' %}">
+                <input name="username" type="text" class="portal-input" placeholder="Username" value="{{ family.name|slugify }}" required>
+                <input name="password" type="text" class="portal-input" placeholder="Temporary password" required>
+                <input name="email" type="email" class="portal-input" placeholder="Parent email">
+                <button type="submit" class="btn btn-primary btn-sm">Create login</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if portal_live and families_without_applications %}
+    <h2>Families with no application</h2>
+    <p class="form-note">These accounts never submitted an enrollment application. Delete them if they were created by mistake.</p>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead><tr><th>Family</th><th>Unit</th><th>Contact</th><th></th></tr></thead>
+        <tbody>
+          {% for family in families_without_applications %}
+          <tr>
+            <td>{{ family.name }}</td>
+            <td>{{ family.unit.name }}</td>
+            <td>{{ family.primary_contact }}</td>
+            <td>
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" onsubmit="return confirm('Delete {{ family.name }}?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_family">
+                <input type="hidden" name="family_id" value="{{ family.pk }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Delete family</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=3"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=4"></script>
 {% endblock %}

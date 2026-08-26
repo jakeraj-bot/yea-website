@@ -53,6 +53,10 @@ class PortalFamily(models.Model):
     billing_type = models.CharField(max_length=64, blank=True)
     program_label = models.CharField(max_length=120, blank=True)
     status = models.CharField(max_length=64, default="Active")
+    is_suspended = models.BooleanField(default=False)
+    suspend_reason = models.CharField(max_length=64, blank=True)
+    suspend_note = models.TextField(blank=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -66,6 +70,7 @@ class PortalChild(models.Model):
     family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="children")
     name = models.CharField(max_length=120)
     grade = models.CharField(max_length=20, blank=True)
+    school = models.CharField(max_length=120, blank=True)
     is_active = models.BooleanField(default=True)
     note = models.CharField(max_length=255, blank=True)
     billing_plan = models.CharField(max_length=64, default="Weekly")
@@ -583,6 +588,61 @@ class PortalScholarshipAssignment(models.Model):
 
     def __str__(self):
         return f"{self.child.name} · {self.fund.name}"
+
+
+class PortalPriorBalance(models.Model):
+    name = models.CharField(max_length=160)
+    child_name = models.CharField(max_length=120, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    notes = models.TextField(blank=True)
+    linked_family = models.ForeignKey(
+        PortalFamily,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="prior_balances",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    linked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} · ${self.amount}"
+
+
+class PortalDiscountPlan(models.Model):
+    KIND_AMOUNT = "amount"
+    KIND_PERCENT = "percent"
+    KIND_CHOICES = [(KIND_AMOUNT, "Fixed amount"), (KIND_PERCENT, "Percent")]
+
+    name = models.CharField(max_length=120)
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES, default=KIND_AMOUNT)
+    value = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class PortalDiscountAssignment(models.Model):
+    family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="discount_assignments")
+    plan = models.ForeignKey(PortalDiscountPlan, on_delete=models.CASCADE, related_name="assignments")
+    child_name = models.CharField(max_length=120, blank=True)
+    notes = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.family.name} · {self.plan.name}"
 
 
 class PortalOrgPolicy(models.Model):

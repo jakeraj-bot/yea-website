@@ -93,6 +93,7 @@ def create_staff_application(form, unit):
         health_statement="good_health",
         membership_fee_agreed="no" if returning else "yes",
         payment_method=payment_method,
+        payment_method_other=form.get("payment_method_other", "").strip(),
         payment_plan="weekly",
         payment_plan_signature=f"{parent_first} {parent_last}".strip(),
         payment_plan_signed_date=today,

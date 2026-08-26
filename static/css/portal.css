@@ -671,6 +671,34 @@
   padding: 0 0 3rem;
 }
 
+.portal-email-recipients {
+  max-height: 22rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  background: #fff;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.portal-inline-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.portal-print-only {
+  display: none;
+}
+
+@media print {
+  .portal-print-only {
+    display: inline;
+  }
+}
+
 .portal-hero-compact {
   padding-block: 2rem 1.25rem;
 }
@@ -1664,12 +1692,13 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  display: block;
 }
 
 .portal-families-table {
-  width: 100%;
-  min-width: 72rem;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
 .portal-families-table th,
@@ -1689,10 +1718,10 @@
   width: 12%;
 }
 
-.portal-families-table th[data-col="children"],
-.portal-families-table td[data-col="children"] {
-  width: 14%;
-  white-space: normal;
+.portal-families-table th[data-col="school"],
+.portal-families-table td[data-col="school"] {
+  width: 12%;
+  min-width: 8rem;
 }
 
 .portal-families-table th[data-col="medical"],

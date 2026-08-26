@@ -12,6 +12,28 @@
       <p><strong>Agency vs family billing:</strong> Each 4Cs child has two accounts — their regular family account (membership + parent copay) and a separate <em>4Cs agency billing</em> account. Configure agency contracts here; child-level rates and copays can use variable weekly/daily/monthly tiers like EZChildTracking.</p>
     </div>
 
+    {% if pending_4cs %}
+    <div class="portal-alerts card">
+      <h2>Approved 4Cs children waiting for authorization</h2>
+      <p class="form-note">Add each child with <strong>+ Add 4Cs child</strong> on the unit 4Cs page, or record auth/copay here once you have it. They already appear as enrolled on the dashboard.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>
+          <tbody>
+            {% for child in pending_4cs %}
+            <tr>
+              <td>{{ child.name }}</td>
+              <td>{{ child.family.name }}</td>
+              <td>{{ child.family.unit.name }}</td>
+              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=child.family.slug %}?id={{ child.family_id }}">Family billing</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="portal-toolbar">
       <a class="btn btn-primary" href="{% url 'portal_admin_page' page='agencies' %}?add=1">+ Add agency</a>
     </div>

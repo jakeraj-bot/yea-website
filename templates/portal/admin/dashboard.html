@@ -129,6 +129,31 @@
     </div>
     {% endif %}
 
+    {% if portal_live and dashboard.pending_4cs %}
+    <div class="portal-alerts card">
+      <h2>Approved 4Cs children waiting for authorization</h2>
+      <p class="form-note">These children are enrolled. Add their 4Cs authorization number and copay on the Agencies page or the unit 4Cs screen.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>
+          <tbody>
+            {% for row in dashboard.pending_4cs %}
+            <tr>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.unit }}</td>
+              <td>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}?id={{ row.family_id }}">Family billing</a>
+                <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_page' page='agencies' %}">Add 4Cs info</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="portal-profile-grid portal-dashboard-grid">
       <section class="card portal-profile-full">
         <h2>Enrollment by unit</h2>
@@ -141,6 +166,7 @@
                 <th>Capacity</th>
                 <th>Fill</th>
                 <th>Programs</th>
+                <th>Approved</th>
                 <th>Open apps</th>
               </tr>
             </thead>
@@ -157,6 +183,7 @@
                   <span class="form-note">{% widthratio row.enrolled row.capacity 100 %}%</span>
                 </td>
                 <td>{{ row.programs }}</td>
+                <td>{{ row.approved_applications|default:row.enrolled }}</td>
                 <td>{{ row.open_apps }}</td>
               </tr>
               {% endfor %}
@@ -174,9 +201,10 @@
 
       <section class="card">
         <h2>4Cs subsidy</h2>
-        <p><strong>{{ dashboard.agency_children }}</strong> children on agency billing</p>
-        <p class="form-note">Passaic County 4Cs — separate agency accounts per child</p>
-        <p><a href="{% url 'portal_admin_page' page='agencies' %}">Agency settings →</a></p>
+        <p><strong>{{ dashboard.approved_4cs_count|default:dashboard.agency_children }}</strong> approved 4Cs children</p>
+        <p><strong>{{ dashboard.agency_children }}</strong> with authorization on file · <strong>{{ dashboard.pending_4cs_count|default:0 }}</strong> waiting for 4Cs info</p>
+        <p class="form-note">Approved 4Cs members appear here and stay on the 4Cs page until you add their authorization and copay.</p>
+        <p><a href="{% url 'portal_admin_page' page='agencies' %}">Add 4Cs information →</a></p>
       </section>
     </div>
 

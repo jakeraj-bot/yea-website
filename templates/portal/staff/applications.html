@@ -25,6 +25,7 @@
             <th>Family</th>
             <th>Submitted</th>
             <th>Program</th>
+            <th>School attending</th>
             <th>Returning</th>
             <th>Status</th>
             <th></th>
@@ -38,6 +39,7 @@
             <td>{{ app.family }}</td>
             <td>{{ app.submitted }}</td>
             <td>{{ app.program }}</td>
+            <td>{{ app.school|default:"—" }}</td>
             <td>{% if app.returning %}Yes{% else %}No{% endif %}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
             <td>

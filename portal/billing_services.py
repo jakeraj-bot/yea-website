@@ -56,11 +56,10 @@ def prepare_billing_for_staff(family, permissions):
     return prepare_billing_preview(billing, permissions)
 
 
-def get_family_for_billing(family_slug, unit=None):
-    qs = PortalFamily.objects.filter(slug=family_slug)
-    if unit:
-        qs = qs.filter(unit=unit)
-    return qs.first()
+def get_family_for_billing(family_slug, unit=None, family_id=None):
+    from .member_admin import resolve_family
+
+    return resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
 
 
 @transaction.atomic

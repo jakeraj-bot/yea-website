@@ -530,14 +530,11 @@ def _child_from_application(app):
     }
 
 
-def family_meta_live(family_slug, unit=None):
+def family_meta_live(family_slug, unit=None, family_id=None):
     from enrollment.portal_integration import family_display_label
-    from portal.models import PortalFamily
+    from portal.member_admin import resolve_family
 
-    unit = unit or get_unit()
-    if not unit:
-        return None
-    family = PortalFamily.objects.filter(unit=unit, slug=family_slug).prefetch_related("children").first()
+    family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
     if not family:
         return None
     enrolled = [c.name for c in family.children.filter(is_active=True)]
@@ -552,6 +549,7 @@ def family_meta_live(family_slug, unit=None):
         }:
             pending.append(child_name)
     return {
+        "id": family.pk,
         "slug": family.slug,
         "name": family_display_label(family),
         "primary_contact": family.primary_contact,
@@ -559,19 +557,17 @@ def family_meta_live(family_slug, unit=None):
         "balance": format(family.balance, ".2f"),
         "program": family.program_label,
         "billing_type": family.billing_type,
-        "status": family.status,
+        "status": "Suspended" if family.is_suspended else family.status,
     }
 
 
-def family_profile_live(family_slug, unit=None):
+def family_profile_live(family_slug, unit=None, family_id=None):
     from enrollment.models import EnrollmentApplication
-    from enrollment.portal_integration import STATUS_LABELS, family_display_label
-    from portal.models import PortalFamily, PortalParentAccount
+    from enrollment.portal_integration import family_display_label
+    from portal.member_admin import resolve_family
+    from portal.models import PortalParentAccount
 
-    unit = unit or get_unit()
-    if not unit:
-        return None
-    family = PortalFamily.objects.filter(unit=unit, slug=family_slug).prefetch_related("children").first()
+    family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
     if not family:
         return None
 
@@ -609,7 +605,7 @@ def family_profile_live(family_slug, unit=None):
 
     enrolled_names = {c.name.lower() for c in family.children.filter(is_active=True)}
     children = [
-        {"name": c.name, "grade": c.grade, "program": family.program_label, "note": c.note}
+        {"name": c.name, "grade": c.grade, "school": c.school, "program": family.program_label, "note": c.note}
         for c in family.children.filter(is_active=True)
     ]
     for app in applications:

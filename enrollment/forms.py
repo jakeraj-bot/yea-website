@@ -299,6 +299,8 @@ class BillingStepForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         payment_method = cleaned.get("payment_method")
+        if payment_method == "other" and not (cleaned.get("payment_method_other") or "").strip():
+            self.add_error("payment_method_other", "Please specify what Other payment method means.")
         if payment_method == "4cs":
             if not cleaned.get("four_cs_signature"):
                 self.add_error("four_cs_signature", "Required for 4Cs payment method.")

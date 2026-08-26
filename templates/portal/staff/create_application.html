@@ -75,6 +75,10 @@
           <option value="other">Other</option>
         </select>
       </div>
+      <div class="form-group" id="staff-payment-other" hidden>
+        <label for="payment-other">If other, specify</label>
+        <input id="payment-other" name="payment_method_other" type="text" class="portal-input">
+      </div>
       <div class="portal-form-actions portal-form-full">
         <button type="submit" name="action" value="submit" class="btn btn-primary">Save &amp; send to parent</button>
         <button type="submit" name="action" value="draft" class="btn btn-secondary">Save as draft</button>
@@ -83,4 +87,21 @@
     </form>
   </div>
 </section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var select = document.getElementById("payment");
+  var other = document.getElementById("staff-payment-other");
+  var input = document.getElementById("payment-other");
+  if (!select || !other) return;
+  function toggle() {
+    var isOther = select.value === "other";
+    other.hidden = !isOther;
+    if (input) input.required = isOther;
+  }
+  select.addEventListener("change", toggle);
+  toggle();
+})();
+</script>
 {% endblock %}

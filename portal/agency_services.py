@@ -135,6 +135,18 @@ def agency_page_data(unit):
         ]
 
     data["agency_live"] = _portal_data_live()
+    from .member_admin import pending_4cs_children
+
+    data["pending_4cs"] = [
+        {
+            "child": child.name,
+            "family": child.family.name,
+            "family_slug": child.family.slug,
+            "family_id": child.family_id,
+            "school": child.school or "—",
+        }
+        for child in pending_4cs_children(unit)
+    ]
     return data
 
 

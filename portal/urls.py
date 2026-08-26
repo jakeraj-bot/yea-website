@@ -400,6 +400,16 @@ urlpatterns = [
     path("staff/<slug:page>/", views.staff_page, name="portal_staff_page"),
     # Admin — detail and report routes before catch-all
     path(
+        "admin/reports/members/",
+        views.admin_member_type_report,
+        name="portal_admin_member_type_report",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/applications/",
+        views.admin_family_applications,
+        name="portal_admin_family_applications",
+    ),
+    path(
         "admin/family/<slug:family_slug>/billing/",
         views.admin_family_billing,
         name="portal_admin_family_billing",
@@ -418,6 +428,11 @@ urlpatterns = [
         "admin/member-policies/print/",
         views.admin_member_policies_print,
         name="portal_admin_member_policies_print",
+    ),
+    path(
+        "admin/member-ops/",
+        views_actions.admin_member_ops,
+        name="portal_admin_member_ops",
     ),
     path(
         "admin/reports/enrollment/",
