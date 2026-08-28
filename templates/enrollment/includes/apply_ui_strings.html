@@ -1,0 +1,15 @@
+{% load enrollment_extras %}
+{% enrollment_t "continue" as continue_label %}
+{% enrollment_t "next_section" as next_section_label %}
+{% enrollment_t "next_section_named" as next_named_label %}
+{% enrollment_t "previous_section" as previous_section_label %}
+{% enrollment_t "section_hint" as section_hint_label %}
+<script type="application/json" id="apply-ui-strings">
+{
+  "continueLabel": "{{ continue_label|escapejs }}",
+  "nextSection": "{{ next_section_label|escapejs }}",
+  "nextNamed": "{{ next_named_label|escapejs }}",
+  "prevSection": "{{ previous_section_label|escapejs }}",
+  "sectionHint": "{{ section_hint_label|escapejs }}"
+}
+</script>

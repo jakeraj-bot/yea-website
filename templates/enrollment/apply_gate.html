@@ -13,8 +13,14 @@
 
 <section class="page-content">
   <div class="container apply-container">
-    <div class="apply-language-bar">
-      {% include "enrollment/includes/language_picker.html" %}
+    {% include "enrollment/includes/apply_language_bar.html" %}
+
+    <div class="apply-help-callout">
+      <p>{% enrollment_t "help_callout" %}</p>
+      <div class="apply-help-callout-actions">
+        <button type="button" class="btn btn-primary" data-open-apply-help>{% enrollment_t "help_watch" %}</button>
+        <a class="btn btn-secondary" href="{% url 'enrollment_help' %}">{% enrollment_t "help_read_guide" %}</a>
+      </div>
     </div>
 
     {% if portal_account %}
@@ -65,4 +71,8 @@
     </p>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{% include "enrollment/includes/apply_help_assets.html" %}
 {% endblock %}

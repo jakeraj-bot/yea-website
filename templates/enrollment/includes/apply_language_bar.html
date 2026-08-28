@@ -1,0 +1,7 @@
+{% load enrollment_extras %}
+<div class="apply-language-bar">
+  <button type="button" class="btn btn-secondary apply-help-launch" data-open-apply-help id="how-to-apply">
+    {% enrollment_t "help_watch" %}
+  </button>
+  {% include "enrollment/includes/language_picker.html" %}
+</div>

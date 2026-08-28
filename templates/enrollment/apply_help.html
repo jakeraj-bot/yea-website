@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}{% enrollment_t "help_title" %} — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>{% enrollment_t "help_title" %}</h1>
+    <p class="lead">{% enrollment_t "help_page_lead" %}</p>
+  </div>
+</section>
+
+<section class="page-content apply-page">
+  <div class="container apply-container">
+    {% include "enrollment/includes/apply_language_bar.html" %}
+
+    {% if apply_help_video_id %}
+    <div class="apply-help-video apply-help-video-page">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/{{ apply_help_video_id }}?rel=0"
+        title="{% enrollment_t 'help_title' %}"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>
+    {% endif %}
+
+    <ol class="apply-help-guide">
+      <li>
+        <h2>{% enrollment_t "help_slide_1_title" %}</h2>
+        <p>{% enrollment_t "help_slide_1_body" %}</p>
+      </li>
+      <li>
+        <h2>{% enrollment_t "help_slide_2_title" %}</h2>
+        <p>{% enrollment_t "help_slide_2_body" %}</p>
+      </li>
+      <li>
+        <h2>{% enrollment_t "help_slide_3_title" %}</h2>
+        <p>{% enrollment_t "help_slide_3_body" %}</p>
+      </li>
+      <li>
+        <h2>{% enrollment_t "help_slide_4_title" %}</h2>
+        <p>{% enrollment_t "help_slide_4_body" %}</p>
+      </li>
+      <li>
+        <h2>{% enrollment_t "help_slide_5_title" %}</h2>
+        <p>{% enrollment_t "help_slide_5_body" %}</p>
+      </li>
+      <li>
+        <h2>{% enrollment_t "help_slide_6_title" %}</h2>
+        <p>{% enrollment_t "help_slide_6_body" %}</p>
+      </li>
+    </ol>
+
+    <p class="apply-help-page-actions">
+      <a class="btn btn-primary" href="{% url 'apply' %}">{% enrollment_t "help_start" %}</a>
+    </p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% include "enrollment/includes/apply_help_assets.html" %}
+{% endblock %}

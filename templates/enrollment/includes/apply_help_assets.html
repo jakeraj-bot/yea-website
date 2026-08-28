@@ -1,0 +1,8 @@
+{% load static %}
+{% include "enrollment/includes/apply_help_modal.html" %}
+<script src="{% static 'js/apply-help.js' %}?v=1"></script>
+<script>
+(function () {
+  if (window.initApplyHelp) window.initApplyHelp();
+})();
+</script>

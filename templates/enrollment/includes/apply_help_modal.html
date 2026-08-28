@@ -1,0 +1,74 @@
+{% load enrollment_extras %}
+<div class="modal apply-help-modal" id="apply-help-modal" hidden role="dialog" aria-modal="true" aria-labelledby="apply-help-title">
+  <div class="modal-backdrop" data-help-close></div>
+  <div class="modal-panel apply-help-dialog">
+    <header class="apply-help-header">
+      <h2 id="apply-help-title">{% enrollment_t "help_title" %}</h2>
+      <button type="button" class="btn btn-secondary btn-sm" data-help-close>{% enrollment_t "help_close" %}</button>
+    </header>
+
+    {% if apply_help_video_id and not apply_help_page %}
+    <div class="apply-help-video">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/{{ apply_help_video_id }}?rel=0"
+        title="{% enrollment_t 'help_title' %}"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>
+    {% endif %}
+
+    <p class="apply-help-status" data-help-status data-template="{% enrollment_t 'help_slide_of' %}"></p>
+
+    <div class="apply-help-slides">
+      <article class="apply-help-slide is-active" data-help-slide>
+        <h3>{% enrollment_t "help_slide_1_title" %}</h3>
+        <p>{% enrollment_t "help_slide_1_body" %}</p>
+        <div class="apply-help-demo" aria-hidden="true">
+          <div class="apply-help-demo-tabs">
+            <span class="is-on">{{ step_tab_labels.family }}</span>
+            <span>{{ step_tab_labels.program }}</span>
+            <span>{{ step_tab_labels.student }}</span>
+            <span>{{ step_tab_labels.billing }}</span>
+          </div>
+        </div>
+      </article>
+      <article class="apply-help-slide" data-help-slide hidden>
+        <h3>{% enrollment_t "help_slide_2_title" %}</h3>
+        <p>{% enrollment_t "help_slide_2_body" %}</p>
+        <div class="apply-help-demo apply-help-demo-inner" aria-hidden="true">
+          <div class="apply-help-demo-tabs apply-help-demo-tabs-pulse">
+            <span class="is-on">{% enrollment_t "tab_family_info" %}</span>
+            <span>{% enrollment_t "tab_primary_guardian" %}</span>
+            <span>{% enrollment_t "tab_secondary_guardian" %}</span>
+          </div>
+        </div>
+      </article>
+      <article class="apply-help-slide" data-help-slide hidden>
+        <h3>{% enrollment_t "help_slide_3_title" %}</h3>
+        <p>{% enrollment_t "help_slide_3_body" %}</p>
+        <div class="apply-help-demo">
+          <span class="btn btn-primary btn-sm" aria-hidden="true">{% enrollment_t "next_section" %}</span>
+        </div>
+      </article>
+      <article class="apply-help-slide" data-help-slide hidden>
+        <h3>{% enrollment_t "help_slide_4_title" %}</h3>
+        <p>{% enrollment_t "help_slide_4_body" %}</p>
+      </article>
+      <article class="apply-help-slide" data-help-slide hidden>
+        <h3>{% enrollment_t "help_slide_5_title" %}</h3>
+        <p>{% enrollment_t "help_slide_5_body" %}</p>
+      </article>
+      <article class="apply-help-slide" data-help-slide hidden>
+        <h3>{% enrollment_t "help_slide_6_title" %}</h3>
+        <p>{% enrollment_t "help_slide_6_body" %}</p>
+      </article>
+    </div>
+
+    <footer class="apply-help-actions">
+      <button type="button" class="btn btn-secondary" data-help-prev>{% enrollment_t "help_previous" %}</button>
+      <button type="button" class="btn btn-secondary" data-help-play data-play-label="{% enrollment_t 'help_play' %}" data-pause-label="{% enrollment_t 'help_pause' %}">{% enrollment_t "help_pause" %}</button>
+      <button type="button" class="btn btn-primary" data-help-next>{% enrollment_t "help_next" %}</button>
+    </footer>
+  </div>
+</div>

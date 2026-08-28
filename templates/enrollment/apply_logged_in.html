@@ -13,9 +13,7 @@
 
 <section class="page-content">
   <div class="container apply-container">
-    <div class="apply-language-bar">
-      {% include "enrollment/includes/language_picker.html" %}
-    </div>
+    {% include "enrollment/includes/apply_language_bar.html" %}
 
     <div class="card-grid card-grid-2" style="max-width:48rem;margin:0 auto;">
       <article class="card card-accent">
@@ -36,4 +34,8 @@
     </p>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{% include "enrollment/includes/apply_help_assets.html" %}
 {% endblock %}

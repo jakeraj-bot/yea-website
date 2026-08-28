@@ -155,6 +155,11 @@ EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
 # Staff alerts for new applications, contact form, etc.
 ENROLLMENT_NOTIFICATION_EMAIL = os.environ.get("ENROLLMENT_NOTIFICATION_EMAIL", CONTACT_EMAIL)
 
+# Optional YouTube video IDs (or full watch URLs) for the apply how-to.
+# Leave blank to use the in-app English/Spanish slideshow only.
+ENROLLMENT_HELP_VIDEO_EN = os.environ.get("ENROLLMENT_HELP_VIDEO_EN", "")
+ENROLLMENT_HELP_VIDEO_ES = os.environ.get("ENROLLMENT_HELP_VIDEO_ES", "")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

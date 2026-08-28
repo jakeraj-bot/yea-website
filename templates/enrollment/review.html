@@ -20,9 +20,7 @@
 <section class="page-content apply-page">
   <div class="container apply-container">
     <div class="rainbow-bar apply-step-rainbow" aria-hidden="true"></div>
-    <div class="apply-language-bar">
-      {% include "enrollment/includes/language_picker.html" %}
-    </div>
+    {% include "enrollment/includes/apply_language_bar.html" %}
     {% include "enrollment/includes/step_progress.html" %}
 
     <form method="post" class="apply-form">
@@ -133,4 +131,5 @@
   if (window.initApplyForm) window.initApplyForm();
 })();
 </script>
+{% include "enrollment/includes/apply_help_assets.html" %}
 {% endblock %}

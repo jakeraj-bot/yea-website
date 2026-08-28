@@ -45,6 +45,42 @@ logger = logging.getLogger(__name__)
 SESSION_KEY = "enrollment_application"
 LINK_EXISTING_KEY = "enrollment_link_existing"
 
+
+def _youtube_video_id(value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if "youtu.be/" in value:
+        return value.split("youtu.be/")[-1].split("?")[0].split("/")[0]
+    if "youtube.com/shorts/" in value:
+        return value.split("shorts/")[-1].split("?")[0].split("/")[0]
+    if "embed/" in value:
+        return value.split("embed/")[-1].split("?")[0].split("/")[0]
+    if "v=" in value:
+        return value.split("v=")[-1].split("&")[0]
+    return value
+
+
+def _apply_help_video_id(lang):
+    en = _youtube_video_id(getattr(settings, "ENROLLMENT_HELP_VIDEO_EN", ""))
+    es = _youtube_video_id(getattr(settings, "ENROLLMENT_HELP_VIDEO_ES", ""))
+    if lang == "es":
+        return es or en
+    return en or es
+
+
+def _apply_chrome_context(request):
+    from .i18n import SUPPORTED_LANGUAGES, get_language, localized_step_tab_labels
+
+    lang = get_language(request)
+    return {
+        "enrollment_lang": lang,
+        "enrollment_languages": SUPPORTED_LANGUAGES,
+        "step_tab_labels": localized_step_tab_labels(lang),
+        "apply_help_video_id": _apply_help_video_id(lang),
+    }
+
+
 DATE_FIELDS = frozenset(
     {
         "student_dob",
@@ -207,7 +243,7 @@ def _policy_form_fields(form):
 
 
 def _wizard_context(request, step, session_data, **extra):
-    from .i18n import SUPPORTED_LANGUAGES, get_language, localized_step_tab_labels, localized_step_titles
+    from .i18n import get_language, localized_step_tab_labels, localized_step_titles
 
     step_idx = _step_index(step)
     lang = get_language(request)
@@ -221,6 +257,7 @@ def _wizard_context(request, step, session_data, **extra):
 
         program_location_rules = program_location_rules_json()
     return {
+        **_apply_chrome_context(request),
         "step": step,
         "step_titles": localized_step_titles(lang),
         "step_tab_labels": localized_step_tab_labels(lang),
@@ -240,8 +277,6 @@ def _wizard_context(request, step, session_data, **extra):
         ),
         "staff_change_message": editing_app.staff_message if editing_app else "",
         "is_adding_child": bool(session_data.get("adding_to_existing_family")),
-        "enrollment_lang": lang,
-        "enrollment_languages": SUPPORTED_LANGUAGES,
         "four_cs_contact_email": settings.CONTACT_EMAIL,
         "program_location_rules": program_location_rules,
         **extra,
@@ -290,15 +325,19 @@ def _start_session_for_existing_family(account):
 
 @require_http_methods(["GET"])
 def apply_start(request):
-    from .i18n import SUPPORTED_LANGUAGES, get_language
-
     account = get_parent_account(request.user) if request.user.is_authenticated else None
     context = {
-        "enrollment_lang": get_language(request),
-        "enrollment_languages": SUPPORTED_LANGUAGES,
+        **_apply_chrome_context(request),
         "portal_account": account,
     }
     return render(request, "enrollment/apply_gate.html", context)
+
+
+@require_http_methods(["GET"])
+def apply_help(request):
+    context = _apply_chrome_context(request)
+    context["apply_help_page"] = True
+    return render(request, "enrollment/apply_help.html", context)
 
 
 @require_http_methods(["POST"])

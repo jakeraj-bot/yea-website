@@ -11,6 +11,7 @@ urlpatterns = [
     path("add-before-care/<uuid:reference>/", views.apply_add_before_care, name="enrollment_apply_add_before_care"),
     path("add-child/", views.apply_add_child, name="enrollment_apply_add_child"),
     path("edit/<uuid:reference>/", views.apply_edit_start, name="enrollment_apply_edit"),
+    path("help/", views.apply_help, name="enrollment_help"),
     path("", views.apply_start, name="apply"),
     path("<slug:step>/", views.apply_wizard, name="enrollment_apply"),
 ]
