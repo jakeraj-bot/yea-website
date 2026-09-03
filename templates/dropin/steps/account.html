@@ -6,12 +6,19 @@
   {% csrf_token %}
   <div class="form-grid">
     {% for field in form %}
+    {% if field.name == 'website' %}
+    <div class="form-group contact-hp" aria-hidden="true">
+      <label for="{{ field.id_for_label }}">Website</label>
+      {{ field }}
+    </div>
+    {% else %}
     <div class="form-group {% if field.name == 'password1' or field.name == 'password2' %}form-group-full{% endif %}">
       {{ field.label_tag }}
       {{ field }}
       {{ field.errors }}
       {% if field.help_text %}<p class="form-help">{{ field.help_text }}</p>{% endif %}
     </div>
+    {% endif %}
     {% endfor %}
   </div>
   <div class="apply-actions">

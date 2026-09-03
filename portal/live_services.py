@@ -492,22 +492,9 @@ def save_newsletter_live(data, legacy_id=None):
 
 
 def _medical_from_application(app):
-    allergies = "None reported" if app.no_known_allergies else (app.allergies or "—")
-    medications = "Administered at program" if app.requires_medication == "yes" else "—"
-    plans = []
-    if app.requires_allergy_plan:
-        plans.append("Allergy plan")
-    if app.requires_asthma_plan:
-        plans.append("Asthma plan")
-    if app.requires_epipen_plan:
-        plans.append("EpiPen plan")
-    return {
-        "allergies": allergies,
-        "medications": medications,
-        "doctor_name": app.doctor_name,
-        "doctor_phone": app.doctor_phone,
-        "plans_on_file": plans,
-    }
+    from .medical import medical_from_application
+
+    return medical_from_application(app)
 
 
 def _child_from_application(app):

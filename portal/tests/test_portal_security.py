@@ -90,6 +90,12 @@ class StaffAccessSecurityTests(TestCase):
         self.assertIsNone(profile)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_unauthenticated_parent_post_redirects_to_login(self):
+        response = self.client.post(reverse("portal_parent_profile_save"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/portal/login/", response.url)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_unauthenticated_staff_pages_redirect_to_login(self):
         urls = [
             reverse("portal_staff_page", kwargs={"page": "dashboard"}),

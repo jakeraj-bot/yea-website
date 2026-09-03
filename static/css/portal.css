@@ -831,7 +831,8 @@
 }
 
 .portal-table-wrap {
-  overflow-x: auto;
+  overflow-x: hidden;
+  max-width: 100%;
   background: #fff;
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -839,15 +840,19 @@
 
 .portal-table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
 }
 
 .portal-table th,
 .portal-table td {
-  padding: 0.65rem 1rem;
+  padding: 0.45rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+  vertical-align: top;
 }
 
 .portal-table th {
@@ -1103,7 +1108,8 @@
 }
 
 .portal-search {
-  min-width: 200px;
+  min-width: 0;
+  width: min(16rem, 100%);
 }
 
 .portal-checkin-modes {
@@ -1184,7 +1190,17 @@
 }
 
 .portal-attendance-table .cell-actions {
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.portal-col-optional {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .portal-col-optional {
+    display: table-cell;
+  }
 }
 
 .portal-attendance-table .cell-check-in .btn,

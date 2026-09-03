@@ -237,7 +237,8 @@ class StudentStepForm(forms.Form):
                     self.add_error(field, "Required unless “No insurance” is checked.")
 
         if cleaned.get("no_known_allergies"):
-            pass
+            cleaned["allergies"] = ""
+            cleaned["requires_allergy_plan"] = False
         elif not cleaned.get("allergies"):
             self.add_error("allergies", "Required unless “No known allergies” is checked.")
 
