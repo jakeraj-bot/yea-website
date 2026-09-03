@@ -222,19 +222,28 @@ def _create_application(data):
 
 
 def _create_applications(session_data):
-    from .add_program import programs_for_child_data
+    from .add_program import copy_policy_signatures, programs_for_child_data
 
     family_group = uuid.uuid4()
     family_fields = {k: session_data[k] for k in FAMILY_FIELD_NAMES if k in session_data}
     applications = []
     for child_index, child_data in enumerate(session_data.get("children", []), start=1):
         programs = programs_for_child_data(child_data)
+        programs = sorted(programs, key=lambda program: 1 if program == "before_care" else 0)
+        primary_app = None
         for program in programs:
             merged = {**family_fields, **child_data, "program": program}
             merged.pop("programs", None)
+            if program == "before_care" and primary_app is not None:
+                merged.pop("policies", None)
             merged["family_group"] = family_group
             merged["child_number"] = child_index
-            applications.append(_create_application(merged))
+            app = _create_application(merged)
+            if program != "before_care":
+                primary_app = app
+            elif primary_app is not None:
+                copy_policy_signatures(primary_app, app)
+            applications.append(app)
     return applications
 
 

@@ -13,7 +13,7 @@
     </div>
 
     <div class="portal-callout card">
-      <p>Each enrolled child signs all {{ policies_per_child }} policies separately. A family with {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }} needs {{ policy_data.total_count }} signatures total ({{ policies_per_child }} × {{ policy_data.child_count }}).</p>
+      <p>Each child signs all {{ policies_per_child }} policies once. Before care waitlist uses the same signatures — you do not sign a second packet for before care. A family with {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }} needs {{ policy_data.total_count }} signatures total ({{ policies_per_child }} × {{ policy_data.child_count }}).</p>
     </div>
 
     {% for child in policy_data.children %}

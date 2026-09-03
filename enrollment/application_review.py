@@ -262,9 +262,64 @@ def approve_application(app, program_location=None):
     return app
 
 
+def _deactivate_roster_child_if_before_care_only(app):
+    family = app.portal_family
+    if not family:
+        return
+    has_other_program = (
+        EnrollmentApplication.objects.filter(
+            portal_family=family,
+            student_first_name__iexact=app.student_first_name,
+            student_last_name__iexact=app.student_last_name,
+            status__in=("approved", "enrolled"),
+        )
+        .exclude(program="before_care")
+        .exists()
+    )
+    if has_other_program:
+        return
+    name = child_display_name(app)
+    child = family.children.filter(name__iexact=name).first()
+    if child and child.is_active:
+        child.is_active = False
+        child.save(update_fields=["is_active"])
+
+
+@transaction.atomic
+def revert_approved_before_care_to_waitlist():
+    """Move accidentally approved before-care applications back to the waitlist.
+
+    After-school (and summer) enrollments are left alone. Children who were only
+    on the roster because before care was approved are taken off the roster.
+    Parents are not emailed — this is a staff correction.
+    """
+    apps = list(
+        EnrollmentApplication.objects.filter(
+            program="before_care",
+            status__in=("approved", "enrolled"),
+        ).select_related("portal_family")
+    )
+    reverted = 0
+    for app in apps:
+        app.status = "waitlist"
+        note = (app.internal_note or "").strip()
+        marker = "Returned to before-care waitlist (before care is waitlist-only until a spot opens)."
+        if marker not in note:
+            app.internal_note = f"{note}\n{marker}".strip() if note else marker
+        app.save(update_fields=["status", "internal_note"])
+        _deactivate_roster_child_if_before_care_only(app)
+        reverted += 1
+    return reverted
+
+
 @transaction.atomic
 def place_on_waitlist(app):
     if app.status == "waitlist":
+        return app
+    if app.program == "before_care" and app.status in {"approved", "enrolled"}:
+        app.status = "waitlist"
+        app.save(update_fields=["status"])
+        _deactivate_roster_child_if_before_care_only(app)
         return app
     if app.status not in WAITLISTABLE_STATUSES:
         raise ValueError("This application cannot be moved to the waitlist.")

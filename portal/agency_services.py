@@ -26,15 +26,20 @@ def _parse_amount(value):
     return amount.quantize(Decimal("0.01"))
 
 
+DEMO_AGENCY_AUTH_NUMBERS = frozenset({"4CS-2026-8841", "4CS-2026-9012"})
+DEMO_AGENCY_CHILDREN = frozenset({("martinez", "sofia martinez"), ("chen", "ethan chen")})
+
+
 def get_agency_billing_live(family_slug, unit=None):
-    demo = AGENCY_BILLING.get(family_slug)
     profile = (
         PortalAgencyProfile.objects.filter(family__slug=family_slug)
         .select_related("child", "family")
         .first()
     )
     if not profile:
-        return demo
+        if _portal_data_live():
+            return None
+        return AGENCY_BILLING.get(family_slug)
     ledger = [
         {
             "date": entry.date.isoformat(),
@@ -44,8 +49,10 @@ def get_agency_billing_live(family_slug, unit=None):
         }
         for entry in profile.ledger_entries.all()
     ]
-    if not ledger and demo:
-        ledger = demo.get("ledger", [])
+    if not ledger and not _portal_data_live():
+        demo = AGENCY_BILLING.get(family_slug)
+        if demo:
+            ledger = demo.get("ledger", [])
     return {
         "family_name": profile.family.name,
         "slug": profile.family.slug,
@@ -58,10 +65,63 @@ def get_agency_billing_live(family_slug, unit=None):
     }
 
 
+def _empty_agency_page(unit):
+    return {
+        "agency_name": "Passaic County 4Cs",
+        "unit": unit.name if unit else "",
+        "children": [],
+        "recent_agency_payments": [],
+        "family_options": [],
+        "program_options": ["After-School 2026–27"],
+        "pending_4cs": [],
+        "agency_live": True,
+    }
+
+
+def purge_demo_agency_members():
+    """Delete seeded Sofia Martinez / Ethan Chen 4Cs profiles (and leftover demo families)."""
+    deleted_profiles = 0
+    for profile in PortalAgencyProfile.objects.select_related("child", "family"):
+        slug = (profile.family.slug or "").lower()
+        child_name = (profile.child.name or "").strip().lower()
+        if profile.auth_number in DEMO_AGENCY_AUTH_NUMBERS or (slug, child_name) in DEMO_AGENCY_CHILDREN:
+            profile.delete()
+            deleted_profiles += 1
+
+    deleted_families = 0
+    demo_slugs = {slug for slug, _name in DEMO_AGENCY_CHILDREN}
+    for family in PortalFamily.objects.filter(slug__in=demo_slugs):
+        has_real_app = family.enrollment_applications.exists()
+        kids = list(family.children.all())
+        only_demo_kids = kids and all(
+            (family.slug.lower(), kid.name.strip().lower()) in DEMO_AGENCY_CHILDREN for kid in kids
+        )
+        if has_real_app and not only_demo_kids:
+            continue
+        if has_real_app:
+            family.billing_type = family.billing_type if family.billing_type != "4Cs" else ""
+            if family.billing_type == "":
+                family.billing_type = "Private pay"
+                family.save(update_fields=["billing_type"])
+            continue
+        family.delete()
+        deleted_families += 1
+    return deleted_profiles, deleted_families
+
+
 def agency_page_data(unit):
-    """Build agency page context — live profiles merged with demo fallback."""
-    data = dict(AGENCY_UNIT_DATA)
-    data["unit"] = unit.name if unit else data.get("unit", "School 18")
+    """Build agency page context from live 4Cs profiles only — never demo Sofia/Ethan."""
+    if _portal_data_live():
+        data = _empty_agency_page(unit)
+    else:
+        data = {
+            **AGENCY_UNIT_DATA,
+            "children": list(AGENCY_UNIT_DATA.get("children", [])),
+            "recent_agency_payments": list(AGENCY_UNIT_DATA.get("recent_agency_payments", [])),
+            "family_options": list(AGENCY_UNIT_DATA.get("family_options", [])),
+            "program_options": list(AGENCY_UNIT_DATA.get("program_options", [])),
+        }
+        data["unit"] = unit.name if unit else data.get("unit", "School 18")
     if not unit:
         return data
 

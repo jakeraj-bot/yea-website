@@ -17,6 +17,25 @@ def programs_for_child_data(child_data):
     return [program] if program else []
 
 
+def child_key(app):
+    return (
+        (app.student_first_name or "").strip().lower(),
+        (app.student_last_name or "").strip().lower(),
+    )
+
+
+def primary_applications_by_child(apps):
+    """One enrollment record per child — before-care waitlist add-ons share policies with after-school."""
+    grouped = {}
+    for app in apps:
+        grouped.setdefault(child_key(app), []).append(app)
+    primaries = []
+    for group in grouped.values():
+        primary = next((item for item in group if item.program != "before_care"), group[0])
+        primaries.append(primary)
+    return primaries
+
+
 def child_has_before_care(family, first_name, last_name):
     if not family:
         return False
@@ -36,6 +55,20 @@ def can_add_before_care_for_application(app):
     if not app or not app.portal_family_id or app.program == "before_care":
         return False
     return not child_has_before_care(app.portal_family, app.student_first_name, app.student_last_name)
+
+
+def copy_policy_signatures(source, dest):
+    for signature in source.policy_signatures.all():
+        PolicySignature.objects.get_or_create(
+            application=dest,
+            policy_slug=signature.policy_slug,
+            defaults={
+                "policy_title": signature.policy_title,
+                "signature_name": signature.signature_name,
+                "signed_date": signature.signed_date,
+                "extra_data": signature.extra_data or {},
+            },
+        )
 
 
 def _clone_field_names():
@@ -101,15 +134,7 @@ def create_before_care_from_application(source, program_location=None):
             authorized_pickup=contact.authorized_pickup,
         )
 
-    for signature in source.policy_signatures.all():
-        PolicySignature.objects.create(
-            application=app,
-            policy_slug=signature.policy_slug,
-            policy_title=signature.policy_title,
-            signature_name=signature.signature_name,
-            signed_date=signature.signed_date,
-            extra_data=signature.extra_data or {},
-        )
+    copy_policy_signatures(source, app)
 
     send_application_submitted_emails(app)
     return app

@@ -323,14 +323,18 @@ def _dashboard_status_for_family(family):
 
 
 def _policies_counts_for_family(family):
+    from enrollment.add_program import primary_applications_by_child
     from enrollment.models import EnrollmentApplication
     from enrollment.policies_data import POLICIES
 
-    apps = EnrollmentApplication.objects.filter(portal_family=family).prefetch_related("policy_signatures")
-    if not apps.exists():
+    apps = list(
+        EnrollmentApplication.objects.filter(portal_family=family).prefetch_related("policy_signatures")
+    )
+    primaries = primary_applications_by_child(apps)
+    if not primaries:
         return 0, len(POLICIES)
-    signed = sum(app.policy_signatures.count() for app in apps)
-    total = len(POLICIES) * apps.count()
+    signed = sum(app.policy_signatures.count() for app in primaries)
+    total = len(POLICIES) * len(primaries)
     return signed, max(total, signed)
 
 
@@ -379,10 +383,11 @@ def get_parent_policy_data_live(family):
         .prefetch_related("policy_signatures")
         .order_by("-submitted_at")
     )
+    from enrollment.add_program import primary_applications_by_child
     from enrollment.policy_display import get_application_policies
 
     children = []
-    for app in apps:
+    for app in primary_applications_by_child(apps):
         child_name = f"{app.student_first_name} {app.student_last_name}".strip()
         policies = get_application_policies(app)
         signed_count = sum(1 for policy in policies if policy["signed"])
@@ -697,30 +702,48 @@ def update_account_settings(account, data):
 
 
 def sign_policy_for_family(family, child_name, policy_slug, signature_name):
+    from enrollment.add_program import child_key
     from enrollment.models import EnrollmentApplication, PolicySignature
     from enrollment.policies_data import POLICIES
 
     policy = next((p for p in POLICIES if p["slug"] == policy_slug), None)
     if not policy:
         raise ValueError("Policy not found.")
-    app = (
+    parts = (child_name or "").strip().split()
+    first = parts[0] if parts else ""
+    last = " ".join(parts[1:]) if len(parts) > 1 else ""
+    apps = list(
         EnrollmentApplication.objects.filter(portal_family=family)
-        .filter(student_first_name__icontains=child_name.split()[0])
+        .filter(student_first_name__iexact=first)
         .order_by("-submitted_at")
-        .first()
     )
-    if not app:
+    if last:
+        apps = [app for app in apps if (app.student_last_name or "").strip().lower() == last.lower()]
+    if not apps:
+        apps = list(
+            EnrollmentApplication.objects.filter(portal_family=family)
+            .filter(student_first_name__icontains=first)
+            .order_by("-submitted_at")
+        )
+    if not apps:
         raise ValueError("No application found for this child.")
-    PolicySignature.objects.update_or_create(
-        application=app,
-        policy_slug=policy_slug,
-        defaults={
-            "policy_title": policy["title"],
-            "signature_name": signature_name.strip(),
-            "signed_date": timezone.localdate(),
-        },
-    )
-    return app
+    target_key = child_key(apps[0])
+    signed = None
+    for app in apps:
+        if child_key(app) != target_key:
+            continue
+        PolicySignature.objects.update_or_create(
+            application=app,
+            policy_slug=policy_slug,
+            defaults={
+                "policy_title": policy["title"],
+                "signature_name": signature_name.strip(),
+                "signed_date": timezone.localdate(),
+            },
+        )
+        if signed is None or app.program != "before_care":
+            signed = app
+    return signed
 
 
 def send_payment_receipt_email(payment):
