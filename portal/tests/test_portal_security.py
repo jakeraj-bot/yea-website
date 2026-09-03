@@ -128,3 +128,43 @@ class DemoSeedGuardTests(TestCase):
     def test_seed_portal_refuses_without_flag(self):
         with self.assertRaises(CommandError):
             call_command("seed_portal")
+
+
+class AdminLoginLayoutTests(TestCase):
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_login_uses_centered_auth_shell(self):
+        response = self.client.get(reverse("portal_admin_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "portal-shell--auth")
+        self.assertContains(response, "portal-auth-card")
+        self.assertContains(response, "portal-auth-heading")
+        self.assertContains(response, "Portal admin login")
+        self.assertNotContains(response, "portal-sidebar")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_password_reset_uses_centered_auth_shell(self):
+        response = self.client.get(reverse("portal_admin_password_reset"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "portal-shell--auth")
+        self.assertContains(response, "portal-auth-card")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_dashboard_keeps_sidebar_shell(self):
+        User = get_user_model()
+        unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        user = User.objects.create_user(username="staff:layout", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=user,
+            unit=unit,
+            display_name="Layout Staff",
+            role="Unit director",
+            is_active=True,
+        )
+        self.client.force_login(user)
+        session = self.client.session
+        session["portal_auth_area"] = "staff"
+        session.save()
+        response = self.client.get(reverse("portal_staff_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "portal-shell--auth")
+        self.assertContains(response, "portal-sidebar")

@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=22">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=44">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=45">
 </head>
 <body class="portal-body portal-area-{{ portal_area|default:'public' }}">
   <div class="rainbow-bar" aria-hidden="true"></div>
@@ -79,7 +79,7 @@
     </div>
   </header>
 
-  <div class="portal-shell">
+  <div class="portal-shell{% if portal_area == 'public' %} portal-shell--auth{% endif %}">
     {% if portal_area != 'public' %}
     {% include "portal/includes/sidebar.html" %}
     {% endif %}
