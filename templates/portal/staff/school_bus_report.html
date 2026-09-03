@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / School bus roster</p>
+    <h1>School bus roster</h1>
+    <p class="lead">{{ report_meta.unit }} · grouped by school attending · {{ total_children }} children across {{ school_sections|length }} schools</p>
+  </div>
+</section>
+<section class="page-content portal-school-bus-report">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
+    </div>
+
+    {% for section in school_sections %}
+    <div class="portal-medical-report-sheet card portal-school-bus-sheet{% if not forloop.first %} portal-school-bus-sheet-break{% endif %}">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>{{ section.school }}</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ report_meta.unit }}</strong> · Bus pickup attendance sheet<br>
+            Generated {{ report_meta.generated_date }} · {{ section.children|length }} children
+          </p>
+        </div>
+      </header>
+
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Grade</th>
+              <th>Family</th>
+              <th>AM pickup</th>
+              <th>PM return</th>
+              <th>Staff initials</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in section.children %}
+            <tr>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.grade }}</td>
+              <td>{{ row.family }}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% empty %}
+    <div class="card">
+      <p>No enrolled children with a school on file yet.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

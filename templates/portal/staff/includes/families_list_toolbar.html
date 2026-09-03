@@ -22,17 +22,19 @@
       <select class="portal-select" id="families-sort">
         <option value="name-asc">Family name A–Z</option>
         <option value="name-desc">Family name Z–A</option>
-        <option value="balance-desc">Balance (high to low)</option>
-        <option value="balance-asc">Balance (low to high)</option>
+        <option value="balance-desc">Family balance (high to low)</option>
+        <option value="balance-asc">Family balance (low to high)</option>
+        <option value="child-balance-desc">Child balance (high to low)</option>
+        <option value="child-balance-asc">Child balance (low to high)</option>
         <option value="contact-asc">Primary contact A–Z</option>
       </select>
     </label>
     <label class="portal-filter-label">
       Show
       <select class="portal-select" id="families-page-size">
-        <option value="10">10 families</option>
-        <option value="25" selected>25 families</option>
-        <option value="50">50 families</option>
+        <option value="10">10 rows</option>
+        <option value="25" selected>25 rows</option>
+        <option value="50">50 rows</option>
         <option value="all">All</option>
       </select>
     </label>
@@ -46,12 +48,13 @@
         <div class="portal-columns-picker-grid">
           <label><input type="checkbox" data-col-toggle="family" checked> Family</label>
           <label><input type="checkbox" data-col-toggle="contact"> Primary contact</label>
-          <label><input type="checkbox" data-col-toggle="children" checked> Children</label>
+          <label><input type="checkbox" data-col-toggle="child" checked> Child</label>
           <label><input type="checkbox" data-col-toggle="school"> School attending</label>
           <label><input type="checkbox" data-col-toggle="medical" checked> Medical</label>
           <label><input type="checkbox" data-col-toggle="program"> Program</label>
           <label><input type="checkbox" data-col-toggle="billing" checked> Billing</label>
-          <label><input type="checkbox" data-col-toggle="balance" checked> Balance</label>
+          <label><input type="checkbox" data-col-toggle="child-balance" checked> Child balance</label>
+          <label><input type="checkbox" data-col-toggle="family-balance" checked> Family balance</label>
           <label><input type="checkbox" data-col-toggle="status" checked> Status</label>
         </div>
       </div>

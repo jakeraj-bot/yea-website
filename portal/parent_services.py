@@ -39,6 +39,8 @@ def _format_last_login(user):
 
 
 def _child_balances_from_ledger(family):
+    from .family_list import child_balance_map
+
     if _parent_demo_fallbacks_enabled() and family.slug in SEED_FAMILY_SLUGS:
         billing_demo = FAMILIES_BILLING.get(family.slug, {})
         children = [dict(child) for child in billing_demo.get("children", [])]
@@ -49,10 +51,11 @@ def _child_balances_from_ledger(family):
     if portal_children:
         from .billing_services import plan_repeat_label
 
+        balances = child_balance_map(family)
         return [
             {
                 "name": child.name,
-                "balance": f"{family.balance:.2f}",
+                "balance": f"{balances.get(child.name, Decimal('0')):.2f}",
                 "plan": child.billing_plan or family.program_label or "Weekly",
                 "amount": f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—",
                 "type": family.billing_type or "Private pay",

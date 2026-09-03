@@ -1182,11 +1182,14 @@ def staff_page(request, page):
         context["incident_severity_options"] = INCIDENT_SEVERITY_OPTIONS
         context["show_log_incident"] = request.GET.get("log") == "1"
     if page == "families":
+        from .family_list import expand_demo_families
+
         if portal_is_live():
             unit = _staff_unit(request)
             context["families"] = families_for_staff(unit) if unit else []
         else:
-            context["families"] = FAMILIES
+            context["families"] = expand_demo_families(FAMILIES)
+        context["family_count"] = len({row["slug"] for row in context["families"]})
     if page == "member-policies":
         unit = _staff_unit(request)
         if unit and context.get("portal_live"):
@@ -1425,6 +1428,34 @@ def staff_medical_report(request):
             report_rows=report_rows,
             medical_alert_types=MEDICAL_ALERT_TYPES,
             alert_count=alert_count,
+            staff_page_slug="reports",
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
+def staff_school_bus_report(request):
+    unit = _staff_unit(request) if _portal_data_live() else None
+    if unit:
+        from .staff_services import build_school_bus_roster, school_bus_report_meta
+
+        school_sections = build_school_bus_roster(unit)
+        report_meta = school_bus_report_meta(unit)
+    else:
+        from .demo_data import MEDICAL_REPORT_META, SCHOOL_BUS_ROSTER_SECTIONS
+
+        school_sections = SCHOOL_BUS_ROSTER_SECTIONS
+        report_meta = MEDICAL_REPORT_META
+    total_children = sum(len(section["children"]) for section in school_sections)
+    return render(
+        request,
+        "portal/staff/school_bus_report.html",
+        _staff_context(
+            "School bus roster",
+            report_meta=report_meta,
+            school_sections=school_sections,
+            total_children=total_children,
             staff_page_slug="reports",
         ),
     )
@@ -2604,18 +2635,25 @@ def admin_page(request, page):
             context["families_without_login"] = families_without_parent_login()
             context["families_without_applications"] = families_without_applications()
         else:
-            context["families"] = [
-                {
-                    **row,
-                    "unit": row.get("unit", "School 18"),
-                    "unit_slug": row.get("unit_slug", "school-18"),
-                    "program": row.get("program", "After-School 2026–27"),
-                }
-                for row in ADMIN_MEMBER_FAMILIES
-            ]
+            from .family_list import expand_demo_families
+
+            context["families"] = expand_demo_families(
+                [
+                    {
+                        **row,
+                        "unit": row.get("unit", "School 18"),
+                        "unit_slug": row.get("unit_slug", "school-18"),
+                        "program": row.get("program", "After-School 2026–27"),
+                        "has_application": row.get("has_application", True),
+                        "has_parent_login": row.get("has_parent_login", True),
+                    }
+                    for row in ADMIN_MEMBER_FAMILIES
+                ]
+            )
             context["units"] = UNITS
             context["families_without_login"] = []
             context["families_without_applications"] = []
+        context["family_count"] = len({row["slug"] for row in context["families"]})
     if page == "applications":
         unit_filter = request.GET.get("unit", "")
         context["applications_tab"] = "all"

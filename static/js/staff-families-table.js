@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "yea-staff-families-prefs-v3";
+  var STORAGE_KEY = "yea-staff-families-prefs-v4";
   var table = document.getElementById("families-table");
   if (!table) return;
 
@@ -56,6 +56,14 @@
     return isNaN(num) ? 0 : num;
   }
 
+  function uniqueFamilyCount(list) {
+    var slugs = new Set();
+    list.forEach(function (row) {
+      slugs.add(row.getAttribute("data-slug"));
+    });
+    return slugs.size;
+  }
+
   function rowMatchesFilter(row) {
     if (unitFilterSelect && state.unit && state.unit !== "all") {
       var unitSlug = row.getAttribute("data-unit-slug") || "";
@@ -66,7 +74,7 @@
     }
     var status = row.getAttribute("data-status") || "";
     var billing = row.getAttribute("data-billing") || "";
-    var balance = parseBalance(row.getAttribute("data-balance"));
+    var balance = parseBalance(row.getAttribute("data-family-balance") || row.getAttribute("data-balance"));
     switch (state.filter) {
       case "active":
         return status.indexOf("active") !== -1 && status.indexOf("pending") === -1;
@@ -98,7 +106,7 @@
       row.getAttribute("data-unit"),
       row.getAttribute("data-name"),
       row.getAttribute("data-contact"),
-      row.getAttribute("data-children-text"),
+      row.getAttribute("data-child-name"),
       row.getAttribute("data-program"),
       row.getAttribute("data-billing"),
       row.getAttribute("data-status"),
@@ -113,27 +121,35 @@
     sorted.sort(function (a, b) {
       var nameA = a.getAttribute("data-name") || "";
       var nameB = b.getAttribute("data-name") || "";
+      var childA = a.getAttribute("data-child-name") || "";
+      var childB = b.getAttribute("data-child-name") || "";
       var unitA = a.getAttribute("data-unit") || "";
       var unitB = b.getAttribute("data-unit") || "";
       var contactA = a.getAttribute("data-contact") || "";
       var contactB = b.getAttribute("data-contact") || "";
-      var balA = parseBalance(a.getAttribute("data-balance"));
-      var balB = parseBalance(b.getAttribute("data-balance"));
+      var familyBalA = parseBalance(a.getAttribute("data-family-balance") || a.getAttribute("data-balance"));
+      var familyBalB = parseBalance(b.getAttribute("data-family-balance") || b.getAttribute("data-balance"));
+      var childBalA = parseBalance(a.getAttribute("data-child-balance"));
+      var childBalB = parseBalance(b.getAttribute("data-child-balance"));
       switch (state.sort) {
         case "name-desc":
-          return nameB.localeCompare(nameA);
+          return nameB.localeCompare(nameA) || childA.localeCompare(childB);
         case "unit-asc":
-          return unitA.localeCompare(unitB) || nameA.localeCompare(nameB);
+          return unitA.localeCompare(unitB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "unit-desc":
-          return unitB.localeCompare(unitA) || nameA.localeCompare(nameB);
+          return unitB.localeCompare(unitA) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "balance-desc":
-          return balB - balA;
+          return familyBalB - familyBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "balance-asc":
-          return balA - balB;
+          return familyBalA - familyBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+        case "child-balance-desc":
+          return childBalB - childBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+        case "child-balance-asc":
+          return childBalA - childBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "contact-asc":
-          return contactA.localeCompare(contactB);
+          return contactA.localeCompare(contactB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
         default:
-          return nameA.localeCompare(nameB);
+          return nameA.localeCompare(nameB) || childA.localeCompare(childB);
       }
     });
     return sorted;
@@ -202,12 +218,13 @@
       row.hidden = !visibleSet.has(row);
     });
 
-    matched.forEach(function (row, index) {
+    matched.forEach(function (row) {
       tbody.appendChild(row);
     });
 
     var showingFrom = matched.length ? start + 1 : 0;
     var showingTo = Math.min(end, matched.length);
+    var familyCount = uniqueFamilyCount(matched);
     summaryEl.textContent =
       "Showing " +
       showingFrom +
@@ -215,8 +232,10 @@
       showingTo +
       " of " +
       matched.length +
-      " families" +
-      (matched.length !== rows.length ? " (filtered from " + rows.length + ")" : "");
+      " children (" +
+      familyCount +
+      " families)" +
+      (matched.length !== rows.length ? " (filtered from " + rows.length + " children)" : "");
 
     emptyState.hidden = matched.length > 0;
     table.hidden = matched.length === 0;

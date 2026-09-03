@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Families</h1>
-    <p class="lead">{{ staff_unit }} — <span id="families-total-count">{{ families|length }}</span> families · click through to profile or billing.</p>
+    <p class="lead">{{ staff_unit }} — {{ family_count|default:families|length }} families · {{ families|length }} children listed · click through to profile or billing.</p>
   </div>
 </section>
 <section class="page-content">
@@ -17,12 +17,13 @@
           <tr>
             <th data-col="family">Family</th>
             <th data-col="contact">Primary contact</th>
-            <th data-col="children">Children</th>
+            <th data-col="child">Child</th>
             <th data-col="school">School attending</th>
             <th data-col="medical">Medical</th>
             <th data-col="program">Program</th>
             <th data-col="billing">Billing</th>
-            <th data-col="balance">Balance</th>
+            <th data-col="child-balance">Child balance</th>
+            <th data-col="family-balance">Family balance</th>
             <th data-col="status">Status</th>
             <th data-col="actions"></th>
           </tr>
@@ -34,34 +35,40 @@
             data-slug="{{ family.slug }}"
             data-name="{{ family.name|lower }}"
             data-contact="{{ family.primary_contact|lower }}"
-            data-children-text="{{ family.children|join:', '|lower }}"
+            data-child-name="{{ family.child_name|lower }}"
             data-program="{{ family.program|lower }}"
             data-billing="{{ family.billing_type|lower }}"
-            data-balance="{{ family.balance }}"
+            data-child-balance="{{ family.child_balance }}"
+            data-family-balance="{{ family.family_balance }}"
+            data-balance="{{ family.family_balance }}"
             data-status="{{ family.status|lower }}"
             data-has-application="{% if family.has_application %}1{% else %}0{% endif %}"
+            {% if family.is_first_child %}data-family-group-start{% endif %}
           >
             <td data-col="family">
               <strong>{{ family.name }}</strong>
-              {% if family.primary_contact %}<span class="portal-family-sub">{{ family.primary_contact }}</span>{% endif %}
-              {% if not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
+              {% if family.is_first_child and family.primary_contact %}<span class="portal-family-sub">{{ family.primary_contact }}</span>{% endif %}
+              {% if family.is_first_child and not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
             </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
-            <td data-col="children">{{ family.children|join:", " }}</td>
+            <td data-col="child"><strong>{{ family.child_name }}</strong></td>
             <td data-col="school">{{ family.school|default:"—" }}</td>
             <td data-col="medical" class="portal-medical-cell">
-              {% for child_name in family.children %}
-              {% medical_badges child_name family_slug=family.slug %}
-              {% endfor %}
+              {% if family.child_name != "—" %}
+              {% medical_badges family.child_name family_slug=family.slug %}
+              {% else %}—{% endif %}
             </td>
             <td data-col="program">{{ family.program }}</td>
             <td data-col="billing">{{ family.billing_type }}</td>
-            <td data-col="balance">${{ family.balance }}</td>
+            <td data-col="child-balance">${{ family.child_balance }}</td>
+            <td data-col="family-balance">{% if family.is_first_child %}${{ family.family_balance }}{% endif %}</td>
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
+              {% if family.is_first_child %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">Profile</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_policies' family_slug=family.slug %}">Policies</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -74,5 +81,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=4"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=6"></script>
 {% endblock %}

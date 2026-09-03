@@ -201,6 +201,56 @@ def medical_report_meta(unit):
     }
 
 
+def _school_name_for_child(child):
+    school = (child.school or "").strip()
+    if school:
+        return school
+    app = application_for_child(child=child, child_name=child.name)
+    if app and app.student_school:
+        return app.student_school.strip()
+    return ""
+
+
+def build_school_bus_roster(unit):
+    children = (
+        PortalChild.objects.filter(family__unit=unit, is_active=True)
+        .select_related("family")
+        .order_by("name")
+    )
+    if not children.exists():
+        if portal_is_live():
+            return []
+        from .demo_data import SCHOOL_BUS_ROSTER_SECTIONS
+
+        return SCHOOL_BUS_ROSTER_SECTIONS
+
+    grouped = {}
+    for child in children:
+        school = _school_name_for_child(child) or "School not listed"
+        grouped.setdefault(school, []).append(
+            {
+                "child": child.name,
+                "grade": child.grade or "—",
+                "family": child.family.name,
+            }
+        )
+
+    sections = []
+    for school in sorted(grouped, key=lambda value: value.lower()):
+        rows = sorted(grouped[school], key=lambda row: row["child"].lower())
+        sections.append({"school": school, "children": rows})
+    return sections
+
+
+def school_bus_report_meta(unit):
+    program = get_active_program(unit)
+    return {
+        "unit": unit.name if unit else MEDICAL_REPORT_META["unit"],
+        "program": program.name if program else MEDICAL_REPORT_META["program"],
+        "generated_date": timezone.localdate().strftime("%B %d, %Y"),
+    }
+
+
 def pickup_report_for_unit(unit, program_filter="all"):
     families = []
     family_details = {}

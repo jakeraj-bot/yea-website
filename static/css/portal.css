@@ -1828,9 +1828,21 @@
   padding: 0.45rem 0.5rem;
 }
 
-.portal-families-table td[data-col="children"],
+.portal-families-table td[data-col="child"],
 .portal-families-table td[data-col="family"] {
   white-space: normal;
+}
+
+.portal-families-table tr[data-family-group-start] td {
+  border-top: 2px solid var(--border-color, #d8dee8);
+}
+
+.portal-families-table tr[data-family-group-start]:first-child td {
+  border-top: none;
+}
+
+.portal-families-table td[data-col="family-balance"] {
+  font-weight: 600;
 }
 
 .portal-family-sub {
@@ -1873,9 +1885,18 @@
   width: 9%;
 }
 
+.portal-families-table th[data-col="child-balance"],
+.portal-families-table td[data-col="child-balance"],
+.portal-families-table th[data-col="family-balance"],
+.portal-families-table td[data-col="family-balance"] {
+  width: 7%;
+  text-align: right;
+}
+
 .portal-families-table th[data-col="balance"],
 .portal-families-table td[data-col="balance"] {
   width: 7%;
+  text-align: right;
 }
 
 .portal-families-table th[data-col="status"],
@@ -2831,6 +2852,10 @@
 
   .portal-family-policy-print-section:first-of-type {
     page-break-before: auto;
+  }
+
+  .portal-school-bus-sheet-break {
+    page-break-before: always;
   }
 }
 

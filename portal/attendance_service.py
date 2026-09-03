@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from django.utils.dateparse import parse_date, parse_time
 
@@ -219,35 +220,45 @@ def families_for_staff(unit):
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
 
+    from .family_list import child_balance_map, expand_family_record
+
     repair_family_units_from_applications()
     families = PortalFamily.objects.filter(unit=unit).prefetch_related("children")
     rows = []
     for family in families:
-        enrolled = [child.name for child in family.children.filter(is_active=True)]
-        enrolled_lower = {name.lower() for name in enrolled}
-        pending_children = []
+        balances = child_balance_map(family)
+        active_children = list(family.children.filter(is_active=True).order_by("name"))
+        enrolled_lower = {child.name.lower() for child in active_children}
+        children_specs = [
+            {
+                "name": child.name,
+                "school": child.school or "—",
+                "balance": balances.get(child.name, Decimal("0")),
+            }
+            for child in active_children
+        ]
         for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
             child_name = f"{app.student_first_name} {app.student_last_name}".strip()
-            if child_name.lower() not in enrolled_lower and app.status not in {"declined", "enrolled"}:
-                pending_children.append(child_name)
-        rows.append(
-            {
-                "id": family.pk,
-                "slug": family.slug,
-                "name": family_display_label(family),
-                "primary_contact": family.primary_contact,
-                "children": enrolled + pending_children,
-                "school": ", ".join(
-                    sorted({child.school for child in family.children.filter(is_active=True) if child.school})
-                )
-                or "—",
-                "balance": format(family.balance, ".2f"),
-                "program": family.program_label,
-                "billing_type": family.billing_type,
-                "status": "Suspended" if family.is_suspended else family.status,
-                "has_application": family.enrollment_applications.exists(),
-            }
-        )
+            if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
+                continue
+            children_specs.append(
+                {
+                    "name": child_name,
+                    "school": app.student_school or "—",
+                    "balance": balances.get(child_name, Decimal("0")),
+                }
+            )
+        base_row = {
+            "id": family.pk,
+            "slug": family.slug,
+            "name": family_display_label(family),
+            "primary_contact": family.primary_contact,
+            "program": family.program_label,
+            "billing_type": family.billing_type,
+            "status": "Suspended" if family.is_suspended else family.status,
+            "has_application": family.enrollment_applications.exists(),
+        }
+        rows.extend(expand_family_record(base_row, children_specs, family.balance))
     return rows
 
 
