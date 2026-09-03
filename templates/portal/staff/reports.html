@@ -15,6 +15,8 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_pickup_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'medical' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_medical_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'school-bus' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_school_bus_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'member-policies' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_page' page='member-policies' %}">View &amp; print</a>
         {% elif report.slug == 'attendance' %}

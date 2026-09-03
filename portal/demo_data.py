@@ -1565,6 +1565,12 @@ STAFF_REPORTS = [
         "slug": "medical",
     },
     {
+        "name": "School bus roster",
+        "description": "Printable attendance sheets grouped by the school each child attends (for bus pickup runs)",
+        "format": "PDF",
+        "slug": "school-bus",
+    },
+    {
         "name": "Member signed policies",
         "description": "All families — view & print signed policies on file",
         "format": "PDF",
@@ -1585,6 +1591,27 @@ PROGRAM_ROSTER = [
     {"child": "Ethan Chen", "family": "Chen", "family_slug": "chen", "grade": "5th", "status": "Active"},
     {"child": "Amari Johnson", "family": "Johnson", "family_slug": "johnson", "grade": "2nd", "status": "Pending membership"},
     {"child": "Layla Thompson", "family": "Thompson", "family_slug": "thompson", "grade": "1st", "status": "Active"},
+]
+
+SCHOOL_BUS_ROSTER_SECTIONS = [
+    {
+        "school": "Paterson School 18",
+        "children": [
+            {"child": "Jordan Jacobs", "grade": "4th", "family": "Jacobs"},
+            {"child": "Maya Jacobs", "grade": "1st", "family": "Jacobs"},
+            {"child": "Sofia Martinez", "grade": "2nd", "family": "Martinez"},
+            {"child": "Ethan Chen", "grade": "5th", "family": "Chen"},
+            {"child": "Amari Johnson", "grade": "2nd", "family": "Johnson"},
+            {"child": "Layla Thompson", "grade": "1st", "family": "Thompson"},
+        ],
+    },
+    {
+        "school": "Paterson School 26",
+        "children": [
+            {"child": "Aiden Williams", "grade": "3rd", "family": "Williams"},
+            {"child": "Olivia Williams", "grade": "K", "family": "Williams"},
+        ],
+    },
 ]
 
 MEDICAL_REPORT_META = {

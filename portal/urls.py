@@ -168,6 +168,11 @@ urlpatterns = [
         name="portal_staff_medical_report",
     ),
     path(
+        "staff/reports/school-bus/",
+        views.staff_school_bus_report,
+        name="portal_staff_school_bus_report",
+    ),
+    path(
         "staff/reports/attendance/",
         views.staff_attendance_report,
         name="portal_staff_attendance_report",
