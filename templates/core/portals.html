@@ -37,7 +37,9 @@
           <li>Family billing &amp; 4Cs</li>
           <li>Medical &amp; policy reports</li>
         </ul>
-        {% if portal_live %}
+        {% if can_open_staff_portal %}
+        <a class="btn btn-primary" href="{% url 'portal_area_switch' area='staff' %}">Open staff portal</a>
+        {% elif portal_live %}
         <a class="btn btn-primary" href="{% url 'portal_staff_login' %}">Sign in to staff portal</a>
         {% else %}
         <a class="btn btn-primary" href="{% url 'portal_staff_page' page='dashboard' %}">Go to staff portal</a>
@@ -52,7 +54,11 @@
           <li>Member billing (all units)</li>
           <li>Scholarships &amp; 4Cs agencies</li>
         </ul>
+        {% if can_open_admin_portal %}
+        <a class="btn btn-primary" href="{% url 'portal_area_switch' area='admin' %}">Open portal admin</a>
+        {% else %}
         <a class="btn btn-primary" href="{% if portal_live %}{% url 'portal_admin_login' %}{% else %}{% url 'portal_admin_page' page='dashboard' %}{% endif %}">{% if portal_live %}Sign in to portal admin{% else %}Go to portal admin{% endif %}</a>
+        {% endif %}
       </article>
     </div>
 
@@ -60,7 +66,7 @@
       {% if show_dev_hints %}
       <p><strong>Local design preview.</strong> Parent login is optional while <code>PORTAL_PREVIEW_MODE=True</code>. Set it to <code>False</code> and run <code>python manage.py seed_portal</code> for live portal data.</p>
       {% else %}
-      <p>Parent, staff, and portal admin each require their own sign-in. Staff accounts cannot open portal admin.</p>
+      <p>Sign in once. Portal admins can switch between staff and admin without signing out. Regular staff accounts cannot open portal admin.</p>
       {% endif %}
       <p class="form-note"><strong>Website admin</strong> at <a href="/admin/">/admin/</a> is separate — it edits public site pages and photos, not member portals. Ask your developer for those credentials.</p>
     </div>

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from datetime import date
 
 from .report_sheets import (
@@ -254,6 +254,9 @@ def _finalize_admin_context(request, context):
     from .staff_auth import is_admin_portal_authenticated
 
     context["admin_authenticated"] = portal_preview_mode() or is_admin_portal_authenticated(request)
+    from .staff_auth import portal_switch_flags
+
+    context.update(portal_switch_flags(request.user))
     return context
 
 
@@ -423,6 +426,9 @@ def _staff_context(page_title, request=None, **extra):
         ctx["staff_authenticated"] = is_staff_portal_authenticated(request) or portal_preview_mode()
         ctx["staff_units"] = list(staff_accessible_units(request.user)) if request.user.is_authenticated else []
         ctx["staff_unit_slug"] = unit.slug if unit else ""
+        from .staff_auth import portal_switch_flags
+
+        ctx.update(portal_switch_flags(request.user))
     return ctx
 
 
@@ -632,9 +638,11 @@ def _support_context(area, page_title, request, preview_family=None, **extra):
 def portal_home(request):
     from django.conf import settings
 
+    from .staff_auth import portal_switch_flags
+
     if not getattr(settings, "PORTALS_PUBLIC", True):
         return render(request, "core/portals_unavailable.html")
-    return render(request, "core/portals.html")
+    return render(request, "core/portals.html", portal_switch_flags(request.user))
 
 
 @require_GET
@@ -2297,6 +2305,27 @@ def staff_program_roster(request, program_slug):
             staff_page_slug="programs",
         ),
     )
+
+
+@require_http_methods(["GET", "POST"])
+def portal_area_switch(request, area):
+    from .staff_auth import activate_portal_area
+
+    if area not in {"staff", "admin"}:
+        return redirect("portal_home")
+    if activate_portal_area(request, area):
+        if area == "staff":
+            next_url = request.POST.get("next") or request.GET.get("next") or ""
+            if next_url.startswith("/portal/staff"):
+                return redirect(next_url)
+            return redirect("portal_staff_page", page="dashboard")
+        next_url = request.POST.get("next") or request.GET.get("next") or ""
+        if next_url.startswith("/portal/admin"):
+            return redirect(next_url)
+        return redirect("portal_admin_page", page="dashboard")
+    if area == "admin":
+        return redirect("portal_admin_login")
+    return redirect("portal_staff_login")
 
 
 @staff_login_required
