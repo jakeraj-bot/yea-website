@@ -3179,7 +3179,12 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         return render(request, "portal/404.html", status=404)
 
     from .member_admin import resolve_family
-    from .support_view import mask_parent_account_cards, start_support_view
+    from .support_view import (
+        mask_billing_card_mentions,
+        mask_parent_account_cards,
+        mask_receipt_card_mentions,
+        start_support_view,
+    )
 
     family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
     if _portal_data_live() and not family:
@@ -3203,7 +3208,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             parent_page_slug=page,
             parent_pay_query="",
             parent_announcement=get_parent_announcement_live(family),
-            receipts=get_receipts_live(family) if account else [],
+            receipts=mask_receipt_card_mentions(get_receipts_live(family) if account else []),
             drop_in=get_drop_in_live(account) if account else {},
             account=account_data,
             policy_data=get_parent_policy_data_live(family),
@@ -3221,7 +3226,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             preview_family_name=family.name,
         )
         if page == "billing":
-            context["billing"] = preview["billing"]
+            context["billing"] = mask_billing_card_mentions(preview["billing"])
         if page == "profile":
             context["profile"] = preview["profile"]
         if page == "dashboard":
@@ -3270,9 +3275,10 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         portal_live=False,
     )
     context["account"] = mask_parent_account_cards(context.get("account") or {})
+    context["receipts"] = mask_receipt_card_mentions(context.get("receipts") or [])
     context["parent_stripe_enabled"] = False
     if page == "billing":
-        context["billing"] = context["parent_preview"]["billing"]
+        context["billing"] = mask_billing_card_mentions(context["parent_preview"]["billing"])
     if page == "profile":
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
@@ -3311,17 +3317,18 @@ def admin_parent_preview_sample(request, page="dashboard"):
         preview_family_name="Sample parent portal",
         portal_live=False,
     )
+    from .support_view import mask_billing_card_mentions, mask_parent_account_cards, mask_receipt_card_mentions
+
+    context["account"] = mask_parent_account_cards(context.get("account") or {})
+    context["receipts"] = mask_receipt_card_mentions(context.get("receipts") or [])
+    context["parent_stripe_enabled"] = False
+    context["admin_preview_family_slug"] = ""
     if page == "billing":
-        context["billing"] = context["parent_preview"]["billing"]
+        context["billing"] = mask_billing_card_mentions(context["parent_preview"]["billing"])
     if page == "profile":
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
         context["dashboard"] = context["parent_preview"]["dashboard"]
-    from .support_view import mask_parent_account_cards
-
-    context["account"] = mask_parent_account_cards(context.get("account") or {})
-    context["parent_stripe_enabled"] = False
-    context["admin_preview_family_slug"] = ""
     return render(request, template, context)
 
 

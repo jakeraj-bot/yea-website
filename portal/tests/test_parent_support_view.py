@@ -69,6 +69,16 @@ class ParentSupportViewTests(TestCase):
         self.assertEqual(masked["payment_methods"][0]["expires"], "••/••")
         self.assertEqual(masked["payment_methods"][0]["stripe_id"], "")
 
+    def test_mask_billing_hides_ending_last4(self):
+        from portal.support_view import mask_billing_card_mentions, mask_receipt_card_mentions
+
+        billing = mask_billing_card_mentions(
+            {"ledger": [{"description": "Autopay — card ending 4242", "amount": "-80.00"}]}
+        )
+        self.assertEqual(billing["ledger"][0]["description"], "Autopay — card ending ••••")
+        receipts = mask_receipt_card_mentions([{"method": "Visa ending 4242", "description": "Paid"}])
+        self.assertEqual(receipts[0]["method"], "Visa ending ••••")
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_parent_view_without_parent_login(self):
         self.parent_account.delete()
@@ -117,6 +127,39 @@ class ParentSupportViewTests(TestCase):
         self.assertContains(response, "Visa on file · ••••")
         self.assertNotContains(response, "+ Add payment method")
         self.assertNotContains(response, 'id="toggle-password-display"')
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_billing_preview_masks_ledger_last4(self):
+        self._login(self.admin, "admin")
+        from unittest.mock import patch
+
+        with patch(
+            "portal.parent_services.build_parent_preview_live",
+            return_value={
+                "key": "rivera",
+                "label": "Private pay",
+                "family_name": "Rivera",
+                "billing": {
+                    "payment_type": "Private pay",
+                    "running_balance": "10.00",
+                    "balance_due": "10.00",
+                    "has_credit": False,
+                    "account_credit": "0.00",
+                    "children": [],
+                    "ledger": [{"date": "2026-09-05", "child": "Ada", "type": "payment", "description": "Autopay — card ending 4242", "amount": "-10.00"}],
+                },
+                "profile": {},
+                "dashboard": {"balance": "10.00"},
+            },
+        ):
+            response = self.client.get(
+                reverse("portal_admin_parent_preview_page", kwargs={"family_slug": "rivera", "page": "billing"}),
+                {"id": self.family.pk},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "ending 4242")
+        self.assertContains(response, "ending ••••")
+        self.assertContains(response, "Pay and add-card actions are hidden")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_sample_parent_portal_does_not_need_parent_account(self):

@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.utils import timezone
@@ -5,6 +6,11 @@ from django.utils import timezone
 from .models import PortalSupportViewSession
 
 SUPPORT_VIEW_MINUTES = 120
+_CARD_LAST4_RE = re.compile(r"(ending\s+)\d{4}", re.IGNORECASE)
+
+
+def mask_card_text(value):
+    return _CARD_LAST4_RE.sub(r"\1••••", value or "")
 
 
 def mask_parent_account_cards(account_data):
@@ -30,6 +36,25 @@ def mask_parent_account_cards(account_data):
     data["stripe_customer_id"] = ""
     data["password_preview"] = ""
     return data
+
+
+def mask_billing_card_mentions(billing):
+    data = dict(billing or {})
+    data["ledger"] = [
+        {**row, "description": mask_card_text(row.get("description", ""))}
+        for row in data.get("ledger") or []
+    ]
+    return data
+
+
+def mask_receipt_card_mentions(receipts):
+    masked = []
+    for receipt in receipts or []:
+        item = dict(receipt)
+        item["method"] = mask_card_text(item.get("method", ""))
+        item["description"] = mask_card_text(item.get("description", ""))
+        masked.append(item)
+    return masked
 
 
 def start_support_view(family, admin_user):
