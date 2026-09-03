@@ -192,13 +192,22 @@ def parent_signup(request):
 
 @require_http_methods(["GET", "POST"])
 def staff_login(request):
-    from .staff_auth import get_portal_auth, get_staff_account, is_staff_portal_authenticated, set_portal_auth
+    from .staff_auth import (
+        activate_portal_area,
+        get_portal_auth,
+        get_staff_account,
+        is_staff_portal_authenticated,
+        set_portal_auth,
+    )
 
     if portal_preview_mode():
         messages.info(request, "Design preview mode — staff login is not required.")
         return redirect("portal_staff_page", page="dashboard")
 
     if is_staff_portal_authenticated(request):
+        return redirect(_staff_login_redirect(request))
+
+    if request.method == "GET" and activate_portal_area(request, "staff"):
         return redirect(_staff_login_redirect(request))
 
     form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="staff")
@@ -238,6 +247,7 @@ def staff_login(request):
 @require_http_methods(["GET", "POST"])
 def admin_login(request):
     from .staff_auth import (
+        activate_portal_area,
         get_portal_auth,
         get_staff_account,
         is_admin_portal_authenticated,
@@ -250,6 +260,9 @@ def admin_login(request):
         return redirect("portal_admin_page", page="dashboard")
 
     if is_admin_portal_authenticated(request):
+        return redirect(_admin_login_redirect(request))
+
+    if request.method == "GET" and activate_portal_area(request, "admin"):
         return redirect(_admin_login_redirect(request))
 
     form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="admin")

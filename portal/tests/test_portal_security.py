@@ -175,3 +175,117 @@ class AdminLoginLayoutTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "portal-shell--auth")
         self.assertContains(response, "portal-sidebar")
+
+
+class PortalAreaSwitchTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.admin_user = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin_user,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff_user = User.objects.create_user(username="staff:unitstaff", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff_user,
+            unit=self.unit,
+            display_name="Unit Staff",
+            role="Unit director",
+            all_units_access=False,
+            is_active=True,
+        )
+
+    def _login_as(self, user, area):
+        self.client.force_login(user)
+        session = self.client.session
+        session["portal_auth_area"] = area
+        session.save()
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_portal_admin_opens_staff_without_relogin(self):
+        self._login_as(self.admin_user, "admin")
+        response = self.client.get(reverse("portal_staff_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Staff menu")
+        self.assertContains(response, "Admin portal")
+        self.assertContains(response, "Switch to admin")
+        self.assertContains(response, reverse("portal_area_switch", kwargs={"area": "admin"}))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_portal_admin_opens_admin_from_staff_session(self):
+        self._login_as(self.admin_user, "staff")
+        response = self.client.get(reverse("portal_admin_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Organization admin")
+        self.assertContains(response, "Switch to staff")
+        self.assertContains(response, reverse("portal_area_switch", kwargs={"area": "staff"}))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_portal_admin_switch_links_flip_areas(self):
+        self._login_as(self.admin_user, "admin")
+        to_staff = self.client.get(reverse("portal_area_switch", kwargs={"area": "staff"}))
+        self.assertEqual(to_staff.status_code, 302)
+        self.assertEqual(to_staff.url, reverse("portal_staff_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(self.client.session["portal_auth_area"], "staff")
+
+        staff_page = self.client.get(to_staff.url)
+        self.assertEqual(staff_page.status_code, 200)
+        self.assertContains(staff_page, "Staff menu")
+
+        to_admin = self.client.get(reverse("portal_area_switch", kwargs={"area": "admin"}))
+        self.assertEqual(to_admin.status_code, 302)
+        self.assertEqual(to_admin.url, reverse("portal_admin_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(self.client.session["portal_auth_area"], "admin")
+
+        admin_page = self.client.get(to_admin.url)
+        self.assertEqual(admin_page.status_code, 200)
+        self.assertContains(admin_page, "Admin menu")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_unit_staff_cannot_open_admin(self):
+        self._login_as(self.staff_user, "staff")
+        response = self.client.get(reverse("portal_admin_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/portal/admin/login/", response.url)
+        switch = self.client.get(reverse("portal_area_switch", kwargs={"area": "admin"}))
+        self.assertEqual(switch.status_code, 302)
+        self.assertIn("/portal/admin/login/", switch.url)
+        staff_page = self.client.get(reverse("portal_staff_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(staff_page.status_code, 200)
+        self.assertNotContains(staff_page, "Switch to admin")
+        self.assertNotContains(staff_page, reverse("portal_area_switch", kwargs={"area": "admin"}))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_unauthenticated_switch_goes_to_login(self):
+        response = self.client.get(reverse("portal_area_switch", kwargs={"area": "staff"}))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/portal/staff/login/", response.url)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_login_page_switches_signed_in_portal_admin(self):
+        self._login_as(self.admin_user, "staff")
+        response = self.client.get(reverse("portal_admin_login"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_admin_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(self.client.session["portal_auth_area"], "admin")
+
+    def test_staff_login_resolves_admin_prefixed_portal_admin(self):
+        from portal.usernames import resolve_auth_username
+
+        User = get_user_model()
+        user = User.objects.create_user(username="admin:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=user,
+            unit=self.unit,
+            display_name="YEA Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.assertEqual(resolve_auth_username("staff", "yeaadmin"), "admin:yeaadmin")
+        self.assertEqual(resolve_auth_username("admin", "yeaadmin"), "admin:yeaadmin")

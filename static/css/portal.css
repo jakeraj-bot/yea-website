@@ -256,7 +256,8 @@
   border-top: 1px solid var(--border);
 }
 
-.portal-signout-btn {
+.portal-signout-btn,
+.portal-switch-btn {
   width: 100%;
   justify-content: center;
 }
