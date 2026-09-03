@@ -73,10 +73,7 @@
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_email' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Email</a>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_applications' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Applications</a>
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Policies</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Account</a>
               {% if portal_live and family.id %}
               <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form" onsubmit="return confirm('Delete {{ family.name }} and their parent login? Applications will be unlinked, not deleted.');">
                 {% csrf_token %}

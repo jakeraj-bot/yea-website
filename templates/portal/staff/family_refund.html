@@ -1,0 +1,61 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">{{ billing.family_name }}</a> /
+      Refund
+    </p>
+    <h1>Refund — {{ billing.family_name }}</h1>
+    <p class="lead">Send money back to the parent’s card. The family balance goes up by the refund amount.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/family_account_tabs.html" %}
+
+    <section class="card portal-account-narrow portal-collapse-skip">
+      <h2>Process refund</h2>
+      {% if refundable_payments %}
+      <div class="portal-refund-list">
+        {% for payment in refundable_payments %}
+        <article class="portal-refund-item">
+          <p class="portal-refund-meta">
+            <strong>{{ payment.date }}</strong>
+            · {{ payment.method }}{% if not payment.can_refund_card %} (ledger only){% endif %}
+            · Receipt {{ payment.receipt_no|default:"—" }}
+          </p>
+          <p class="form-note">Paid ${{ payment.amount }} · Already refunded ${{ payment.refunded }} · Remaining ${{ payment.remaining }}</p>
+          <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-form-grid portal-form-grid-single">
+            {% csrf_token %}
+            <input type="hidden" name="portal_area" value="admin">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+            <input type="hidden" name="action" value="refund">
+            <input type="hidden" name="payment_id" value="{{ payment.id }}">
+            <div class="form-group portal-form-full">
+              <label for="refund-amount-{{ payment.id }}">Refund amount</label>
+              <input id="refund-amount-{{ payment.id }}" name="amount" type="text" class="portal-input" value="{{ payment.remaining }}" required>
+            </div>
+            <div class="form-group portal-form-full">
+              <label for="refund-reason-{{ payment.id }}">Reason (optional)</label>
+              <input id="refund-reason-{{ payment.id }}" name="reason" type="text" class="portal-input" placeholder="Overpayment, cancelled week…">
+            </div>
+            <div class="portal-form-actions portal-form-full">
+              <button type="submit" class="btn btn-primary" onclick="return confirm('Refund this payment?')">{% if payment.can_refund_card %}Refund to card{% else %}Record refund{% endif %}</button>
+            </div>
+          </form>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="form-note">No refundable payments on this account yet. After a parent pays by card, the payment will show here.</p>
+      {% endif %}
+      <p class="portal-form-actions">
+        <a class="btn btn-secondary" href="{% url 'portal_admin_family_billing' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">Back to billing</a>
+      </p>
+    </section>
+  </div>
+</section>
+{% endblock %}

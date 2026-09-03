@@ -339,6 +339,21 @@ urlpatterns = [
         name="portal_staff_agency_billing",
     ),
     path(
+        "staff/family/<slug:family_slug>/plans/",
+        views.staff_family_plans,
+        name="portal_staff_family_plans",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/agency/",
+        views.staff_family_agency,
+        name="portal_staff_family_agency",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/applications/",
+        views.staff_family_applications,
+        name="portal_staff_family_applications",
+    ),
+    path(
         "staff/family/<slug:family_slug>/policies/",
         views.staff_family_policies,
         name="portal_staff_family_policies",
@@ -426,6 +441,31 @@ urlpatterns = [
         name="portal_admin_member_type_report",
     ),
     path(
+        "admin/family/<slug:family_slug>/plans/",
+        views.admin_family_plans,
+        name="portal_admin_family_plans",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/agency/",
+        views.admin_family_agency,
+        name="portal_admin_family_agency",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/pickup/",
+        views.admin_family_pickup,
+        name="portal_admin_family_pickup",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/incidents/",
+        views.admin_family_incidents,
+        name="portal_admin_family_incidents",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/refund/",
+        views.admin_family_refund,
+        name="portal_admin_family_refund",
+    ),
+    path(
         "admin/family/<slug:family_slug>/applications/",
         views.admin_family_applications,
         name="portal_admin_family_applications",
@@ -449,6 +489,11 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/policies/",
         views.admin_family_policies,
         name="portal_admin_family_policies",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/",
+        views.admin_family_detail,
+        name="portal_admin_family_detail",
     ),
     path(
         "admin/family/<slug:family_slug>/policies/<slug:policy_slug>/print/",

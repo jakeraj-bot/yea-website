@@ -17,11 +17,7 @@
 </section>
 <section class="page-content portal-policy-report">
   <div class="container">
-    {% if portal_area != 'admin' %}
-    {% include "portal/staff/includes/family_tabs.html" %}
-    {% else %}
-    {% include "portal/admin/includes/family_tabs.html" with family_tab='policies' %}
-    {% endif %}
+    {% include "portal/includes/family_account_tabs.html" %}
     <div class="portal-toolbar portal-no-print">
       <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
       <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_page' page='member-policies' %}{% else %}{% url 'portal_staff_page' page='member-policies' %}{% endif %}">All members</a>

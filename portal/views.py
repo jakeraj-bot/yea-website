@@ -173,9 +173,9 @@ def _portal_families_live():
     return portal_is_live()
 
 
-def _staff_family_profile(family_slug, unit=None):
+def _staff_family_profile(family_slug, unit=None, family_id=None):
     if _portal_families_live():
-        return family_profile_live(family_slug, unit=unit)
+        return family_profile_live(family_slug, unit=unit, family_id=family_id)
     profile = FAMILY_DETAILS.get(family_slug)
     if profile:
         return profile
@@ -215,7 +215,10 @@ def _staff_family_profile(family_slug, unit=None):
 def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
     if unit is None and request is not None:
         unit = _staff_unit(request)
-    profile = _staff_family_profile(family_slug, unit=unit)
+    family_id = extra.get("family_id")
+    if not family_id and request is not None:
+        family_id = _family_id_from_request(request) or None
+    profile = _staff_family_profile(family_slug, unit=unit, family_id=family_id)
     if not profile:
         return None
     if _portal_families_live():
@@ -247,6 +250,121 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
         staff_page_slug="families",
         **extra,
     )
+
+
+def _family_hub_context(request, area, family_slug, page_title, family_tab, **extra):
+    family_id = extra.pop("family_id", None) or _family_id_from_request(request) or None
+    unit = None if area == "admin" else _staff_unit(request)
+    profile = extra.pop("profile", None) or _staff_family_profile(family_slug, unit=unit, family_id=family_id)
+    if not profile:
+        return None
+    if _portal_families_live():
+        family_meta = family_meta_live(family_slug, unit=unit, family_id=family_id) or {}
+    else:
+        family_meta = next((f for f in FAMILIES if f["slug"] == family_slug), {})
+    if _portal_data_live():
+        family_incidents = get_incidents_for_family_live(family_slug)
+    else:
+        family_incidents = get_incidents_for_family(family_slug)
+    parent_email = extra.get("parent_email") or (profile.get("primary") or {}).get("email") or ""
+    if not parent_email and _portal_families_live():
+        from .member_admin import parent_email_for_family, resolve_family
+
+        live_family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
+        if live_family:
+            parent_email = parent_email_for_family(live_family)
+            family_id = live_family.pk
+    extra.setdefault("parent_email", parent_email)
+    extra.setdefault("family_id", family_id or (family_meta or {}).get("id"))
+    extra.setdefault(
+        "email_send_url",
+        "portal_admin_family_email_send" if area == "admin" else "portal_staff_family_email_send",
+    )
+    extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
+    extra.setdefault("family_incident_count", len(family_incidents))
+    if area == "admin":
+        if _portal_families_live():
+            from .member_admin import resolve_family
+
+            live_family = resolve_family(family_slug=family_slug, family_id=extra.get("family_id"))
+            if live_family:
+                extra.setdefault("family_id", live_family.pk)
+                for key, value in _admin_family_ops_context(live_family).items():
+                    extra.setdefault(key, value)
+        return _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                page_title,
+                admin_page_slug="families",
+                profile=profile,
+                family_meta=family_meta,
+                family_slug=family_slug,
+                family_tab=family_tab,
+                **extra,
+            ),
+        )
+    extra.setdefault("staff_page_slug", "families")
+    return _staff_context(
+        page_title,
+        request=request,
+        profile=profile,
+        family_meta=family_meta,
+        family_slug=family_slug,
+        family_tab=family_tab,
+        **extra,
+    )
+
+
+def _family_billing_bundle(request, area, family_slug):
+    from .billing_services import (
+        MONTH_DAYS,
+        WEEKDAYS,
+        get_family_for_billing,
+        get_refundable_payments,
+        prepare_billing_for_staff,
+        run_due_plan_charges,
+    )
+    from .staff_auth import billing_permissions_for_staff, get_staff_account
+
+    permissions = billing_permissions_for_staff(
+        None if area == "admin" else get_staff_account(request.user),
+        portal_area=area,
+    )
+    unit = None if area == "admin" else _staff_unit(request)
+    refundable_payments = []
+    if _portal_families_live() and (area == "admin" or unit):
+        posted = run_due_plan_charges()
+        if posted:
+            messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
+        family = get_family_for_billing(family_slug, unit, family_id=_family_id_from_request(request))
+        if not family:
+            return None
+        billing = prepare_billing_for_staff(family, permissions)
+        if area == "admin":
+            from .admin_services import get_member_families_live
+
+            families = get_member_families_live()
+            refundable_payments = get_refundable_payments(family)
+        else:
+            families = families_for_staff(unit)
+    else:
+        billing = FAMILIES_BILLING.get(family_slug)
+        if not billing:
+            return None
+        billing = prepare_billing_preview(billing, permissions)
+        families = ADMIN_MEMBER_FAMILIES if area == "admin" else FAMILIES
+    return {
+        "billing": billing,
+        "billing_permissions": permissions,
+        "charge_types": BILLING_CHARGE_TYPES,
+        "families": families,
+        "billing_live": _portal_families_live(),
+        "today": date.today().isoformat(),
+        "plan_weekdays": WEEKDAYS,
+        "plan_month_days": MONTH_DAYS,
+        "refundable_payments": refundable_payments,
+    }
 
 
 def _finalize_admin_context(request, context):
@@ -1652,40 +1770,16 @@ def staff_agency_billing(request, family_slug):
 @staff_login_required
 @require_GET
 def staff_family_billing(request, family_slug):
-    from .billing_services import get_family_for_billing, prepare_billing_for_staff
-    from .staff_auth import billing_permissions_for_staff, get_staff_account
-
-    permissions = billing_permissions_for_staff(get_staff_account(request.user))
-    unit = _staff_unit(request)
-    if _portal_families_live() and unit:
-        from .billing_services import run_due_plan_charges
-
-        posted = run_due_plan_charges()
-        if posted:
-            messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
-        family = get_family_for_billing(family_slug, unit, family_id=_family_id_from_request(request))
-        if not family:
-            return render(request, "portal/404.html", status=404)
-        billing = prepare_billing_for_staff(family, permissions)
-        families = families_for_staff(unit)
-    else:
-        billing = FAMILIES_BILLING.get(family_slug)
-        if not billing:
-            return render(request, "portal/404.html", status=404)
-        billing = prepare_billing_preview(billing, permissions)
-        families = FAMILIES
-    context = _staff_family_context(
+    bundle = _family_billing_bundle(request, "staff", family_slug)
+    if not bundle:
+        return render(request, "portal/404.html", status=404)
+    context = _family_hub_context(
+        request,
+        "staff",
         family_slug,
-        f"{billing['family_name']} billing",
+        f"{bundle['billing']['family_name']} billing",
         "billing",
-        request=request,
-        unit=unit,
-        billing=billing,
-        billing_permissions=permissions,
-        charge_types=BILLING_CHARGE_TYPES,
-        families=families,
-        billing_live=_portal_families_live(),
-        today=date.today().isoformat(),
+        **bundle,
     )
     if not context:
         return render(request, "portal/404.html", status=404)
@@ -1695,66 +1789,20 @@ def staff_family_billing(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_billing(request, family_slug):
-    from .billing_services import (
-        MONTH_DAYS,
-        WEEKDAYS,
-        get_family_for_billing,
-        get_refundable_payments,
-        prepare_billing_for_staff,
-    )
-    from .staff_auth import billing_permissions_for_staff
-
-    plan_weekdays = WEEKDAYS
-    plan_month_days = MONTH_DAYS
-    refundable_payments = []
-
-    extra = {}
-    live_family = None
-    permissions = billing_permissions_for_staff(None, portal_area="admin")
-    if _portal_families_live():
-        from .admin_services import get_member_families_live
-        from .billing_services import run_due_plan_charges
-
-        posted = run_due_plan_charges()
-        if posted:
-            messages.success(request, f"Posted {len(posted)} scheduled plan charge(s).")
-        family = get_family_for_billing(family_slug, unit=None, family_id=_family_id_from_request(request))
-        if not family:
-            return render(request, "portal/404.html", status=404)
-        live_family = family
-        billing = prepare_billing_for_staff(family, permissions)
-        families = get_member_families_live()
-        refundable_payments = get_refundable_payments(family)
-        extra = _admin_family_ops_context(family)
-    else:
-        billing = FAMILIES_BILLING.get(family_slug)
-        if not billing:
-            return render(request, "portal/404.html", status=404)
-        billing = prepare_billing_preview(billing, permissions)
-        families = ADMIN_MEMBER_FAMILIES
-    return render(
+    bundle = _family_billing_bundle(request, "admin", family_slug)
+    if not bundle:
+        return render(request, "portal/404.html", status=404)
+    context = _family_hub_context(
         request,
-        "portal/staff/family_billing.html",
-        _finalize_admin_context(
-            request,
-            _portal_context(
-                "admin",
-                f"{billing['family_name']} billing",
-                admin_page_slug="families",
-                billing=billing,
-                billing_permissions=permissions,
-                charge_types=BILLING_CHARGE_TYPES,
-                families=families,
-                billing_live=_portal_families_live(),
-                family_slug=family_slug,
-                today=date.today().isoformat(),
-                plan_weekdays=plan_weekdays,
-                plan_month_days=plan_month_days,
-                refundable_payments=refundable_payments,
-                **extra,
-            ),
-        ),
+        "admin",
+        family_slug,
+        f"{bundle['billing']['family_name']} account",
+        "billing",
+        **bundle,
     )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_billing.html", context)
 
 
 @require_GET
@@ -1791,6 +1839,7 @@ def admin_family_policies(request, family_slug):
                 family_meta=family_meta,
                 family_slug=family_slug,
                 family_id=family_meta.get("id"),
+                family_tab="policies",
             ),
         ),
     )
@@ -1799,46 +1848,7 @@ def admin_family_policies(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_applications(request, family_slug):
-    from enrollment.portal_integration import staff_application_row
-    from .member_admin import applications_for_family_admin, resolve_family
-
-    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
-    if not family:
-        return render(request, "portal/404.html", status=404)
-    linked, extras = applications_for_family_admin(family)
-    extra = _admin_family_ops_context(family)
-    family_applications = []
-    for app in linked:
-        app_slug = str(app.reference)
-        family_applications.append(
-            {
-                "app_slug": app_slug,
-                "application": _application_with_policy_print_urls(
-                    application_detail_dict(app),
-                    "portal_admin_application_policy_print",
-                    app_slug=app_slug,
-                ),
-                **_application_location_context(app),
-            }
-        )
-    return render(
-        request,
-        "portal/admin/family_applications.html",
-        _finalize_admin_context(
-            request,
-            _portal_context(
-                "admin",
-                f"{family.name} — applications",
-                admin_page_slug="families",
-                family=family,
-                family_slug=family.slug,
-                family_tab="applications",
-                family_applications=family_applications,
-                unmatched_applications=[staff_application_row(app) for app in extras],
-                **extra,
-            ),
-        ),
-    )
+    return _render_family_applications(request, "admin", family_slug)
 
 
 @require_GET
@@ -1995,33 +2005,182 @@ def staff_family_email(request, family_slug):
 @require_GET
 @admin_login_required
 def admin_family_email(request, family_slug):
-    from .member_admin import parent_email_for_family, resolve_family
-
-    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
-    if not family and _portal_families_live():
-        return render(request, "portal/404.html", status=404)
-    family_name = family.name if family else family_slug.replace("-", " ").title()
-    parent_email = parent_email_for_family(family) if family else ""
-    extra = _admin_family_ops_context(family) if family else {}
-    return render(
+    context = _family_hub_context(
         request,
-        "portal/staff/family_email.html",
-        _finalize_admin_context(
-            request,
-            _portal_context(
-                "admin",
-                f"{family_name} — email parent",
-                admin_page_slug="families",
-                family_slug=family_slug,
-                family_id=family.pk if family else None,
-                family_tab="email",
-                parent_email=parent_email,
-                email_send_url="portal_admin_family_email_send",
-                profile={"family_name": family_name, "primary": {"email": parent_email}},
-                **extra,
-            ),
-        ),
+        "admin",
+        family_slug,
+        "Email parent",
+        "email",
     )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    context["page_title"] = f"{context['profile']['family_name']} — email parent"
+    return render(request, "portal/staff/family_email.html", context)
+
+
+@require_GET
+@admin_login_required
+def admin_family_detail(request, family_slug):
+    context = _family_hub_context(
+        request,
+        "admin",
+        family_slug,
+        "Family account",
+        "profile",
+    )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    context["page_title"] = f"Family account — {context['profile']['family_name']}"
+    return render(request, "portal/staff/family_detail.html", context)
+
+
+@require_GET
+@admin_login_required
+def admin_family_pickup(request, family_slug):
+    context = _family_hub_context(request, "admin", family_slug, "Authorized pickup", "pickup")
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    context["pickup_data"] = family_authorized_pickup(
+        context["profile"],
+        family_slug=family_slug if _portal_families_live() else None,
+    )
+    return render(request, "portal/staff/family_pickup.html", context)
+
+
+@require_GET
+@admin_login_required
+def admin_family_incidents(request, family_slug):
+    context = _family_hub_context(request, "admin", family_slug, "Incidents", "incidents")
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    if _portal_data_live():
+        family_incidents = get_incidents_for_family_live(family_slug)
+        incidents_by_child = get_incidents_by_child_for_family_live(family_slug)
+    else:
+        family_incidents = get_incidents_for_family(family_slug)
+        incidents_by_child = get_incidents_by_child_for_family(family_slug)
+    context["family_incidents"] = family_incidents
+    context["incident_print_children"] = [
+        {"child": name, "count": len(incs)} for name, incs in incidents_by_child.items() if incs
+    ]
+    return render(request, "portal/staff/family_incidents.html", context)
+
+
+def _render_family_plans(request, area, family_slug):
+    bundle = _family_billing_bundle(request, area, family_slug)
+    if not bundle:
+        return render(request, "portal/404.html", status=404)
+    context = _family_hub_context(
+        request,
+        area,
+        family_slug,
+        f"{bundle['billing']['family_name']} plans",
+        "plans",
+        **bundle,
+    )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_plans.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_plans(request, family_slug):
+    return _render_family_plans(request, "staff", family_slug)
+
+
+@require_GET
+@admin_login_required
+def admin_family_plans(request, family_slug):
+    return _render_family_plans(request, "admin", family_slug)
+
+
+def _render_family_agency(request, area, family_slug):
+    from .agency_services import get_agency_accounts_for_family
+
+    unit = None if area == "admin" else _staff_unit(request)
+    context = _family_hub_context(request, area, family_slug, "4Cs", "agency")
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    context["agency_accounts"] = get_agency_accounts_for_family(family_slug, unit)
+    return render(request, "portal/staff/family_agency.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_agency(request, family_slug):
+    return _render_family_agency(request, "staff", family_slug)
+
+
+@require_GET
+@admin_login_required
+def admin_family_agency(request, family_slug):
+    return _render_family_agency(request, "admin", family_slug)
+
+
+@require_GET
+@admin_login_required
+def admin_family_refund(request, family_slug):
+    bundle = _family_billing_bundle(request, "admin", family_slug)
+    if not bundle:
+        return render(request, "portal/404.html", status=404)
+    context = _family_hub_context(
+        request,
+        "admin",
+        family_slug,
+        f"{bundle['billing']['family_name']} refund",
+        "billing",
+        **bundle,
+    )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_refund.html", context)
+
+
+def _render_family_applications(request, area, family_slug):
+    from enrollment.portal_integration import staff_application_row
+    from .member_admin import applications_for_family_admin, resolve_family
+
+    unit = None if area == "admin" else _staff_unit(request)
+    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None, unit=unit)
+    if not family:
+        return render(request, "portal/404.html", status=404)
+    linked, extras = applications_for_family_admin(family)
+    family_applications = []
+    print_name = "portal_admin_application_policy_print" if area == "admin" else "portal_staff_application_policy_print"
+    for app in linked:
+        app_slug = str(app.reference)
+        family_applications.append(
+            {
+                "app_slug": app_slug,
+                "application": _application_with_policy_print_urls(
+                    application_detail_dict(app),
+                    print_name,
+                    app_slug=app_slug,
+                ),
+                **_application_location_context(app),
+            }
+        )
+    context = _family_hub_context(
+        request,
+        area,
+        family_slug,
+        f"{family.name} — applications",
+        "applications",
+        family=family,
+        family_id=family.pk,
+        family_applications=family_applications,
+        unmatched_applications=[staff_application_row(app) for app in extras],
+    )
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/admin/family_applications.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_applications(request, family_slug):
+    return _render_family_applications(request, "staff", family_slug)
 
 
 @staff_login_required

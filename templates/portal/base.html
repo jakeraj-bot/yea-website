@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=22">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=50">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=49">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=48">
 </head>
@@ -108,6 +109,7 @@
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=2"></script>
+  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-collapse.js' %}?v=1"></script>{% endif %}
   <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}

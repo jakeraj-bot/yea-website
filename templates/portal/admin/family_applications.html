@@ -3,14 +3,22 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_admin_page' page='families' %}">All families</a> / {{ family.name }}</p>
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=family.slug %}{% if family.pk %}?id={{ family.pk }}{% endif %}">{{ family.name }}</a>
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">{{ family.name }}</a>
+      {% endif %}
+    </p>
     <h1>{{ family.name }} — applications</h1>
     <p class="lead">{{ family.unit.name }} · {{ family.primary_contact }}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    {% include "portal/admin/includes/family_tabs.html" with family_tab='applications' family_slug=family.slug family_id=family.pk %}
+    {% include "portal/includes/family_account_tabs.html" with family_slug=family.slug family_id=family.pk family_tab='applications' %}
 
     <p class="form-note">Approved applications leave the review queue. The full application for each child is here so you can view or edit it from this family account.</p>
 
@@ -28,17 +36,21 @@
         <h2 class="portal-family-app-title">{{ item.application.child_name }}</h2>
         <span class="portal-status portal-status-{{ item.application.status|slugify }}">{{ item.application.status }}</span>
         <span class="form-note">Ref {{ item.application.reference }} · {{ item.application.submitted }}</span>
-        <a class="btn btn-secondary" href="{% url 'portal_admin_application_print' app_slug=item.app_slug %}">Print PDF</a>
+        <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_print' app_slug=item.app_slug %}{% else %}{% url 'portal_staff_application_print' app_slug=item.app_slug %}{% endif %}">Print PDF</a>
+        {% if portal_area == 'admin' %}
         <a class="btn btn-secondary" href="#edit-application-panel-{{ item.app_slug }}">Edit</a>
+        {% endif %}
       </div>
       {% include "portal/includes/application_full_body.html" with application=item.application %}
+      {% if portal_area == 'admin' %}
       {% include "portal/includes/application_edit_form.html" with application=item.application app_slug=item.app_slug id_suffix=item.app_slug location_choices=item.location_choices program_location=item.program_location next_url=request.get_full_path %}
+      {% endif %}
     </article>
     {% empty %}
     <p class="form-note">No applications are linked to this family yet.</p>
     {% endfor %}
 
-    {% if unmatched_applications %}
+    {% if portal_area == 'admin' and unmatched_applications %}
     <h2>Possible matches (not linked)</h2>
     <p class="form-note">These applications use the same email or family name. Link them if they belong to this account.</p>
     <div class="portal-table-wrap">

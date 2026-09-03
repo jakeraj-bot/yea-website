@@ -1266,7 +1266,7 @@ def staff_billing_action(request, family_slug):
     except ValueError as exc:
         messages.error(request, str(exc))
 
-    return redirect(redirect_url)
+    return redirect(_portal_next_url(request, redirect_url))
 
 
 @require_POST

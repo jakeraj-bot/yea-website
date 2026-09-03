@@ -1,0 +1,28 @@
+{% firstof family_id billing.id as tab_family_id %}
+<nav class="portal-family-tabs portal-family-tabs-scroll portal-family-tabs-colorful portal-staff-family-tabs" aria-label="Family account">
+  {% if portal_area == 'admin' %}
+  <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Profile</a>
+  <a class="portal-family-tab portal-family-tab--pickup {% if family_tab == 'pickup' %}is-active{% endif %}" href="{% url 'portal_admin_family_pickup' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Pickup</a>
+  <a class="portal-family-tab portal-family-tab--incidents {% if family_tab == 'incidents' %}is-active{% endif %}" href="{% url 'portal_admin_family_incidents' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">
+    Incidents{% if family_incident_count %} ({{ family_incident_count }}){% endif %}
+  </a>
+  <a class="portal-family-tab portal-family-tab--billing {% if family_tab == 'billing' %}is-active{% endif %}" href="{% url 'portal_admin_family_billing' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Billing</a>
+  <a class="portal-family-tab portal-family-tab--plans {% if family_tab == 'plans' %}is-active{% endif %}" href="{% url 'portal_admin_family_plans' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Plans</a>
+  <a class="portal-family-tab portal-family-tab--agency {% if family_tab == 'agency' %}is-active{% endif %}" href="{% url 'portal_admin_family_agency' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">4Cs</a>
+  <a class="portal-family-tab portal-family-tab--applications {% if family_tab == 'applications' %}is-active{% endif %}" href="{% url 'portal_admin_family_applications' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Applications</a>
+  <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_admin_family_policies' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Policies</a>
+  <a class="portal-family-tab portal-family-tab--email {% if family_tab == 'email' %}is-active{% endif %}" href="{% url 'portal_admin_family_email' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Email parent</a>
+  {% else %}
+  <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">Profile</a>
+  <a class="portal-family-tab portal-family-tab--pickup {% if family_tab == 'pickup' %}is-active{% endif %}" href="{% url 'portal_staff_family_pickup' family_slug=family_slug %}">Pickup</a>
+  <a class="portal-family-tab portal-family-tab--incidents {% if family_tab == 'incidents' %}is-active{% endif %}" href="{% url 'portal_staff_family_incidents' family_slug=family_slug %}">
+    Incidents{% if family_incident_count %} ({{ family_incident_count }}){% endif %}
+  </a>
+  <a class="portal-family-tab portal-family-tab--billing {% if family_tab == 'billing' %}is-active{% endif %}" href="{% url 'portal_staff_family_billing' family_slug=family_slug %}">Billing</a>
+  <a class="portal-family-tab portal-family-tab--plans {% if family_tab == 'plans' %}is-active{% endif %}" href="{% url 'portal_staff_family_plans' family_slug=family_slug %}">Plans</a>
+  <a class="portal-family-tab portal-family-tab--agency {% if family_tab == 'agency' %}is-active{% endif %}" href="{% url 'portal_staff_family_agency' family_slug=family_slug %}">4Cs</a>
+  <a class="portal-family-tab portal-family-tab--applications {% if family_tab == 'applications' %}is-active{% endif %}" href="{% url 'portal_staff_family_applications' family_slug=family_slug %}">Applications</a>
+  <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_staff_family_policies' family_slug=family_slug %}">Policies</a>
+  <a class="portal-family-tab portal-family-tab--email {% if family_tab == 'email' %}is-active{% endif %}" href="{% url 'portal_staff_family_email' family_slug=family_slug %}">Email parent</a>
+  {% endif %}
+</nav>

@@ -2,14 +2,21 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}</p>
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">{{ profile.family_name }}</a>
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}
+      {% endif %}
+    </p>
     <h1>{{ profile.family_name }} family</h1>
     <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    {% include "portal/staff/includes/family_tabs.html" %}
+    {% include "portal/includes/family_account_tabs.html" %}
 
     <p class="form-note">Anyone listed below is authorized to pick up children in this family. Staff must verify photo ID at release.</p>
 

@@ -17,11 +17,7 @@
 </section>
 <section class="page-content">
   <div class="container">
-    {% if portal_area == 'admin' %}
-    {% include "portal/admin/includes/family_tabs.html" with family_tab='email' %}
-    {% else %}
-    {% include "portal/staff/includes/family_tabs.html" %}
-    {% endif %}
+    {% include "portal/includes/family_account_tabs.html" %}
 
     <section class="card portal-family-email-card">
       <h2>Compose</h2>

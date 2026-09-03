@@ -129,7 +129,7 @@
               <td>{{ row.plan }}</td>
               <td>{{ row.repeat }}</td>
               <td>${{ row.amount }}</td>
-              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}">Edit plan</a></td>
+              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_plans' family_slug=row.family_slug %}">Edit plan</a></td>
             </tr>
             {% endfor %}
           </tbody>

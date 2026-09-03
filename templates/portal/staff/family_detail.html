@@ -3,14 +3,20 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}</p>
-    <h1>{{ profile.family_name }} family</h1>
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> / {{ profile.family_name }}
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}
+      {% endif %}
+    </p>
+    <h1>{% if portal_area == 'admin' %}Family account{% else %}{{ profile.family_name }} family{% endif %}{% if portal_area == 'admin' %} — {{ profile.family_name }}{% endif %}</h1>
     <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    {% include "portal/staff/includes/family_tabs.html" %}
+    {% include "portal/includes/family_account_tabs.html" %}
 
     <div class="portal-profile-grid">
       <section class="card">
@@ -30,7 +36,7 @@
         </dl>
         {% if profile.primary.email or parent_email %}
         <p class="portal-profile-email-action">
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_family_email' family_slug=family_slug %}">Email parent</a>
+          <a class="btn btn-primary btn-sm" href="{% if portal_area == 'admin' %}{% url 'portal_admin_family_email' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}{% else %}{% url 'portal_staff_family_email' family_slug=family_slug %}{% endif %}">Email parent</a>
         </p>
         {% endif %}
       </section>

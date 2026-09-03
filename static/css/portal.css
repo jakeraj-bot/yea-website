@@ -3446,6 +3446,9 @@
 .portal-family-tab--billing { --tab-accent: var(--yea-purple); --tab-accent-soft: rgba(156, 39, 176, 0.1); }
 .portal-family-tab--policies { --tab-accent: var(--yea-pink); --tab-accent-soft: rgba(236, 64, 122, 0.1); }
 .portal-family-tab--email { --tab-accent: #00897b; --tab-accent-soft: rgba(0, 137, 123, 0.12); }
+.portal-family-tab--plans { --tab-accent: var(--yea-orange); --tab-accent-soft: rgba(255, 152, 0, 0.14); }
+.portal-family-tab--agency { --tab-accent: #7e57c2; --tab-accent-soft: rgba(126, 87, 194, 0.12); }
+.portal-family-tab--applications { --tab-accent: #5c6bc0; --tab-accent-soft: rgba(92, 107, 192, 0.12); }
 
 .portal-family-email-card {
   max-width: 42rem;
@@ -3621,5 +3624,95 @@
 @media (max-width: 800px) {
   .portal-messages-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+.portal-account-narrow {
+  max-width: 28rem;
+}
+
+.portal-form-grid-single {
+  grid-template-columns: 1fr;
+}
+
+.portal-refund-list {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.portal-refund-item {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.portal-refund-item:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.portal-refund-meta {
+  margin: 0 0 0.35rem;
+}
+
+.portal-collapse-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.portal-collapse {
+  margin-bottom: 1rem;
+}
+
+.portal-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.portal-collapse-toggle::after {
+  content: "▾";
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.portal-collapse.is-collapsed .portal-collapse-toggle::after {
+  transform: rotate(-90deg);
+}
+
+.portal-collapse.is-collapsed .portal-collapse-body {
+  display: none;
+}
+
+.portal-collapse-body {
+  margin-top: 0.85rem;
+}
+
+.page-content .card > .portal-collapse-toggle {
+  padding: 0;
+}
+
+@media print {
+  .portal-collapse-bar {
+    display: none;
+  }
+  .portal-collapse.is-collapsed .portal-collapse-body {
+    display: block;
+  }
+  .portal-collapse-toggle::after {
+    display: none;
   }
 }

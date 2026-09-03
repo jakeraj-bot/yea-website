@@ -25,7 +25,7 @@
               <td>{{ child.name }}</td>
               <td>{{ child.family.name }}</td>
               <td>{{ child.family.unit.name }}</td>
-              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=child.family.slug %}?id={{ child.family_id }}">Family billing</a></td>
+              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=child.family.slug %}?id={{ child.family_id }}">Family account</a></td>
             </tr>
             {% endfor %}
           </tbody>

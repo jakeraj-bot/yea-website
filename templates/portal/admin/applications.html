@@ -54,7 +54,7 @@
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
               {% if app.family_slug %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=app.family_slug %}{% if app.family_id %}?id={{ app.family_id }}{% endif %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=app.family_slug %}{% if app.family_id %}?id={{ app.family_id }}{% endif %}">Account</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=app.family_slug %}{% if app.family_id %}?id={{ app.family_id }}{% endif %}">Policies</a>
               {% endif %}
               {% if portal_live %}
