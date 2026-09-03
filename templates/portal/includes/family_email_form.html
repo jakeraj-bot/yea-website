@@ -1,0 +1,21 @@
+{% if parent_email %}
+<form method="post" action="{% url email_send_url family_slug=family_slug %}" class="portal-form-grid portal-family-email-form">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+  <p class="form-note portal-form-full">Sends to <strong>{{ parent_email }}</strong>{% if profile.primary.name %} ({{ profile.primary.name }}){% endif %}.</p>
+  <div class="form-group portal-form-full">
+    <label for="{{ form_id|default:'family-email' }}-subject">Subject</label>
+    <input id="{{ form_id|default:'family-email' }}-subject" name="subject" type="text" class="portal-input" required maxlength="200">
+  </div>
+  <div class="form-group portal-form-full">
+    <label for="{{ form_id|default:'family-email' }}-body">Message</label>
+    <textarea id="{{ form_id|default:'family-email' }}-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
+  </div>
+  <div class="portal-form-actions portal-form-full">
+    <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Send email</button>
+  </div>
+</form>
+{% else %}
+<p class="form-note">No parent email is on file for this family yet.</p>
+{% endif %}

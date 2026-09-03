@@ -569,9 +569,11 @@ def family_profile_live(family_slug, unit=None, family_id=None):
     )
     latest_app = applications[0] if applications else None
 
+    from .member_admin import parent_email_for_family
+
     primary = {
         "name": family.primary_contact,
-        "email": parent_account.user.email if parent_account else "",
+        "email": parent_email_for_family(family),
         "phone": latest_app.primary_phone if latest_app else "",
     }
     secondary = {"name": "", "email": "", "phone": ""}

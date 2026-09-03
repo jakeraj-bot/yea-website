@@ -305,7 +305,7 @@ def parent_email_recipients():
     return rows
 
 
-def send_parent_emails(subject, body, emails):
+def send_parent_emails(subject, body, emails, reply_to=None):
     subject = (subject or "").strip()
     body = (body or "").strip()
     if not subject or not body:
@@ -320,9 +320,22 @@ def send_parent_emails(subject, body, emails):
     if not unique:
         raise ValueError("Choose at least one parent.")
     sent = 0
+    replies = [reply_to] if reply_to else None
     for email in unique:
-        sent += 1 if send_site_email(subject=subject, message=body, recipient_list=[email]) else 0
+        sent += 1 if send_site_email(
+            subject=subject,
+            message=body,
+            recipient_list=[email],
+            reply_to=replies,
+        ) else 0
     return sent, len(unique)
+
+
+def send_family_parent_email(family, subject, body, reply_to=None):
+    email = parent_email_for_family(family)
+    if not email:
+        raise ValueError("This family does not have a parent email on file.")
+    return send_parent_emails(subject, body, [email], reply_to=reply_to)
 
 
 def save_discount_plan(name, kind, value, description="", plan_id=None):

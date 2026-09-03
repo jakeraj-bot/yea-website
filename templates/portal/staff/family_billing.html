@@ -33,9 +33,10 @@
         <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-settings' %}">All members</a>
         <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Bulk billing</a>
         <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Policies</a>
-        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='parent-emails' %}{% if billing.id %}?family_id={{ billing.id }}{% endif %}">Email parent</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_family_email' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Email parent</a>
         {% else %}
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>
+        <a class="btn btn-secondary" href="{% url 'portal_staff_family_email' family_slug=billing.slug %}">Email parent</a>
         {% endif %}
         {% if billing.slug == "martinez" or billing.slug == "chen" %}
         <a class="btn btn-secondary" href="{% url 'portal_staff_agency_billing' family_slug=billing.slug %}">4Cs agency account</a>
