@@ -25,9 +25,14 @@
         <h2>Primary guardian</h2>
         <dl class="portal-dl">
           <dt>Name</dt><dd>{{ profile.primary.name }}</dd>
-          {% if profile.primary.email %}<dt>Email</dt><dd>{{ profile.primary.email }}</dd>{% endif %}
+          {% if profile.primary.email or parent_email %}<dt>Email</dt><dd>{{ profile.primary.email|default:parent_email }}</dd>{% endif %}
           {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone }}</dd>{% endif %}
         </dl>
+        {% if profile.primary.email or parent_email %}
+        <p class="portal-profile-email-action">
+          <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_family_email' family_slug=family_slug %}">Email parent</a>
+        </p>
+        {% endif %}
       </section>
       {% if profile.secondary.name %}
       <section class="card">
@@ -62,6 +67,11 @@
         {% endif %}
       </section>
     </div>
+
+    <section class="card portal-profile-full portal-family-email-card">
+      <h2>Email parent</h2>
+      {% include "portal/includes/family_email_form.html" with email_send_url="portal_staff_family_email_send" form_id="profile-email" %}
+    </section>
 
     {% include "portal/staff/includes/medical_legend.html" %}
     {% include "portal/staff/includes/school_name_options.html" %}

@@ -349,6 +349,16 @@ urlpatterns = [
         name="portal_staff_family_policy_print",
     ),
     path(
+        "staff/family/<slug:family_slug>/email/",
+        views.staff_family_email,
+        name="portal_staff_family_email",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/email/send/",
+        views_actions.family_email_send,
+        name="portal_staff_family_email_send",
+    ),
+    path(
         "staff/family/<slug:family_slug>/billing/",
         views.staff_family_billing,
         name="portal_staff_family_billing",
@@ -419,6 +429,16 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/applications/",
         views.admin_family_applications,
         name="portal_admin_family_applications",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/email/",
+        views.admin_family_email,
+        name="portal_admin_family_email",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/email/send/",
+        views_actions.family_email_send,
+        name="portal_admin_family_email_send",
     ),
     path(
         "admin/family/<slug:family_slug>/billing/",

@@ -226,6 +226,16 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
         family_incidents = get_incidents_for_family_live(family_slug)
     else:
         family_incidents = get_incidents_for_family(family_slug)
+    parent_email = (profile.get("primary") or {}).get("email") or extra.get("parent_email") or ""
+    if not parent_email and _portal_families_live():
+        from .member_admin import parent_email_for_family, resolve_family
+
+        live_family = resolve_family(family_slug=family_slug, unit=unit)
+        if live_family:
+            parent_email = parent_email_for_family(live_family)
+    extra.setdefault("parent_email", parent_email)
+    extra.setdefault("family_id", (family_meta or {}).get("id"))
+    extra.setdefault("email_send_url", "portal_staff_family_email_send")
     return _staff_context(
         page_title,
         request=request,
@@ -1962,6 +1972,56 @@ def staff_family_detail(request, family_slug):
         medical_alert_types=MEDICAL_ALERT_TYPES,
     )
     return render(request, "portal/staff/family_detail.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_email(request, family_slug):
+    unit = _staff_unit(request)
+    profile = _staff_family_profile(family_slug, unit=unit)
+    if not profile:
+        return render(request, "portal/404.html", status=404)
+    context = _staff_family_context(
+        family_slug,
+        f"{profile['family_name']} — email parent",
+        "email",
+        request=request,
+        unit=unit,
+        email_send_url="portal_staff_family_email_send",
+    )
+    return render(request, "portal/staff/family_email.html", context)
+
+
+@require_GET
+@admin_login_required
+def admin_family_email(request, family_slug):
+    from .member_admin import parent_email_for_family, resolve_family
+
+    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
+    if not family and _portal_families_live():
+        return render(request, "portal/404.html", status=404)
+    family_name = family.name if family else family_slug.replace("-", " ").title()
+    parent_email = parent_email_for_family(family) if family else ""
+    extra = _admin_family_ops_context(family) if family else {}
+    return render(
+        request,
+        "portal/staff/family_email.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                f"{family_name} — email parent",
+                admin_page_slug="families",
+                family_slug=family_slug,
+                family_id=family.pk if family else None,
+                family_tab="email",
+                parent_email=parent_email,
+                email_send_url="portal_admin_family_email_send",
+                profile={"family_name": family_name, "primary": {"email": parent_email}},
+                **extra,
+            ),
+        ),
+    )
 
 
 @staff_login_required

@@ -3445,6 +3445,15 @@
 .portal-family-tab--incidents { --tab-accent: #ef5350; --tab-accent-soft: rgba(239, 83, 80, 0.1); }
 .portal-family-tab--billing { --tab-accent: var(--yea-purple); --tab-accent-soft: rgba(156, 39, 176, 0.1); }
 .portal-family-tab--policies { --tab-accent: var(--yea-pink); --tab-accent-soft: rgba(236, 64, 122, 0.1); }
+.portal-family-tab--email { --tab-accent: #00897b; --tab-accent-soft: rgba(0, 137, 123, 0.12); }
+
+.portal-family-email-card {
+  max-width: 42rem;
+}
+
+.portal-profile-email-action {
+  margin: 0.75rem 0 0;
+}
 
 .portal-family-tabs-colorful {
   border-bottom: 2px solid var(--border);

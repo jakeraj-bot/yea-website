@@ -1,0 +1,32 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">{{ profile.family_name }}</a> /
+      {% endif %}
+      Email parent
+    </p>
+    <h1>Email parent — {{ profile.family_name }}</h1>
+    <p class="lead">Send a message to this family's parent email.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if portal_area == 'admin' %}
+    {% include "portal/admin/includes/family_tabs.html" with family_tab='email' %}
+    {% else %}
+    {% include "portal/staff/includes/family_tabs.html" %}
+    {% endif %}
+
+    <section class="card portal-family-email-card">
+      <h2>Compose</h2>
+      {% include "portal/includes/family_email_form.html" %}
+    </section>
+  </div>
+</section>
+{% endblock %}

@@ -74,6 +74,7 @@
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_email' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Email</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_applications' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Applications</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Policies</a>
               {% if portal_live and family.id %}

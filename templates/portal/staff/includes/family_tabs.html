@@ -5,5 +5,6 @@
     Incidents{% if family_incident_count %} ({{ family_incident_count }}){% endif %}
   </a>
   <a class="portal-family-tab portal-family-tab--billing {% if family_tab == 'billing' %}is-active{% endif %}" href="{% url 'portal_staff_family_billing' family_slug=family_slug %}">Billing</a>
+  <a class="portal-family-tab portal-family-tab--email {% if family_tab == 'email' %}is-active{% endif %}" href="{% url 'portal_staff_family_email' family_slug=family_slug %}">Email parent</a>
   <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_staff_family_policies' family_slug=family_slug %}">Policies</a>
 </nav>

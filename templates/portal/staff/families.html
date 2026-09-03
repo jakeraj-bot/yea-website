@@ -69,6 +69,7 @@
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">Profile</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_email' family_slug=family.slug %}">Email</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_policies' family_slug=family.slug %}">Policies</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
               {% endif %}
