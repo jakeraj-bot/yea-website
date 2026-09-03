@@ -33,6 +33,7 @@
         <table class="portal-table portal-blank-sheet-table portal-blank-sheet-table--signout">
           <thead>
             <tr>
+              <th class="portal-row-num" scope="col">#</th>
               <th class="portal-blank-col-name">Child name</th>
               <th class="portal-blank-col-time">Check-out time</th>
               <th class="portal-blank-col-sig-wide">Parent / authorized pickup — signature</th>
@@ -43,6 +44,7 @@
           <tbody>
             {% for row in enrolled_rows %}
             <tr class="portal-blank-sheet-row">
+              <td class="portal-row-num">{{ forloop.counter }}</td>
               <td>
                 <strong>{{ row.child }}</strong>
                 {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
@@ -54,11 +56,12 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="5" class="portal-blank-sheet-empty">No active enrollments found for this unit.</td>
+              <td colspan="6" class="portal-blank-sheet-empty">No active enrollments found for this unit.</td>
             </tr>
             {% endfor %}
             {% for i in extra_blank_rows %}
             <tr class="portal-blank-sheet-row portal-blank-sheet-row--spare">
+              <td class="portal-row-num"></td>
               <td><span class="portal-blank-line" aria-hidden="true">&nbsp;</span></td>
               <td><span class="portal-blank-line portal-blank-line--time" aria-hidden="true">&nbsp;</span></td>
               <td><span class="portal-blank-line portal-blank-line--sig" aria-hidden="true">&nbsp;</span></td>

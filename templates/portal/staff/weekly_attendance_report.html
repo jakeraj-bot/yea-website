@@ -19,13 +19,14 @@
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
           <h2>Weekly attendance summary</h2>
-          <p class="portal-medical-report-meta">{{ attendance.unit }} · Mon–Fri totals per child</p>
+          <p class="portal-medical-report-meta">{{ attendance.unit }} · Mon–Fri totals per child · {% if weekly_rows %}{{ weekly_rows|length }}{% else %}{{ roster|length }}{% endif %} children</p>
         </div>
       </header>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
             <tr>
+              <th class="portal-row-num" scope="col">#</th>
               <th>Child</th>
               {% if weekly_rows and week_days %}
                 {% for day in week_days %}
@@ -41,6 +42,7 @@
             {% if weekly_rows %}
               {% for row in weekly_rows %}
               <tr>
+                <td class="portal-row-num">{{ forloop.counter }}</td>
                 <td><strong>{{ row.child }}</strong></td>
                 {% for present in row.days %}
                 <td>{% if present %}✓{% else %}—{% endif %}</td>
@@ -51,6 +53,7 @@
             {% else %}
               {% for row in roster %}
               <tr>
+                <td class="portal-row-num">{{ forloop.counter }}</td>
                 <td><strong>{{ row.child }}</strong></td>
                 <td>{% if row.check_in %}✓{% else %}—{% endif %}</td>
                 <td>—</td><td>—</td><td>—</td><td>—</td>

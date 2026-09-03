@@ -863,6 +863,33 @@
   color: var(--text-muted);
 }
 
+.portal-table th.portal-row-num,
+.portal-table td.portal-row-num {
+  width: 2.4rem;
+  min-width: 2.4rem;
+  max-width: 2.75rem;
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  padding-left: 0.35rem;
+  padding-right: 0.55rem;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.portal-row-num-auto {
+  counter-reset: roster-kid;
+}
+
+.portal-row-num-auto > tr {
+  counter-increment: roster-kid;
+}
+
+.portal-row-num--auto::before {
+  content: counter(roster-kid);
+}
+
 .portal-amount-debit { color: var(--text-heading); }
 .portal-amount-credit { color: var(--yea-green); font-weight: 600; }
 
@@ -1792,8 +1819,9 @@
 
 .portal-families-table th[data-col="medical"],
 .portal-families-table td[data-col="medical"] {
-  width: 9%;
+  width: 10%;
   overflow: visible;
+  white-space: normal;
 }
 
 .portal-families-table th[data-col="program"],

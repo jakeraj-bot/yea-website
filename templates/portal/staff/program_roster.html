@@ -5,7 +5,7 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='programs' %}">Programs</a> / {{ program.name }}</p>
     <h1>{{ program.name }}</h1>
-    <p class="lead">{{ staff_unit }} · {{ program.dates }} · {{ roster|length }} children shown</p>
+    <p class="lead">{{ staff_unit }} · {{ program.dates }} · <strong>{{ roster|length }}</strong> {% if roster|length == 1 %}child{% else %}children{% endif %} shown</p>
   </div>
 </section>
 <section class="page-content">
@@ -16,6 +16,7 @@
       <table class="portal-table">
         <thead>
           <tr>
+            <th class="portal-row-num" scope="col">#</th>
             <th>Child</th>
             <th>Medical</th>
             <th>Family</th>
@@ -27,8 +28,9 @@
         <tbody>
           {% for row in roster %}
           <tr>
+            <td class="portal-row-num">{{ forloop.counter }}</td>
             <td><strong>{{ row.child }}</strong></td>
-            <td class="portal-medical-cell">{% medical_badges row.child %}</td>
+            <td class="portal-medical-cell">{% medical_badges row.child family_slug=row.family_slug %}</td>
             <td>{{ row.family }}</td>
             <td>{{ row.grade }}</td>
             <td><span class="portal-status portal-status-{{ row.status|slugify }}">{{ row.status }}</span></td>
@@ -36,6 +38,8 @@
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}">Profile</a>
             </td>
           </tr>
+          {% empty %}
+          <tr><td colspan="7">No children on this roster.</td></tr>
           {% endfor %}
         </tbody>
       </table>

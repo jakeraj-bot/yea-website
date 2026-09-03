@@ -56,7 +56,7 @@
             <td data-col="school">{{ family.school|default:"—" }}</td>
             <td data-col="medical" class="portal-medical-cell">
               {% for child_name in family.children %}
-              {% medical_badges child_name %}
+              {% medical_badges child_name family_slug=family.slug %}
               {% endfor %}
             </td>
             <td data-col="program">{{ family.program }}</td>
@@ -146,5 +146,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=4"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=5"></script>
 {% endblock %}
