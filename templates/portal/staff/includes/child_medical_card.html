@@ -26,6 +26,10 @@
   <dl class="portal-dl">
     {% if child.dob %}<dt>DOB</dt><dd>{{ child.dob }}</dd>{% endif %}
     {% if child.grade %}<dt>Grade</dt><dd>{{ child.grade }}</dd>{% endif %}
+    <dt>School attending</dt>
+    <dd>
+      {% include "portal/staff/includes/school_edit_form.html" with child_id=child.child_id application_id=child.application_id school=child.school %}
+    </dd>
     {% if child.program %}<dt>Program</dt><dd>{{ child.program }}</dd>{% endif %}
     {% if child.billing_type %}<dt>Billing</dt><dd>{{ child.billing_type }}</dd>{% endif %}
     <dt>Allergies</dt><dd>{% if medical.allergies %}{{ medical.allergies }}{% else %}—{% endif %}</dd>

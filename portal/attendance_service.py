@@ -232,6 +232,7 @@ def families_for_staff(unit):
         children_specs = [
             {
                 "name": child.name,
+                "child_id": child.pk,
                 "school": child.school or "—",
                 "balance": balances.get(child.name, Decimal("0")),
             }
@@ -244,6 +245,7 @@ def families_for_staff(unit):
             children_specs.append(
                 {
                     "name": child_name,
+                    "application_id": app.pk,
                     "school": app.student_school or "—",
                     "balance": balances.get(child_name, Decimal("0")),
                 }

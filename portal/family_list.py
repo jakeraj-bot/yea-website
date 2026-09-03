@@ -37,6 +37,8 @@ def expand_family_record(base_row, children_specs, family_balance):
             {
                 **base_row,
                 "child_name": "—",
+                "child_id": None,
+                "application_id": None,
                 "school": "—",
                 "child_balance": "0.00",
                 "family_balance": family_balance,
@@ -54,6 +56,8 @@ def expand_family_record(base_row, children_specs, family_balance):
             {
                 **base_row,
                 "child_name": child["name"],
+                "child_id": child.get("child_id"),
+                "application_id": child.get("application_id"),
                 "school": child.get("school") or "—",
                 "child_balance": child_balance,
                 "family_balance": family_balance,

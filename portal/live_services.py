@@ -514,6 +514,9 @@ def _child_from_application(app):
         "pending": app.status in {"under_review", "pending_documents", "approved"},
         "medical": _medical_from_application(app),
         "application_ref": str(app.reference),
+        "application_id": app.pk,
+        "school": app.student_school or "",
+        "can_edit_school": True,
     }
 
 
@@ -592,7 +595,16 @@ def family_profile_live(family_slug, unit=None, family_id=None):
 
     enrolled_names = {c.name.lower() for c in family.children.filter(is_active=True)}
     children = [
-        {"name": c.name, "grade": c.grade, "school": c.school, "program": family.program_label, "note": c.note}
+        {
+            "name": c.name,
+            "grade": c.grade,
+            "school": c.school,
+            "program": family.program_label,
+            "note": c.note,
+            "child_id": c.pk,
+            "family_slug": family.slug,
+            "can_edit_school": True,
+        }
         for c in family.children.filter(is_active=True)
     ]
     for app in applications:

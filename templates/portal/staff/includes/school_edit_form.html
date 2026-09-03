@@ -1,0 +1,27 @@
+{% if portal_live and child_id or portal_live and application_id %}
+<form method="post" action="{% url 'portal_staff_update_child_school' %}" class="portal-school-edit-form portal-no-print">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if child_id %}<input type="hidden" name="child_id" value="{{ child_id }}">{% endif %}
+  {% if application_id %}<input type="hidden" name="application_id" value="{{ application_id }}">{% endif %}
+  <label class="portal-school-edit-label">
+    <span class="portal-visually-hidden">School attending</span>
+    <input
+      type="text"
+      name="school"
+      value="{% if school and school != '—' %}{{ school }}{% endif %}"
+      list="school-name-options"
+      class="portal-input portal-school-edit-input"
+      required
+      maxlength="120"
+      placeholder="School attending"
+      autocomplete="off"
+    >
+  </label>
+  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+</form>
+{% elif school %}
+<span>{{ school }}</span>
+{% else %}
+—
+{% endif %}

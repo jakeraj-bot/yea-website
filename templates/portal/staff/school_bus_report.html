@@ -14,6 +14,7 @@
       <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
     </div>
+    <p class="form-note portal-no-print">Parents type school names differently. Edit a child or rename a whole group so one school stays on one sheet.</p>
 
     {% for section in school_sections %}
     <div class="portal-medical-report-sheet card portal-school-bus-sheet{% if not forloop.first %} portal-school-bus-sheet-break{% endif %}">
@@ -28,6 +29,32 @@
         </div>
       </header>
 
+      {% if portal_live %}
+      <form method="post" action="{% url 'portal_staff_update_child_school' %}" class="portal-school-group-rename portal-no-print">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="rename_group">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        {% for row in section.children %}
+        {% if row.child_id %}<input type="hidden" name="child_ids" value="{{ row.child_id }}">{% endif %}
+        {% endfor %}
+        <label class="portal-filter-label">
+          Rename this school for all children in this group
+          <input
+            type="text"
+            name="school"
+            value="{% if section.school != 'School not listed' %}{{ section.school }}{% endif %}"
+            list="school-name-options"
+            class="portal-input"
+            required
+            maxlength="120"
+            placeholder="Official school name"
+            autocomplete="off"
+          >
+        </label>
+        <button type="submit" class="btn btn-secondary btn-sm">Save group</button>
+      </form>
+      {% endif %}
+
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
@@ -36,6 +63,7 @@
               <th>Child</th>
               <th>Grade</th>
               <th>Family</th>
+              <th class="portal-no-print">School attending</th>
               <th>AM pickup</th>
               <th>PM return</th>
               <th>Staff initials</th>
@@ -48,6 +76,9 @@
               <td><strong>{{ row.child }}</strong></td>
               <td>{{ row.grade }}</td>
               <td>{{ row.family }}</td>
+              <td class="portal-no-print">
+                {% include "portal/staff/includes/school_edit_form.html" with child_id=row.child_id school=row.school %}
+              </td>
               <td></td>
               <td></td>
               <td></td>
@@ -62,6 +93,7 @@
       <p>No enrolled children with a school on file yet.</p>
     </div>
     {% endfor %}
+    {% include "portal/staff/includes/school_name_options.html" %}
   </div>
 </section>
 {% endblock %}

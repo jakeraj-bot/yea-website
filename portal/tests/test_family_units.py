@@ -181,3 +181,81 @@ class SchoolBusRosterTests(TestCase):
         self.assertEqual(len(schools["Lincoln Elementary"]), 2)
         self.assertEqual(len(schools["Roosevelt Elementary"]), 1)
         self.assertEqual(schools["Lincoln Elementary"][0]["child"], "Jordan Jacobs")
+        self.assertTrue(schools["Lincoln Elementary"][0]["child_id"])
+
+
+class ChildSchoolEditTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        self.child = self.family.children.create(
+            name="Jordan Jacobs",
+            school="PS 18",
+            is_active=True,
+        )
+        self.app = _make_application(self.family, location="school_18", status="approved")
+        self.app.student_first_name = "Jordan"
+        self.app.student_last_name = "Jacobs"
+        self.app.student_school = "PS 18"
+        self.app.save()
+
+    def test_update_child_school_syncs_application(self):
+        from portal.member_admin import update_child_school
+
+        update_child_school(child=self.child, school="Paterson School 18")
+        self.child.refresh_from_db()
+        self.app.refresh_from_db()
+        self.assertEqual(self.child.school, "Paterson School 18")
+        self.assertEqual(self.app.student_school, "Paterson School 18")
+
+    def test_rename_group_collapses_duplicate_school_names(self):
+        from portal.member_admin import rename_children_school
+        from portal.staff_services import build_school_bus_roster
+
+        sibling = self.family.children.create(
+            name="Maya Jacobs",
+            school="School 18 Paterson",
+            is_active=True,
+        )
+        self.assertEqual(len(build_school_bus_roster(self.unit)), 2)
+
+        count = rename_children_school([self.child.pk, sibling.pk], "Paterson School 18", unit=self.unit)
+        self.assertEqual(count, 2)
+        sections = build_school_bus_roster(self.unit)
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0]["school"], "Paterson School 18")
+        self.assertEqual(len(sections[0]["children"]), 2)
+
+    def test_staff_can_post_school_update(self):
+        from django.contrib.auth import get_user_model
+        from django.test import override_settings
+        from django.urls import reverse
+
+        from portal.models import PortalStaffAccount
+        from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
+
+        user = get_user_model().objects.create_user(username="staff:tester", password="StaffPass123!")
+        PortalStaffAccount.objects.create(
+            user=user,
+            unit=self.unit,
+            display_name="Tester",
+            role="Unit director",
+            is_active=True,
+        )
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "staff"
+        session.save()
+
+        with override_settings(PORTAL_PREVIEW_MODE=False):
+            response = self.client.post(
+                reverse("portal_staff_update_child_school"),
+                {
+                    "child_id": str(self.child.pk),
+                    "school": "Paterson School 18",
+                    "next": "/portal/staff/families/",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.school, "Paterson School 18")

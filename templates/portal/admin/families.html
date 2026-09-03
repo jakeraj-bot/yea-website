@@ -39,6 +39,7 @@
             data-name="{{ family.name|lower }}"
             data-contact="{{ family.primary_contact|lower }}"
             data-child-name="{{ family.child_name|lower }}"
+            data-school="{{ family.school|lower }}"
             data-program="{{ family.program|lower }}"
             data-billing="{{ family.billing_type|lower }}"
             data-child-balance="{{ family.child_balance }}"
@@ -57,7 +58,9 @@
             </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
             <td data-col="child"><strong>{{ family.child_name }}</strong></td>
-            <td data-col="school">{{ family.school|default:"—" }}</td>
+            <td data-col="school">
+              {% include "portal/staff/includes/school_edit_form.html" with child_id=family.child_id application_id=family.application_id school=family.school %}
+            </td>
             <td data-col="medical" class="portal-medical-cell">
               {% if family.child_name != "—" %}
               {% medical_badges family.child_name family_slug=family.slug %}
@@ -90,6 +93,7 @@
       </table>
     </div>
     <p class="form-note portal-families-empty" id="families-empty-state" hidden>No families match your search or filter.</p>
+    {% include "portal/staff/includes/school_name_options.html" %}
 
     {% if portal_live and families_without_login %}
     <h2>Families without a parent login</h2>
@@ -153,5 +157,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=6"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=7"></script>
 {% endblock %}

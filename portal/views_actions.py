@@ -1270,6 +1270,84 @@ def staff_billing_action(request, family_slug):
 
 
 @require_POST
+def staff_update_child_school(request):
+    from django.conf import settings
+
+    from .member_admin import rename_children_school, resolve_family, update_child_school
+    from .models import PortalChild
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    fallback = reverse("portal_staff_page", kwargs={"page": "families"})
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    from .parent_auth import portal_preview_mode
+
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    unit = None
+    if staff_ok and not admin_ok:
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user):
+            messages.error(request, "Portal unit not configured.")
+            return redirect(_portal_next_url(request, fallback))
+
+    school = request.POST.get("school", "").strip()
+    action = request.POST.get("action", "update")
+    try:
+        if action == "rename_group":
+            child_ids = [value for value in request.POST.getlist("child_ids") if value]
+            count = rename_children_school(child_ids, school, unit=unit)
+            if count == 1:
+                messages.success(request, "School updated for 1 child.")
+            else:
+                messages.success(request, f"School updated for {count} children.")
+        else:
+            child = None
+            application = None
+            child_id = request.POST.get("child_id", "").strip()
+            application_id = request.POST.get("application_id", "").strip()
+            if child_id:
+                children = PortalChild.objects.select_related("family")
+                if unit:
+                    children = children.filter(family__unit=unit)
+                child = children.filter(pk=child_id).first()
+            if application_id:
+                from enrollment.models import EnrollmentApplication
+
+                applications = EnrollmentApplication.objects.select_related("portal_family")
+                if unit:
+                    applications = applications.filter(portal_family__unit=unit)
+                application = applications.filter(pk=application_id).first()
+                if not child and application and application.portal_family:
+                    family = resolve_family(
+                        family_slug=application.portal_family.slug,
+                        family_id=application.portal_family_id,
+                        unit=unit,
+                    )
+                    if family:
+                        child_name = f"{application.student_first_name} {application.student_last_name}".strip()
+                        child = family.children.filter(name__iexact=child_name).first()
+            if not child and not application:
+                raise ValueError("Child not found.")
+            update_child_school(child=child, application=application, school=school)
+            messages.success(request, f"School updated to {school}.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect(_portal_next_url(request, fallback))
+
+
+@require_POST
 @staff_login_required_post
 def staff_create_application(request):
     from enrollment.staff_application import create_staff_application
