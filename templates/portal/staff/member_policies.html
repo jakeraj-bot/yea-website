@@ -13,7 +13,7 @@
     </div>
 
     <div class="portal-callout card">
-      <p>Each child signs all {{ policies_per_child }} policies. A family with 2 children = {{ policies_per_child }} × 2 = {% widthratio policies_per_child 1 2 %} signatures required.</p>
+      <p>Each child signs all {{ policies_per_child }} policies once. Before care waitlist does not require a second set. A family with 2 children = {{ policies_per_child }} × 2 = {% widthratio policies_per_child 1 2 %} signatures required.</p>
     </div>
 
     {% include "portal/staff/includes/list_toolbar.html" with sort_default="Family name A–Z" filter_options="All,Complete,Incomplete" search_placeholder="Family name" %}

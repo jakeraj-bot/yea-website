@@ -193,6 +193,40 @@ def get_applications_for_family(family):
     return EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
 
 
+def parent_application_list_items(family):
+    """Show one row per child. Before-care waitlist is a note on the after-school application."""
+    from .add_program import child_key
+
+    apps = list(get_applications_for_family(family))
+    before_care_by_child = {}
+    for app in apps:
+        if app.program == "before_care" and app.status != "declined":
+            before_care_by_child.setdefault(child_key(app), app)
+
+    folded = set()
+    items = []
+    for app in apps:
+        if app.pk in folded:
+            continue
+        key = child_key(app)
+        if app.program == "before_care":
+            has_primary = any(
+                other.program != "before_care" and child_key(other) == key for other in apps
+            )
+            if has_primary:
+                continue
+        item = application_list_item(app)
+        if app.program != "before_care":
+            before = before_care_by_child.get(key)
+            if before:
+                folded.add(before.pk)
+                item["can_add_before_care"] = False
+                if before.status == "waitlist":
+                    item["program"] = f"{item['program']} · before care waitlist"
+        items.append(item)
+    return items
+
+
 def family_display_label(family):
     """Disambiguate families that share the same last name."""
     dupes = PortalFamily.objects.filter(unit=family.unit, name__iexact=family.name).count()

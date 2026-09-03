@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from portal.models import PortalFamily, PortalParentAccount, PortalStaffAccount
 from portal.usernames import portal_username
 
-DEMO_FAMILY_SLUGS = ("jacobs", "martinez", "williams")
+DEMO_FAMILY_SLUGS = ("jacobs", "martinez", "williams", "chen")
 DEMO_PARENT_USERNAMES = ("jakeraj", "mmartinez", "dwilliams")
 DEMO_STAFF_USERNAMES = ("staff18",)
 

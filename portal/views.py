@@ -151,12 +151,11 @@ from .parent_services import (
     preview_key_for_family,
 )
 from enrollment.portal_integration import (
-    application_list_item,
     application_to_portal_dict,
     applications_for_admin,
     applications_for_staff,
     get_application_by_reference,
-    get_applications_for_family,
+    parent_application_list_items,
     staff_application_detail as application_detail_dict,
     waitlist_for_admin,
     waitlist_for_staff,
@@ -667,8 +666,7 @@ def parent_page(request, page):
     if page == "applications":
         account = get_parent_account(request.user) if request.user.is_authenticated else None
         if account:
-            live_apps = get_applications_for_family(account.family)
-            context["parent_applications"] = [application_list_item(app) for app in live_apps]
+            context["parent_applications"] = parent_application_list_items(account.family)
         elif _portal_data_live() and not portal_preview_mode():
             context["parent_applications"] = []
         else:
@@ -2847,12 +2845,10 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
     from enrollment.models import EnrollmentApplication
 
     from .models import PortalFamily, PortalParentAccount
+    from enrollment.portal_integration import parent_application_list_items
     from .parent_services import (
-        application_list_item,
-        application_to_portal_dict,
         build_parent_preview_live,
         get_account_live,
-        get_applications_for_family,
         get_drop_in_live,
         get_parent_announcement_live,
         get_parent_policy_data_live,
@@ -2925,9 +2921,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
 
             context["field_trips"] = get_family_field_trips(family)
         if page == "applications" and account:
-            context["parent_applications"] = [
-                application_list_item(app) for app in get_applications_for_family(account.family)
-            ]
+            context["parent_applications"] = parent_application_list_items(account.family)
         if page == "policies":
             _attach_parent_policy_print_urls(context["policy_data"])
             context["policies_signed_count"] = context["policy_data"]["signed_count"]
