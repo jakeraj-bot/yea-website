@@ -20,17 +20,18 @@
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
           <h2>Attendance sign-in sheet</h2>
-          <p class="portal-medical-report-meta">{{ attendance.unit }} · {{ attendance.program }} · {{ attendance.date_display }}</p>
+          <p class="portal-medical-report-meta">{{ attendance.unit }} · {{ attendance.program }} · {{ attendance.date_display }} · {{ roster|length }} children</p>
         </div>
       </header>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
-            <tr><th>Child</th><th>Check in</th><th>Check out</th><th>Method</th><th>Parent signature</th></tr>
+            <tr><th class="portal-row-num" scope="col">#</th><th>Child</th><th>Check in</th><th>Check out</th><th>Method</th><th>Parent signature</th></tr>
           </thead>
           <tbody>
             {% for row in roster %}
             <tr>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
               <td><strong>{{ row.child }}</strong></td>
               <td>{{ row.check_in|default:"—" }}</td>
               <td>{{ row.check_out|default:"—" }}</td>

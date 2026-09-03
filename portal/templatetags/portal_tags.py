@@ -7,10 +7,10 @@ from portal.demo_data import CHILD_MEDICAL, MEDICAL_ALERT_TYPES
 register = template.Library()
 
 
-def _alerts_for_child(child_name):
+def _alerts_for_child(child_name, family_slug=None):
     from portal.staff_services import get_medical_data_for_child
 
-    medical = get_medical_data_for_child(child_name)
+    medical = get_medical_data_for_child(child_name, family_slug)
     slug = child_name.lower().replace(" ", "-")
     alerts = []
     for index, item in enumerate(medical.get("alerts", [])):
@@ -29,9 +29,9 @@ def _alerts_for_child(child_name):
 
 
 @register.inclusion_tag("portal/staff/includes/medical_badges.html")
-def medical_badges(child_name, size="md"):
+def medical_badges(child_name, size="md", family_slug=None):
     return {
-        "alerts": _alerts_for_child(child_name),
+        "alerts": _alerts_for_child(child_name, family_slug),
         "size": size,
     }
 
@@ -41,11 +41,13 @@ def child_medical_card(child_name, child=None):
     from portal.staff_services import get_medical_data_for_child
 
     child = child or {}
-    medical = child.get("medical") or get_medical_data_for_child(child_name)
+    family_slug = child.get("family_slug") if isinstance(child, dict) else None
+    medical = child.get("medical") if isinstance(child, dict) else None
+    medical = medical or get_medical_data_for_child(child_name, family_slug)
     return {
         "child_name": child_name,
         "child": child,
-        "alerts": _alerts_for_child(child_name),
+        "alerts": _alerts_for_child(child_name, family_slug),
         "medical": medical,
     }
 

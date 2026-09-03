@@ -116,9 +116,11 @@ def get_family_policies_for_staff(family_slug, family_id=None):
 
 def get_medical_data_for_child(child_name, family_slug=None):
     demo = CHILD_MEDICAL.get(child_name, {})
-    child = PortalChild.objects.filter(name=child_name).select_related("family").first()
-    if family_slug and not child:
-        child = PortalChild.objects.filter(family__slug=family_slug, name=child_name).first()
+    children = PortalChild.objects.select_related("family")
+    if family_slug:
+        child = children.filter(family__slug=family_slug, name=child_name).first()
+    else:
+        child = children.filter(name=child_name).first()
     if not child:
         app = application_for_child(child_name=child_name, family_slug=family_slug)
         if app:

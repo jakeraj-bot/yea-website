@@ -39,6 +39,7 @@
         <table class="portal-table portal-medical-report-table">
           <thead>
             <tr>
+              <th class="portal-row-num" scope="col">#</th>
               <th>Child</th>
               <th>Family</th>
               <th>Program</th>
@@ -51,6 +52,7 @@
           <tbody>
             {% for row in report_rows %}
             <tr>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
               <td><strong>{{ row.child }}</strong></td>
               <td>{{ row.family }}</td>
               <td>{{ row.program }}</td>
@@ -60,7 +62,7 @@
               <td>{{ row.relationship }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="7">No authorized pickup records match this filter.</td></tr>
+            <tr><td colspan="8">No authorized pickup records match this filter.</td></tr>
             {% endfor %}
           </tbody>
         </table>
