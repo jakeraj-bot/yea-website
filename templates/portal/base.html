@@ -79,8 +79,9 @@
     </div>
   </header>
 
-  <div class="portal-shell{% if portal_area == 'public' %} portal-shell--auth{% endif %}">
-    {% if portal_area != 'public' %}
+  {% with area=portal_area|default:"public" %}
+  <div class="portal-shell{% if area == 'public' %} portal-shell--auth{% endif %}">
+    {% if area != 'public' %}
     {% include "portal/includes/sidebar.html" %}
     {% endif %}
 
@@ -96,6 +97,7 @@
       {% block portal_content %}{% endblock %}
     </main>
   </div>
+  {% endwith %}
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=2"></script>
