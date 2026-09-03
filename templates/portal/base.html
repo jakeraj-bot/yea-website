@@ -13,9 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=22">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=50">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=49">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=48">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=53">
 </head>
 <body class="portal-body portal-area-{{ portal_area|default:'public' }}">
   <div class="rainbow-bar" aria-hidden="true"></div>
@@ -24,8 +22,16 @@
   {% include "portal/includes/preview_banner.html" %}
   {% endif %}
   {% if admin_support_preview %}
-  <div class="portal-preview-banner portal-callout-warning" style="margin:0;border-radius:0;text-align:center;padding:0.5rem 1rem;">
-    <strong>Admin parent view</strong> — {{ preview_family_name|default:"Family" }} · Card numbers masked · Read-only troubleshooting
+  <div class="portal-preview-banner portal-support-view-banner" role="status">
+    {% if admin_preview_sample %}
+    <strong>Sample parent portal</strong> — no parent login needed · Card numbers hidden · Read-only
+    {% else %}
+    <strong>Support view</strong> — you are looking at the {{ preview_family_name|default:"Family" }} parent portal. Card numbers are hidden. The parent sees a notice while this view is open.
+    {% endif %}
+  </div>
+  {% elif parent_support_view_active %}
+  <div class="portal-preview-banner portal-support-view-banner portal-support-view-banner-parent" role="status">
+    <strong>A YEA admin is viewing your portal</strong> to help with a support request. They can see the same screens you see. Your card numbers stay hidden.
   </div>
   {% endif %}
 
@@ -76,7 +82,7 @@
             {% endif %}
           </div>
           <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
-          {% if parent_authenticated %}
+          {% if parent_authenticated and not admin_support_preview %}
           <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">Sign out</a>
           {% endif %}
         </div>

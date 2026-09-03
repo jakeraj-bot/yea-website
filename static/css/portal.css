@@ -10,6 +10,27 @@
   font-size: 0.9375rem;
 }
 
+.portal-support-view-banner {
+  padding: 0.7rem 1.25rem;
+  background: #fff8e1;
+  border-bottom: 2px solid var(--yea-orange);
+  color: var(--text-heading);
+  font-size: 0.9rem;
+}
+
+.portal-preview-banner.portal-support-view-banner-parent {
+  background: #e3f2fd;
+  border-bottom-color: var(--yea-blue);
+}
+
+.portal-support-view-note {
+  margin: -0.75rem 0 1.25rem;
+}
+
+.portal-sidebar-end-view {
+  margin-top: 0.5rem;
+}
+
 .portal-live-banner {
   background: #e8f5e9;
 }
@@ -3449,6 +3470,7 @@
 .portal-family-tab--plans { --tab-accent: var(--yea-orange); --tab-accent-soft: rgba(255, 152, 0, 0.14); }
 .portal-family-tab--agency { --tab-accent: #7e57c2; --tab-accent-soft: rgba(126, 87, 194, 0.12); }
 .portal-family-tab--applications { --tab-accent: #5c6bc0; --tab-accent-soft: rgba(92, 107, 192, 0.12); }
+.portal-family-tab--parentview { --tab-accent: #00838f; --tab-accent-soft: rgba(0, 131, 143, 0.12); }
 
 .portal-family-email-card {
   max-width: 42rem;

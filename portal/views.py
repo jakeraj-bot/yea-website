@@ -630,6 +630,11 @@ def _parent_context(request, page_title, page_slug="", **extra):
     from .staff_auth import get_portal_auth
 
     parent_signed_in = bool(account) and get_portal_auth(request) == "parent"
+    support_view = None
+    if account and parent_signed_in:
+        from .support_view import active_support_view
+
+        support_view = active_support_view(account.family)
     return _portal_context(
         "parent",
         page_title,
@@ -648,6 +653,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         parent_avatar=parent_avatar,
         parent_can_manage_photo=bool(account) and not portal_preview_mode(),
         pending_profile_changes=pending_profile_changes,
+        parent_support_view_active=bool(support_view),
         **extra,
     )
 
@@ -3135,6 +3141,21 @@ def admin_member_policies_print(request):
     )
 
 
+PARENT_PREVIEW_TEMPLATES = {
+    "dashboard": "portal/parent/dashboard.html",
+    "profile": "portal/parent/profile.html",
+    "applications": "portal/parent/applications.html",
+    "policies": "portal/parent/policies.html",
+    "billing": "portal/parent/billing.html",
+    "receipts": "portal/parent/receipts.html",
+    "drop-in": "portal/parent/drop_in.html",
+    "field-trips": "portal/parent/field_trips.html",
+    "account": "portal/parent/account.html",
+    "tax-statements": "portal/parent/tax_statements.html",
+    "support": "portal/support/support.html",
+}
+
+
 @require_GET
 @admin_login_required
 def admin_parent_preview(request, family_slug, page="dashboard"):
@@ -3153,51 +3174,48 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         get_tax_eligibility_live,
     )
 
-    templates = {
-        "dashboard": "portal/parent/dashboard.html",
-        "profile": "portal/parent/profile.html",
-        "applications": "portal/parent/applications.html",
-        "policies": "portal/parent/policies.html",
-        "billing": "portal/parent/billing.html",
-        "receipts": "portal/parent/receipts.html",
-        "drop-in": "portal/parent/drop_in.html",
-        "field-trips": "portal/parent/field_trips.html",
-        "account": "portal/parent/account.html",
-        "tax-statements": "portal/parent/tax_statements.html",
-        "support": "portal/support/support.html",
-    }
-    template = templates.get(page)
+    template = PARENT_PREVIEW_TEMPLATES.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
 
-    family = PortalFamily.objects.filter(slug=family_slug).select_related("unit").first()
+    from .member_admin import resolve_family
+    from .support_view import (
+        mask_billing_card_mentions,
+        mask_parent_account_cards,
+        mask_receipt_card_mentions,
+        start_support_view,
+    )
+
+    family = resolve_family(family_slug=family_slug, family_id=_family_id_from_request(request) or None)
+    if _portal_data_live() and not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_admin_page", page="families")
     if _portal_data_live() and family:
         account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
         preview = build_parent_preview_live(family, account)
-        account_data = get_account_live(account) if account else {}
-        if account_data.get("saved_cards"):
-            account_data["saved_cards"] = [
-                {**card, "last4": "••••", "brand": card.get("brand", "Card"), "expires": "••/••"}
-                for card in account_data.get("saved_cards", [])
-            ]
-        account_data["stripe_customer_id"] = ""
+        account_data = mask_parent_account_cards(get_account_live(account) if account else {})
+        if request.user.is_authenticated:
+            start_support_view(family, request.user)
         context = _portal_context(
             "parent",
             page.replace("-", " ").title(),
             admin_page_slug="communications",
             admin_support_preview=True,
-            admin_preview_family_slug=family_slug,
+            admin_preview_family_slug=family.slug,
+            admin_preview_family_id=family.pk,
+            hide_card_details=True,
             parent_preview=preview,
             parent_page_slug=page,
             parent_pay_query="",
             parent_announcement=get_parent_announcement_live(family),
-            receipts=get_receipts_live(family) if account else [],
+            receipts=mask_receipt_card_mentions(get_receipts_live(family) if account else []),
             drop_in=get_drop_in_live(account) if account else {},
             account=account_data,
             policy_data=get_parent_policy_data_live(family),
             policies_per_child=POLICIES_PER_CHILD,
             parent_stripe_enabled=False,
             parent_authenticated=True,
+            portal_live=False,
             parent_avatar={
                 "initials": family.name[:2].upper(),
                 "photo_url": "",
@@ -3208,7 +3226,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             preview_family_name=family.name,
         )
         if page == "billing":
-            context["billing"] = preview["billing"]
+            context["billing"] = mask_billing_card_mentions(preview["billing"])
         if page == "profile":
             context["profile"] = preview["profile"]
         if page == "dashboard":
@@ -3232,11 +3250,15 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
                 enrich_receipt_for_print(r, preview_key_for_family(family), family=family) for r in paid_receipts[:2]
             ]
         if page == "support":
-            context = _support_context("parent", "Support", request, preview_family=family_slug)
+            context = _support_context("parent", "Support", request, preview_family=family.slug)
             context["admin_support_preview"] = True
-            context["admin_preview_family_slug"] = family_slug
+            context["admin_preview_family_slug"] = family.slug
+            context["admin_preview_family_id"] = family.pk
+            context["hide_card_details"] = True
             context["parent_page_slug"] = "support"
             context["portal_area"] = "parent"
+            context["preview_family_name"] = family.name
+            context["portal_live"] = False
         return render(request, template, context)
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
@@ -3249,9 +3271,14 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         admin_support_preview=True,
         admin_preview_family_slug=family_slug,
         preview_family_name=family_slug.title(),
+        hide_card_details=True,
+        portal_live=False,
     )
+    context["account"] = mask_parent_account_cards(context.get("account") or {})
+    context["receipts"] = mask_receipt_card_mentions(context.get("receipts") or [])
+    context["parent_stripe_enabled"] = False
     if page == "billing":
-        context["billing"] = context["parent_preview"]["billing"]
+        context["billing"] = mask_billing_card_mentions(context["parent_preview"]["billing"])
     if page == "profile":
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
@@ -3266,7 +3293,61 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         context["admin_support_preview"] = True
         context["admin_preview_family_slug"] = family_slug
         context["parent_page_slug"] = "support"
+        context["hide_card_details"] = True
+        context["portal_live"] = False
     return render(request, template, context)
+
+
+@require_GET
+@admin_login_required
+def admin_parent_preview_sample(request, page="dashboard"):
+    """Open the demo parent portal so admins can check updates without a parent login."""
+    template = PARENT_PREVIEW_TEMPLATES.get(page)
+    if not template:
+        return render(request, "portal/404.html", status=404)
+    request.GET = request.GET.copy()
+    request.GET["pay"] = request.GET.get("pay") or "private-pay"
+    context = _parent_context(
+        request,
+        page.replace("-", " ").title(),
+        page_slug=page,
+        admin_support_preview=True,
+        admin_preview_sample=True,
+        hide_card_details=True,
+        preview_family_name="Sample parent portal",
+        portal_live=False,
+    )
+    from .support_view import mask_billing_card_mentions, mask_parent_account_cards, mask_receipt_card_mentions
+
+    context["account"] = mask_parent_account_cards(context.get("account") or {})
+    context["receipts"] = mask_receipt_card_mentions(context.get("receipts") or [])
+    context["parent_stripe_enabled"] = False
+    context["admin_preview_family_slug"] = ""
+    if page == "billing":
+        context["billing"] = mask_billing_card_mentions(context["parent_preview"]["billing"])
+    if page == "profile":
+        context["profile"] = context["parent_preview"]["profile"]
+    if page == "dashboard":
+        context["dashboard"] = context["parent_preview"]["dashboard"]
+    return render(request, template, context)
+
+
+@require_http_methods(["GET", "POST"])
+@admin_login_required
+def admin_parent_preview_end(request, family_slug):
+    from .member_admin import resolve_family
+    from .support_view import end_support_view
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=request.POST.get("family_id") or _family_id_from_request(request) or None,
+    )
+    if family:
+        end_support_view(family)
+        messages.success(request, f"Ended the parent-portal support view for {family.name}.")
+        return redirect("portal_admin_family_detail", family_slug=family.slug)
+    messages.error(request, "Family not found.")
+    return redirect("portal_admin_page", page="families")
 
 
 @require_POST

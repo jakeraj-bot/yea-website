@@ -20,13 +20,20 @@
         <p class="portal-balance-total">{% if billing.has_credit %}${{ billing.account_credit }} credit{% else %}${{ billing.running_balance }}{% endif %}</p>
         <span class="portal-payment-badge portal-payment-badge-{{ billing.payment_type|slugify }}">{{ billing.payment_type }}</span>
       </div>
+      {% if not hide_card_details and not admin_support_preview %}
       <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">{% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead{% else %}Pay balance{% endif %}</a>
+      {% endif %}
     </div>
+    {% if hide_card_details or admin_support_preview %}
+    <p class="form-note portal-support-view-note">Pay and add-card actions are hidden in support view. Card numbers stay hidden.</p>
+    {% endif %}
 
     <section class="card portal-profile-full">
       <div class="portal-toolbar">
         <h2 style="margin:0;">Payment methods</h2>
+        {% if not hide_card_details and not admin_support_preview %}
         <button type="button" class="btn btn-primary btn-sm" id="billing-add-card-btn">+ Add card</button>
+        {% endif %}
       </div>
       {% if account.payment_methods %}
       <ul class="portal-payment-method-list">
@@ -43,6 +50,7 @@
       {% else %}
       <p class="form-note">No card on file — add one for online payments or autopay.</p>
       {% endif %}
+      {% if not hide_card_details and not admin_support_preview %}
       <div class="portal-panel card" id="billing-add-card-panel" hidden style="margin-top:1rem;">
         <h3>Add card</h3>
         <div class="portal-form-grid">
@@ -65,6 +73,7 @@
         </div>
         <button type="button" class="btn btn-primary btn-sm" id="billing-save-card-btn">Save card</button>
       </div>
+      {% endif %}
     </section>
 
     <h2>Balance by child</h2>

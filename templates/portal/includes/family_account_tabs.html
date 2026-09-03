@@ -12,6 +12,7 @@
   <a class="portal-family-tab portal-family-tab--applications {% if family_tab == 'applications' %}is-active{% endif %}" href="{% url 'portal_admin_family_applications' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Applications</a>
   <a class="portal-family-tab portal-family-tab--policies {% if family_tab == 'policies' %}is-active{% endif %}" href="{% url 'portal_admin_family_policies' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Policies</a>
   <a class="portal-family-tab portal-family-tab--email {% if family_tab == 'email' %}is-active{% endif %}" href="{% url 'portal_admin_family_email' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Email parent</a>
+  <a class="portal-family-tab portal-family-tab--parentview" href="{% url 'portal_admin_parent_preview' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Parent view</a>
   {% else %}
   <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">Profile</a>
   <a class="portal-family-tab portal-family-tab--pickup {% if family_tab == 'pickup' %}is-active{% endif %}" href="{% url 'portal_staff_family_pickup' family_slug=family_slug %}">Pickup</a>
