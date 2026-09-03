@@ -1348,6 +1348,70 @@ def staff_update_child_school(request):
 
 
 @require_POST
+def family_email_send(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import parent_email_for_family, resolve_family, send_family_parent_email
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_email", kwargs={"family_slug": family_slug})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_family_email", kwargs={"family_slug": family_slug})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    reply_to = ""
+    if request.user.is_authenticated:
+        reply_to = (request.user.email or "").strip()
+    try:
+        sent, total = send_family_parent_email(
+            family,
+            request.POST.get("subject"),
+            request.POST.get("body"),
+            reply_to=reply_to or None,
+        )
+        if sent:
+            messages.success(request, f"Email sent to {parent_email_for_family(family)}.")
+        else:
+            messages.error(
+                request,
+                "The message was not sent. Email is not configured on this server yet.",
+            )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+
+@require_POST
 @staff_login_required_post
 def staff_create_application(request):
     from enrollment.staff_application import create_staff_application
@@ -1908,7 +1972,7 @@ def admin_member_ops(request):
             emails = request.POST.getlist("emails")
             sent, total = send_parent_emails(request.POST.get("subject"), request.POST.get("body"), emails)
             messages.success(request, f"Sent {sent} of {total} parent email(s).")
-            next_url = reverse("portal_admin_page", kwargs={"page": "parent-emails"})
+            next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
         elif action == "save_discount":
             plan = save_discount_plan(
                 request.POST.get("name", ""),
