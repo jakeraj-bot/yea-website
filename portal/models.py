@@ -765,3 +765,28 @@ class PortalFieldTripSignup(models.Model):
     def __str__(self):
         return f"{self.child.name} · {self.trip.title}"
 
+
+class PortalSupportViewSession(models.Model):
+    """Admin is viewing a family's parent portal to help with a support request."""
+
+    family = models.ForeignKey(
+        PortalFamily,
+        on_delete=models.CASCADE,
+        related_name="support_view_sessions",
+    )
+    admin_user = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="portal_support_views",
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.family.name} · support view"
+

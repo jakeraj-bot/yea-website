@@ -324,6 +324,21 @@ urlpatterns = [
     path("admin/field-trip/save/", views_actions.admin_field_trip_save, name="portal_admin_field_trip_save"),
     path("admin/newsletter/delete/", views_actions.admin_newsletter_delete, name="portal_admin_newsletter_delete"),
     path(
+        "admin/parent-preview/sample/",
+        views.admin_parent_preview_sample,
+        name="portal_admin_parent_preview_sample",
+    ),
+    path(
+        "admin/parent-preview/sample/<slug:page>/",
+        views.admin_parent_preview_sample,
+        name="portal_admin_parent_preview_sample_page",
+    ),
+    path(
+        "admin/parent-preview/<slug:family_slug>/end/",
+        views.admin_parent_preview_end,
+        name="portal_admin_parent_preview_end",
+    ),
+    path(
         "admin/parent-preview/<slug:family_slug>/",
         views.admin_parent_preview,
         name="portal_admin_parent_preview",

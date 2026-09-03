@@ -70,10 +70,13 @@
         <dt>Password</dt>
         <dd class="portal-password-row">
           <span id="password-display" class="portal-password-masked">••••••••••••</span>
+          {% if not hide_card_details and not admin_support_preview %}
           <button type="button" class="btn btn-secondary btn-sm" id="toggle-password-display" aria-pressed="false">Show password</button>
+          {% endif %}
         </dd>
         <dt>Last login</dt><dd>{{ account.last_login }}</dd>
       </dl>
+      {% if not hide_card_details and not admin_support_preview %}
       <p class="form-note">Show password helps if you forgot what you set — only visible to you while logged in.</p>
       <div class="portal-form-actions">
         <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-password-panel">Change password</button>
@@ -100,7 +103,8 @@
           <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save email</button></div>
         </form>
       </div>
-      {% if parent_authenticated %}
+      {% endif %}
+      {% if parent_authenticated and not admin_support_preview %}
       <div class="portal-form-actions" style="margin-top:1rem;">
         <a class="btn btn-secondary" href="{% url 'portal_parent_logout' %}">Sign out</a>
       </div>
@@ -149,12 +153,15 @@
             {% if pm.expires %}<span class="form-note">Expires {{ pm.expires }}</span>{% endif %}
             {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">Default</span>{% endif %}
           </div>
+          {% if not hide_card_details and not admin_support_preview %}
           <button type="button" class="btn btn-secondary btn-sm portal-remove-card-btn" data-card-label="{{ pm.label }}">Remove</button>
+          {% endif %}
         </li>
         {% empty %}
         <li class="form-note" id="no-cards-note">No card on file — add one for autopay or online payments.</li>
         {% endfor %}
       </ul>
+      {% if not hide_card_details and not admin_support_preview %}
       <button type="button" class="btn btn-primary btn-sm" data-preview-panel="account-add-card-panel">+ Add payment method</button>
       {% if parent_stripe_enabled %}
       <form method="post" action="{% url 'portal_parent_card_setup' %}" style="display:inline;margin-left:0.5rem;">
@@ -171,6 +178,7 @@
           <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save card</button></div>
         </form>
       </div>
+      {% endif %}
       <p class="form-note">Cards are stored securely via Stripe.</p>
     </section>
 
@@ -338,7 +346,7 @@
 
   var passwordDisplay = document.getElementById("password-display");
   var togglePassword = document.getElementById("toggle-password-display");
-  var passwordValue = "{{ account.password_preview|default:'YourPassword123!' }}";
+  var passwordValue = "{{ account.password_preview|default:'' }}";
   var showing = false;
   if (togglePassword && passwordDisplay) {
     togglePassword.addEventListener("click", function () {

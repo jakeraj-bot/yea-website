@@ -46,7 +46,7 @@ class FamilyAccountHubTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Family account")
         self.assertContains(response, "portal-family-tabs-colorful")
-        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup"):
+        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup", "Parent view"):
             self.assertContains(response, label)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)

@@ -11,15 +11,10 @@
     <div class="portal-toolbar">
       <a class="btn btn-primary" href="{% url 'portal_admin_page' page='communications' %}?add=announcement">+ New announcement</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}?add=newsletter">+ New newsletter</a>
-      {% if portal_live %}
-      <span class="portal-toolbar-label">View parent portal:</span>
-      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='jacobs' %}" target="_blank" rel="noopener">Jacobs</a>
-      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='martinez' %}" target="_blank" rel="noopener">Martinez</a>
-      <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug='williams' %}" target="_blank" rel="noopener">Williams</a>
-      {% else %}
-      <a class="btn btn-secondary" href="{% url 'portal_admin_parent_preview' family_slug='jacobs' %}" target="_blank" rel="noopener">Preview parent portal</a>
-      {% endif %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_parent_preview_sample' %}">Sample parent portal</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='families' %}">Open a member’s portal</a>
     </div>
+    <p class="form-note">Use the sample parent portal to check updates without a parent login. To help a family who reported an issue, open <strong>Parent view</strong> from their account or the families list — they see a notice while you look. Card numbers stay hidden.</p>
 
     {% if show_add_announcement %}
     <div class="portal-panel card portal-program-form">
