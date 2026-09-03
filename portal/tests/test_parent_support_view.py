@@ -159,7 +159,7 @@ class ParentSupportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "ending 4242")
         self.assertContains(response, "ending ••••")
-        self.assertContains(response, "Pay and add-card actions are hidden")
+        self.assertContains(response, "Pay and add-card actions are hidden in support view")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_sample_parent_portal_does_not_need_parent_account(self):

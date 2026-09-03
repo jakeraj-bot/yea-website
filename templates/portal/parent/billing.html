@@ -20,12 +20,13 @@
         <p class="portal-balance-total">{% if billing.has_credit %}${{ billing.account_credit }} credit{% else %}${{ billing.running_balance }}{% endif %}</p>
         <span class="portal-payment-badge portal-payment-badge-{{ billing.payment_type|slugify }}">{{ billing.payment_type }}</span>
       </div>
-      {% if hide_card_details or admin_support_preview %}
-      <p class="form-note">Pay and add-card actions are hidden in support view.</p>
-      {% else %}
+      {% if not hide_card_details and not admin_support_preview %}
       <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">{% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead{% else %}Pay balance{% endif %}</a>
       {% endif %}
     </div>
+    {% if hide_card_details or admin_support_preview %}
+    <p class="form-note portal-support-view-note">Pay and add-card actions are hidden in support view. Card numbers stay hidden.</p>
+    {% endif %}
 
     <section class="card portal-profile-full">
       <div class="portal-toolbar">

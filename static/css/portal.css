@@ -18,9 +18,13 @@
   font-size: 0.9rem;
 }
 
-.portal-support-view-banner-parent {
+.portal-preview-banner.portal-support-view-banner-parent {
   background: #e3f2fd;
   border-bottom-color: var(--yea-blue);
+}
+
+.portal-support-view-note {
+  margin: -0.75rem 0 1.25rem;
 }
 
 .portal-sidebar-end-view {
