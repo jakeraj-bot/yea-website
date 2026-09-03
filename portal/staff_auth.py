@@ -59,15 +59,18 @@ def is_portal_admin(user):
 def staff_accessible_units(user):
     account = get_staff_account(user)
     if not account:
-        return PortalUnit.objects.filter(is_active=True).order_by("name")
+        if portal_preview_mode():
+            return PortalUnit.objects.filter(is_active=True).order_by("name")
+        return PortalUnit.objects.none()
     if account.all_units_access or account.role == "Portal admin":
         return PortalUnit.objects.filter(is_active=True).order_by("name")
     extra = account.accessible_units.filter(is_active=True)
     if extra.exists():
-        return extra.order_by("name")
-    if account.role == "Unit director":
-        return PortalUnit.objects.filter(is_active=True).order_by("name")
-    return PortalUnit.objects.filter(pk=account.unit_id)
+        unit_ids = list(extra.values_list("pk", flat=True))
+        if account.unit_id and account.unit_id not in unit_ids:
+            unit_ids.append(account.unit_id)
+        return PortalUnit.objects.filter(pk__in=unit_ids, is_active=True).order_by("name")
+    return PortalUnit.objects.filter(pk=account.unit_id, is_active=True)
 
 
 def resolve_staff_unit(request):
@@ -81,7 +84,7 @@ def resolve_staff_unit(request):
     account = get_staff_account(request.user)
     if account:
         return account.unit
-    return get_unit()
+    return None
 
 
 def _can_access_unit(user, unit):

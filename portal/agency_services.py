@@ -151,9 +151,9 @@ def agency_page_data(unit):
 
 
 def _portal_data_live():
-    from .attendance_service import ensure_portal_seeded, portal_is_live
+    from .attendance_service import portal_is_live
 
-    return portal_is_live() and ensure_portal_seeded()
+    return portal_is_live()
 
 
 @transaction.atomic

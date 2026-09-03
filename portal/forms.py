@@ -40,6 +40,7 @@ class ParentSignupForm(forms.Form):
         label="Confirm password",
         widget=forms.PasswordInput,
     )
+    website = forms.CharField(required=False, widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}))
 
     def clean_username(self):
         from .usernames import portal_username_taken
@@ -52,12 +53,19 @@ class ParentSignupForm(forms.Form):
         return username
 
     def clean_email(self):
+        from enrollment.models import EnrollmentApplication
+
         from .parent_auth import get_parent_account
 
         email = self.cleaned_data["email"].strip().lower()
         for user in get_user_model().objects.filter(email__iexact=email):
             if get_parent_account(user):
                 raise ValidationError("A parent account with this email already exists — try logging in.")
+        if not EnrollmentApplication.objects.filter(primary_email__iexact=email).exists():
+            raise ValidationError(
+                "We don't have an enrollment application for this email. "
+                "Apply on the website first, or ask YEA staff to create your login."
+            )
         return email
 
     def clean(self):

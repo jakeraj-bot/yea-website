@@ -1,10 +1,10 @@
 """Authorized pickup lists for staff portal."""
 
-from .attendance_service import portal_is_live, ensure_portal_seeded
+from .attendance_service import portal_is_live
 
 
 def _portal_data_live():
-    return portal_is_live() and ensure_portal_seeded()
+    return portal_is_live()
 
 
 def _person(name, phone, relationship, source):

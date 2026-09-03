@@ -23,6 +23,18 @@ PORTAL_PREVIEW_MODE = os.environ.get("PORTAL_PREVIEW_MODE", "False") == "True"
 STAGING_SITE = os.environ.get("STAGING_SITE", "False") == "True"
 # When False, hide portal links on the public site. Direct login URLs still work.
 PORTALS_PUBLIC = os.environ.get("PORTALS_PUBLIC", "True") == "True"
+# Demo families/logins from seed_portal — never enable on the live site.
+ALLOW_PORTAL_DEMO_SEED = os.environ.get("ALLOW_PORTAL_DEMO_SEED", "False") == "True"
+
+PORTAL_LOGIN_RATE_LIMIT = int(os.environ.get("PORTAL_LOGIN_RATE_LIMIT", "8"))
+PORTAL_LOGIN_RATE_WINDOW_SECONDS = int(os.environ.get("PORTAL_LOGIN_RATE_WINDOW_SECONDS", "900"))
+PORTAL_SIGNUP_RATE_LIMIT = int(os.environ.get("PORTAL_SIGNUP_RATE_LIMIT", "3"))
+PORTAL_SIGNUP_RATE_WINDOW_SECONDS = int(os.environ.get("PORTAL_SIGNUP_RATE_WINDOW_SECONDS", "3600"))
+ENROLLMENT_SUBMIT_RATE_LIMIT = int(os.environ.get("ENROLLMENT_SUBMIT_RATE_LIMIT", "5"))
+ENROLLMENT_SUBMIT_RATE_WINDOW_SECONDS = int(
+    os.environ.get("ENROLLMENT_SUBMIT_RATE_WINDOW_SECONDS", "3600")
+)
+ENROLLMENT_FORM_SESSION_KEY = "enrollment_form_started_at"
 
 ALLOWED_HOSTS = [
     h.strip()

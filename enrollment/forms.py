@@ -371,6 +371,7 @@ class PortalAccountForm(forms.Form):
         label="Confirm password",
         widget=forms.PasswordInput,
     )
+    website = forms.CharField(required=False, widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}))
 
     def clean_username(self):
         from portal.usernames import portal_username_taken

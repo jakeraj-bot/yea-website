@@ -25,6 +25,10 @@
 
     <form method="post" class="apply-form">
       {% csrf_token %}
+      <div class="form-group contact-hp" aria-hidden="true">
+        <label for="id_website">Website</label>
+        <input type="text" name="website" id="id_website" tabindex="-1" autocomplete="off">
+      </div>
 
       <div class="apply-form-card apply-review-card">
         {% include "enrollment/includes/required_legend.html" %}

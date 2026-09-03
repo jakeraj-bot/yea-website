@@ -68,6 +68,12 @@
   background: #e3f2fd;
 }
 
+.portal-header .container,
+.portal-preview-banner .container {
+  width: 100%;
+  max-width: 100%;
+}
+
 .portal-header .header-inner {
   align-items: center;
 }
@@ -126,9 +132,11 @@
 
 .portal-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 0;
   min-height: calc(100vh - 120px);
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @media (max-width: 800px) {
@@ -668,7 +676,16 @@
 
 .portal-main {
   min-width: 0;
-  padding: 0 0 3rem;
+  max-width: 100%;
+  overflow-x: hidden;
+  padding: 0 0 2rem;
+}
+
+.portal-main .container {
+  width: 100%;
+  max-width: 100%;
+  padding-inline: 1.15rem;
+  box-sizing: border-box;
 }
 
 .portal-email-recipients {
@@ -700,7 +717,7 @@
 }
 
 .portal-hero-compact {
-  padding-block: 2rem 1.25rem;
+  padding-block: 1.1rem 0.75rem;
 }
 
 .portal-hero-compact h1 {
@@ -760,13 +777,13 @@
 
 .portal-stat-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
 }
 
 .portal-stat {
-  padding: 1rem 1.25rem;
+  padding: 0.7rem 0.85rem;
 }
 
 .portal-stat-label {
@@ -777,7 +794,7 @@
 }
 
 .portal-stat-value {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   color: var(--text-heading);
 }
 
@@ -1282,8 +1299,8 @@
 .portal-quick-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
 }
 
 .portal-alerts {
@@ -1709,16 +1726,14 @@
 .portal-families-table-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  overflow-x: hidden;
   display: block;
 }
 
 .portal-families-table {
-  width: max-content;
-  min-width: 100%;
-  table-layout: auto;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
 }
 
 .portal-families-table th,
@@ -1726,6 +1741,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: top;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.portal-families-table td[data-col="children"],
+.portal-families-table td[data-col="family"] {
+  white-space: normal;
+}
+
+.portal-family-sub {
+  display: block;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
 }
 
 .portal-families-table th[data-col="family"],
@@ -1741,7 +1772,6 @@
 .portal-families-table th[data-col="school"],
 .portal-families-table td[data-col="school"] {
   width: 12%;
-  min-width: 8rem;
 }
 
 .portal-families-table th[data-col="medical"],
@@ -1772,15 +1802,13 @@
 
 .portal-families-table th[data-col="actions"],
 .portal-families-table td[data-col="actions"] {
-  width: 16%;
-  min-width: 12.5rem;
-  position: sticky;
-  right: 0;
-  z-index: 2;
+  width: 9.5rem;
+  min-width: 0;
+  position: static;
   background: #fff;
-  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
   overflow: visible;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .portal-families-table thead th[data-col="actions"] {

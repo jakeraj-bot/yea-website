@@ -50,6 +50,8 @@ def resolve_family(family_slug=None, family_id=None, unit=None):
     if family_id:
         family = PortalFamily.objects.filter(pk=family_id).select_related("unit").first()
         if family:
+            if unit and family.unit_id != unit.pk:
+                return None
             return family
     qs = PortalFamily.objects.select_related("unit")
     if family_slug:

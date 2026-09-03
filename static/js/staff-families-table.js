@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "yea-staff-families-prefs";
+  var STORAGE_KEY = "yea-staff-families-prefs-v2";
   var table = document.getElementById("families-table");
   if (!table) return;
 

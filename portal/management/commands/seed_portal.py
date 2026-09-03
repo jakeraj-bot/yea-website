@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.utils.dateparse import parse_date, parse_time
 
@@ -17,9 +17,16 @@ from portal.models import (
 
 
 class Command(BaseCommand):
-    help = "Load sample portal members and attendance from demo data."
+    help = "Load sample portal members and attendance from demo data. Local/design only."
 
     def handle(self, *args, **options):
+        from django.conf import settings
+
+        if not getattr(settings, "ALLOW_PORTAL_DEMO_SEED", False):
+            raise CommandError(
+                "Refusing to load demo families on this environment. "
+                "Set ALLOW_PORTAL_DEMO_SEED=True only on a local design machine — never on yeanj.org."
+            )
         unit_data = next((u for u in UNITS if u["slug"] == "school-18"), UNITS[0])
         unit, _ = PortalUnit.objects.update_or_create(
             slug=unit_data["slug"],

@@ -9,7 +9,13 @@ from django.utils import timezone
 from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import applications_for_staff
 
-from .attendance_service import build_roster, build_session_context, get_active_program, get_unit
+from .attendance_service import (
+    build_roster,
+    build_session_context,
+    get_active_program,
+    get_unit,
+    portal_is_live,
+)
 from .demo_data import (
     AGENCY_UNIT_DATA,
     CHILD_MEDICAL,
@@ -101,6 +107,10 @@ def get_family_policies_for_staff(family_slug, family_id=None):
         live = get_parent_policy_data_live(family)
         if live:
             return live
+        if portal_is_live():
+            return None
+    if portal_is_live():
+        return None
     return get_family_policies(family_slug)
 
 
@@ -121,6 +131,8 @@ def get_medical_data_for_child(child_name, family_slug=None):
             medical = _medical_from_application(app)
             alerts = _alerts_from_medical_dict(medical, child_name)
             return {**medical, "alerts": alerts, "staff_notes": demo.get("staff_notes", "")}
+        if portal_is_live():
+            return {"alerts": [], "staff_notes": ""}
         return demo
 
     app = (
@@ -136,6 +148,8 @@ def get_medical_data_for_child(child_name, family_slug=None):
             "alerts": alerts,
             "staff_notes": demo.get("staff_notes", child.note or ""),
         }
+    if portal_is_live():
+        return {"alerts": [], "staff_notes": child.note or ""}
     return demo
 
 
@@ -155,7 +169,7 @@ def _alerts_from_medical_dict(medical, child_name):
             alerts.append({"key": "asthma", "detail": plan})
         elif "allergy" in key:
             alerts.append({"key": "allergy", "detail": plan})
-    if not alerts:
+    if not alerts and not portal_is_live():
         demo_med = CHILD_MEDICAL.get(child_name, {})
         alerts = demo_med.get("alerts", [])
     return alerts
@@ -168,6 +182,8 @@ def build_medical_report_rows(unit):
         .order_by("name")
     )
     if not children.exists():
+        if portal_is_live():
+            return []
         from .demo_data import build_medical_report_rows
 
         return build_medical_report_rows()
@@ -230,8 +246,8 @@ def pickup_report_for_unit(unit, program_filter="all"):
         )
         family_details[family.slug] = {"program": family.program_label or "After-School 2026–27"}
     if not families:
-        return pickup_report_programs(FAMILIES, FAMILY_DETAILS), pickup_report_data(
-            FAMILIES, FAMILY_DETAILS, program_filter=program_filter
+        return pickup_report_programs([], {}), pickup_report_data(
+            [], {}, program_filter=program_filter
         )
     return pickup_report_programs(families, family_details), pickup_report_data(
         families, family_details, program_filter=program_filter

@@ -46,7 +46,11 @@
             data-has-login="{% if family.has_parent_login %}1{% else %}0{% endif %}"
           >
             <td data-col="unit">{{ family.unit }}</td>
-            <td data-col="family"><strong>{{ family.name }}</strong></td>
+            <td data-col="family">
+              <strong>{{ family.name }}</strong>
+              {% if family.primary_contact %}<span class="portal-family-sub">{{ family.primary_contact }}</span>{% endif %}
+              {% if not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
+            </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
             <td data-col="children">{{ family.children|join:", " }}</td>
             <td data-col="school">{{ family.school|default:"—" }}</td>
