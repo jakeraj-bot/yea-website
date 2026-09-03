@@ -358,6 +358,11 @@ urlpatterns = [
         name="portal_staff_billing_action",
     ),
     path(
+        "staff/child/school/",
+        views_actions.staff_update_child_school,
+        name="portal_staff_update_child_school",
+    ),
+    path(
         "staff/application/create/",
         views_actions.staff_create_application,
         name="portal_staff_create_application",

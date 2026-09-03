@@ -103,12 +103,19 @@ class StaffAccessSecurityTests(TestCase):
             reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}),
             reverse("portal_staff_medical_report"),
             reverse("portal_staff_incidents_print"),
+            reverse("portal_staff_school_bus_report"),
         ]
         for url in urls:
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 302)
                 self.assertIn("/portal/staff/login/", response.url)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_unauthenticated_school_edit_redirects_to_login(self):
+        response = self.client.post(reverse("portal_staff_update_child_school"), {"school": "Lincoln"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/portal/staff/login/", response.url)
 
 
 class LoginLockoutTests(TestCase):

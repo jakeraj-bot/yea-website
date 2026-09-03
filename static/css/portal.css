@@ -1863,6 +1863,43 @@
   width: 12%;
 }
 
+.portal-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.portal-school-edit-form,
+.portal-school-group-rename {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.portal-school-edit-input {
+  min-width: 10.5rem;
+  width: 12rem;
+  max-width: 100%;
+}
+
+.portal-school-group-rename {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: var(--bg-soft);
+  border-radius: 0.5rem;
+}
+
+.portal-school-group-rename .portal-input {
+  min-width: 16rem;
+}
+
 .portal-families-table th[data-col="school"],
 .portal-families-table td[data-col="school"] {
   width: 12%;

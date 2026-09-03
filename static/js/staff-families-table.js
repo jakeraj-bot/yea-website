@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "yea-staff-families-prefs-v4";
+  var STORAGE_KEY = "yea-staff-families-prefs-v5";
   var table = document.getElementById("families-table");
   if (!table) return;
 
@@ -107,6 +107,7 @@
       row.getAttribute("data-name"),
       row.getAttribute("data-contact"),
       row.getAttribute("data-child-name"),
+      row.getAttribute("data-school"),
       row.getAttribute("data-program"),
       row.getAttribute("data-billing"),
       row.getAttribute("data-status"),

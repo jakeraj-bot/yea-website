@@ -182,6 +182,8 @@ def _staff_family_profile(family_slug, unit=None):
     family = next((f for f in FAMILIES if f["slug"] == family_slug), None)
     if not family:
         return None
+    from .family_list import DEMO_CHILD_SCHOOLS
+
     return {
         "family_name": family["name"],
         "home_address": "—",
@@ -198,6 +200,7 @@ def _staff_family_profile(family_slug, unit=None):
                 "name": c,
                 "dob": "",
                 "grade": "",
+                "school": DEMO_CHILD_SCHOOLS.get(c, ""),
                 "location": "School 18",
                 "program": family["program"],
                 "allergies": "",
@@ -390,6 +393,10 @@ def _staff_context(page_title, request=None, **extra):
     unit = _staff_unit(request)
     staff_unit = unit.name if unit else "School 18"
     ctx = _portal_context("staff", page_title, staff_unit=staff_unit, **extra)
+    if extra.get("school_options") is None and unit and _portal_data_live():
+        from .member_admin import known_school_names
+
+        ctx["school_options"] = known_school_names(unit)
     if request is not None:
         from .staff_auth import (
             application_permissions_for_staff,
@@ -2654,6 +2661,10 @@ def admin_page(request, page):
             context["families_without_login"] = []
             context["families_without_applications"] = []
         context["family_count"] = len({row["slug"] for row in context["families"]})
+        if context.get("portal_live"):
+            from .member_admin import known_school_names
+
+            context["school_options"] = known_school_names()
     if page == "applications":
         unit_filter = request.GET.get("unit", "")
         context["applications_tab"] = "all"

@@ -515,6 +515,70 @@ def update_application_fields(application, data):
     return application
 
 
+def _normalize_school_name(school):
+    school = (school or "").strip()
+    if not school:
+        raise ValueError("Enter a school name.")
+    if len(school) > 120:
+        raise ValueError("School name is too long.")
+    return school
+
+
+def update_child_school(*, child=None, application=None, school):
+    """Set the child's daytime school and keep the enrollment application in sync."""
+    from .medical import application_for_child
+
+    school = _normalize_school_name(school)
+    if child:
+        child.school = school
+        child.save(update_fields=["school"])
+        app = application or application_for_child(child=child, child_name=child.name)
+        if app:
+            app.student_school = school
+            app.save(update_fields=["student_school"])
+        return child
+
+    if application:
+        application.student_school = school
+        application.save(update_fields=["student_school"])
+        family = application.portal_family
+        if family:
+            child_name = f"{application.student_first_name} {application.student_last_name}".strip()
+            linked = family.children.filter(name__iexact=child_name).first()
+            if linked:
+                linked.school = school
+                linked.save(update_fields=["school"])
+        return application
+
+    raise ValueError("Child not found.")
+
+
+def rename_children_school(child_ids, school, unit=None):
+    school = _normalize_school_name(school)
+    children = PortalChild.objects.filter(pk__in=child_ids, is_active=True).select_related("family")
+    if unit:
+        children = children.filter(family__unit=unit)
+    updated = 0
+    for child in children:
+        update_child_school(child=child, school=school)
+        updated += 1
+    return updated
+
+
+def known_school_names(unit=None):
+    names = set()
+    children = PortalChild.objects.filter(is_active=True)
+    applications = EnrollmentApplication.objects.exclude(student_school="")
+    if unit:
+        children = children.filter(family__unit=unit)
+        applications = applications.filter(portal_family__unit=unit)
+    names.update(name.strip() for name in children.exclude(school="").values_list("school", flat=True) if name.strip())
+    names.update(
+        name.strip() for name in applications.values_list("student_school", flat=True) if name.strip()
+    )
+    return sorted(names, key=str.lower)
+
+
 def pending_4cs_children(unit=None):
     from .models import PortalAgencyProfile
 

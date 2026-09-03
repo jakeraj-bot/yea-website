@@ -232,6 +232,9 @@ def build_school_bus_roster(unit):
                 "child": child.name,
                 "grade": child.grade or "—",
                 "family": child.family.name,
+                "family_slug": child.family.slug,
+                "child_id": child.pk,
+                "school": school,
             }
         )
 

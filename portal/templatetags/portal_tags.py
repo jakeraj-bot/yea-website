@@ -36,12 +36,12 @@ def medical_badges(child_name, size="md", family_slug=None):
     }
 
 
-@register.inclusion_tag("portal/staff/includes/child_medical_card.html")
-def child_medical_card(child_name, child=None):
+@register.inclusion_tag("portal/staff/includes/child_medical_card.html", takes_context=True)
+def child_medical_card(context, child_name, child=None):
     from portal.staff_services import get_medical_data_for_child
 
     child = child or {}
-    family_slug = child.get("family_slug") if isinstance(child, dict) else None
+    family_slug = child.get("family_slug") if isinstance(child, dict) else context.get("family_slug")
     medical = child.get("medical") if isinstance(child, dict) else None
     medical = medical or get_medical_data_for_child(child_name, family_slug)
     return {
@@ -49,6 +49,9 @@ def child_medical_card(child_name, child=None):
         "child": child,
         "alerts": _alerts_for_child(child_name, family_slug),
         "medical": medical,
+        "request": context.get("request"),
+        "school_options": context.get("school_options", []),
+        "portal_live": context.get("portal_live"),
     }
 
 
