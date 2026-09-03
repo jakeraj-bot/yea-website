@@ -34,7 +34,7 @@
             <th>Unit</th>
             <th>Submitted</th>
             <th>Program</th>
-            <th>School attending</th>
+            <th class="portal-col-optional">School attending</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -48,7 +48,7 @@
             <td>{{ app.unit }}</td>
             <td>{{ app.submitted }}</td>
             <td>{{ app.program }}</td>
-            <td>{{ app.school|default:"—" }}</td>
+            <td class="portal-col-optional">{{ app.school|default:"—" }}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
             <td class="portal-row-actions">
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>

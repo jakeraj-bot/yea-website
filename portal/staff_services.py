@@ -6,7 +6,6 @@ from decimal import Decimal
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import applications_for_staff
 
 from .attendance_service import (
@@ -29,7 +28,8 @@ from .demo_data import (
     get_family_policies,
     get_member_policy_summaries,
 )
-from .live_services import _medical_from_application, count_messages_unread_live
+from .live_services import count_messages_unread_live
+from .medical import alerts_from_medical_dict, application_for_child, medical_from_application
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram
 from .parent_services import get_parent_policy_data_live
 from .pickup_services import pickup_report_data, pickup_report_programs
@@ -120,29 +120,19 @@ def get_medical_data_for_child(child_name, family_slug=None):
     if family_slug and not child:
         child = PortalChild.objects.filter(family__slug=family_slug, name=child_name).first()
     if not child:
-        app = (
-            EnrollmentApplication.objects.filter(
-                student_first_name__iexact=child_name.split()[0] if child_name else "",
-            )
-            .order_by("-submitted_at")
-            .first()
-        )
+        app = application_for_child(child_name=child_name, family_slug=family_slug)
         if app:
-            medical = _medical_from_application(app)
-            alerts = _alerts_from_medical_dict(medical, child_name)
+            medical = medical_from_application(app)
+            alerts = alerts_from_medical_dict(medical)
             return {**medical, "alerts": alerts, "staff_notes": demo.get("staff_notes", "")}
         if portal_is_live():
             return {"alerts": [], "staff_notes": ""}
         return demo
 
-    app = (
-        EnrollmentApplication.objects.filter(portal_family=child.family)
-        .order_by("-submitted_at")
-        .first()
-    )
+    app = application_for_child(child=child, child_name=child_name)
     if app:
-        medical = _medical_from_application(app)
-        alerts = _alerts_from_medical_dict(medical, child_name)
+        medical = medical_from_application(app)
+        alerts = alerts_from_medical_dict(medical)
         return {
             **medical,
             "alerts": alerts,
@@ -151,28 +141,6 @@ def get_medical_data_for_child(child_name, family_slug=None):
     if portal_is_live():
         return {"alerts": [], "staff_notes": child.note or ""}
     return demo
-
-
-def _alerts_from_medical_dict(medical, child_name):
-    alerts = []
-    allergies = (medical.get("allergies") or "").strip()
-    if allergies and allergies.lower() not in ("none", "n/a", "no"):
-        alerts.append({"key": "allergy", "detail": allergies})
-    medications = (medical.get("medications") or "").strip()
-    if medications and medications.lower() not in ("none", "n/a", "no"):
-        alerts.append({"key": "medication", "detail": medications})
-    for plan in medical.get("plans_on_file") or []:
-        key = plan.lower().replace(" ", "_").replace("-", "_")
-        if "epi" in key:
-            alerts.append({"key": "epipen", "detail": plan})
-        elif "asthma" in key:
-            alerts.append({"key": "asthma", "detail": plan})
-        elif "allergy" in key:
-            alerts.append({"key": "allergy", "detail": plan})
-    if not alerts and not portal_is_live():
-        demo_med = CHILD_MEDICAL.get(child_name, {})
-        alerts = demo_med.get("alerts", [])
-    return alerts
 
 
 def build_medical_report_rows(unit):
@@ -209,7 +177,7 @@ def build_medical_report_rows(unit):
                 "family": child.family.name,
                 "grade": child.grade,
                 "program": child.family.program_label or "After-School",
-                "has_medical": bool(alerts or medical.get("allergies") or medical.get("medications")),
+                "has_medical": bool(alerts),
                 "alerts": alerts,
                 "allergies": medical.get("allergies") or "None reported",
                 "medications": medical.get("medications") or "None reported",

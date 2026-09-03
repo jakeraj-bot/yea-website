@@ -1,9 +1,13 @@
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.views import (
     PasswordResetCompleteView,
     PasswordResetConfirmView,
     PasswordResetDoneView,
     PasswordResetView,
 )
+
+from core.spam_protection import is_rate_limited, record_attempt
 
 from .forms import PortalPasswordResetForm
 
@@ -18,6 +22,15 @@ class PortalPasswordResetView(PasswordResetView):
     login_url_name = "portal_parent_login"
     reset_confirm_url_name = "portal_parent_password_reset_confirm"
     reset_done_url_name = "portal_parent_password_reset_done"
+
+    def form_valid(self, form):
+        limit = getattr(settings, "PORTAL_PASSWORD_RESET_RATE_LIMIT", 5)
+        window = getattr(settings, "PORTAL_PASSWORD_RESET_RATE_WINDOW_SECONDS", 3600)
+        if is_rate_limited(self.request, "portal-password-reset", limit, window):
+            messages.error(self.request, "Too many password reset attempts. Please try again later.")
+            return self.form_invalid(form)
+        record_attempt(self.request, "portal-password-reset", window)
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

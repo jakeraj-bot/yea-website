@@ -1,5 +1,6 @@
 from datetime import date, datetime
 
+from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.contrib.auth import login
@@ -9,6 +10,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from core.spam_protection import is_honeypot_triggered, is_rate_limited, record_attempt
 from enrollment.policies_data import POLICIES, POLICY_BY_SLUG
 
 from . import constants
@@ -142,6 +144,17 @@ class DropInLoginView(LoginView):
     template_name = "dropin/login.html"
     redirect_authenticated_user = True
 
+    def post(self, request, *args, **kwargs):
+        limit = getattr(settings, "PORTAL_LOGIN_RATE_LIMIT", 8)
+        window = getattr(settings, "PORTAL_LOGIN_RATE_WINDOW_SECONDS", 900)
+        if is_rate_limited(request, "dropin-login", limit, window):
+            messages.error(request, "Too many sign-in attempts. Please wait a few minutes and try again.")
+            return self.get(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
+        if response.status_code != 302:
+            record_attempt(request, "dropin-login", window)
+        return response
+
 
 class DropInLogoutView(LogoutView):
     next_page = "dropin_index"
@@ -160,6 +173,14 @@ def register_wizard(request, step="account"):
     step_idx = _step_index(step)
 
     if request.method == "POST":
+        if step == "account":
+            signup_limit = getattr(settings, "DROPIN_SIGNUP_RATE_LIMIT", 3)
+            signup_window = getattr(settings, "DROPIN_SIGNUP_RATE_WINDOW_SECONDS", 3600)
+            if is_rate_limited(request, "dropin-signup", signup_limit, signup_window):
+                messages.error(request, "Too many account attempts from this network. Please try again later.")
+                return redirect("dropin_register", step="account")
+            if is_honeypot_triggered(request.POST):
+                return redirect("dropin_login")
         if step == "emergency":
             formset = EmergencyContactFormSet(request.POST)
             if formset.is_valid():
@@ -185,6 +206,11 @@ def register_wizard(request, step="account"):
         elif step == "account":
             form = STEP_FORMS["account"](request.POST)
             if form.is_valid():
+                record_attempt(
+                    request,
+                    "dropin-signup",
+                    getattr(settings, "DROPIN_SIGNUP_RATE_WINDOW_SECONDS", 3600),
+                )
                 user = form.save()
                 user.email = form.cleaned_data["email"]
                 user.save(update_fields=["email"])

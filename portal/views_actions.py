@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.http import require_POST
 
+from .parent_auth import parent_login_required_post
 from .staff_auth import admin_login_required_post, staff_login_required_post
 
 from .attendance_service import portal_is_live, get_unit
@@ -864,6 +865,7 @@ def admin_profile_change_action(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_payment_checkout(request):
     from decimal import Decimal, InvalidOperation
 
@@ -933,6 +935,7 @@ def parent_payment_checkout(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_card_setup(request):
     from .parent_auth import get_parent_account, portal_preview_mode
     from .stripe_services import create_setup_checkout_session, stripe_configured
@@ -963,6 +966,7 @@ MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 
 @require_POST
+@parent_login_required_post
 def parent_profile_photo_upload(request):
     from .parent_auth import get_parent_account, portal_preview_mode
 
@@ -997,6 +1001,7 @@ def parent_profile_photo_upload(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_profile_photo_remove(request):
     from .parent_auth import get_parent_account, portal_preview_mode
 
@@ -1418,6 +1423,7 @@ def staff_agency_action(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_profile_save(request):
     import json
 
@@ -1458,6 +1464,7 @@ def parent_profile_save(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_account_update(request):
     from django.contrib.auth import authenticate
 
@@ -1497,6 +1504,7 @@ def parent_account_update(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_policy_sign(request):
     from .parent_auth import get_parent_account, portal_preview_mode
     from .parent_services import sign_policy_for_family
@@ -1520,6 +1528,7 @@ def parent_policy_sign(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_field_trip_sign(request):
     from .field_trip_services import sign_field_trip, start_field_trip_payment
     from .parent_auth import get_parent_account, portal_preview_mode
@@ -1548,6 +1557,7 @@ def parent_field_trip_sign(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_field_trip_pay(request):
     from .field_trip_services import start_field_trip_payment
     from .models import PortalFieldTripSignup
@@ -1579,6 +1589,7 @@ def parent_field_trip_pay(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_dropin_register(request):
     from .parent_auth import get_parent_account, portal_preview_mode
     from .parent_services import ensure_dropin_profile
@@ -1594,6 +1605,7 @@ def parent_dropin_register(request):
 
 
 @require_POST
+@parent_login_required_post
 def parent_dropin_book(request):
     from django.utils.dateparse import parse_date
 

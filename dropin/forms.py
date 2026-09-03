@@ -11,6 +11,10 @@ from .models import DropInChild, DropInFamilyProfile
 
 class AccountStepForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email address")
+    website = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}),
+    )
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -81,6 +85,13 @@ class MedicalStepForm(forms.Form):
         widget=forms.RadioSelect,
         label="Health statement",
     )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("no_known_allergies"):
+            cleaned["allergies"] = ""
+            cleaned["requires_allergy_plan"] = False
+        return cleaned
 
 
 def build_policy_step_form():

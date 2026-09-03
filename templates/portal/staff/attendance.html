@@ -294,7 +294,7 @@
             <th>Status</th>
             <th>Check in</th>
             <th>Check out</th>
-            <th>Method</th>
+            <th class="portal-col-optional">Method</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -312,7 +312,7 @@
             <td class="cell-check-out">
               {% if row.check_out %}<span>{{ row.check_out }}</span>{% elif row.can_check_out %}<span class="form-note">On site</span>{% else %}<span class="form-note">—</span>{% endif %}
             </td>
-            <td class="cell-method">{% if row.method %}{{ row.method }}{% else %}—{% endif %}</td>
+            <td class="cell-method portal-col-optional">{% if row.method %}{{ row.method }}{% else %}—{% endif %}</td>
             <td class="cell-actions portal-attendance-actions">
               {% if attendance_live and not attendance_needs_seed %}
               <form method="post" action="{% url 'portal_staff_attendance_checkin' %}" class="portal-inline-form">
