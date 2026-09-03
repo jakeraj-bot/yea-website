@@ -116,3 +116,57 @@ class FamilyEmailViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("/portal/staff/families/", response.url)
+
+
+class AdminFamilyEmailViewTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        _make_application(self.family)
+        self.family.enrollment_applications.update(primary_email="jakera@example.com")
+        user = get_user_model().objects.create_user(
+            username="staff:portaladmin",
+            password="AdminPass123",
+            email="admin@yeanj.org",
+        )
+        PortalStaffAccount.objects.create(
+            user=user,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "admin"
+        session.save()
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_email_tab_matches_staff_profile_form(self):
+        profile = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"}))
+        email_page = self.client.get(reverse("portal_admin_family_email", kwargs={"family_slug": "jacobs"}))
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(email_page.status_code, 200)
+        self.assertContains(profile, "Email parent")
+        self.assertContains(profile, "jakera@example.com")
+        self.assertContains(profile, 'name="subject"')
+        self.assertContains(email_page, 'name="subject"')
+        self.assertContains(email_page, "jakera@example.com")
+        self.assertContains(email_page, "portal-family-tabs")
+        self.assertNotContains(email_page, "Server Error")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    @patch("portal.member_admin.send_site_email", return_value=1)
+    def test_admin_can_send_email_from_family_account(self, send_email):
+        response = self.client.post(
+            reverse("portal_admin_family_email_send", kwargs={"family_slug": "jacobs"}),
+            {
+                "subject": "Balance reminder",
+                "body": "Please pay this week.",
+                "next": "/portal/admin/family/jacobs/",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.kwargs["recipient_list"], ["jakera@example.com"])

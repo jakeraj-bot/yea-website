@@ -143,7 +143,7 @@
               <td>{{ row.family }}</td>
               <td>{{ row.unit }}</td>
               <td>
-                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}?id={{ row.family_id }}">Family billing</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=row.family_slug %}?id={{ row.family_id }}">Family account</a>
                 <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_page' page='agencies' %}">Add 4Cs info</a>
               </td>
             </tr>

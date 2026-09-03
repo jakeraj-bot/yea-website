@@ -4,24 +4,21 @@
   <div class="container">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
-      <a href="{% url 'portal_admin_page' page='billing-settings' %}">Member accounts</a> /
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">{{ billing.family_name }}</a> /
       {% else %}
       <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
       <a href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">{{ billing.family_name }}</a> /
       {% endif %}
       Billing
     </p>
-    <h1>Family billing — {{ billing.family_name }}</h1>
-    <p class="lead">Charges &amp; payments per child · {{ billing_permissions.role_label }}</p>
+    <h1>{% if portal_area == 'admin' %}Family account{% else %}Family billing{% endif %} — {{ billing.family_name }}</h1>
+    <p class="lead">Charges &amp; payments · {{ billing_permissions.role_label }}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    {% if portal_area != 'admin' %}
-    {% include "portal/staff/includes/family_tabs.html" %}
-    {% else %}
-    {% include "portal/admin/includes/family_tabs.html" with family_tab='billing' %}
-    {% endif %}
+    {% include "portal/includes/family_account_tabs.html" %}
     <div class="portal-balance-banner card card-accent orange">
       <div>
         <span class="portal-stat-label">Family balance</span>
@@ -30,207 +27,14 @@
       </div>
       <div class="portal-banner-actions">
         {% if portal_area == 'admin' %}
-        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='billing-settings' %}">All members</a>
-        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Bulk billing</a>
-        <a class="btn btn-secondary" href="{% url 'portal_admin_family_policies' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Policies</a>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_family_plans' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Member plans</a>
         <a class="btn btn-secondary" href="{% url 'portal_admin_family_email' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Email parent</a>
         {% else %}
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_email' family_slug=billing.slug %}">Email parent</a>
         {% endif %}
-        {% if billing.slug == "martinez" or billing.slug == "chen" %}
-        <a class="btn btn-secondary" href="{% url 'portal_staff_agency_billing' family_slug=billing.slug %}">4Cs agency account</a>
-        {% endif %}
       </div>
     </div>
-
-    <h2>Billing plan by child</h2>
-    <div class="portal-child-billing-grid">
-      {% for child in billing.children %}
-      <article class="card {% if child.type == 'Scholarship' %}card-accent purple{% endif %}">
-        <h3>{{ child.name }}</h3>
-        <dl class="portal-dl">
-          <dt>Type</dt><dd>{{ child.type|default:"Private pay" }}</dd>
-          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
-          {% if child.full_rate %}
-          <dt>Full rate</dt><dd>${{ child.full_rate }}</dd>
-          <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
-          <dt>Discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
-          <dt>Family pays</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
-          {% else %}
-          <dt>Amount</dt><dd>{{ child.amount|default:"—" }}</dd>
-          {% endif %}
-          <dt>Auto charge</dt>
-          <dd>{{ child.auto_charge_label|default:"Off" }}</dd>
-          <dt>Balance</dt><dd>${{ child.balance }}</dd>
-        </dl>
-        {% if portal_area == 'admin' %}
-        <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}" data-auto-charge="{% if child.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ child.next_charge_date|default:'' }}" data-weekday="{{ child.charge_weekday }}" data-month-day="{{ child.charge_month_day }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
-        {% endif %}
-      </article>
-      {% endfor %}
-    </div>
-
-    {% if portal_area == 'admin' and portal_live %}
-    <div class="portal-profile-grid">
-      <section class="card">
-        <h2>{% if billing.is_suspended %}Suspended{% else %}Suspend member{% endif %}</h2>
-        {% if billing.is_suspended %}
-        <p>This family is suspended{% if billing.suspend_note %}: {{ billing.suspend_note }}{% endif %}.</p>
-        <form method="post" action="{% url 'portal_admin_member_ops' %}">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="unsuspend">
-          <input type="hidden" name="family_id" value="{{ billing.id }}">
-          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
-          <button type="submit" class="btn btn-primary">Lift suspension</button>
-        </form>
-        {% else %}
-        <p class="form-note">Emails the primary parent that the child is suspended until the balance is satisfied.</p>
-        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="suspend">
-          <input type="hidden" name="family_id" value="{{ billing.id }}">
-          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
-          <div class="form-group portal-form-full">
-            <label for="suspend-reason">Reason</label>
-            <select id="suspend-reason" name="reason" class="portal-select">
-              {% for value, label in suspend_reasons %}
-              <option value="{{ value }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group portal-form-full">
-            <label for="suspend-note">Note to parent (optional)</label>
-            <textarea id="suspend-note" name="note" class="portal-input portal-textarea" rows="3"></textarea>
-          </div>
-          <div class="portal-form-actions portal-form-full">
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Suspend this family and email the primary parent?')">Suspend and email parent</button>
-          </div>
-        </form>
-        {% endif %}
-      </section>
-
-      {% if matching_prior_balances %}
-      <section class="card">
-        <h2>Matching collections</h2>
-        <p class="form-note">Prior balances that look like this family. Link to post them to the ledger.</p>
-        {% for row in matching_prior_balances %}
-        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="link_prior_balance">
-          <input type="hidden" name="balance_id" value="{{ row.pk }}">
-          <input type="hidden" name="family_id" value="{{ billing.id }}">
-          <p>{{ row.name }}{% if row.child_name %} ({{ row.child_name }}){% endif %} — ${{ row.amount }}</p>
-          <button type="submit" class="btn btn-primary btn-sm">Link this balance</button>
-        </form>
-        {% endfor %}
-      </section>
-      {% endif %}
-
-      {% if discount_plans %}
-      <section class="card">
-        <h2>Apply discount</h2>
-        <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="apply_discount">
-          <input type="hidden" name="family_id" value="{{ billing.id }}">
-          <input type="hidden" name="family_slug" value="{{ billing.slug }}">
-          <div class="form-group portal-form-full">
-            <label for="bill-disc">Plan</label>
-            <select id="bill-disc" name="plan_id" class="portal-select" required>
-              {% for plan in discount_plans %}
-              <option value="{{ plan.pk }}">{{ plan.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group portal-form-full">
-            <label for="bill-disc-child">Child (optional)</label>
-            <input id="bill-disc-child" name="child_name" class="portal-input">
-          </div>
-          <div class="portal-form-actions portal-form-full">
-            <button type="submit" class="btn btn-secondary">Apply discount</button>
-          </div>
-        </form>
-      </section>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {% if portal_area == 'admin' %}
-    <div class="portal-panel card" id="edit-plan-panel" hidden>
-      <h2>Edit billing plan</h2>
-      <p class="form-note">Set the amount and when it repeats. The portal posts the charge on that day so you do not have to add it by hand.</p>
-      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
-        {% csrf_token %}
-        <input type="hidden" name="portal_area" value="{{ portal_area }}">
-        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
-        <input type="hidden" name="action" value="update_plan">
-        <div class="form-group">
-          <label for="plan-child">Child</label>
-          <select id="plan-child" name="child_name" class="portal-select" required>
-            {% for child in billing.children %}
-            <option value="{{ child.name }}">{{ child.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="plan-type">Billing type</label>
-          <select id="plan-type" name="billing_type" class="portal-select">
-            <option value="Private pay">Private pay</option>
-            <option value="4Cs">4Cs (copay only)</option>
-            <option value="Scholarship">Scholarship</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="plan-name">Plan</label>
-          <select id="plan-name" name="billing_plan" class="portal-select">
-            <option value="Weekly">Weekly</option>
-            <option value="Weekly copay">Weekly copay</option>
-            <option value="Bi-weekly">Bi-weekly</option>
-            <option value="Monthly">Monthly</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="plan-amount">Amount ($)</label>
-          <input id="plan-amount" name="billing_amount" type="text" class="portal-input" placeholder="0.00">
-        </div>
-        <div class="form-group portal-form-full">
-          <label class="portal-check-label">
-            <input type="checkbox" id="plan-auto-charge" name="auto_charge">
-            Automatically charge this plan
-          </label>
-          <p class="form-note">Posts the amount to the family balance on the repeat day. Parents pay in the portal.</p>
-        </div>
-        <div class="form-group plan-repeat-weekly">
-          <label for="plan-weekday">Repeat on this weekday</label>
-          <select id="plan-weekday" name="charge_weekday" class="portal-select">
-            <option value="">Select day</option>
-            {% for value, label in plan_weekdays %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group plan-repeat-monthly" hidden>
-          <label for="plan-month-day">Repeat on this day of the month</label>
-          <select id="plan-month-day" name="charge_month_day" class="portal-select">
-            <option value="">Select day</option>
-            {% for value, label in plan_month_days %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="plan-next-charge">First / next charge date</label>
-          <input id="plan-next-charge" name="next_charge_date" type="date" class="portal-input">
-          <p class="form-note">Optional. If you leave this blank, the next matching weekday or month day is used.</p>
-        </div>
-        <div class="portal-form-actions portal-form-full">
-          <button type="submit" class="btn btn-primary"{% if not billing_live %} disabled{% endif %}>Save plan</button>
-          <button type="button" class="btn btn-secondary" id="cancel-edit-plan">Cancel</button>
-        </div>
-      </form>
-    </div>
-    {% endif %}
 
     <div class="portal-toolbar">
       {% if billing_permissions.can_add_charge %}
@@ -240,10 +44,13 @@
       <button type="button" class="btn btn-secondary" id="toggle-add-credit">Add credit</button>
       {% endif %}
       <button type="button" class="btn btn-secondary" id="toggle-record-payment">Record payment</button>
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_family_refund' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Refund</a>
+      {% endif %}
     </div>
 
     {% if billing_permissions.can_add_charge %}
-    <div class="portal-panel card" id="add-charge-panel" hidden>
+    <div class="portal-panel card portal-account-narrow" id="add-charge-panel" hidden>
       <h2>Add charge</h2>
       <p class="form-note">Post a fee to this member account — membership, tuition, late fee, field trip, or other.</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
@@ -288,7 +95,7 @@
     {% endif %}
 
     {% if billing_permissions.can_add_credit %}
-    <div class="portal-panel card" id="add-credit-panel" hidden>
+    <div class="portal-panel card portal-account-narrow" id="add-credit-panel" hidden>
       <h2>Add credit</h2>
       <p class="form-note">Post a credit to reduce the family balance — adjustments, goodwill, billing correction. Requires admin permission.</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
@@ -325,7 +132,7 @@
     </div>
     {% endif %}
 
-    <div class="portal-panel card" id="record-payment-panel" hidden>
+    <div class="portal-panel card portal-account-narrow" id="record-payment-panel" hidden>
       <h2>Record payment</h2>
       <p class="form-note">Card (staff entry), cash, or check — when parents pay in person.</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
@@ -370,54 +177,6 @@
 
     {% if not billing_permissions.can_delete_charge and not billing_permissions.can_add_credit %}
     <p class="form-note">Your role can add charges and record payments. Delete charges and credits require permission — set in Portal admin → Billing permissions.</p>
-    {% endif %}
-
-    {% if portal_area == 'admin' %}
-    <div class="portal-panel card">
-      <h2>Refunds</h2>
-      <p class="form-note">Send money back to the parent’s card for an online payment. The family balance goes back up by the refund amount.</p>
-      {% if refundable_payments %}
-      <div class="portal-table-wrap">
-        <table class="portal-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Receipt</th>
-              <th>Method</th>
-              <th>Paid</th>
-              <th>Already refunded</th>
-              <th>Refund now</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for payment in refundable_payments %}
-            <tr>
-              <td>{{ payment.date }}</td>
-              <td>{{ payment.receipt_no|default:"—" }}</td>
-              <td>{{ payment.method }}{% if not payment.can_refund_card %} <span class="form-note">(ledger only)</span>{% endif %}</td>
-              <td>${{ payment.amount }}</td>
-              <td>${{ payment.refunded }}</td>
-              <td>
-                <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-form-grid" style="grid-template-columns: 7rem 1fr auto; margin:0;">
-                  {% csrf_token %}
-                  <input type="hidden" name="portal_area" value="admin">
-                  {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
-                  <input type="hidden" name="action" value="refund">
-                  <input type="hidden" name="payment_id" value="{{ payment.id }}">
-                  <input name="amount" type="text" class="portal-input" value="{{ payment.remaining }}" required>
-                  <input name="reason" type="text" class="portal-input" placeholder="Reason (optional)">
-                  <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Refund ${{ payment.remaining }} to this parent?')">{% if payment.can_refund_card %}Refund to card{% else %}Record refund{% endif %}</button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="form-note">No refundable online payments on this account yet. After a parent pays by card, the payment will show here.</p>
-      {% endif %}
-    </div>
     {% endif %}
 
     <h2>Ledger</h2>
@@ -502,44 +261,6 @@
   bindPanel("toggle-add-charge", "add-charge-panel", "cancel-add-charge");
   bindPanel("toggle-add-credit", "add-credit-panel", "cancel-add-credit");
   bindPanel("toggle-record-payment", "record-payment-panel", "cancel-record-payment");
-  bindPanel(null, "edit-plan-panel", "cancel-edit-plan");
-  document.querySelectorAll(".edit-plan-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var panel = document.getElementById("edit-plan-panel");
-      var childSelect = document.getElementById("plan-child");
-      var planSelect = document.getElementById("plan-name");
-      var typeSelect = document.getElementById("plan-type");
-      var amountInput = document.getElementById("plan-amount");
-      if (childSelect) childSelect.value = btn.getAttribute("data-child") || "";
-      if (planSelect) planSelect.value = btn.getAttribute("data-plan") || "Weekly";
-      if (typeSelect) typeSelect.value = btn.getAttribute("data-type") || "Private pay";
-      if (amountInput) {
-        var raw = btn.getAttribute("data-amount") || "";
-        amountInput.value = raw.replace(/[^0-9.]/g, "");
-      }
-      var autoCharge = document.getElementById("plan-auto-charge");
-      var nextCharge = document.getElementById("plan-next-charge");
-      var weekday = document.getElementById("plan-weekday");
-      var monthDay = document.getElementById("plan-month-day");
-      if (autoCharge) autoCharge.checked = btn.getAttribute("data-auto-charge") === "1";
-      if (nextCharge) nextCharge.value = btn.getAttribute("data-next-charge") || "";
-      if (weekday) weekday.value = btn.getAttribute("data-weekday") || "";
-      if (monthDay) monthDay.value = btn.getAttribute("data-month-day") || "";
-      togglePlanRepeat();
-      if (panel) panel.hidden = false;
-    });
-  });
-  function togglePlanRepeat() {
-    var planSelect = document.getElementById("plan-name");
-    var weekly = document.querySelector(".plan-repeat-weekly");
-    var monthly = document.querySelector(".plan-repeat-monthly");
-    if (!planSelect) return;
-    var isMonthly = (planSelect.value || "").toLowerCase().indexOf("month") !== -1;
-    if (weekly) weekly.hidden = isMonthly;
-    if (monthly) monthly.hidden = !isMonthly;
-  }
-  document.getElementById("plan-name")?.addEventListener("change", togglePlanRepeat);
-  togglePlanRepeat();
   var method = document.getElementById("pay-method");
   var checkFields = document.getElementById("check-fields");
   if (method && checkFields) method.addEventListener("change", function () { checkFields.hidden = method.value !== "check"; });

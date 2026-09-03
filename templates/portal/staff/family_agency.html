@@ -1,0 +1,70 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">{{ profile.family_name }}</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">{{ profile.family_name }}</a> /
+      {% endif %}
+      4Cs
+    </p>
+    <h1>4Cs — {{ profile.family_name }}</h1>
+    <p class="lead">Agency remittance stays on this account. Parent copays stay on regular billing.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/family_account_tabs.html" %}
+
+    {% if agency_accounts %}
+    {% for billing in agency_accounts %}
+    <section class="card">
+      <h2>{{ billing.child_name }}</h2>
+      <p class="form-note">{{ billing.agency_name }} · auth {{ billing.auth_number }} · agency rate ${{ billing.weekly_agency_rate }}/week</p>
+      <p class="portal-balance-total">${{ billing.running_balance }}</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            {% for row in billing.ledger %}
+            <tr>
+              <td>{{ row.date }}</td>
+              <td>{{ row.type|title }}</td>
+              <td>{{ row.description }}</td>
+              <td class="{% if row.type == 'payment' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
+                {% if row.type == 'payment' %}-{% endif %}${{ row.amount|cut:"-" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No agency ledger entries yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if portal_area != 'admin' %}
+      <p class="portal-form-actions">
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_billing' family_slug=billing.slug %}">Open 4Cs account</a>
+      </p>
+      {% endif %}
+    </section>
+    {% endfor %}
+    {% else %}
+    <section class="card">
+      <h2>No 4Cs account</h2>
+      <p class="form-note">This family is not linked to a 4Cs agency account yet.</p>
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='agencies' %}">Agency settings</a>
+      {% else %}
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a>
+      {% endif %}
+    </section>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

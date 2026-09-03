@@ -30,6 +30,29 @@ DEMO_AGENCY_AUTH_NUMBERS = frozenset({"4CS-2026-8841", "4CS-2026-9012"})
 DEMO_AGENCY_CHILDREN = frozenset({("martinez", "sofia martinez"), ("chen", "ethan chen")})
 
 
+def _agency_account_from_profile(profile, ledger=None):
+    if ledger is None:
+        ledger = [
+            {
+                "date": entry.date.isoformat(),
+                "type": entry.entry_type,
+                "description": entry.description,
+                "amount": f"{entry.amount:.2f}" if entry.entry_type == "charge" else f"-{abs(entry.amount):.2f}",
+            }
+            for entry in profile.ledger_entries.all()
+        ]
+    return {
+        "family_name": profile.family.name,
+        "slug": profile.family.slug,
+        "child_name": profile.child.name,
+        "auth_number": profile.auth_number,
+        "agency_name": "Passaic County 4Cs",
+        "running_balance": f"{profile.agency_balance:.2f}",
+        "weekly_agency_rate": f"{profile.weekly_agency_rate:.2f}",
+        "ledger": ledger,
+    }
+
+
 def get_agency_billing_live(family_slug, unit=None):
     profile = (
         PortalAgencyProfile.objects.filter(family__slug=family_slug)
@@ -53,16 +76,21 @@ def get_agency_billing_live(family_slug, unit=None):
         demo = AGENCY_BILLING.get(family_slug)
         if demo:
             ledger = demo.get("ledger", [])
-    return {
-        "family_name": profile.family.name,
-        "slug": profile.family.slug,
-        "child_name": profile.child.name,
-        "auth_number": profile.auth_number,
-        "agency_name": "Passaic County 4Cs",
-        "running_balance": f"{profile.agency_balance:.2f}",
-        "weekly_agency_rate": f"{profile.weekly_agency_rate:.2f}",
-        "ledger": ledger,
-    }
+    return _agency_account_from_profile(profile, ledger)
+
+
+def get_agency_accounts_for_family(family_slug, unit=None):
+    profiles = list(
+        PortalAgencyProfile.objects.filter(family__slug=family_slug)
+        .select_related("child", "family")
+        .order_by("child__name")
+    )
+    if profiles:
+        return [_agency_account_from_profile(profile) for profile in profiles]
+    if _portal_data_live():
+        return []
+    demo = AGENCY_BILLING.get(family_slug)
+    return [demo] if demo else []
 
 
 def _empty_agency_page(unit):
