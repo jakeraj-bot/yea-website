@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=22">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=50">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=49">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=48">
 </head>
 <body class="portal-body portal-area-{{ portal_area|default:'public' }}">
   <div class="rainbow-bar" aria-hidden="true"></div>
@@ -48,6 +50,9 @@
           </select>
         </form>
         {% endif %}
+        {% if can_open_admin_portal %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_area_switch' area='admin' %}">Admin portal</a>
+        {% endif %}
         {% if staff_authenticated %}
         <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_staff_logout' %}">Sign out</a>
         {% else %}
@@ -55,6 +60,9 @@
         {% endif %}
         {% elif portal_area == 'admin' %}
         <span class="portal-badge portal-badge-admin">Organization admin</span>
+        {% if can_open_staff_portal %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_area_switch' area='staff' %}">Staff portal</a>
+        {% endif %}
         {% if admin_authenticated %}
         <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_admin_logout' %}">Sign out</a>
         {% endif %}

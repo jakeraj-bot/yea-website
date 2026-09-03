@@ -39,6 +39,34 @@ def is_staff_portal_authenticated(request):
     )
 
 
+def can_open_staff_portal(user):
+    return bool(get_staff_account(user))
+
+
+def can_open_admin_portal(user):
+    return is_portal_admin(user)
+
+
+def activate_portal_area(request, area):
+    """Flip the session to staff or admin without signing out."""
+    if area == "staff" and can_open_staff_portal(request.user):
+        set_portal_auth(request, "staff")
+        return True
+    if area == "admin" and can_open_admin_portal(request.user):
+        set_portal_auth(request, "admin")
+        return True
+    return False
+
+
+def portal_switch_flags(user):
+    if portal_preview_mode():
+        return {"can_open_staff_portal": True, "can_open_admin_portal": True}
+    return {
+        "can_open_staff_portal": can_open_staff_portal(user),
+        "can_open_admin_portal": can_open_admin_portal(user),
+    }
+
+
 def get_staff_account(user):
     if not user.is_authenticated:
         return None
@@ -139,6 +167,8 @@ def staff_login_required(view_func):
             return view_func(request, *args, **kwargs)
         if is_staff_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
+        if activate_portal_area(request, "staff"):
+            return view_func(request, *args, **kwargs)
         login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
         return redirect(f"{login_url}?next={request.get_full_path()}")
 
@@ -154,6 +184,8 @@ def staff_login_required_post(view_func):
             return view_func(request, *args, **kwargs)
         if is_staff_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
+        if activate_portal_area(request, "staff"):
+            return view_func(request, *args, **kwargs)
         return redirect(f"{login_url}?next={request.get_full_path()}")
 
     return wrapper
@@ -168,6 +200,8 @@ def admin_login_required(view_func):
             return view_func(request, *args, **kwargs)
         if is_admin_portal_authenticated(request):
             return view_func(request, *args, **kwargs)
+        if activate_portal_area(request, "admin"):
+            return view_func(request, *args, **kwargs)
         return redirect(f"{login_url}?next={request.get_full_path()}")
 
     return wrapper
@@ -181,6 +215,8 @@ def admin_login_required_post(view_func):
         if portal_preview_mode():
             return view_func(request, *args, **kwargs)
         if is_admin_portal_authenticated(request):
+            return view_func(request, *args, **kwargs)
+        if activate_portal_area(request, "admin"):
             return view_func(request, *args, **kwargs)
         return redirect(f"{login_url}?next={request.get_full_path()}")
 

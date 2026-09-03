@@ -11,7 +11,7 @@
     <section class="card">
       {% if other_portal_signed_in %}
       <div class="portal-callout card portal-callout-muted portal-form-full" style="margin-bottom:1rem;">
-        <p class="form-note">You are signed in to another portal. Enter your staff credentials below to open the staff portal — staff accounts cannot access portal admin.</p>
+        <p class="form-note">You are signed in to another portal. Portal admins can open staff from the header without signing out. Regular staff accounts use this page.</p>
       </div>
       {% endif %}
       <form method="post" class="portal-form-grid">
@@ -40,7 +40,7 @@
       <p class="form-note" style="margin-top:1rem;">Demo staff login from <code>seed_portal</code>: <strong>staff18</strong> / <strong>StaffSchool18!</strong></p>
       {% else %}
       <p class="form-note" style="margin-top:1rem;">Use the username and password provided by YEA. Contact your administrator if you need access.</p>
-      <p class="form-note">Staff portal usernames are separate from parent and admin logins.</p>
+      <p class="form-note">Portal admins can switch to this portal after signing in once. Parent logins stay separate.</p>
       {% endif %}
     </section>
   </div>

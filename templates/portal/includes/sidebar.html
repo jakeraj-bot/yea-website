@@ -69,6 +69,11 @@
     <li><a class="portal-nav-link portal-nav-staff-support{% if staff_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='support' %}">Support</a></li>
     <li><a class="portal-nav-link portal-nav-staff-reports{% if staff_page_slug == 'reports' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='reports' %}">Reports &amp; PDFs</a></li>
   </ul>
+  {% if can_open_admin_portal %}
+  <div class="portal-sidebar-footer">
+    <a class="btn btn-secondary btn-sm portal-switch-btn" href="{% url 'portal_area_switch' area='admin' %}">Switch to admin</a>
+  </div>
+  {% endif %}
   {% elif portal_area == 'admin' %}
   <div class="portal-sidebar-admin-badge">
     <span class="portal-badge portal-badge-admin">Organization admin</span>
@@ -143,5 +148,10 @@
       </ul>
     </details>
   </nav>
+  {% if can_open_staff_portal %}
+  <div class="portal-sidebar-footer">
+    <a class="btn btn-secondary btn-sm portal-switch-btn" href="{% url 'portal_area_switch' area='staff' %}">Switch to staff</a>
+  </div>
+  {% endif %}
   {% endif %}
 </aside>

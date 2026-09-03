@@ -46,6 +46,7 @@ urlpatterns = [
     ),
     path("admin/logout/", auth_views.admin_logout, name="portal_admin_logout"),
     path("staff/unit/switch/", views.staff_unit_switch, name="portal_staff_unit_switch"),
+    path("switch/<slug:area>/", views.portal_area_switch, name="portal_area_switch"),
     path("signup/", auth_views.parent_signup, name="portal_parent_signup"),
     path("logout/", auth_views.parent_logout, name="portal_parent_logout"),
     # Parent — specific routes before catch-all page slug
