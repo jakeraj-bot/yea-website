@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from .staff_auth import admin_login_required_post, staff_login_required_post
 
-from .attendance_service import portal_is_live, ensure_portal_seeded, get_unit
+from .attendance_service import portal_is_live, get_unit
 from .live_services import (
     create_incident_live,
     create_message_thread_live,
@@ -27,8 +27,8 @@ PREVIEW_FAMILY_SLUG = {
 
 
 def _needs_live(request):
-    if not portal_is_live() or not ensure_portal_seeded():
-        messages.error(request, "Run python manage.py seed_portal to enable partially live mode.")
+    if not portal_is_live():
+        messages.error(request, "This action is not available in design preview mode.")
         return False
     return True
 
@@ -80,6 +80,7 @@ def _application_after_review_url(area, app, action):
 
 
 @require_POST
+@staff_login_required_post
 def staff_incident_save(request):
     if not _needs_live(request):
         return redirect("portal_staff_page", page="incidents")
@@ -1264,6 +1265,7 @@ def staff_billing_action(request, family_slug):
 
 
 @require_POST
+@staff_login_required_post
 def staff_create_application(request):
     from enrollment.staff_application import create_staff_application
 
@@ -1271,7 +1273,9 @@ def staff_create_application(request):
     if not _needs_live(request):
         return redirect(redirect_url)
 
-    unit = get_unit()
+    from .staff_auth import resolve_staff_unit
+
+    unit = resolve_staff_unit(request)
     if not unit:
         messages.error(request, "Portal unit not configured.")
         return redirect(redirect_url)
@@ -1342,6 +1346,7 @@ def staff_create_application(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_agency_action(request):
     from django.utils.dateparse import parse_date
 

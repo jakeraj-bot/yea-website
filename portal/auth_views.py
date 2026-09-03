@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.db import transaction
@@ -6,11 +7,31 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods
 
+from core.spam_protection import is_honeypot_triggered, is_rate_limited, record_attempt
+from enrollment.portal_integration import family_display_label, link_applications_by_email
+
 from .forms import ParentSignupForm, PortalAuthenticationForm
 from .models import PortalFamily, PortalParentAccount, PortalUnit
 from .parent_auth import get_parent_account, portal_preview_mode
 from .usernames import portal_username
-from enrollment.portal_integration import family_display_label, link_applications_by_email
+
+LOGIN_LOCK_MESSAGE = "Too many sign-in attempts. Please wait a few minutes and try again."
+
+
+def _login_limit():
+    return getattr(settings, "PORTAL_LOGIN_RATE_LIMIT", 8)
+
+
+def _login_window():
+    return getattr(settings, "PORTAL_LOGIN_RATE_WINDOW_SECONDS", 900)
+
+
+def _login_is_locked(request, portal_type):
+    return is_rate_limited(request, f"portal-login:{portal_type}", _login_limit(), _login_window())
+
+
+def _record_failed_login(request, portal_type):
+    record_attempt(request, f"portal-login:{portal_type}", _login_window())
 
 
 @require_http_methods(["GET", "POST"])
@@ -26,22 +47,28 @@ def parent_login(request):
             return redirect(_login_redirect(request))
 
     form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="parent")
-    if request.method == "POST" and form.is_valid():
-        user = form.get_user()
-        account = get_parent_account(user)
-        if not account:
-            messages.error(
-                request,
-                "That login exists but is not linked to a parent portal family yet. "
-                "Create a parent account or contact YEA staff.",
-            )
-        else:
-            login(request, user)
-            from .staff_auth import set_portal_auth
+    if request.method == "POST":
+        if _login_is_locked(request, "parent"):
+            messages.error(request, LOGIN_LOCK_MESSAGE)
+        elif form.is_valid():
+            user = form.get_user()
+            account = get_parent_account(user)
+            if not account:
+                _record_failed_login(request, "parent")
+                messages.error(
+                    request,
+                    "That login exists but is not linked to a parent portal family yet. "
+                    "Submit an enrollment application or contact YEA staff.",
+                )
+            else:
+                login(request, user)
+                from .staff_auth import set_portal_auth
 
-            set_portal_auth(request, "parent")
-            messages.success(request, f"Welcome back, {family_display_label(account.family)} family.")
-            return redirect(_login_redirect(request))
+                set_portal_auth(request, "parent")
+                messages.success(request, f"Welcome back, {family_display_label(account.family)} family.")
+                return redirect(_login_redirect(request))
+        else:
+            _record_failed_login(request, "parent")
 
     return render(
         request,
@@ -67,56 +94,90 @@ def parent_signup(request):
             return redirect("portal_parent_page", page="dashboard")
 
     form = ParentSignupForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        unit = PortalUnit.objects.filter(is_active=True).order_by("name").first()
-        if not unit:
-            messages.error(
+    if request.method == "POST":
+        signup_limit = getattr(settings, "PORTAL_SIGNUP_RATE_LIMIT", 3)
+        signup_window = getattr(settings, "PORTAL_SIGNUP_RATE_WINDOW_SECONDS", 3600)
+        if is_rate_limited(request, "portal-signup", signup_limit, signup_window):
+            messages.error(request, "Too many account attempts from this network. Please try again later.")
+        elif form.is_valid() and is_honeypot_triggered(form.cleaned_data):
+            return redirect("portal_parent_login")
+        elif form.is_valid():
+            record_attempt(request, "portal-signup", signup_window)
+            unit = PortalUnit.objects.filter(is_active=True).order_by("name").first()
+            if not unit:
+                messages.error(
+                    request,
+                    "Parent signup is not open yet — your organization has not added any locations. "
+                    "Contact YEA staff or try again later.",
+                )
+                return render(
+                    request,
+                    "portal/signup.html",
+                    {"form": form, "page_title": "Create parent account", "portal_area": "public"},
+                )
+
+            family_name = form.cleaned_data["family_name"].strip()
+            email = form.cleaned_data["email"].strip()
+            from enrollment.models import EnrollmentApplication
+
+            matching_app = (
+                EnrollmentApplication.objects.filter(primary_email__iexact=email)
+                .select_related("portal_family", "portal_family__unit")
+                .order_by("-submitted_at")
+                .first()
+            )
+            existing_family = matching_app.portal_family if matching_app else None
+            if existing_family and PortalParentAccount.objects.filter(family=existing_family).exists():
+                messages.error(
+                    request,
+                    "This application already has a parent login. Try logging in or use Forgot password.",
+                )
+                return render(
+                    request,
+                    "portal/signup.html",
+                    {"form": form, "page_title": "Create parent account", "portal_area": "public"},
+                )
+
+            with transaction.atomic():
+                if existing_family:
+                    family = existing_family
+                    if not family.primary_contact:
+                        family.primary_contact = form.cleaned_data["your_name"].strip()
+                        family.save(update_fields=["primary_contact"])
+                else:
+                    base_slug = slugify(family_name) or "family"
+                    slug = base_slug
+                    suffix = 2
+                    while PortalFamily.objects.filter(unit=unit, slug=slug).exists():
+                        slug = f"{base_slug}-{suffix}"
+                        suffix += 1
+                    family = PortalFamily.objects.create(
+                        unit=unit,
+                        slug=slug,
+                        name=family_name,
+                        primary_contact=form.cleaned_data["your_name"].strip(),
+                        balance=0,
+                        billing_type="Private pay",
+                        status="Pending enrollment",
+                    )
+                user = get_user_model().objects.create_user(
+                    username=portal_username("parent", form.cleaned_data["username"].strip()),
+                    email=email,
+                    password=form.cleaned_data["password1"],
+                    first_name=form.cleaned_data["your_name"].strip(),
+                )
+                PortalParentAccount.objects.create(user=user, family=family)
+                link_applications_by_email(family, email)
+                login(request, user)
+                from .staff_auth import set_portal_auth
+
+                set_portal_auth(request, "parent")
+
+            messages.success(
                 request,
-                "Parent signup is not open yet — your organization has not added any locations. "
-                "Contact YEA staff or try again later.",
+                f"Account created for the {family_name} family. You can update your profile and billing anytime.",
             )
-            return render(
-                request,
-                "portal/signup.html",
-                {"form": form, "page_title": "Create parent account", "portal_area": "public"},
-            )
-
-        family_name = form.cleaned_data["family_name"].strip()
-        base_slug = slugify(family_name) or "family"
-        slug = base_slug
-        suffix = 2
-        while PortalFamily.objects.filter(unit=unit, slug=slug).exists():
-            slug = f"{base_slug}-{suffix}"
-            suffix += 1
-
-        with transaction.atomic():
-            family = PortalFamily.objects.create(
-                unit=unit,
-                slug=slug,
-                name=family_name,
-                primary_contact=form.cleaned_data["your_name"].strip(),
-                balance=0,
-                billing_type="Private pay",
-                status="Active",
-            )
-            user = get_user_model().objects.create_user(
-                username=portal_username("parent", form.cleaned_data["username"].strip()),
-                email=form.cleaned_data["email"].strip(),
-                password=form.cleaned_data["password1"],
-                first_name=form.cleaned_data["your_name"].strip(),
-            )
-            PortalParentAccount.objects.create(user=user, family=family)
-            link_applications_by_email(family, form.cleaned_data["email"].strip())
-            login(request, user)
-            from .staff_auth import set_portal_auth
-
-            set_portal_auth(request, "parent")
-
-        messages.success(
-            request,
-            f"Account created for the {family_name} family. You can update your profile and billing anytime.",
-        )
-        return redirect("portal_parent_page", page="dashboard")
+            return redirect("portal_parent_page", page="dashboard")
 
     return render(
         request,
@@ -141,19 +202,25 @@ def staff_login(request):
         return redirect(_staff_login_redirect(request))
 
     form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="staff")
-    if request.method == "POST" and form.is_valid():
-        user = form.get_user()
-        account = get_staff_account(user)
-        if not account:
-            messages.error(
-                request,
-                "That login is not linked to a staff portal account. Contact your portal admin.",
-            )
+    if request.method == "POST":
+        if _login_is_locked(request, "staff"):
+            messages.error(request, LOGIN_LOCK_MESSAGE)
+        elif form.is_valid():
+            user = form.get_user()
+            account = get_staff_account(user)
+            if not account:
+                _record_failed_login(request, "staff")
+                messages.error(
+                    request,
+                    "That login is not linked to a staff portal account. Contact your portal admin.",
+                )
+            else:
+                login(request, user)
+                set_portal_auth(request, "staff")
+                messages.success(request, f"Welcome back, {account.display_name}.")
+                return redirect(_staff_login_redirect(request))
         else:
-            login(request, user)
-            set_portal_auth(request, "staff")
-            messages.success(request, f"Welcome back, {account.display_name}.")
-            return redirect(_staff_login_redirect(request))
+            _record_failed_login(request, "staff")
 
     other_portal = get_portal_auth(request)
     return render(
@@ -186,19 +253,25 @@ def admin_login(request):
         return redirect(_admin_login_redirect(request))
 
     form = PortalAuthenticationForm(request, data=request.POST or None, portal_type="admin")
-    if request.method == "POST" and form.is_valid():
-        user = form.get_user()
-        account = get_staff_account(user)
-        if not account or not is_portal_admin(user):
-            messages.error(
-                request,
-                "That login is not linked to a portal admin account. Contact your organization administrator.",
-            )
+    if request.method == "POST":
+        if _login_is_locked(request, "admin"):
+            messages.error(request, LOGIN_LOCK_MESSAGE)
+        elif form.is_valid():
+            user = form.get_user()
+            account = get_staff_account(user)
+            if not account or not is_portal_admin(user):
+                _record_failed_login(request, "admin")
+                messages.error(
+                    request,
+                    "That login is not linked to a portal admin account. Contact your organization administrator.",
+                )
+            else:
+                login(request, user)
+                set_portal_auth(request, "admin")
+                messages.success(request, f"Welcome back, {account.display_name}.")
+                return redirect(_admin_login_redirect(request))
         else:
-            login(request, user)
-            set_portal_auth(request, "admin")
-            messages.success(request, f"Welcome back, {account.display_name}.")
-            return redirect(_admin_login_redirect(request))
+            _record_failed_login(request, "admin")
 
     other_portal = get_portal_auth(request)
     return render(

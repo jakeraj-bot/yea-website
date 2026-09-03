@@ -11,6 +11,13 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from portal.parent_auth import get_parent_account, parent_login_required
+from core.spam_protection import (
+    is_form_too_fast,
+    is_honeypot_triggered,
+    is_rate_limited,
+    mark_form_started,
+    record_attempt,
+)
 
 from .notifications import send_application_submitted_emails
 
@@ -44,6 +51,22 @@ logger = logging.getLogger(__name__)
 
 SESSION_KEY = "enrollment_application"
 LINK_EXISTING_KEY = "enrollment_link_existing"
+
+
+def _enrollment_submit_blocked(request):
+    if (request.POST.get("website") or "").strip():
+        return True
+    if is_honeypot_triggered(request.POST):
+        return True
+    session_key = getattr(settings, "ENROLLMENT_FORM_SESSION_KEY", "enrollment_form_started_at")
+    if is_form_too_fast(request, session_key, min_seconds=3, max_seconds=None):
+        return True
+    limit = getattr(settings, "ENROLLMENT_SUBMIT_RATE_LIMIT", 5)
+    window = getattr(settings, "ENROLLMENT_SUBMIT_RATE_WINDOW_SECONDS", 3600)
+    if is_rate_limited(request, "enrollment-submit", limit, window):
+        return True
+    record_attempt(request, "enrollment-submit", window)
+    return False
 
 
 def _youtube_video_id(value):
@@ -398,6 +421,12 @@ def apply_wizard(request, step="family"):
     session_data = _get_session_data(request)
     session_data = _apply_program_preset(request, session_data)
     _ensure_children(session_data)
+    if request.method == "GET":
+        mark_form_started(
+            request,
+            getattr(settings, "ENROLLMENT_FORM_SESSION_KEY", "enrollment_form_started_at"),
+            refresh=False,
+        )
     step_idx = _step_index(step)
     portal_account = get_parent_account(request.user) if request.user.is_authenticated else None
     editing = _is_editing(session_data)
@@ -429,6 +458,12 @@ def apply_wizard(request, step="family"):
         if request.method == "POST":
             if not session_data.get("children"):
                 return redirect("enrollment_apply", step="family")
+            if _enrollment_submit_blocked(request):
+                messages.error(
+                    request,
+                    "We could not submit that application. Please wait a moment and try again, or contact YEA.",
+                )
+                return redirect("enrollment_apply", step="review")
             if editing:
                 application = _editing_application(session_data)
                 if not application or not parent_can_edit_application(portal_account, application):

@@ -30,15 +30,14 @@
         <p class="form-note portal-form-full"><a href="{% url 'portal_parent_password_reset' %}">Forgot password?</a></p>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Log in</button>
-          <a class="btn btn-secondary" href="{% url 'portal_parent_signup' %}">Create account</a>
+          <a class="btn btn-secondary" href="{% url 'apply' %}">Apply for enrollment</a>
           <a class="btn btn-secondary" href="{% url 'portal_home' %}">All portals</a>
         </div>
       </form>
       {% if show_dev_hints %}
-      <p class="form-note" style="margin-top:1rem;">New here? Click <strong>Create account</strong> above. Demo logins from <code>seed_portal</code>: <strong>jakeraj</strong> / <strong>JacobsFamily2026!</strong></p>
+      <p class="form-note" style="margin-top:1rem;">Demo logins from <code>seed_portal</code>: <strong>jakeraj</strong> / <strong>JacobsFamily2026!</strong></p>
       {% else %}
-      <p class="form-note" style="margin-top:1rem;">New here? Click <strong>Create account</strong> above, or contact YEA if you need help accessing your account.</p>
-      <p class="form-note">Parent portal usernames are separate from staff and admin logins — the same name can be used in each portal.</p>
+      <p class="form-note" style="margin-top:1rem;">Already applied? <a href="{% url 'portal_parent_signup' %}">Create a portal login</a> with the same email you used on the application.</p>
       {% endif %}
     </section>
   </div>

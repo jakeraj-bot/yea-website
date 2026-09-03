@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST, require_POST
+from django.views.decorators.http import require_GET, require_POST
 from datetime import date
 
 from .report_sheets import (
@@ -18,7 +18,6 @@ from .attendance_service import (
     build_session_context,
     check_in_child,
     check_out_child,
-    ensure_portal_seeded,
     families_for_staff,
     get_active_program,
     get_attendance_date,
@@ -134,7 +133,7 @@ from .parent_auth import (
     portal_preview_mode,
     resolve_preview_key,
 )
-from .staff_auth import admin_login_required, staff_login_required
+from .staff_auth import admin_login_required, staff_login_required, staff_login_required_post
 from .parent_services import (
     build_parent_preview_live,
     get_account_live,
@@ -168,20 +167,16 @@ from .stripe_services import stripe_configured
 
 
 def _portal_data_live():
-    return portal_is_live() and ensure_portal_seeded()
+    return portal_is_live()
 
 
 def _portal_families_live():
-    from portal.models import PortalFamily
-
-    return portal_is_live() and PortalFamily.objects.exists()
+    return portal_is_live()
 
 
 def _staff_family_profile(family_slug, unit=None):
     if _portal_families_live():
-        live_profile = family_profile_live(family_slug, unit=unit)
-        if live_profile:
-            return live_profile
+        return family_profile_live(family_slug, unit=unit)
     profile = FAMILY_DETAILS.get(family_slug)
     if profile:
         return profile
@@ -525,8 +520,8 @@ def _staff_attendance_context(request):
     return {
         "attendance": build_session_context(unit, program, attendance_date, roster),
         "roster": roster,
-        "attendance_live": portal_is_live() and ensure_portal_seeded(),
-        "attendance_needs_seed": portal_is_live() and not ensure_portal_seeded(),
+        "attendance_live": portal_is_live(),
+        "attendance_needs_seed": False,
         "checkin_modes": CHECKIN_MODES,
         "medical_alert_types": MEDICAL_ALERT_TYPES,
         "show_checkin_panel": request.GET.get("checkin") == "1" and request.GET.get("bulk") != "1",
@@ -537,10 +532,10 @@ def _staff_attendance_context(request):
 
 
 def _attendance_program_or_redirect(request, attendance_date):
-    unit = get_unit()
+    unit = _staff_unit(request)
     program = get_active_program(unit)
     if not unit or not program:
-        messages.error(request, "Portal members are not set up yet. Run: python manage.py seed_portal")
+        messages.error(request, "No active program is set up for this unit yet.")
         return None, None, attendance_redirect(request, attendance_date)
     return unit, program, None
 
@@ -1297,6 +1292,7 @@ def staff_page(request, page):
     return render(request, template, context)
 
 
+@staff_login_required
 @require_GET
 def staff_incidents_print(request):
     incident_id = request.GET.get("incident")
@@ -1376,23 +1372,40 @@ def staff_family_policy_print(request, family_slug, policy_slug):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_member_policies_print(request):
-    families_data = []
-    for summary in get_member_policy_summaries(FAMILIES):
-        families_data.append(get_family_policies(summary["slug"]))
+    from .staff_services import get_family_policies_for_staff, get_member_summaries_for_unit
+
+    if portal_is_live():
+        unit = _staff_unit(request)
+        summaries = get_member_summaries_for_unit(unit) if unit else []
+        families_data = []
+        for summary in summaries:
+            data = get_family_policies_for_staff(summary["slug"])
+            if data:
+                families_data.append(data)
+        print_scope = unit.name if unit else "Your unit"
+    else:
+        families_data = []
+        for summary in get_member_policy_summaries(FAMILIES):
+            data = get_family_policies(summary["slug"])
+            if data:
+                families_data.append(data)
+        print_scope = "School 18"
     return render(
         request,
         "portal/staff/member_policies_print.html",
         _staff_context(
             "Member policies — print all",
             families_data=families_data,
-            print_scope="School 18",
+            print_scope=print_scope,
             policies_per_child=POLICIES_PER_CHILD,
         ),
     )
 
 
+@staff_login_required
 @require_GET
 def staff_medical_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
@@ -1419,6 +1432,7 @@ def staff_medical_report(request):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_attendance_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
@@ -1442,6 +1456,7 @@ def staff_attendance_report(request):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_weekly_attendance_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
@@ -1487,6 +1502,7 @@ def _report_names(unit, program):
     return unit_name, program_name
 
 
+@staff_login_required
 @require_GET
 def staff_attendance_blank_daily(request):
     sheet_date = parse_sheet_date(request.GET.get("date"))
@@ -1510,6 +1526,7 @@ def staff_attendance_blank_daily(request):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_attendance_blank_weekly(request):
     sheet_date = parse_sheet_date(request.GET.get("date"))
@@ -1533,6 +1550,7 @@ def staff_attendance_blank_weekly(request):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_signout_blank(request):
     sheet_date = parse_sheet_date(request.GET.get("date"))
@@ -1841,6 +1859,7 @@ def admin_family_policy_print(request, family_slug, policy_slug):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_family_pickup(request, family_slug):
     profile = _staff_family_profile(family_slug, unit=_staff_unit(request))
@@ -1883,6 +1902,7 @@ def staff_pickup_report(request):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_family_detail(request, family_slug):
     unit = _staff_unit(request)
@@ -1900,6 +1920,7 @@ def staff_family_detail(request, family_slug):
     return render(request, "portal/staff/family_detail.html", context)
 
 
+@staff_login_required
 @require_GET
 def staff_family_incidents(request, family_slug):
     unit = _staff_unit(request)
@@ -1928,6 +1949,7 @@ def staff_family_incidents(request, family_slug):
     return render(request, "portal/staff/family_incidents.html", context)
 
 
+@staff_login_required
 @require_GET
 def staff_application_detail(request, app_slug):
     if _portal_data_live():
@@ -2028,6 +2050,7 @@ def admin_application_detail(request, app_slug):
     )
 
 
+@staff_login_required
 @require_GET
 def staff_application_print(request, app_slug):
     application_urls = _application_portal_urls("staff", app_slug)
@@ -2956,6 +2979,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_checkin(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
@@ -2979,6 +3003,7 @@ def staff_attendance_checkin(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_checkout(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
@@ -2995,6 +3020,7 @@ def staff_attendance_checkout(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_absent(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
@@ -3011,6 +3037,7 @@ def staff_attendance_absent(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_undo_absent(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
@@ -3026,6 +3053,7 @@ def staff_attendance_undo_absent(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_bulk_checkin(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
@@ -3046,6 +3074,7 @@ def staff_attendance_bulk_checkin(request):
 
 
 @require_POST
+@staff_login_required_post
 def staff_attendance_bulk_checkout(request):
     attendance_date = get_attendance_date(request)
     _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
