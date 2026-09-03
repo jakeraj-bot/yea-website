@@ -36,6 +36,7 @@ class PortalPasswordResetView(PasswordResetView):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
         context["login_url_name"] = self.login_url_name
+        context["portal_area"] = "public"
         return context
 
     def get_form_kwargs(self):
@@ -65,6 +66,7 @@ class PortalPasswordResetDoneView(PasswordResetDoneView):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
         context["login_url_name"] = self.login_url_name
+        context["portal_area"] = "public"
         return context
 
 
@@ -77,6 +79,7 @@ class PortalPasswordResetConfirmView(PasswordResetConfirmView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
+        context["portal_area"] = "public"
         return context
 
     def get_success_url(self):
@@ -95,6 +98,7 @@ class PortalPasswordResetCompleteView(PasswordResetCompleteView):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
         context["login_url_name"] = self.login_url_name
+        context["portal_area"] = "public"
         return context
 
 

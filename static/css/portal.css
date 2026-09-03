@@ -139,8 +139,20 @@
   overflow-x: hidden;
 }
 
+/* Login / password-reset / portal hub have no sidebar. Keep the 220px
+   staff column off those pages so the form is not pinned to a skinny left strip. */
+.portal-shell--auth {
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
+}
+
+.portal-shell--auth .portal-main {
+  overflow: visible;
+}
+
 @media (max-width: 800px) {
-  .portal-shell {
+  .portal-shell,
+  .portal-shell--auth {
     grid-template-columns: 1fr;
   }
   .portal-sidebar {
@@ -686,6 +698,33 @@
   max-width: 100%;
   padding-inline: 1.15rem;
   box-sizing: border-box;
+}
+
+/* Public auth pages: restore the centered site container so login cards
+   sit in the middle. Staff/admin dashboards keep the full-width compact rule. */
+.portal-area-public .portal-main .container {
+  width: min(var(--max-width), calc(100% - 2rem));
+  max-width: 100%;
+  padding-inline: 0;
+  margin-inline: auto;
+}
+
+.portal-auth-heading {
+  text-align: center;
+  max-width: 36rem;
+}
+
+.portal-auth-heading .lead {
+  margin-inline: auto;
+}
+
+.portal-auth-card {
+  max-width: 32rem;
+  margin-inline: auto;
+}
+
+.portal-shell--auth .portal-hero-compact {
+  padding-block: 2rem 1.25rem;
 }
 
 .portal-email-recipients {
