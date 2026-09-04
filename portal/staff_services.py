@@ -245,6 +245,17 @@ def build_school_bus_roster(unit):
     return sections
 
 
+def school_bus_roster_school_names(sections):
+    return [section["school"] for section in sections]
+
+
+def filter_school_bus_roster(sections, selected_schools):
+    wanted = {str(name).strip() for name in selected_schools or [] if str(name).strip()}
+    if not wanted:
+        return list(sections)
+    return [section for section in sections if section["school"] in wanted]
+
+
 def school_bus_report_meta(unit):
     program = get_active_program(unit)
     return {

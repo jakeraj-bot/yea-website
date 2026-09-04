@@ -13,7 +13,7 @@ from portal.admin_services import get_admin_families_live
 from portal.attendance_service import families_for_staff
 from portal.family_list import child_balance_map, expand_demo_families
 from portal.models import PortalFamily, PortalLedgerEntry, PortalUnit
-from portal.staff_services import build_school_bus_roster
+from portal.staff_services import build_school_bus_roster, filter_school_bus_roster
 
 
 def _make_application(family, *, location="school_18", status="approved"):
@@ -182,6 +182,56 @@ class SchoolBusRosterTests(TestCase):
         self.assertEqual(len(schools["Roosevelt Elementary"]), 1)
         self.assertEqual(schools["Lincoln Elementary"][0]["child"], "Jordan Jacobs")
         self.assertTrue(schools["Lincoln Elementary"][0]["child_id"])
+
+    def test_filter_school_bus_roster_keeps_chosen_schools(self):
+        family_a = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
+        family_b = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        family_a.children.create(name="Aiden Williams", grade="3rd", school="Roosevelt Elementary", is_active=True)
+        family_b.children.create(name="Jordan Jacobs", grade="4th", school="Lincoln Elementary", is_active=True)
+        sections = build_school_bus_roster(self.unit)
+        filtered = filter_school_bus_roster(sections, ["Lincoln Elementary"])
+        self.assertEqual([section["school"] for section in filtered], ["Lincoln Elementary"])
+        self.assertEqual(filter_school_bus_roster(sections, []), sections)
+
+    def test_staff_report_can_filter_schools_to_print(self):
+        from django.contrib.auth import get_user_model
+        from django.test import override_settings
+        from django.urls import reverse
+
+        from portal.models import PortalStaffAccount
+        from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
+
+        family_a = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
+        family_b = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        family_a.children.create(name="Aiden Williams", grade="3rd", school="Roosevelt Elementary", is_active=True)
+        family_b.children.create(name="Jordan Jacobs", grade="4th", school="Lincoln Elementary", is_active=True)
+        user = get_user_model().objects.create_user(username="staff:bus", password="StaffPass123!")
+        PortalStaffAccount.objects.create(
+            user=user,
+            unit=self.unit,
+            display_name="Bus Staff",
+            role="Unit director",
+            is_active=True,
+        )
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "staff"
+        session.save()
+        with override_settings(PORTAL_PREVIEW_MODE=False):
+            all_schools = self.client.get(reverse("portal_staff_school_bus_report"))
+            filtered = self.client.get(
+                reverse("portal_staff_school_bus_report"),
+                {"school": "Lincoln Elementary"},
+            )
+        self.assertEqual(all_schools.status_code, 200)
+        self.assertContains(all_schools, "Schools to print")
+        self.assertContains(all_schools, "Lincoln Elementary")
+        self.assertContains(all_schools, "Roosevelt Elementary")
+        self.assertEqual(filtered.status_code, 200)
+        self.assertContains(filtered, "Jordan Jacobs")
+        self.assertContains(filtered, "Aiden Williams")
+        self.assertEqual(filtered.context["selected_schools"], {"Lincoln Elementary"})
+        self.assertContains(filtered, "Schools to print")
 
 
 class ChildSchoolEditTests(TestCase):
