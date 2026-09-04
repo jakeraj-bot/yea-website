@@ -139,7 +139,7 @@
     var firstVisible = true;
     document.querySelectorAll(".portal-school-bus-sheet").forEach(function (sheet) {
       var school = sheet.getAttribute("data-school");
-      var show = !checked.length || allow[school];
+      var show = Boolean(allow[school]);
       sheet.classList.toggle("portal-school-bus-hidden", !show);
       sheet.classList.toggle("portal-school-bus-sheet-break", show && !firstVisible);
       if (show) firstVisible = false;
