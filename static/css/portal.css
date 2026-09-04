@@ -1462,6 +1462,28 @@
   margin-right: 0.25rem;
 }
 
+.portal-ledger-row.is-editing .portal-ledger-description,
+.portal-ledger-row.is-editing .edit-ledger-desc {
+  display: none;
+}
+
+.portal-ledger-edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.portal-ledger-edit-form[hidden] {
+  display: none;
+}
+
+.portal-ledger-edit-form .portal-input {
+  min-width: min(28rem, 100%);
+  flex: 1 1 20rem;
+}
+
 .portal-review-grid {
   display: grid;
   grid-template-columns: 1fr 280px;

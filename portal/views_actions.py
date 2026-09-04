@@ -1143,6 +1143,7 @@ def staff_billing_action(request, family_slug):
         post_credit,
         post_payment,
         update_child_billing_plan,
+        update_ledger_description,
     )
     from .staff_auth import (
         billing_permissions_for_staff,
@@ -1229,6 +1230,13 @@ def staff_billing_action(request, family_slug):
                 note,
             )
             messages.success(request, "Payment recorded.")
+        elif action == "edit_description":
+            update_ledger_description(
+                family,
+                request.POST.get("entry_id"),
+                request.POST.get("description", ""),
+            )
+            messages.success(request, "Description updated.")
         elif action == "delete":
             if not permissions.get("can_delete_charge"):
                 raise ValueError("Your role cannot delete ledger entries.")
