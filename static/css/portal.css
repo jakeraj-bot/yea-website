@@ -1470,6 +1470,10 @@
   margin-top: 0.35rem;
 }
 
+.portal-ledger-edit-form[hidden] {
+  display: none;
+}
+
 .portal-ledger-edit-form .portal-input {
   min-width: 14rem;
   flex: 1 1 12rem;
