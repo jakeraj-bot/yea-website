@@ -381,6 +381,8 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
             extra.get("family_id"),
             unit=unit,
         )
+    )
+    extra.update(
         _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
     )
     if area == "admin":
