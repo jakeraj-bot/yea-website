@@ -1249,7 +1249,7 @@ def staff_billing_action(request, family_slug):
         elif action == "update_plan":
             if area != "admin":
                 raise ValueError("Only portal admin can edit billing plans.")
-            update_child_billing_plan(
+            _child, posted = update_child_billing_plan(
                 family,
                 request.POST.get("child_name", "").strip(),
                 request.POST.get("billing_plan", "Weekly"),
@@ -1260,6 +1260,12 @@ def staff_billing_action(request, family_slug):
                 charge_weekday=request.POST.get("charge_weekday"),
                 charge_month_day=request.POST.get("charge_month_day"),
             )
+            if posted:
+                messages.success(
+                    request,
+                    f"Billing plan updated. Posted {len(posted)} charge(s) to the ledger.",
+                )
+                return redirect(redirect_url)
             messages.success(request, "Billing plan updated.")
         else:
             messages.error(request, "Unknown billing action.")

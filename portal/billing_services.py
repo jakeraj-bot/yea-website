@@ -305,7 +305,15 @@ def next_month_day_on_or_after(start, month_day):
 
 
 def first_plan_charge_date(start, plan, weekday=None, month_day=None):
-    start = start or timezone.localdate()
+    """Return the first charge date.
+
+    An explicit start date is honored as-is so staff can post today's charge
+    even when the repeat weekday or month-day is different. When no date is
+    given, the next matching repeat day from today is used.
+    """
+    if start:
+        return start
+    start = timezone.localdate()
     label = (plan or "").lower()
     if "month" in label:
         return next_month_day_on_or_after(start, month_day if month_day is not None else start.day)
@@ -414,10 +422,13 @@ def update_child_billing_plan(
     if billing_type:
         family.billing_type = billing_type.strip()
         family.save(update_fields=["billing_type"])
-    return child
+    posted = []
+    if child.auto_charge and child.next_charge_date and child.next_charge_date <= timezone.localdate():
+        posted = run_due_plan_charges(child=child)
+    return child, posted
 
 
-def run_due_plan_charges(today=None):
+def run_due_plan_charges(today=None, child=None):
     """Post due child plan charges and advance each next charge date."""
     today = today or timezone.localdate()
     due = PortalChild.objects.select_related("family").filter(
@@ -428,14 +439,17 @@ def run_due_plan_charges(today=None):
         billing_amount__gt=0,
         family__status="Active",
     )
+    only_child = child
+    if only_child is not None:
+        due = due.filter(pk=only_child.pk)
     posted = []
-    for child in due:
+    for due_child in due:
         try:
             with transaction.atomic():
                 locked = (
                     PortalChild.objects.select_for_update()
                     .select_related("family")
-                    .filter(pk=child.pk, auto_charge=True, next_charge_date__lte=today)
+                    .filter(pk=due_child.pk, auto_charge=True, next_charge_date__lte=today)
                     .first()
                 )
                 if not locked or not locked.billing_amount:
@@ -475,6 +489,8 @@ def run_due_plan_charges(today=None):
                     periods += 1
                 locked.save(update_fields=["last_auto_charge_date", "next_charge_date"])
         except Exception:
+            if only_child is not None:
+                raise
             continue
     return posted
 

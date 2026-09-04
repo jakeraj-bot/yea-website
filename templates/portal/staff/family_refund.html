@@ -2,6 +2,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
     <p class="portal-breadcrumb">
       <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
       <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">{{ billing.family_name }}</a> /
@@ -9,6 +11,9 @@
     </p>
     <h1>Refund — {{ billing.family_name }}</h1>
     <p class="lead">Send money back to the parent’s card. The family balance goes up by the refund amount.</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
   </div>
 </section>
 <section class="page-content">

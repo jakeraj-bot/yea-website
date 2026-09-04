@@ -1,0 +1,11 @@
+{% if family_next or family_prev %}
+<nav class="portal-family-pager" aria-label="Member accounts">
+  {% if family_prev %}
+  <a class="btn btn-secondary btn-sm portal-family-pager-prev" href="{{ family_prev.url }}">Previous</a>
+  {% endif %}
+  <span class="portal-family-pager-status">{{ family_nav_index }} of {{ family_nav_count }}</span>
+  {% if family_next %}
+  <a class="btn btn-primary btn-sm portal-family-pager-next" href="{{ family_next.url }}">Next{% if family_next.name %} · {{ family_next.name }}{% endif %}</a>
+  {% endif %}
+</nav>
+{% endif %}
