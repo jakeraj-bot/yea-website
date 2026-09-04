@@ -195,7 +195,7 @@
         </thead>
         <tbody>
           {% for row in billing.ledger %}
-          <tr>
+          <tr class="portal-ledger-row">
             <td>{{ row.date }}</td>
             <td>{{ row.child }}</td>
             <td>
@@ -296,12 +296,13 @@
       var row = btn.closest("tr");
       if (!row) return;
       var form = row.querySelector(".portal-ledger-edit-form");
-      var label = row.querySelector(".portal-ledger-description");
+      row.classList.add("is-editing");
       if (form) form.hidden = false;
-      if (label) label.hidden = true;
-      btn.hidden = true;
       var input = form && form.querySelector('input[name="description"]');
-      if (input) input.focus();
+      if (input) {
+        input.focus();
+        input.select();
+      }
     });
   });
   document.querySelectorAll(".cancel-ledger-desc").forEach(function (btn) {
@@ -309,11 +310,8 @@
       var row = btn.closest("tr");
       if (!row) return;
       var form = row.querySelector(".portal-ledger-edit-form");
-      var label = row.querySelector(".portal-ledger-description");
-      var edit = row.querySelector(".edit-ledger-desc");
+      row.classList.remove("is-editing");
       if (form) form.hidden = true;
-      if (label) label.hidden = false;
-      if (edit) edit.hidden = false;
     });
   });
 })();
