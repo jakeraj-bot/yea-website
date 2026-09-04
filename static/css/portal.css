@@ -3459,6 +3459,41 @@
   gap: 0.35rem;
 }
 
+.portal-family-hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.portal-family-hero-copy {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.portal-family-hero-head .portal-family-pager {
+  margin: 0.15rem 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.portal-family-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.portal-family-pager-status {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.portal-family-pager-next {
+  min-width: 7.5rem;
+}
+
 .portal-family-tabs {
   display: flex;
   flex-wrap: wrap;

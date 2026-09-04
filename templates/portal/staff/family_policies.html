@@ -3,6 +3,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
     <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
@@ -16,6 +18,9 @@
     </div>
     <h1>Signed policies — {{ policy_data.family_name }}</h1>
     <p class="lead">{{ policy_data.signed_count }} of {{ policy_data.total_count }} signed · {{ policy_data.policies_per_child }} per child · {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }}</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
   </div>
 </section>
 <section class="page-content portal-policy-report">

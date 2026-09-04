@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from datetime import date
 
@@ -316,6 +317,15 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
     extra.setdefault("parent_email", parent_email)
     extra.setdefault("family_id", family_id or (family_meta or {}).get("id"))
     extra.setdefault("email_send_url", "portal_staff_family_email_send")
+    extra.update(
+        _family_nav_context(
+            "staff",
+            family_slug,
+            family_tab,
+            extra.get("family_id"),
+            unit=unit,
+        )
+    )
     if request is not None:
         extra.update(
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
@@ -364,6 +374,13 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
     extra.setdefault("family_incident_count", len(family_incidents))
     extra.update(
+        _family_nav_context(
+            area,
+            family_slug,
+            family_tab,
+            extra.get("family_id"),
+            unit=unit,
+        )
         _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
     )
     if area == "admin":
@@ -444,7 +461,7 @@ def _family_billing_bundle(request, area, family_slug):
         "charge_types": BILLING_CHARGE_TYPES,
         "families": families,
         "billing_live": _portal_families_live(),
-        "today": date.today().isoformat(),
+        "today": timezone.localdate().isoformat(),
         "plan_weekdays": WEEKDAYS,
         "plan_month_days": MONTH_DAYS,
         "refundable_payments": refundable_payments,
@@ -495,6 +512,19 @@ def _application_portal_urls(area, app_slug, *, waitlist=False):
 
 def _family_id_from_request(request):
     return request.GET.get("id") or request.GET.get("family_id") or ""
+
+
+def _family_nav_context(area, family_slug, family_tab, family_id=None, unit=None):
+    from .family_nav import family_account_nav_context
+
+    return family_account_nav_context(
+        area,
+        family_slug,
+        family_tab,
+        family_id=family_id,
+        unit=unit,
+        live=_portal_families_live(),
+    )
 
 
 def _admin_family_ops_context(family):
@@ -1944,6 +1974,7 @@ def admin_family_policies(request, family_slug):
                 family_slug=family_slug,
                 family_id=family_meta.get("id"),
                 family_tab="policies",
+                **_family_nav_context("admin", family_slug, "policies", family_meta.get("id")),
                 **_family_neighbor_nav(request, "admin", family_slug, "policies", family_meta.get("id")),
             ),
         ),

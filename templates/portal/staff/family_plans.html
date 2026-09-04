@@ -2,6 +2,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
     <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
@@ -17,6 +19,9 @@
     </div>
     <h1>Member plans — {{ billing.family_name }}</h1>
     <p class="lead">Billing plan, auto-charge, and discounts for each child</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
   </div>
 </section>
 <section class="page-content">
@@ -55,7 +60,7 @@
     {% if portal_area == 'admin' %}
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2>Edit billing plan</h2>
-      <p class="form-note">Set the amount and when it repeats. The portal posts the charge on that day so you do not have to add it by hand.</p>
+      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="admin">
@@ -255,6 +260,23 @@
     var panel = document.getElementById("edit-plan-panel");
     if (panel) panel.hidden = true;
   });
+  function syncRepeatFromDate() {
+    var nextCharge = document.getElementById("plan-next-charge");
+    var weekday = document.getElementById("plan-weekday");
+    var monthDay = document.getElementById("plan-month-day");
+    if (!nextCharge || !nextCharge.value) return;
+    var parts = nextCharge.value.split("-");
+    if (parts.length !== 3) return;
+    var selected = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if (isNaN(selected.getTime())) return;
+    var jsDay = selected.getDay();
+    if (weekday) weekday.value = String(jsDay === 0 ? 6 : jsDay - 1);
+    if (monthDay) {
+      var last = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).getDate();
+      monthDay.value = selected.getDate() === last ? "0" : String(selected.getDate());
+    }
+  }
+  document.getElementById("plan-next-charge")?.addEventListener("change", syncRepeatFromDate);
   document.getElementById("plan-name")?.addEventListener("change", togglePlanRepeat);
   togglePlanRepeat();
 })();

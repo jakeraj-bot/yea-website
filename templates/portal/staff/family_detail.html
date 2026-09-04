@@ -3,6 +3,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
     <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
@@ -15,6 +17,9 @@
     </div>
     <h1>{% if portal_area == 'admin' %}Family account{% else %}{{ profile.family_name }} family{% endif %}{% if portal_area == 'admin' %} — {{ profile.family_name }}{% endif %}</h1>
     <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
   </div>
 </section>
 <section class="page-content">

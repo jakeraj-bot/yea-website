@@ -2,6 +2,8 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
     <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
@@ -16,6 +18,9 @@
     </div>
     <h1>Email parent — {{ profile.family_name }}</h1>
     <p class="lead">Send a message to this family's parent email.</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
   </div>
 </section>
 <section class="page-content">
