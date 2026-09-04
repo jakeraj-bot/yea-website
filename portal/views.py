@@ -162,6 +162,7 @@ from enrollment.portal_integration import (
 )
 from .pickup_services import family_authorized_pickup, pickup_report_data, pickup_report_programs
 from .models import PortalUnit
+from .processing_fees import stripe_fee_display
 from .stripe_services import stripe_configured
 
 
@@ -941,7 +942,7 @@ def parent_payment(request):
             billing=billing,
             payment_amount=amount,
             payment_totals=payment_totals,
-            stripe_fee=STRIPE_PROCESSING_FEE,
+            stripe_fee=stripe_fee_display(),
             is_dropin_payment=is_dropin,
             dropin=dropin_context,
         ),
@@ -994,7 +995,7 @@ def parent_payment_preview(request):
             payment_amount=f"{pay_amount:.2f}",
             credit_amount=f"{credit_amount:.2f}",
             payment_totals=payment_totals,
-            stripe_fee=STRIPE_PROCESSING_FEE,
+            stripe_fee=stripe_fee_display(),
             payment_method=method,
             is_dropin_payment=is_dropin,
             dropin=dropin_context,

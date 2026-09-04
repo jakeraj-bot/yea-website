@@ -1865,17 +1865,9 @@ STRIPE_PROCESSING_FEE = {
 
 
 def calculate_card_processing_fee(amount_str):
-    try:
-        amount = float(str(amount_str).replace(",", ""))
-    except (TypeError, ValueError):
-        amount = 0.0
-    fee = round(amount * (STRIPE_PROCESSING_FEE["percent"] / 100) + STRIPE_PROCESSING_FEE["fixed_cents"] / 100, 2)
-    total = round(amount + fee, 2)
-    return {
-        "subtotal": f"{amount:.2f}",
-        "fee": f"{fee:.2f}",
-        "total": f"{total:.2f}",
-    }
+    from portal.processing_fees import calculate_card_processing_fee as calculate_live_fee
+
+    return calculate_live_fee(amount_str)
 
 
 def _unit_for_location(location_label):

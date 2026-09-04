@@ -25,7 +25,7 @@
     <div class="portal-profile-grid">
       <section class="card portal-profile-full">
         <h2>{% if is_dropin_payment %}Drop-in payment{% else %}Choose payment amount{% endif %}</h2>
-        <form id="parent-payment-form" class="portal-form-grid" method="get" action="{% url 'portal_parent_payment_preview' %}">
+        <form id="parent-payment-form" class="portal-form-grid" method="get" action="{% url 'portal_parent_payment_preview' %}" data-fee-percent="{{ stripe_fee.percent_display|default:stripe_fee.percent }}" data-fee-flat="{{ stripe_fee.flat_display|default:'0.30' }}">
           {% if is_dropin_payment %}
           <input type="hidden" name="source" value="dropin">
           <input type="hidden" name="child" value="{{ dropin.child }}">
@@ -153,11 +153,36 @@
   var methodSelect = document.getElementById("pay-method");
   var addCardPanel = document.getElementById("add-card-panel");
   var saveCardBtn = document.getElementById("save-card-btn");
+  var feePercent = parseFloat(form && form.getAttribute("data-fee-percent")) || 2.9;
+  var feeFlat = parseFloat(form && form.getAttribute("data-fee-flat")) || 0.3;
 
   function selectedAmount() {
     var choice = form.querySelector('input[name="amount_choice"]:checked');
     if (choice && choice.value === "full") return balance;
     return parseFloat(amountInput.value || "0");
+  }
+
+  function money(value) {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+  }
+
+  function processingFee(amount) {
+    if (!amount || amount <= 0) return 0;
+    return money(amount * feePercent / 100 + feeFlat);
+  }
+
+  function updateSummary() {
+    var amount = selectedAmount();
+    if (isNaN(amount) || amount < 0) amount = 0;
+    var fee = processingFee(amount);
+    var total = money(amount + fee);
+    var sub = document.getElementById("summary-subtotal");
+    var feeEl = document.getElementById("summary-fee");
+    var totalEl = document.getElementById("summary-total");
+    if (sub) sub.textContent = "$" + amount.toFixed(2);
+    if (feeEl) feeEl.textContent = "$" + fee.toFixed(2);
+    if (totalEl) totalEl.textContent = "$" + total.toFixed(2);
+    updateCreditNote();
   }
 
   function updateCreditNote() {
@@ -176,11 +201,11 @@
     radio.addEventListener("change", function () {
       customWrap.hidden = radio.value !== "custom";
       if (radio.value === "full") amountInput.value = balance.toFixed(2);
-      updateCreditNote();
+      updateSummary();
     });
   });
 
-  if (amountInput) amountInput.addEventListener("input", updateCreditNote);
+  if (amountInput) amountInput.addEventListener("input", updateSummary);
 
   if (methodSelect) {
     methodSelect.addEventListener("change", function () {
@@ -207,7 +232,7 @@
       if (amountInput) amountInput.value = selectedAmount().toFixed(2);
     });
   }
-  updateCreditNote();
+  updateSummary();
 })();
 </script>
 {% elif not parent_stripe_enabled %}
