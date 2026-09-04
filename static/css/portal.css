@@ -2916,6 +2916,24 @@
   .portal-school-bus-sheet-break {
     page-break-before: always;
   }
+
+  .portal-school-bus-hidden {
+    display: none !important;
+  }
+}
+
+.portal-school-bus-picker {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.15rem;
+}
+
+.portal-school-bus-picker h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.portal-school-bus-hidden {
+  display: none !important;
 }
 
 .portal-stat-overdue {

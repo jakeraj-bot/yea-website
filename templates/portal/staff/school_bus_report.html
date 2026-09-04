@@ -5,19 +5,39 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / School bus roster</p>
     <h1>School bus roster</h1>
-    <p class="lead">{{ report_meta.unit }} · grouped by school attending · {{ total_children }} children across {{ school_sections|length }} schools</p>
+    <p class="lead">{{ report_meta.unit }} · grouped by school attending · {{ total_children }} children across {{ selected_schools|length }}{% if all_schools and selected_schools|length != all_schools|length %} of {{ all_schools|length }}{% endif %} schools</p>
   </div>
 </section>
 <section class="page-content portal-school-bus-report">
   <div class="container">
     <div class="portal-toolbar portal-no-print">
-      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <button type="button" class="btn btn-primary" id="school-bus-print-btn">Print selected</button>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
     </div>
+    {% if all_schools %}
+    <form method="get" class="card portal-school-bus-picker portal-collapse-skip portal-no-print" id="school-bus-print-picker">
+      <h2>Schools to print</h2>
+      <p class="form-note">Check the schools for this bus run, then print. Unchecked schools stay off the PDF.</p>
+      <div class="portal-checkbox-grid">
+        {% for school in all_schools %}
+        <label class="portal-check-label">
+          <input type="checkbox" name="school" value="{{ school }}"{% if school in selected_schools %} checked{% endif %} data-school-filter="{{ school }}">
+          {{ school }}
+        </label>
+        {% endfor %}
+      </div>
+      <div class="portal-toolbar" style="margin-top:0.85rem;">
+        <button type="submit" class="btn btn-secondary btn-sm">Show selected</button>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_school_bus_report' %}">All schools</a>
+        <button type="button" class="btn btn-secondary btn-sm" id="school-bus-select-all">Select all</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="school-bus-select-none">Select none</button>
+      </div>
+    </form>
+    {% endif %}
     <p class="form-note portal-no-print">Parents type school names differently. Edit a child or rename a whole group so one school stays on one sheet.</p>
 
     {% for section in school_sections %}
-    <div class="portal-medical-report-sheet card portal-school-bus-sheet{% if not forloop.first %} portal-school-bus-sheet-break{% endif %}">
+    <div class="portal-medical-report-sheet card portal-school-bus-sheet{% if not forloop.first %} portal-school-bus-sheet-break{% endif %}" data-school="{{ section.school }}">
       <header class="portal-medical-report-header">
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
@@ -96,4 +116,62 @@
     {% include "portal/staff/includes/school_name_options.html" %}
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var picker = document.getElementById("school-bus-print-picker");
+  var printBtn = document.getElementById("school-bus-print-btn");
+  if (!picker) return;
+
+  function checkedSchools() {
+    return Array.prototype.map.call(
+      picker.querySelectorAll('input[name="school"]:checked'),
+      function (box) { return box.value; }
+    );
+  }
+
+  function applySchoolPrintFilter() {
+    var checked = checkedSchools();
+    var allow = {};
+    checked.forEach(function (name) { allow[name] = true; });
+    var firstVisible = true;
+    document.querySelectorAll(".portal-school-bus-sheet").forEach(function (sheet) {
+      var school = sheet.getAttribute("data-school");
+      var show = Boolean(allow[school]);
+      sheet.classList.toggle("portal-school-bus-hidden", !show);
+      sheet.classList.toggle("portal-school-bus-sheet-break", show && !firstVisible);
+      if (show) firstVisible = false;
+    });
+    if (printBtn) printBtn.disabled = checked.length === 0;
+  }
+
+  picker.querySelectorAll('input[name="school"]').forEach(function (box) {
+    box.addEventListener("change", applySchoolPrintFilter);
+  });
+  var selectAll = document.getElementById("school-bus-select-all");
+  var selectNone = document.getElementById("school-bus-select-none");
+  if (selectAll) {
+    selectAll.addEventListener("click", function () {
+      picker.querySelectorAll('input[name="school"]').forEach(function (box) { box.checked = true; });
+      applySchoolPrintFilter();
+    });
+  }
+  if (selectNone) {
+    selectNone.addEventListener("click", function () {
+      picker.querySelectorAll('input[name="school"]').forEach(function (box) { box.checked = false; });
+      applySchoolPrintFilter();
+    });
+  }
+  if (printBtn) {
+    printBtn.addEventListener("click", function () {
+      applySchoolPrintFilter();
+      if (printBtn.disabled) return;
+      window.print();
+    });
+  }
+  applySchoolPrintFilter();
+})();
+</script>
 {% endblock %}

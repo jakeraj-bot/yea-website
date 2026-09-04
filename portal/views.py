@@ -1588,16 +1588,27 @@ def staff_medical_report(request):
 def staff_school_bus_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
     if unit:
-        from .staff_services import build_school_bus_roster, school_bus_report_meta
+        from .staff_services import (
+            build_school_bus_roster,
+            filter_school_bus_roster,
+            school_bus_report_meta,
+            school_bus_roster_school_names,
+        )
 
-        school_sections = build_school_bus_roster(unit)
+        all_sections = build_school_bus_roster(unit)
         report_meta = school_bus_report_meta(unit)
     else:
         from .demo_data import MEDICAL_REPORT_META, SCHOOL_BUS_ROSTER_SECTIONS
+        from .staff_services import filter_school_bus_roster, school_bus_roster_school_names
 
-        school_sections = SCHOOL_BUS_ROSTER_SECTIONS
+        all_sections = SCHOOL_BUS_ROSTER_SECTIONS
         report_meta = MEDICAL_REPORT_META
-    total_children = sum(len(section["children"]) for section in school_sections)
+    all_schools = school_bus_roster_school_names(all_sections)
+    selected_schools = [name for name in request.GET.getlist("school") if str(name).strip()]
+    selected_set = set(selected_schools) if selected_schools else set(all_schools)
+    visible_sections = filter_school_bus_roster(all_sections, selected_schools)
+    school_sections = all_sections
+    total_children = sum(len(section["children"]) for section in visible_sections)
     return render(
         request,
         "portal/staff/school_bus_report.html",
@@ -1605,6 +1616,9 @@ def staff_school_bus_report(request):
             "School bus roster",
             report_meta=report_meta,
             school_sections=school_sections,
+            all_schools=all_schools,
+            selected_schools=selected_set,
+            school_filter_active=bool(selected_schools),
             total_children=total_children,
             staff_page_slug="reports",
         ),
