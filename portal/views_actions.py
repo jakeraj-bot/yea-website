@@ -1261,9 +1261,11 @@ def staff_billing_action(request, family_slug):
                 charge_month_day=request.POST.get("charge_month_day"),
             )
             if posted:
+                count = len(posted)
+                charge_word = "charge" if count == 1 else "charges"
                 messages.success(
                     request,
-                    f"Billing plan updated. Posted {len(posted)} charge(s) to the ledger.",
+                    f"Billing plan updated. Posted {count} {charge_word} to the ledger.",
                 )
                 return redirect(redirect_url)
             messages.success(request, "Billing plan updated.")
