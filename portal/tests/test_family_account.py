@@ -90,8 +90,9 @@ class FamilyNeighborNavTests(TestCase):
         self.jacobs = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
         self.williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
         self.lee = PortalFamily.objects.create(unit=self.other_unit, slug="lee", name="Lee")
-        for family in (self.chen, self.jacobs, self.williams, self.lee):
+        for family in (self.chen, self.jacobs, self.williams):
             _make_application(family)
+        _make_application(self.lee, location="school_26")
         self.admin = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
         PortalStaffAccount.objects.create(
             user=self.admin,
@@ -173,7 +174,7 @@ class FamilyNeighborNavTests(TestCase):
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_colliding_slugs_use_id_for_next(self):
         twin = PortalFamily.objects.create(unit=self.other_unit, slug="jacobs", name="Jacobs")
-        _make_application(twin)
+        _make_application(twin, location="school_26")
         self._login(self.admin, "admin")
         # School 18 Chen, Jacobs, Williams then School 26 Jacobs, Lee
         response = self.client.get(
