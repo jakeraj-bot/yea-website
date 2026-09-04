@@ -223,7 +223,7 @@ def families_for_staff(unit):
     from .family_list import child_balance_map, expand_family_record
 
     repair_family_units_from_applications()
-    families = PortalFamily.objects.filter(unit=unit).prefetch_related("children")
+    families = PortalFamily.objects.filter(unit=unit).prefetch_related("children").order_by("name")
     rows = []
     for family in families:
         balances = child_balance_map(family)

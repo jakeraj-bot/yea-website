@@ -85,3 +85,67 @@ def expand_demo_families(families):
         base = {key: value for key, value in family.items() if key != "children"}
         rows.extend(expand_family_record(base, children_specs, family["balance"]))
     return rows
+
+
+def demo_family_list_rows(area):
+    """Same demo rows as the staff/admin Families tables."""
+    from .demo_data import ADMIN_MEMBER_FAMILIES, FAMILIES
+
+    if area == "admin":
+        families = [
+            {
+                **row,
+                "unit": row.get("unit", "School 18"),
+                "unit_slug": row.get("unit_slug", "school-18"),
+                "program": row.get("program", "After-School 2026–27"),
+                "has_application": row.get("has_application", True),
+                "has_parent_login": row.get("has_parent_login", True),
+            }
+            for row in ADMIN_MEMBER_FAMILIES
+        ]
+        return expand_demo_families(families)
+    return expand_demo_families(FAMILIES)
+
+
+def unique_households_from_rows(rows):
+    """One household per family, in Families table order (first child row wins)."""
+    households = []
+    seen = set()
+    for row in rows:
+        family_id = row.get("id")
+        if family_id is not None:
+            key = ("id", family_id)
+        else:
+            key = ("slug", row.get("unit"), row.get("slug"))
+        if key in seen:
+            continue
+        seen.add(key)
+        households.append(
+            {
+                "id": family_id,
+                "slug": row["slug"],
+                "name": row.get("name") or row.get("family_name") or row["slug"],
+            }
+        )
+    return households
+
+
+def adjacent_households(households, *, slug, family_id=None):
+    """Return (previous, next) household dicts for the current family."""
+    index = None
+    if family_id not in (None, ""):
+        family_id_text = str(family_id)
+        for i, household in enumerate(households):
+            if household.get("id") is not None and str(household["id"]) == family_id_text:
+                index = i
+                break
+    if index is None:
+        for i, household in enumerate(households):
+            if household.get("slug") == slug:
+                index = i
+                break
+    if index is None:
+        return None, None
+    previous = households[index - 1] if index > 0 else None
+    nxt = households[index + 1] if index < len(households) - 1 else None
+    return previous, nxt

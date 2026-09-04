@@ -1,0 +1,10 @@
+{% if family_prev or family_next %}
+<nav class="portal-family-neighbor-nav portal-no-print" aria-label="Other families">
+  {% if family_prev %}
+  <a class="btn btn-secondary btn-sm" href="{{ family_prev.url }}">Previous: {{ family_prev.name }}</a>
+  {% endif %}
+  {% if family_next %}
+  <a class="btn btn-primary btn-sm" href="{{ family_next.url }}">Next: {{ family_next.name }}</a>
+  {% endif %}
+</nav>
+{% endif %}
