@@ -16,6 +16,11 @@
   border-bottom: 2px solid var(--yea-orange);
   color: var(--text-heading);
   font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
 }
 
 .portal-preview-banner.portal-support-view-banner-parent {
@@ -783,6 +788,29 @@
 
 .portal-hero-compact h1 {
   margin-bottom: 0.35rem;
+}
+
+.portal-family-hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.portal-family-hero-top .portal-breadcrumb {
+  margin-bottom: 0.35rem;
+}
+
+.portal-family-neighbor-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.portal-family-neighbor-nav .btn {
+  white-space: nowrap;
 }
 
 .portal-role-cards .card {

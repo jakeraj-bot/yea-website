@@ -213,6 +213,82 @@ def _staff_family_profile(family_slug, unit=None, family_id=None):
     }
 
 
+FAMILY_TAB_URL_KEYS = {
+    "profile": "family_detail",
+    "pickup": "family_pickup",
+    "incidents": "family_incidents",
+    "billing": "family_billing",
+    "plans": "family_plans",
+    "agency": "family_agency",
+    "applications": "family_applications",
+    "policies": "family_policies",
+    "email": "family_email",
+}
+
+
+def _family_list_rows_for_neighbors(area, unit=None):
+    from .family_list import demo_family_list_rows
+
+    if _portal_families_live():
+        if area == "admin":
+            from .admin_services import get_admin_families_live
+
+            return get_admin_families_live()
+        return families_for_staff(unit) if unit else []
+    return demo_family_list_rows(area)
+
+
+def _family_hub_url(area, family_tab, slug, family_id=None, parent_page=None):
+    if family_tab == "parentview":
+        if area != "admin":
+            family_tab = "profile"
+        elif parent_page and parent_page != "dashboard":
+            url = reverse(
+                "portal_admin_parent_preview_page",
+                kwargs={"family_slug": slug, "page": parent_page},
+            )
+        else:
+            url = reverse("portal_admin_parent_preview", kwargs={"family_slug": slug})
+        if family_id:
+            url = f"{url}?id={family_id}"
+        return url
+    key = FAMILY_TAB_URL_KEYS.get(family_tab, "family_detail")
+    prefix = "portal_admin_" if area == "admin" else "portal_staff_"
+    url = reverse(f"{prefix}{key}", kwargs={"family_slug": slug})
+    if area == "admin" and family_id:
+        url = f"{url}?id={family_id}"
+    return url
+
+
+def _family_neighbor_link(area, household, family_tab, parent_page=None):
+    if not household:
+        return None
+    return {
+        "id": household.get("id"),
+        "slug": household["slug"],
+        "name": household["name"],
+        "url": _family_hub_url(
+            area,
+            family_tab,
+            household["slug"],
+            household.get("id"),
+            parent_page=parent_page,
+        ),
+    }
+
+
+def _family_neighbor_nav(request, area, family_slug, family_tab, family_id=None, parent_page=None):
+    from .family_list import adjacent_households, unique_households_from_rows
+
+    unit = None if area == "admin" else _staff_unit(request)
+    households = unique_households_from_rows(_family_list_rows_for_neighbors(area, unit))
+    previous, nxt = adjacent_households(households, slug=family_slug, family_id=family_id)
+    return {
+        "family_prev": _family_neighbor_link(area, previous, family_tab, parent_page=parent_page),
+        "family_next": _family_neighbor_link(area, nxt, family_tab, parent_page=parent_page),
+    }
+
+
 def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
     if unit is None and request is not None:
         unit = _staff_unit(request)
@@ -238,8 +314,12 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
         if live_family:
             parent_email = parent_email_for_family(live_family)
     extra.setdefault("parent_email", parent_email)
-    extra.setdefault("family_id", (family_meta or {}).get("id"))
+    extra.setdefault("family_id", family_id or (family_meta or {}).get("id"))
     extra.setdefault("email_send_url", "portal_staff_family_email_send")
+    if request is not None:
+        extra.update(
+            _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
+        )
     return _staff_context(
         page_title,
         request=request,
@@ -283,6 +363,9 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     )
     extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
     extra.setdefault("family_incident_count", len(family_incidents))
+    extra.update(
+        _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
+    )
     if area == "admin":
         if _portal_families_live():
             from .member_admin import resolve_family
@@ -1332,13 +1415,13 @@ def staff_page(request, page):
         context["incident_severity_options"] = INCIDENT_SEVERITY_OPTIONS
         context["show_log_incident"] = request.GET.get("log") == "1"
     if page == "families":
-        from .family_list import expand_demo_families
+        from .family_list import demo_family_list_rows
 
         if portal_is_live():
             unit = _staff_unit(request)
             context["families"] = families_for_staff(unit) if unit else []
         else:
-            context["families"] = expand_demo_families(FAMILIES)
+            context["families"] = demo_family_list_rows("staff")
         context["family_count"] = len({row["slug"] for row in context["families"]})
     if page == "member-policies":
         unit = _staff_unit(request)
@@ -1861,6 +1944,7 @@ def admin_family_policies(request, family_slug):
                 family_slug=family_slug,
                 family_id=family_meta.get("id"),
                 family_tab="policies",
+                **_family_neighbor_nav(request, "admin", family_slug, "policies", family_meta.get("id")),
             ),
         ),
     )
@@ -2911,21 +2995,9 @@ def admin_page(request, page):
             context["families_without_login"] = families_without_parent_login()
             context["families_without_applications"] = families_without_applications()
         else:
-            from .family_list import expand_demo_families
+            from .family_list import demo_family_list_rows
 
-            context["families"] = expand_demo_families(
-                [
-                    {
-                        **row,
-                        "unit": row.get("unit", "School 18"),
-                        "unit_slug": row.get("unit_slug", "school-18"),
-                        "program": row.get("program", "After-School 2026–27"),
-                        "has_application": row.get("has_application", True),
-                        "has_parent_login": row.get("has_parent_login", True),
-                    }
-                    for row in ADMIN_MEMBER_FAMILIES
-                ]
-            )
+            context["families"] = demo_family_list_rows("admin")
             context["units"] = UNITS
             context["families_without_login"] = []
             context["families_without_applications"] = []
@@ -3240,6 +3312,16 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             pending_profile_changes=[],
             preview_family_name=family.name,
         )
+        context.update(
+            _family_neighbor_nav(
+                request,
+                "admin",
+                family.slug,
+                "parentview",
+                family.pk,
+                parent_page=page,
+            )
+        )
         if page == "billing":
             context["billing"] = mask_billing_card_mentions(preview["billing"])
         if page == "profile":
@@ -3274,6 +3356,16 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             context["portal_area"] = "parent"
             context["preview_family_name"] = family.name
             context["portal_live"] = False
+            context.update(
+                _family_neighbor_nav(
+                    request,
+                    "admin",
+                    family.slug,
+                    "parentview",
+                    family.pk,
+                    parent_page=page,
+                )
+            )
         return render(request, template, context)
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
@@ -3310,6 +3402,16 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         context["parent_page_slug"] = "support"
         context["hide_card_details"] = True
         context["portal_live"] = False
+    context.update(
+        _family_neighbor_nav(
+            request,
+            "admin",
+            family_slug,
+            "parentview",
+            _family_id_from_request(request) or None,
+            parent_page=page,
+        )
+    )
     return render(request, template, context)
 
 

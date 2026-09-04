@@ -3,6 +3,7 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
+    <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
       <a href="{% url 'portal_admin_page' page='families' %}">Families</a> / {{ profile.family_name }}
@@ -10,6 +11,8 @@
       <a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}
       {% endif %}
     </p>
+    {% include "portal/includes/family_neighbor_nav.html" %}
+    </div>
     <h1>{% if portal_area == 'admin' %}Family account{% else %}{{ profile.family_name }} family{% endif %}{% if portal_area == 'admin' %} — {{ profile.family_name }}{% endif %}</h1>
     <p class="lead">{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
   </div>
