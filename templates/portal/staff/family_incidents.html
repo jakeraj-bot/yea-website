@@ -4,6 +4,7 @@
   <div class="container">
     <div class="portal-family-hero-head">
     <div class="portal-family-hero-copy">
+    <div class="portal-family-hero-top">
     <p class="portal-breadcrumb">
       {% if portal_area == 'admin' %}
       <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
@@ -12,6 +13,8 @@
       <a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}
       {% endif %}
     </p>
+    {% include "portal/includes/family_neighbor_nav.html" %}
+    </div>
     <h1>{{ profile.family_name }} family</h1>
     <p class="lead">Incidents &amp; accidents for children in this household</p>
     </div>

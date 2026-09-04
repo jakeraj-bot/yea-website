@@ -162,6 +162,24 @@ class FamilyListRowTests(TestCase):
         self.assertEqual(len(jacobs_rows), 2)
         self.assertEqual({row["child_name"] for row in jacobs_rows}, {"Jordan Jacobs", "Maya Jacobs"})
 
+    def test_unique_households_follow_list_order_and_skip_extra_children(self):
+        from portal.family_list import adjacent_households, unique_households_from_rows
+
+        family_a = PortalFamily.objects.create(unit=self.unit, slug="chen", name="Chen")
+        family_b = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        family_a.children.create(name="Ethan Chen", is_active=True)
+        family_b.children.create(name="Jordan Jacobs", is_active=True)
+        family_b.children.create(name="Maya Jacobs", is_active=True)
+
+        households = unique_households_from_rows(families_for_staff(self.unit))
+        self.assertEqual([row["slug"] for row in households], ["chen", "jacobs"])
+        previous, nxt = adjacent_households(households, slug="chen")
+        self.assertIsNone(previous)
+        self.assertEqual(nxt["slug"], "jacobs")
+        previous, nxt = adjacent_households(households, slug="jacobs", family_id=family_b.pk)
+        self.assertEqual(previous["slug"], "chen")
+        self.assertIsNone(nxt)
+
 
 class SchoolBusRosterTests(TestCase):
     def setUp(self):
