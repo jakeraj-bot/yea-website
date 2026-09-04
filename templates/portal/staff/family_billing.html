@@ -191,7 +191,7 @@
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
-          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th>{% if billing_permissions.can_delete_charge %}<th></th>{% endif %}</tr>
+          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th><th></th></tr>
         </thead>
         <tbody>
           {% for row in billing.ledger %}
@@ -209,28 +209,47 @@
               {{ row.type|title }}
               {% endif %}
             </td>
-            <td>{{ row.description }}</td>
+            <td>
+              <span class="portal-ledger-description">{{ row.description }}</span>
+              {% if row.editable and billing_live %}
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-ledger-edit-form" hidden>
+                {% csrf_token %}
+                <input type="hidden" name="portal_area" value="{{ portal_area }}">
+                {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+                <input type="hidden" name="action" value="edit_description">
+                <input type="hidden" name="entry_id" value="{{ row.id }}">
+                <label class="visually-hidden" for="ledger-desc-{{ row.id }}">Description</label>
+                <input id="ledger-desc-{{ row.id }}" name="description" type="text" class="portal-input" value="{{ row.description }}" maxlength="255" required>
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                <button type="button" class="btn btn-secondary btn-sm cancel-ledger-desc">Cancel</button>
+              </form>
+              {% endif %}
+            </td>
             <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
               {% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
             </td>
-            {% if billing_permissions.can_delete_charge %}
-            <td>
+            <td class="portal-row-actions">
+              {% if row.editable and billing_live %}
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="Edit description">Edit</button>
+              {% endif %}
+              {% if billing_permissions.can_delete_charge %}
               {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="display:inline;">
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
-        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+                {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge" onclick="return confirm('Remove this ledger entry?')">Delete</button>
               </form>
               {% elif row.deletable %}
               <button type="button" class="btn btn-secondary btn-sm" disabled title="Remove this charge">Delete</button>
-              {% else %}
+              {% endif %}
+              {% endif %}
+              {% if not row.editable and not row.deletable %}
               <span class="form-note">—</span>
               {% endif %}
             </td>
-            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -272,6 +291,31 @@
   var method = document.getElementById("pay-method");
   var checkFields = document.getElementById("check-fields");
   if (method && checkFields) method.addEventListener("change", function () { checkFields.hidden = method.value !== "check"; });
+  document.querySelectorAll(".edit-ledger-desc").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var row = btn.closest("tr");
+      if (!row) return;
+      var form = row.querySelector(".portal-ledger-edit-form");
+      var label = row.querySelector(".portal-ledger-description");
+      if (form) form.hidden = false;
+      if (label) label.hidden = true;
+      btn.hidden = true;
+      var input = form && form.querySelector('input[name="description"]');
+      if (input) input.focus();
+    });
+  });
+  document.querySelectorAll(".cancel-ledger-desc").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var row = btn.closest("tr");
+      if (!row) return;
+      var form = row.querySelector(".portal-ledger-edit-form");
+      var label = row.querySelector(".portal-ledger-description");
+      var edit = row.querySelector(".edit-ledger-desc");
+      if (form) form.hidden = true;
+      if (label) label.hidden = false;
+      if (edit) edit.hidden = false;
+    });
+  });
 })();
 </script>
 {% endblock %}

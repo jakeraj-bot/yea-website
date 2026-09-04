@@ -50,6 +50,7 @@ def prepare_billing_for_staff(family, permissions):
                     "description": entry.description,
                     "amount": amount,
                     "manual": entry.is_manual,
+                    "editable": entry.entry_type in ("charge", "payment"),
                 }
             )
         billing["ledger"] = ledger
@@ -110,6 +111,23 @@ def post_payment(family, child_name, amount, entry_date, method_label, note=""):
     )
     family.balance = family.balance - amount
     family.save(update_fields=["balance"])
+
+
+@transaction.atomic
+def update_ledger_description(family, entry_id, description):
+    entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
+    if not entry:
+        raise ValueError("Ledger entry not found.")
+    if entry.entry_type not in ("charge", "payment"):
+        raise ValueError("Only charge and payment descriptions can be edited.")
+    label = (description or "").strip()
+    if not label:
+        raise ValueError("Enter a description.")
+    if len(label) > 255:
+        raise ValueError("Description is too long.")
+    entry.description = label
+    entry.save(update_fields=["description"])
+    return entry
 
 
 @transaction.atomic

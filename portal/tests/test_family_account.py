@@ -6,7 +6,13 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from portal.billing_services import first_plan_charge_date, update_child_billing_plan
+from portal.billing_services import (
+    first_plan_charge_date,
+    post_credit,
+    post_payment,
+    update_child_billing_plan,
+    update_ledger_description,
+)
 from portal.models import (
     PortalChild,
     PortalFamily,
@@ -212,7 +218,70 @@ class BillingPlanChargeTests(TestCase):
         self.assertEqual(billing.status_code, 200)
         self.assertContains(billing, "Weekly tuition")
         self.assertContains(billing, "50.00")
+        self.assertContains(billing, "edit-ledger-desc")
+        self.assertContains(billing, "edit_description")
         self.assertEqual(PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").count(), 1)
+
+    def test_can_edit_system_charge_description(self):
+        today = timezone.localdate()
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=(today.weekday() + 1) % 7,
+        )
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        update_ledger_description(self.family, entry.pk, "After-school week of Sep 4")
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "After-school week of Sep 4")
+        self.assertEqual(entry.amount, Decimal("50.00"))
+
+    def test_can_edit_payment_description(self):
+        today = timezone.localdate()
+        post_payment(self.family, "Jordan Jacobs", "20.00", today, "Cash", "In-person payment — Cash")
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="payment")
+        update_ledger_description(self.family, entry.pk, "Cash — week of Sep 4")
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "Cash — week of Sep 4")
+
+    def test_cannot_edit_credit_description(self):
+        today = timezone.localdate()
+        post_credit(self.family, "Jordan Jacobs", "10.00", today, "Adjustment")
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="credit")
+        with self.assertRaises(ValueError):
+            update_ledger_description(self.family, entry.pk, "Changed")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_save_edited_charge_description(self):
+        self._login_admin()
+        today = timezone.localdate()
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=(today.weekday() + 1) % 7,
+        )
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "edit_description",
+                "entry_id": str(entry.pk),
+                "description": "Weekly tuition — after-school",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "Weekly tuition — after-school")
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Weekly tuition — after-school")
 
 
 class FamilyNeighborNavTests(TestCase):

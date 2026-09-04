@@ -762,6 +762,7 @@ def prepare_billing_preview(billing, permissions):
                 **row,
                 "id": row.get("id", index + 1),
                 "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
+                "editable": row.get("type") in ("charge", "payment"),
             }
         )
     enriched["ledger"] = ledger
