@@ -15,7 +15,7 @@
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
     </div>
     {% if all_schools %}
-    <form method="get" class="card portal-school-bus-picker portal-no-print" id="school-bus-print-picker">
+    <form method="get" class="card portal-school-bus-picker portal-collapse-skip portal-no-print" id="school-bus-print-picker">
       <h2>Schools to print</h2>
       <p class="form-note">Check the schools for this bus run, then print. Unchecked schools stay off the PDF.</p>
       <div class="portal-checkbox-grid">

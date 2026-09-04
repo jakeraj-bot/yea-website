@@ -225,6 +225,7 @@ class SchoolBusRosterTests(TestCase):
             )
         self.assertEqual(all_schools.status_code, 200)
         self.assertContains(all_schools, "Schools to print")
+        self.assertContains(all_schools, "portal-collapse-skip")
         self.assertContains(all_schools, "Lincoln Elementary")
         self.assertContains(all_schools, "Roosevelt Elementary")
         self.assertEqual(filtered.status_code, 200)
