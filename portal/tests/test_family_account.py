@@ -126,18 +126,6 @@ class BillingPlanChargeTests(TestCase):
             billing_plan="Weekly",
             billing_amount=Decimal("50.00"),
         )
-class FamilyNeighborNavTests(TestCase):
-    def setUp(self):
-        User = get_user_model()
-        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
-        self.other_unit = PortalUnit.objects.create(slug="school-26", name="School 26", is_active=True)
-        self.chen = PortalFamily.objects.create(unit=self.unit, slug="chen", name="Chen")
-        self.jacobs = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
-        self.williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
-        self.lee = PortalFamily.objects.create(unit=self.other_unit, slug="lee", name="Lee")
-        for family in (self.chen, self.jacobs, self.williams):
-            _make_application(family)
-        _make_application(self.lee, location="school_26")
         self.admin = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
         PortalStaffAccount.objects.create(
             user=self.admin,
@@ -225,6 +213,29 @@ class FamilyNeighborNavTests(TestCase):
         self.assertContains(billing, "Weekly tuition")
         self.assertContains(billing, "50.00")
         self.assertEqual(PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").count(), 1)
+
+
+class FamilyNeighborNavTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.other_unit = PortalUnit.objects.create(slug="school-26", name="School 26", is_active=True)
+        self.chen = PortalFamily.objects.create(unit=self.unit, slug="chen", name="Chen")
+        self.jacobs = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
+        self.williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
+        self.lee = PortalFamily.objects.create(unit=self.other_unit, slug="lee", name="Lee")
+        for family in (self.chen, self.jacobs, self.williams):
+            _make_application(family)
+        _make_application(self.lee, location="school_26")
+        self.admin = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
         self.staff = User.objects.create_user(username="staff:unitstaff", password="StaffPass123")
         PortalStaffAccount.objects.create(
             user=self.staff,
@@ -320,4 +331,3 @@ class FamilyNeighborNavTests(TestCase):
         next_path = reverse("portal_admin_parent_preview", kwargs={"family_slug": "jacobs"})
         self.assertContains(response, f"{next_path}?id={self.jacobs.pk}")
         self.assertContains(response, "Next: Jacobs")
-
