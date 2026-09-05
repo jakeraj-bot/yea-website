@@ -307,6 +307,7 @@ urlpatterns = [
     path("admin/program/delete/", views_actions.admin_program_delete, name="portal_admin_program_delete"),
     path("admin/agency/save/", views_actions.admin_agency_save, name="portal_admin_agency_save"),
     path("admin/scholarship/save/", views_actions.admin_scholarship_save, name="portal_admin_scholarship_save"),
+    path("admin/scholarship/fund/save/", views_actions.admin_scholarship_fund_save, name="portal_admin_scholarship_fund_save"),
     path("admin/fee/save/", views_actions.admin_fee_save, name="portal_admin_fee_save"),
     path("admin/payment-plan/save/", views_actions.admin_payment_plan_save, name="portal_admin_payment_plan_save"),
     path("admin/payment-plan/delete/", views_actions.admin_payment_plan_delete, name="portal_admin_payment_plan_delete"),
@@ -534,6 +535,11 @@ urlpatterns = [
         "admin/reports/financial/",
         views.admin_financial_report,
         name="portal_admin_financial_report",
+    ),
+    path(
+        "admin/reports/<slug:report_slug>/",
+        views.admin_data_report,
+        name="portal_admin_data_report",
     ),
     path(
         "admin/application/<slug:app_slug>/review/",

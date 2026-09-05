@@ -24,6 +24,8 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_financial_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'members' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_member_type_report' %}">Preview &amp; export</a>
+        {% elif report.report %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_data_report' report_slug=report.report %}">Preview &amp; export</a>
         {% elif report.link_name and report.link_arg %}
         <a class="btn btn-primary btn-sm" href="{% url report.link_name page=report.link_arg %}">Open in portal</a>
         {% else %}

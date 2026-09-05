@@ -49,11 +49,14 @@ def _child_balances_from_ledger(family):
 
     portal_children = list(family.children.filter(is_active=True))
     if portal_children:
-        from .billing_services import plan_repeat_label
+        from .billing_services import active_scholarship_for_child, plan_repeat_label
 
         balances = child_balance_map(family)
-        return [
-            {
+
+        rows = []
+        for child in portal_children:
+            assignment = active_scholarship_for_child(child)
+            row = {
                 "name": child.name,
                 "balance": f"{balances.get(child.name, Decimal('0')):.2f}",
                 "plan": child.billing_plan or family.program_label or "Weekly",
@@ -66,8 +69,20 @@ def _child_balances_from_ledger(family):
                 "charge_month_day": "" if child.charge_month_day is None else child.charge_month_day,
                 "auto_charge_label": plan_repeat_label(child),
             }
-            for child in portal_children
-        ]
+            if assignment:
+                discount = assignment.full_rate - assignment.parent_amount
+                row.update(
+                    {
+                        "type": "Scholarship",
+                        "full_rate": f"{assignment.full_rate:.2f}",
+                        "scholarship_discount": f"{discount:.2f}",
+                        "scholarship_name": assignment.fund.name,
+                        "parent_amount": f"{assignment.parent_amount:.2f}",
+                        "scholarship_fund_id": assignment.fund_id,
+                    }
+                )
+            rows.append(row)
+        return rows
 
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import STATUS_LABELS

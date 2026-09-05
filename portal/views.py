@@ -2036,6 +2036,59 @@ def admin_member_type_report(request):
 
 @require_GET
 @admin_login_required
+def admin_data_report(request, report_slug):
+    import csv
+    from urllib.parse import urlencode
+
+    from django.http import HttpResponse
+
+    from .admin_reports import ADMIN_DATA_REPORTS, build_admin_report
+
+    if report_slug not in ADMIN_DATA_REPORTS:
+        return render(request, "portal/404.html", status=404)
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end")}
+    report = build_admin_report(report_slug, filters) if _portal_data_live() else {
+        **ADMIN_DATA_REPORTS[report_slug],
+        "rows": [],
+        "summary": "No live data in preview mode.",
+        "units": [],
+        "schools": [],
+        "billing_types": [],
+        "payment_plans": [],
+        "entry_types": [],
+        "agencies": [],
+        "funds": [],
+        "statuses": [],
+    }
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
+        writer = csv.writer(response)
+        writer.writerow([label for _key, label in report["columns"]])
+        for row in report.get("rows", []):
+            writer.writerow([cell["value"] for cell in row["display"]])
+        return response
+    query = {key: value for key, value in filters.items() if value}
+    query["format"] = "csv"
+    return render(
+        request,
+        "portal/admin/data_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                report["title"],
+                admin_page_slug="reports",
+                report=report,
+                filters=filters,
+                csv_query=urlencode(query),
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
 def admin_family_policy_print(request, family_slug, policy_slug):
     from .staff_services import get_family_policies_for_staff
 
@@ -2218,6 +2271,14 @@ def _render_family_plans(request, area, family_slug):
     )
     if not context:
         return render(request, "portal/404.html", status=404)
+    if context.get("portal_live") and area == "admin":
+        from .models import PortalScholarshipFund
+
+        context["scholarship_funds"] = list(
+            PortalScholarshipFund.objects.filter(is_active=True).order_by("name").values("pk", "name")
+        )
+    else:
+        context.setdefault("scholarship_funds", [])
     return render(request, "portal/staff/family_plans.html", context)
 
 

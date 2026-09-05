@@ -664,7 +664,23 @@ def admin_scholarship_save(request):
     try:
         pk = request.POST.get("assignment_id") or None
         save_scholarship_assignment(request.POST, assignment_pk=int(pk) if pk else None)
-        messages.success(request, "Scholarship assignment saved.")
+        messages.success(request, "Scholarship assignment saved and added to the child's weekly plan.")
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="scholarships")
+
+
+@admin_login_required_post
+@require_POST
+def admin_scholarship_fund_save(request):
+    from .admin_config import save_scholarship_fund
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="scholarships")
+    try:
+        pk = request.POST.get("fund_id") or None
+        save_scholarship_fund(request.POST, fund_pk=int(pk) if pk else None)
+        messages.success(request, "Scholarship type saved. You can add it to a weekly plan from the child's Plans tab.")
     except Exception as exc:
         messages.error(request, str(exc))
     return redirect("portal_admin_page", page="scholarships")
@@ -1267,6 +1283,9 @@ def staff_billing_action(request, family_slug):
                 next_charge_date=parse_date(request.POST.get("next_charge_date") or "") or None,
                 charge_weekday=request.POST.get("charge_weekday"),
                 charge_month_day=request.POST.get("charge_month_day"),
+                scholarship_fund_id=request.POST.get("scholarship_fund_id"),
+                scholarship_full_rate=request.POST.get("scholarship_full_rate"),
+                scholarship_parent_amount=request.POST.get("scholarship_parent_amount"),
             )
             if posted:
                 count = len(posted)
