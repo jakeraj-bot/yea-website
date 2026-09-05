@@ -645,11 +645,18 @@ ADMIN_REPORTS = [
         "report": "balances",
     },
     {
-        "name": "Payments collected",
-        "description": "Payments posted to family ledgers, with date and name filters",
+        "name": "Who paid what",
+        "description": "Who paid, which child, how much, and on what day",
         "format": "PDF / CSV",
         "slug": "payments",
         "report": "payments",
+    },
+    {
+        "name": "Stripe & bank payouts",
+        "description": "See if Stripe has processed the payment or it is still waiting to reach the bank",
+        "format": "PDF / CSV",
+        "slug": "stripe-settlement",
+        "report": "stripe-settlement",
     },
     {
         "name": "Billing plans",

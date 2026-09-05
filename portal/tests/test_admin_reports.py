@@ -7,13 +7,14 @@ from django.utils import timezone
 
 from portal.admin_config import save_scholarship_fund
 from portal.admin_reports import build_admin_report
-from portal.billing_services import run_due_plan_charges, update_child_billing_plan
+from portal.billing_services import post_payment, run_due_plan_charges, update_child_billing_plan
 from portal.models import (
     PortalAgency,
     PortalAgencyProfile,
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
+    PortalPayment,
     PortalScholarshipAssignment,
     PortalScholarshipFund,
     PortalStaffAccount,
@@ -222,3 +223,59 @@ class AdminReportsAndScholarshipTests(TestCase):
         scholarships = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "scholarships"}))
         self.assertContains(scholarships, "Paterson Youth Fund")
         self.assertContains(scholarships, "Jordan Jacobs")
+
+    def test_who_paid_what_report_lists_day_child_and_amount(self):
+        self.family.primary_contact = "Jakera Jacobs"
+        self.family.save(update_fields=["primary_contact"])
+        today = timezone.localdate()
+        post_payment(self.family, "Jordan Jacobs", "40.00", today, "Cash", "Cash — week of Sep 4")
+        report = build_admin_report("payments", {})
+        row = next(item for item in report["rows"] if item["child"] == "Jordan Jacobs")
+        self.assertEqual(row["date"], today.isoformat())
+        self.assertEqual(row["paid_by"], "Jakera Jacobs")
+        self.assertEqual(row["amount"], "40.00")
+        self.assertEqual(row["status"], "Paid")
+
+    def test_stripe_settlement_report_marks_pending_card_and_in_person(self):
+        today = timezone.now()
+        pending = PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("30.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_test_123",
+            paid_at=today,
+        )
+        paid = PortalPayment.objects.create(
+            family=self.four_cs_family,
+            amount=Decimal("25.00"),
+            method_label="Cash",
+            status=PortalPayment.STATUS_PAID,
+            paid_at=today,
+        )
+        report = build_admin_report("stripe-settlement", {})
+        by_family = {row["family"]: row for row in report["rows"]}
+        self.assertEqual(by_family["Jacobs"]["status"], "Waiting for card")
+        self.assertIn("Waiting for parent", by_family["Jacobs"]["bank_status"])
+        self.assertEqual(by_family["Martinez"]["status"], "Paid")
+        self.assertIn("Not Stripe", by_family["Martinez"]["bank_status"])
+        pending.refresh_from_db()
+        paid.refresh_from_db()
+        self.assertEqual(pending.stripe_bank_status, "waiting_for_card")
+        self.assertEqual(paid.stripe_bank_status, "not_stripe")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_open_payment_reports(self):
+        self._login_admin()
+        self.family.primary_contact = "Jakera Jacobs"
+        self.family.save(update_fields=["primary_contact"])
+        post_payment(self.family, "Jordan Jacobs", "15.00", timezone.localdate(), "Cash", "Cash")
+        hub = self.client.get(reverse("portal_admin_page", kwargs={"page": "reports"}))
+        self.assertContains(hub, "Who paid what")
+        self.assertContains(hub, "Stripe &amp; bank payouts")
+        payments = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "payments"}))
+        self.assertContains(payments, "Jordan Jacobs")
+        self.assertContains(payments, "Jakera Jacobs")
+        settlement = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}))
+        self.assertEqual(settlement.status_code, 200)
+        self.assertContains(settlement, "Bank / Stripe")

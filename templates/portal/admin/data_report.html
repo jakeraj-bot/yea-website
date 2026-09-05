@@ -99,9 +99,15 @@
         Status
         <select class="portal-select" name="status">
           <option value="">All</option>
+          {% if report.status_choices %}
+          {% for value, label in report.status_choices %}
+          <option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+          {% else %}
           {% for status in report.statuses %}
           <option value="{{ status }}"{% if filters.status == status %} selected{% endif %}>{{ status }}</option>
           {% endfor %}
+          {% endif %}
         </select>
       </label>
       {% endif %}
