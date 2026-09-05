@@ -45,6 +45,10 @@ def _child_balances_from_ledger(family):
         billing_demo = FAMILIES_BILLING.get(family.slug, {})
         children = [dict(child) for child in billing_demo.get("children", [])]
         if children:
+            live_flags = {c.name: c.is_drop_off for c in family.children.filter(is_active=True)}
+            for row in children:
+                row["is_drop_off"] = live_flags.get(row.get("name"), False)
+                row["program_label"] = "Drop-off" if row["is_drop_off"] else "After-school"
             return children
 
     portal_children = list(family.children.filter(is_active=True))
@@ -68,6 +72,8 @@ def _child_balances_from_ledger(family):
                 "charge_weekday": "" if child.charge_weekday is None else child.charge_weekday,
                 "charge_month_day": "" if child.charge_month_day is None else child.charge_month_day,
                 "auto_charge_label": plan_repeat_label(child),
+                "is_drop_off": child.is_drop_off,
+                "program_label": "Drop-off" if child.is_drop_off else "After-school",
             }
             if assignment:
                 discount = assignment.full_rate - assignment.parent_amount
@@ -309,6 +315,8 @@ def _payment_description(payment):
         return f"Drop-in — {payment.dropin_child} · {payment.dropin_program}"
     if payment.payment_kind == "field_trip":
         return f"Field trip — {payment.dropin_child} · {payment.dropin_program}"
+    if payment.payment_kind == "drop_off":
+        return f"Drop-off — {payment.dropin_child} · {payment.dropin_program}"
     return "Family balance payment"
 
 
@@ -473,6 +481,10 @@ def record_successful_payment(payment, method_label="Card"):
                 booking.paid_at = timezone.now()
                 booking.stripe_session_id = payment.stripe_session_id
                 booking.save(update_fields=["status", "paid_at", "stripe_session_id"])
+        elif payment.payment_kind == "drop_off":
+            from .drop_off_services import mark_drop_off_paid
+
+            mark_drop_off_paid(payment)
         send_payment_receipt_email(payment)
         return payment
 

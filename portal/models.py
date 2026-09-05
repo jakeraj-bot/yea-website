@@ -1,3 +1,5 @@
+from datetime import time
+
 from django.db import models
 
 
@@ -80,6 +82,7 @@ class PortalChild(models.Model):
     last_auto_charge_date = models.DateField(null=True, blank=True)
     charge_weekday = models.PositiveSmallIntegerField(null=True, blank=True)
     charge_month_day = models.PositiveSmallIntegerField(null=True, blank=True)
+    is_drop_off = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["name"]
@@ -768,6 +771,92 @@ class PortalFieldTripSignup(models.Model):
 
     def __str__(self):
         return f"{self.child.name} · {self.trip.title}"
+
+
+class PortalDropOffSettings(models.Model):
+    """Organization-wide drop-off booking rules. One row is used."""
+
+    request_cutoff_time = models.TimeField(default=time(10, 0))
+    book_ahead_days = models.PositiveSmallIntegerField(default=14)
+    booking_open = models.BooleanField(default=True)
+    parent_note = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Drop-off settings"
+        verbose_name_plural = "Drop-off settings"
+
+    def __str__(self):
+        return "Drop-off settings"
+
+
+class PortalDropOffSlot(models.Model):
+    WEEKDAY_CHOICES = [
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+    ]
+
+    unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="drop_off_slots")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES)
+    start_time = models.TimeField()
+    label = models.CharField(max_length=120)
+    capacity = models.PositiveIntegerField(default=10)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    school_note = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["unit__name", "weekday", "start_time"]
+
+    def __str__(self):
+        return f"{self.unit.name} · {self.get_weekday_display()} · {self.label}"
+
+
+class PortalDropOffBooking(models.Model):
+    STATUS_REQUESTED = "requested"
+    STATUS_PAID = "paid"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CHOICES = [
+        (STATUS_REQUESTED, "Requested — waiting for payment"),
+        (STATUS_PAID, "Paid — pick up"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="drop_off_bookings")
+    family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="drop_off_bookings")
+    unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="drop_off_bookings")
+    slot = models.ForeignKey(
+        PortalDropOffSlot,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bookings",
+    )
+    care_date = models.DateField()
+    start_time = models.TimeField()
+    slot_label = models.CharField(max_length=120)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_REQUESTED)
+    payment = models.ForeignKey(
+        "PortalPayment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="drop_off_bookings",
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    parent_notified_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["care_date", "start_time", "child__name"]
+
+    def __str__(self):
+        return f"{self.child.name} · {self.care_date} · {self.slot_label}"
 
 
 class PortalSupportViewSession(models.Model):

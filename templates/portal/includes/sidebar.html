@@ -24,6 +24,7 @@
     <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='tax-statements' %}">Tax statements</a></li>
     <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='receipts' %}">Receipts</a></li>
     <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='drop-in' %}">Drop-in care</a></li>
+    {% if show_drop_off_tab %}<li><a class="portal-nav-link{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='drop-off' %}">Drop-off</a></li>{% endif %}
     <li><a class="portal-nav-link{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='field-trips' %}">Field trips</a></li>
     <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='support' %}">Support</a></li>
     <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='account' %}">Account settings</a></li>
@@ -36,6 +37,7 @@
     <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='tax-statements' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Tax statements</a></li>
     <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='receipts' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Receipts</a></li>
     <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-in' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Drop-in care</a></li>
+    {% if show_drop_off_tab %}<li><a class="portal-nav-link{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-off' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Drop-off</a></li>{% endif %}
     <li><a class="portal-nav-link{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='field-trips' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Field trips</a></li>
     <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='support' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Support</a></li>
     <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='account' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Account settings</a></li>
@@ -48,6 +50,7 @@
     <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a></li>
     <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Receipts</a></li>
     <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
+    {% if show_drop_off_tab %}<li><a class="portal-nav-link{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='drop-off' %}{{ parent_pay_query }}">Drop-off</a></li>{% endif %}
     <li><a class="portal-nav-link{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Field trips</a></li>
     <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='support' %}{{ parent_pay_query }}">Support</a></li>
     <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
@@ -78,6 +81,7 @@
     <li><a class="portal-nav-link portal-nav-staff-dashboard{% if staff_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='dashboard' %}">Today</a></li>
     <li><a class="portal-nav-link portal-nav-staff-programs{% if staff_page_slug == 'programs' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='programs' %}">Programs</a></li>
     <li><a class="portal-nav-link portal-nav-staff-attendance{% if staff_page_slug == 'attendance' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='attendance' %}">Attendance</a></li>
+    <li><a class="portal-nav-link{% if staff_page_slug == 'drop-off-pickup' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='drop-off-pickup' %}">Drop-off pickup</a></li>
     <li><a class="portal-nav-link portal-nav-staff-applications{% if staff_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='applications' %}">Applications</a></li>
     <li><a class="portal-nav-link{% if staff_page_slug == 'waitlist' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='waitlist' %}">Waitlist</a></li>
     <li><a class="portal-nav-link portal-nav-staff-families{% if staff_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='families' %}">Families</a></li>
@@ -115,7 +119,7 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-members"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'waitlist' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' or admin_page_slug == 'field-trips' or admin_page_slug == 'collections' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-members"{% if admin_page_slug == 'families' or admin_page_slug == 'applications' or admin_page_slug == 'waitlist' or admin_page_slug == 'member-billing' or admin_page_slug == 'member-policies' or admin_page_slug == 'field-trips' or admin_page_slug == 'drop-off-pickup' or admin_page_slug == 'collections' %} open{% endif %}>
       <summary class="portal-nav-group-label">Members</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-families{% if admin_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}">All families</a></li>
@@ -125,14 +129,16 @@
         <li><a class="portal-nav-link{% if admin_page_slug == 'collections' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='collections' %}">Collections</a></li>
         <li><a class="portal-nav-link portal-nav-admin-policies{% if admin_page_slug == 'member-policies' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='member-policies' %}">Member policies</a></li>
         <li><a class="portal-nav-link{% if admin_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='field-trips' %}">Field trips</a></li>
+        <li><a class="portal-nav-link{% if admin_page_slug == 'drop-off-pickup' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='drop-off-pickup' %}">Drop-off pickup</a></li>
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-settings"{% if admin_page_slug == 'billing-settings' or admin_page_slug == 'billing-permissions' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-settings"{% if admin_page_slug == 'billing-settings' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'drop-off' %} open{% endif %}>
       <summary class="portal-nav-group-label">Settings</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-accounts{% if admin_page_slug == 'billing-settings' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-settings' %}">Member accounts</a></li>
         <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}">Billing permissions</a></li>
+        <li><a class="portal-nav-link{% if admin_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='drop-off' %}">Drop-off</a></li>
       </ul>
     </details>
 

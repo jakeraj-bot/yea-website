@@ -31,6 +31,7 @@
       if (program === "summer_camp" && !keys.length) keys = ["caldwell"];
       if (program === "before_care" && !keys.length) keys = ["school_18", "school_26"];
       if (program === "after_school" && !keys.length) keys = ["school_18", "school_26", "dale_ave"];
+      if (program === "drop_off" && !keys.length) keys = ["school_18", "school_26", "dale_ave"];
       if (allowed === null) {
         allowed = keys;
       } else {
@@ -54,6 +55,20 @@
     programInputs.forEach(function (input) {
       if (input.value === "summer_camp") input.checked = false;
     });
+  }
+
+  function enforceAfterSchoolDropOffExclusive(changedInput) {
+    if (!changedInput || !changedInput.checked) return;
+    if (changedInput.value === "drop_off") {
+      programInputs.forEach(function (input) {
+        if (input.value === "after_school") input.checked = false;
+      });
+    }
+    if (changedInput.value === "after_school") {
+      programInputs.forEach(function (input) {
+        if (input.value === "drop_off") input.checked = false;
+      });
+    }
   }
 
   function updateLocationOptions() {
@@ -108,6 +123,7 @@
     input.addEventListener("change", function (event) {
       enforceSummerCampExclusive(event.target);
       enforceNonSummerExclusive(event.target);
+      enforceAfterSchoolDropOffExclusive(event.target);
       updateLocationOptions();
     });
   });

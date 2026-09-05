@@ -156,6 +156,11 @@ urlpatterns = [
         views_actions.parent_dropin_book,
         name="portal_parent_dropin_book",
     ),
+    path(
+        "parent/drop-off/book/",
+        views_actions.parent_drop_off_book,
+        name="portal_parent_drop_off_book",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(
@@ -323,6 +328,9 @@ urlpatterns = [
     path("admin/waive-charge/", views_actions.admin_waive_charge, name="portal_admin_waive_charge"),
     path("admin/policy/create/", views_actions.admin_policy_create, name="portal_admin_policy_create"),
     path("admin/field-trip/save/", views_actions.admin_field_trip_save, name="portal_admin_field_trip_save"),
+    path("admin/drop-off/save/", views_actions.admin_drop_off_save, name="portal_admin_drop_off_save"),
+    path("admin/drop-off/slot/", views_actions.admin_drop_off_slot_save, name="portal_admin_drop_off_slot_save"),
+    path("staff/drop-off/mark-paid/", views_actions.staff_drop_off_mark_paid, name="portal_staff_drop_off_mark_paid"),
     path("admin/newsletter/delete/", views_actions.admin_newsletter_delete, name="portal_admin_newsletter_delete"),
     path(
         "admin/parent-preview/sample/",

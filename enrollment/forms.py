@@ -38,6 +38,11 @@ class ProgramStepForm(forms.Form):
                 "programs",
                 "Summer camp must be applied for separately from after-school and before care.",
             )
+        if "drop_off" in programs and "after_school" in programs:
+            self.add_error(
+                "programs",
+                "Choose drop-off or regular after-school, not both.",
+            )
         if not location:
             return cleaned
         from enrollment.locations import get_unit_for_enrollment_key, location_keys_for_program, unit_allows_program
@@ -61,6 +66,11 @@ class ProgramStepForm(forms.Form):
                     self.add_error(
                         "program_location",
                         f"{unit.name} is not available for before care. Before care waitlist is open at School 18 and School 26.",
+                    )
+                elif program == "drop_off":
+                    self.add_error(
+                        "program_location",
+                        f"{unit.name} is not available for drop-off. Choose an after-school location.",
                     )
                 else:
                     self.add_error(

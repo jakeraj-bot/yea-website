@@ -68,17 +68,30 @@ def _ensure_child_on_roster(app):
         if app.student_school and not child.school:
             child.school = app.student_school
             fields.append("school")
+        if app.program == "drop_off" and not child.is_drop_off:
+            child.is_drop_off = True
+            fields.append("is_drop_off")
         if fields:
             child.save(update_fields=fields)
+        if child.is_drop_off:
+            from portal.drop_off_services import sync_family_program_label
+
+            sync_family_program_label(family)
         return child
 
-    return PortalChild.objects.create(
+    child = PortalChild.objects.create(
         family=family,
         name=name,
         grade=app.get_student_grade_display(),
         school=app.student_school or "",
         is_active=True,
+        is_drop_off=app.program == "drop_off",
     )
+    if child.is_drop_off:
+        from portal.drop_off_services import sync_family_program_label
+
+        sync_family_program_label(family)
+    return child
 
 
 def _membership_fee_amount():

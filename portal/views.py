@@ -752,6 +752,13 @@ def _parent_context(request, page_title, page_slug="", **extra):
     from .staff_auth import get_portal_auth
 
     parent_signed_in = bool(account) and get_portal_auth(request) == "parent"
+    show_drop_off_tab = False
+    if account:
+        from .drop_off_services import family_has_drop_off
+
+        show_drop_off_tab = family_has_drop_off(account.family)
+    elif extra.get("admin_preview_sample"):
+        show_drop_off_tab = True
     support_view = None
     if account and parent_signed_in:
         from .support_view import active_support_view
@@ -776,6 +783,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         parent_can_manage_photo=bool(account) and not portal_preview_mode(),
         pending_profile_changes=pending_profile_changes,
         parent_support_view_active=bool(support_view),
+        show_drop_off_tab=show_drop_off_tab,
         **extra,
     )
 
@@ -903,6 +911,7 @@ def parent_page(request, page):
         "billing": "portal/parent/billing.html",
         "receipts": "portal/parent/receipts.html",
         "drop-in": "portal/parent/drop_in.html",
+        "drop-off": "portal/parent/drop_off.html",
         "field-trips": "portal/parent/field_trips.html",
         "account": "portal/parent/account.html",
         "tax-statements": "portal/parent/tax_statements.html",
@@ -934,6 +943,41 @@ def parent_page(request, page):
             context["field_trips"] = get_family_field_trips(account.family)
         else:
             context["field_trips"] = []
+    if page == "drop-off":
+        from datetime import date as date_cls
+
+        from .drop_off_services import family_has_drop_off, parent_drop_off_page
+
+        account = get_parent_account(request.user) if request.user.is_authenticated else None
+        if not context.get("show_drop_off_tab"):
+            return render(request, "portal/404.html", status=404)
+        selected = None
+        raw_date = request.GET.get("date")
+        if raw_date:
+            try:
+                selected = date.fromisoformat(raw_date)
+            except ValueError:
+                selected = None
+        if account and _parent_live_mode(request):
+            context["drop_off"] = parent_drop_off_page(account.family, selected)
+        else:
+            context["drop_off"] = {
+                "enabled": True,
+                "children": [{"id": 0, "name": "Sample child", "school": "School 18"}],
+                "settings": {
+                    "cutoff_display": "10:00 AM",
+                    "book_ahead_days": 14,
+                    "booking_open": True,
+                    "parent_note": "Book a day we have a spot, then pay the drop-off rate.",
+                },
+                "care_date": (selected or date_cls.today()).isoformat(),
+                "min_date": date_cls.today().isoformat(),
+                "max_date": date_cls.today().isoformat(),
+                "slots": [],
+                "window_error": "",
+                "bookings": [],
+                "has_paid": False,
+            }
     if page == "applications":
         account = get_parent_account(request.user) if request.user.is_authenticated else None
         if account:
@@ -1423,6 +1467,7 @@ def staff_page(request, page):
         "member-policies": "portal/staff/member_policies.html",
         "agency": "portal/staff/agency.html",
         "reports": "portal/staff/reports.html",
+        "drop-off-pickup": "portal/staff/drop_off_pickup.html",
         "messages": "portal/messages/messages.html",
         "incidents": "portal/staff/incidents.html",
         "support": "portal/support/support.html",
@@ -1522,6 +1567,22 @@ def staff_page(request, page):
             context["agency"]["agency_live"] = False
     if page == "reports":
         context["reports"] = STAFF_REPORTS
+    if page == "drop-off-pickup":
+        from .drop_off_services import drop_off_member_rows, pickup_rows
+
+        selected = None
+        raw_date = request.GET.get("date")
+        if raw_date:
+            try:
+                selected = date.fromisoformat(raw_date)
+            except ValueError:
+                selected = None
+        care_date = selected or date.today()
+        unit = _staff_unit(request)
+        context["pickup_date"] = care_date.isoformat()
+        context["pickup_rows"] = pickup_rows(unit=unit, care_date=care_date)
+        context["drop_off_members"] = drop_off_member_rows(unit=unit)
+        context["drop_off_scope"] = unit.name if unit else "Your unit"
     if page == "dashboard":
         unit = _staff_unit(request)
         program = get_active_program(unit) if unit else None
@@ -2772,6 +2833,8 @@ def admin_page(request, page):
         "collections": "portal/admin/collections.html",
         "member-policies": "portal/admin/member_policies.html",
         "field-trips": "portal/admin/field_trips.html",
+        "drop-off": "portal/admin/drop_off_settings.html",
+        "drop-off-pickup": "portal/staff/drop_off_pickup.html",
         "checkin-settings": "portal/admin/checkin_settings.html",
         "reports": "portal/admin/reports.html",
         "messages": "portal/messages/messages.html",
@@ -3201,6 +3264,25 @@ def admin_page(request, page):
         else:
             context["units"] = UNITS
             context["field_trips"] = []
+    if page == "drop-off":
+        from .drop_off_services import admin_settings_page
+
+        context.update(admin_settings_page())
+    if page == "drop-off-pickup":
+        from .drop_off_services import drop_off_member_rows, pickup_rows
+
+        selected = None
+        raw_date = request.GET.get("date")
+        if raw_date:
+            try:
+                selected = date.fromisoformat(raw_date)
+            except ValueError:
+                selected = None
+        care_date = selected or date.today()
+        context["pickup_date"] = care_date.isoformat()
+        context["pickup_rows"] = pickup_rows(care_date=care_date)
+        context["drop_off_members"] = drop_off_member_rows()
+        context["drop_off_scope"] = "All units"
     if page == "collections":
         if context.get("portal_live"):
             from .admin_services import get_admin_families_live
@@ -3337,6 +3419,7 @@ PARENT_PREVIEW_TEMPLATES = {
     "billing": "portal/parent/billing.html",
     "receipts": "portal/parent/receipts.html",
     "drop-in": "portal/parent/drop_in.html",
+    "drop-off": "portal/parent/drop_off.html",
     "field-trips": "portal/parent/field_trips.html",
     "account": "portal/parent/account.html",
     "tax-statements": "portal/parent/tax_statements.html",
@@ -3433,6 +3516,20 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             from .field_trip_services import get_family_field_trips
 
             context["field_trips"] = get_family_field_trips(family)
+        from .drop_off_services import family_has_drop_off, parent_drop_off_page
+
+        context["show_drop_off_tab"] = family_has_drop_off(family)
+        if page == "drop-off":
+            if not context["show_drop_off_tab"]:
+                return render(request, "portal/404.html", status=404)
+            selected = None
+            raw_date = request.GET.get("date")
+            if raw_date:
+                try:
+                    selected = date.fromisoformat(raw_date)
+                except ValueError:
+                    selected = None
+            context["drop_off"] = parent_drop_off_page(family, selected)
         if page == "applications" and account:
             context["parent_applications"] = parent_application_list_items(account.family)
         if page == "policies":
