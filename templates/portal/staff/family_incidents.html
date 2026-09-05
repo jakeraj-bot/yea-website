@@ -15,7 +15,7 @@
     </p>
     {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
-    <h1>{{ profile.family_name }} family</h1>
+    <h1>{{ account_heading_name|default:profile.family_name }} family</h1>
     <p class="lead">Incidents &amp; accidents for children in this household</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}

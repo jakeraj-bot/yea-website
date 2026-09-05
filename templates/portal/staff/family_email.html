@@ -16,7 +16,7 @@
     </p>
     {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
-    <h1>Email parent — {{ profile.family_name }}</h1>
+    <h1>Email parent — {{ account_heading_name|default:profile.family_name }}</h1>
     <p class="lead">Send a message to this family's parent email.</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}

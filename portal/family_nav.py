@@ -29,7 +29,12 @@ def family_account_url(area, tab, family_slug, family_id=None):
 def _nav_entry(area, tab, family):
     family_id = getattr(family, "pk", None) or family.get("id")
     slug = getattr(family, "slug", None) or family.get("slug")
-    name = getattr(family, "name", None) or family.get("name")
+    family_name = getattr(family, "name", None) or family.get("name")
+    if hasattr(family, "children"):
+        child_names = [child.name for child in family.children.all() if getattr(child, "is_active", True)]
+        name = " · ".join(child_names) or family_name
+    else:
+        name = family.get("child_label") or family_name
     return {
         "id": family_id,
         "slug": slug,
@@ -45,7 +50,7 @@ def _demo_family_list(area):
 
 
 def member_families_for_nav(unit=None):
-    qs = PortalFamily.objects.select_related("unit")
+    qs = PortalFamily.objects.select_related("unit").prefetch_related("children")
     if unit is not None:
         qs = qs.filter(unit=unit)
     return list(qs.order_by("unit__name", "name", "pk"))

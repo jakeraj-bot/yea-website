@@ -317,6 +317,9 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
     extra.setdefault("parent_email", parent_email)
     extra.setdefault("family_id", family_id or (family_meta or {}).get("id"))
     extra.setdefault("email_send_url", "portal_staff_family_email_send")
+    from .family_list import account_child_context
+
+    extra.update(account_child_context(profile, family_meta, extra.get("billing")))
     extra.update(
         _family_nav_context(
             "staff",
@@ -371,6 +374,9 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
         "email_send_url",
         "portal_admin_family_email_send" if area == "admin" else "portal_staff_family_email_send",
     )
+    from .family_list import account_child_context
+
+    extra.update(account_child_context(profile, family_meta, extra.get("billing")))
     extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
     extra.setdefault("family_incident_count", len(family_incidents))
     extra.update(
@@ -2059,6 +2065,7 @@ def admin_data_report(request, report_slug):
         "agencies": [],
         "funds": [],
         "statuses": [],
+        "status_choices": [],
     }
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")

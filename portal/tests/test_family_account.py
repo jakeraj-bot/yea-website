@@ -30,6 +30,8 @@ class FamilyAccountHubTests(TestCase):
         self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
         self.family = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs")
         self.next_family = PortalFamily.objects.create(unit=self.unit, slug="martinez", name="Martinez")
+        PortalChild.objects.create(family=self.family, name="Jordan Jacobs", is_active=True)
+        PortalChild.objects.create(family=self.next_family, name="Sofia Martinez", is_active=True)
         _make_application(self.family)
         self.family.enrollment_applications.update(primary_email="jakera@example.com")
         self.admin = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
@@ -63,6 +65,8 @@ class FamilyAccountHubTests(TestCase):
         response = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Family account")
+        self.assertContains(response, "Jordan Jacobs")
+        self.assertContains(response, "portal-account-children")
         self.assertContains(response, "portal-family-tabs-colorful")
         for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup", "Parent view"):
             self.assertContains(response, label)
@@ -327,14 +331,14 @@ class FamilyNeighborNavTests(TestCase):
         middle = self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}))
         self.assertEqual(middle.status_code, 200)
         self.assertContains(middle, "portal-family-neighbor-nav")
-        self.assertContains(middle, "Next: Williams")
+        self.assertContains(middle, "Next: Ada Williams")
         self.assertContains(middle, reverse("portal_staff_family_detail", kwargs={"family_slug": "williams"}))
-        self.assertContains(middle, "Previous: Chen")
-        self.assertNotContains(middle, "Next: Lee")
+        self.assertContains(middle, "Previous: Ada Chen")
+        self.assertNotContains(middle, "Next: Ada Lee")
 
         last = self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "williams"}))
         self.assertEqual(last.status_code, 200)
-        self.assertContains(last, "Previous: Jacobs")
+        self.assertContains(last, "Previous: Ada Jacobs")
         self.assertNotContains(last, "Next:")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
@@ -344,7 +348,7 @@ class FamilyNeighborNavTests(TestCase):
         self.assertEqual(billing.status_code, 200)
         next_billing = reverse("portal_staff_family_billing", kwargs={"family_slug": "jacobs"})
         self.assertContains(billing, f'href="{next_billing}')
-        self.assertContains(billing, "Next: Jacobs")
+        self.assertContains(billing, "Next: Ada Jacobs")
         profile_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"})
         neighbor = billing.context["family_next"]
         self.assertEqual(neighbor["url"], next_billing)
@@ -359,7 +363,7 @@ class FamilyNeighborNavTests(TestCase):
         )
         self.assertEqual(billing.status_code, 200)
         next_path = reverse("portal_admin_family_billing", kwargs={"family_slug": "lee"})
-        self.assertContains(billing, "Next: Lee")
+        self.assertContains(billing, "Next: Ada Lee")
         self.assertContains(billing, f"{next_path}?id={self.lee.pk}")
         self.assertEqual(
             billing.context["family_next"]["url"],
@@ -371,7 +375,7 @@ class FamilyNeighborNavTests(TestCase):
             {"id": self.lee.pk},
         )
         self.assertEqual(last.status_code, 200)
-        self.assertContains(last, "Previous: Williams")
+        self.assertContains(last, "Previous: Ada Williams")
         self.assertNotContains(last, "Next:")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
@@ -399,4 +403,4 @@ class FamilyNeighborNavTests(TestCase):
         self.assertEqual(response.status_code, 200)
         next_path = reverse("portal_admin_parent_preview", kwargs={"family_slug": "jacobs"})
         self.assertContains(response, f"{next_path}?id={self.jacobs.pk}")
-        self.assertContains(response, "Next: Jacobs")
+        self.assertContains(response, "Next: Ada Jacobs")

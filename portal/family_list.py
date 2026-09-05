@@ -107,26 +107,73 @@ def demo_family_list_rows(area):
     return expand_demo_families(FAMILIES)
 
 
+def child_names_label(names):
+    unique = []
+    seen = set()
+    for name in names or []:
+        label = (name.get("name") if isinstance(name, dict) else name) or ""
+        label = str(label).strip()
+        if not label or label == "—":
+            continue
+        key = label.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(label)
+    return unique, " · ".join(unique)
+
+
+def account_child_context(profile=None, family_meta=None, billing=None):
+    """Child names for family-account headings so staff can see whose account it is."""
+    names = []
+    if family_meta and family_meta.get("children"):
+        names = family_meta["children"]
+    elif profile and profile.get("children"):
+        names = profile["children"]
+    elif billing and billing.get("children"):
+        names = billing["children"]
+    unique, label = child_names_label(names)
+    family_name = (
+        (profile or {}).get("family_name")
+        or (family_meta or {}).get("name")
+        or (billing or {}).get("family_name")
+        or ""
+    )
+    return {
+        "account_child_names": unique,
+        "account_child_label": label,
+        "account_heading_name": label or family_name,
+        "account_family_name": family_name,
+    }
+
+
 def unique_households_from_rows(rows):
     """One household per family, in Families table order (first child row wins)."""
     households = []
-    seen = set()
+    seen = {}
     for row in rows:
         family_id = row.get("id")
         if family_id is not None:
             key = ("id", family_id)
         else:
             key = ("slug", row.get("unit"), row.get("slug"))
-        if key in seen:
-            continue
-        seen.add(key)
-        households.append(
-            {
+        family_name = row.get("name") or row.get("family_name") or row.get("slug")
+        if key not in seen:
+            household = {
                 "id": family_id,
                 "slug": row["slug"],
-                "name": row.get("name") or row.get("family_name") or row["slug"],
+                "family_name": family_name,
+                "children": [],
+                "name": family_name,
             }
-        )
+            seen[key] = household
+            households.append(household)
+        child = (row.get("child_name") or "").strip()
+        if child and child != "—" and child not in seen[key]["children"]:
+            seen[key]["children"].append(child)
+    for household in households:
+        if household["children"]:
+            household["name"] = " · ".join(household["children"])
     return households
 
 
