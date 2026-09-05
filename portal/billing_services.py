@@ -6,7 +6,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from .demo_data import prepare_billing_preview
-from .models import PortalAgencyProfile, PortalChild, PortalFamily, PortalLedgerEntry
+from .models import (
+    PortalAgencyProfile,
+    PortalChild,
+    PortalFamily,
+    PortalLedgerEntry,
+    PortalScholarshipAssignment,
+    PortalScholarshipFund,
+)
 from .parent_services import get_billing_live
 
 WEEKDAYS = (
@@ -21,12 +28,12 @@ WEEKDAYS = (
 MONTH_DAYS = [(0, "Last day of month")] + [(day, str(day)) for day in range(1, 32)]
 
 
-def _parse_amount(value):
+def _parse_amount(value, allow_zero=False):
     try:
         amount = Decimal(str(value).replace(",", "").strip())
     except (InvalidOperation, TypeError):
         raise ValueError("Enter a valid dollar amount.")
-    if amount <= 0:
+    if amount < 0 or (amount == 0 and not allow_zero):
         raise ValueError("Amount must be greater than zero.")
     return amount.quantize(Decimal("0.01"))
 
@@ -94,6 +101,68 @@ def post_credit(family, child_name, amount, entry_date, reason):
     )
     family.balance = family.balance - amount
     family.save(update_fields=["balance"])
+
+
+@transaction.atomic
+def post_discount(family, child_name, amount, entry_date, description, is_manual=False):
+    amount = _parse_amount(amount)
+    PortalLedgerEntry.objects.create(
+        family=family,
+        child_name=child_name,
+        date=entry_date,
+        entry_type="discount",
+        description=description.strip() or "Scholarship discount",
+        amount=-amount,
+        is_manual=is_manual,
+    )
+    family.balance = family.balance - amount
+    family.save(update_fields=["balance"])
+
+
+def active_scholarship_for_child(child, on_date=None):
+    on_date = on_date or timezone.localdate()
+    assignments = child.scholarships.select_related("fund").all()
+    for row in assignments:
+        if (row.status or "").lower() != "active":
+            continue
+        if row.start_date and row.start_date > on_date:
+            continue
+        if row.end_date and row.end_date < on_date:
+            continue
+        return row
+    return None
+
+
+def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, start_date=None):
+    fund = PortalScholarshipFund.objects.filter(pk=fund_id, is_active=True).first()
+    if not fund:
+        raise ValueError("Select a scholarship type. Add it first on the Scholarships page.")
+    full = _parse_amount(full_rate)
+    parent = _parse_amount(parent_amount, allow_zero=True)
+    if parent > full:
+        raise ValueError("Family portion cannot be more than the full program rate.")
+    assignment = (
+        child.scholarships.filter(status="Active").select_related("fund").first()
+        or child.scholarships.filter(fund=fund).first()
+    )
+    if assignment:
+        assignment.fund = fund
+        assignment.full_rate = full
+        assignment.parent_amount = parent
+        assignment.status = "Active"
+        if start_date:
+            assignment.start_date = start_date
+        assignment.save()
+    else:
+        assignment = PortalScholarshipAssignment.objects.create(
+            child=child,
+            fund=fund,
+            full_rate=full,
+            parent_amount=parent,
+            start_date=start_date,
+            status="Active",
+        )
+    return assignment
 
 
 @transaction.atomic
@@ -392,12 +461,26 @@ def update_child_billing_plan(
     next_charge_date=None,
     charge_weekday=None,
     charge_month_day=None,
+    scholarship_fund_id=None,
+    scholarship_full_rate=None,
+    scholarship_parent_amount=None,
 ):
     child = family.children.filter(name=child_name, is_active=True).first()
     if not child:
         raise ValueError("Child not found on this family account.")
     child.billing_plan = plan.strip() or child.billing_plan
-    if amount not in (None, ""):
+    billing_label = (billing_type or "").strip()
+    if billing_label.lower() == "scholarship":
+        parent_amount = scholarship_parent_amount if scholarship_parent_amount not in (None, "") else amount
+        assignment = apply_scholarship_to_child_plan(
+            child,
+            scholarship_fund_id,
+            scholarship_full_rate,
+            parent_amount,
+            start_date=timezone.localdate(),
+        )
+        child.billing_amount = assignment.parent_amount
+    elif amount not in (None, ""):
         child.billing_amount = _parse_amount(amount)
     if auto_charge is not None:
         child.auto_charge = bool(auto_charge)
@@ -487,15 +570,36 @@ def run_due_plan_charges(today=None, child=None):
                             month_day=locked.charge_month_day,
                         )
                         continue
-                    post_charge(
-                        locked.family,
-                        locked.name,
-                        "tuition",
-                        locked.billing_amount,
-                        charge_date,
-                        f"{locked.billing_plan or 'Plan'} tuition — {locked.name}",
-                        is_manual=False,
-                    )
+                    scholarship = active_scholarship_for_child(locked, charge_date)
+                    if scholarship and scholarship.full_rate:
+                        post_charge(
+                            locked.family,
+                            locked.name,
+                            "tuition",
+                            scholarship.full_rate,
+                            charge_date,
+                            f"{locked.billing_plan or 'Plan'} tuition — {locked.name}",
+                            is_manual=False,
+                        )
+                        discount = scholarship.full_rate - scholarship.parent_amount
+                        if discount > 0:
+                            post_discount(
+                                locked.family,
+                                locked.name,
+                                discount,
+                                charge_date,
+                                f"{scholarship.fund.name} scholarship",
+                            )
+                    else:
+                        post_charge(
+                            locked.family,
+                            locked.name,
+                            "tuition",
+                            locked.billing_amount,
+                            charge_date,
+                            f"{locked.billing_plan or 'Plan'} tuition — {locked.name}",
+                            is_manual=False,
+                        )
                     locked.last_auto_charge_date = charge_date
                     locked.next_charge_date = next_plan_charge_date(
                         charge_date,

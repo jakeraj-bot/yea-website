@@ -531,7 +531,17 @@ def save_tax_settings(data):
 
 def get_scholarships_admin():
     ensure_admin_config_seeded()
-    funds = list(PortalScholarshipFund.objects.filter(is_active=True).values("pk", "name", "description"))
+    funds = [
+        {
+            "pk": fund.pk,
+            "id": fund.pk,
+            "name": fund.name,
+            "description": fund.description,
+            "active": fund.is_active,
+            "is_active": fund.is_active,
+        }
+        for fund in PortalScholarshipFund.objects.order_by("name")
+    ]
     assignments = []
     for row in PortalScholarshipAssignment.objects.select_related("child", "child__family", "fund", "child__family__unit"):
         discount = row.full_rate - row.parent_amount
@@ -578,14 +588,51 @@ def save_scholarship_assignment(data, assignment_pk=None):
         "status": data.get("status", "Active"),
     }
     if assignment_pk:
-        row = PortalScholarshipAssignment.objects.filter(pk=assignment_pk).first()
-        if not row:
+        assignment = PortalScholarshipAssignment.objects.filter(pk=assignment_pk).first()
+        if not assignment:
             raise ValueError("Assignment not found.")
         for k, v in defaults.items():
-            setattr(row, k, v)
-        row.save()
-        return row
-    return PortalScholarshipAssignment.objects.create(**defaults)
+            setattr(assignment, k, v)
+        assignment.save()
+    else:
+        assignment = PortalScholarshipAssignment.objects.create(**defaults)
+    _sync_child_plan_from_scholarship(assignment)
+    return assignment
+
+
+def _sync_child_plan_from_scholarship(assignment):
+    child = assignment.child
+    child.billing_amount = assignment.parent_amount
+    if not (child.billing_plan or "").strip():
+        child.billing_plan = "Weekly"
+    child.save(update_fields=["billing_amount", "billing_plan"])
+    family = child.family
+    family.billing_type = "Scholarship"
+    family.save(update_fields=["billing_type"])
+    return child
+
+
+def save_scholarship_fund(data, fund_pk=None):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise ValueError("Enter a scholarship type name.")
+    defaults = {
+        "name": name,
+        "description": (data.get("description") or "").strip(),
+        "is_active": data.get("is_active", "on") == "on" if "is_active" in data else True,
+    }
+    if fund_pk:
+        fund = PortalScholarshipFund.objects.filter(pk=fund_pk).first()
+        if not fund:
+            raise ValueError("Scholarship type not found.")
+        for key, value in defaults.items():
+            setattr(fund, key, value)
+        fund.save()
+        return fund
+    existing = PortalScholarshipFund.objects.filter(name__iexact=name).first()
+    if existing:
+        raise ValueError("A scholarship type with that name already exists.")
+    return PortalScholarshipFund.objects.create(**defaults)
 
 
 def get_checkin_settings_admin():

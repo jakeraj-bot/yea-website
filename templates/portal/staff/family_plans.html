@@ -49,7 +49,7 @@
           <dt>Balance</dt><dd>${{ child.balance }}</dd>
         </dl>
         {% if portal_area == 'admin' %}
-        <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}" data-auto-charge="{% if child.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ child.next_charge_date|default:'' }}" data-weekday="{{ child.charge_weekday }}" data-month-day="{{ child.charge_month_day }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
+        <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}" data-auto-charge="{% if child.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ child.next_charge_date|default:'' }}" data-weekday="{{ child.charge_weekday }}" data-month-day="{{ child.charge_month_day }}" data-scholarship-fund="{{ child.scholarship_fund_id|default:'' }}" data-full-rate="{{ child.full_rate|default:'' }}" data-parent-amount="{{ child.parent_amount|default:'' }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
         {% endif %}
       </article>
       {% empty %}
@@ -92,7 +92,25 @@
             <option value="Monthly">Monthly</option>
           </select>
         </div>
-        <div class="form-group portal-form-full">
+        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
+          <label for="plan-scholarship-fund">Scholarship type</label>
+          <select id="plan-scholarship-fund" name="scholarship_fund_id" class="portal-select">
+            <option value="">Select scholarship…</option>
+            {% for fund in scholarship_funds %}
+            <option value="{{ fund.pk }}">{{ fund.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="form-note">Add new scholarship types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
+        </div>
+        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
+          <label for="plan-full-rate">Full program rate ($)</label>
+          <input id="plan-full-rate" name="scholarship_full_rate" type="text" class="portal-input" placeholder="70.00">
+        </div>
+        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
+          <label for="plan-parent-amount">Family pays ($)</label>
+          <input id="plan-parent-amount" name="scholarship_parent_amount" type="text" class="portal-input" placeholder="50.00">
+        </div>
+        <div class="form-group portal-form-full plan-amount-field">
           <label for="plan-amount">Amount ($)</label>
           <input id="plan-amount" name="billing_amount" type="text" class="portal-input" placeholder="0.00">
         </div>
@@ -232,6 +250,17 @@
     if (weekly) weekly.hidden = isMonthly;
     if (monthly) monthly.hidden = !isMonthly;
   }
+  function toggleScholarshipFields() {
+    var typeSelect = document.getElementById("plan-type");
+    var isScholarship = typeSelect && typeSelect.value === "Scholarship";
+    document.querySelectorAll(".plan-scholarship-fields").forEach(function (el) {
+      el.hidden = !isScholarship;
+    });
+    var amountField = document.querySelector(".plan-amount-field");
+    if (amountField) amountField.hidden = !!isScholarship;
+    var fund = document.getElementById("plan-scholarship-fund");
+    if (fund) fund.required = !!isScholarship;
+  }
   document.querySelectorAll(".edit-plan-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var panel = document.getElementById("edit-plan-panel");
@@ -251,7 +280,14 @@
       if (nextCharge) nextCharge.value = btn.getAttribute("data-next-charge") || "";
       if (weekday) weekday.value = btn.getAttribute("data-weekday") || "";
       if (monthDay) monthDay.value = btn.getAttribute("data-month-day") || "";
+      var fundSelect = document.getElementById("plan-scholarship-fund");
+      var fullRate = document.getElementById("plan-full-rate");
+      var parentAmount = document.getElementById("plan-parent-amount");
+      if (fundSelect) fundSelect.value = btn.getAttribute("data-scholarship-fund") || "";
+      if (fullRate) fullRate.value = (btn.getAttribute("data-full-rate") || "").replace(/[^0-9.]/g, "");
+      if (parentAmount) parentAmount.value = (btn.getAttribute("data-parent-amount") || "").replace(/[^0-9.]/g, "");
       togglePlanRepeat();
+      toggleScholarshipFields();
       if (panel) panel.hidden = false;
     });
   });
@@ -278,7 +314,9 @@
   }
   document.getElementById("plan-next-charge")?.addEventListener("change", syncRepeatFromDate);
   document.getElementById("plan-name")?.addEventListener("change", togglePlanRepeat);
+  document.getElementById("plan-type")?.addEventListener("change", toggleScholarshipFields);
   togglePlanRepeat();
+  toggleScholarshipFields();
 })();
 </script>
 {% endblock %}

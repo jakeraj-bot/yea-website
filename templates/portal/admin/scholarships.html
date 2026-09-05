@@ -19,7 +19,28 @@
     </div>
 
     <div class="portal-toolbar">
-      <button type="button" class="btn btn-primary" id="toggle-assign-scholarship">+ Assign scholarship</button>
+      <button type="button" class="btn btn-primary" id="toggle-add-fund">+ Add scholarship type</button>
+      <button type="button" class="btn btn-secondary" id="toggle-assign-scholarship">+ Assign to weekly plan</button>
+    </div>
+
+    <div class="portal-panel card" id="add-fund-panel" hidden>
+      <h2>Add scholarship type</h2>
+      <p class="form-note">Create the scholarship here first. Then add it to a child's weekly plan from this page or from the family Plans tab.</p>
+      <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_scholarship_fund_save' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="fund-name">Scholarship name</label>
+          <input id="fund-name" name="name" type="text" class="portal-input" required maxlength="120" placeholder="YEA General Scholarship">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="fund-description">Description</label>
+          <input id="fund-description" name="description" type="text" class="portal-input" maxlength="255" placeholder="Need-based after-school award">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save scholarship type</button>
+          <button type="button" class="btn btn-secondary" id="cancel-add-fund">Cancel</button>
+        </div>
+      </form>
     </div>
 
     <div class="portal-panel card" id="assign-scholarship-panel" hidden>
@@ -39,7 +60,9 @@
           <label for="sch-fund">Scholarship fund</label>
           <select id="sch-fund" name="fund_id" class="portal-select" required>
             {% for fund in scholarship_funds %}
-            <option value="{{ fund.pk }}">{{ fund.name }}</option>
+            {% if fund.active %}
+            <option value="{{ fund.pk|default:fund.id }}">{{ fund.name }}</option>
+            {% endif %}
             {% endfor %}
           </select>
         </div>
@@ -114,7 +137,7 @@
             <td><strong>{{ fund.name }}</strong></td>
             <td>{{ fund.description }}</td>
             <td>{% if fund.active %}Active{% else %}Inactive{% endif %}</td>
-            <td><button type="button" class="btn btn-secondary btn-sm" disabled>Edit</button></td>
+            <td></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -128,6 +151,11 @@
 {% block extra_js %}
 <script>
 (function () {
+  var fundPanel = document.getElementById("add-fund-panel");
+  var fundToggle = document.getElementById("toggle-add-fund");
+  var fundCancel = document.getElementById("cancel-add-fund");
+  if (fundToggle && fundPanel) fundToggle.addEventListener("click", function () { fundPanel.hidden = !fundPanel.hidden; });
+  if (fundCancel && fundPanel) fundCancel.addEventListener("click", function () { fundPanel.hidden = true; });
   var panel = document.getElementById("assign-scholarship-panel");
   var toggle = document.getElementById("toggle-assign-scholarship");
   var cancel = document.getElementById("cancel-assign-scholarship");
