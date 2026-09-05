@@ -17,7 +17,7 @@
     </p>
     {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
-    <h1>{{ family.name }} — applications</h1>
+    <h1>{{ account_heading_name|default:family.name }} — applications</h1>
     <p class="lead">{{ family.unit.name }} · {{ family.primary_contact }}</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}

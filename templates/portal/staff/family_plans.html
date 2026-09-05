@@ -17,7 +17,7 @@
     </p>
     {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
-    <h1>Member plans — {{ billing.family_name }}</h1>
+    <h1>Member plans — {{ account_heading_name|default:billing.family_name }}</h1>
     <p class="lead">Billing plan, auto-charge, and discounts for each child</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}

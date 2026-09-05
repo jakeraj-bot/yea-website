@@ -13,6 +13,7 @@ from .models import (
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
+    PortalPayment,
     PortalScholarshipAssignment,
     PortalUnit,
 )
@@ -217,12 +218,175 @@ def ledger_report_rows(filters=None):
 
 
 def payment_report_rows(filters=None):
-    data = ledger_report_rows({**(filters or {}), "entry_type": "payment"})
-    total = Decimal("0")
-    for row in data["rows"]:
-        total += abs(Decimal(row["amount"]))
-    data["total_payments"] = _money(total)
-    return data
+    filters = filters or {}
+    query = (filters.get("q") or "").strip()
+    unit = (filters.get("unit") or "").strip()
+    start = parse_date(filters.get("start") or "")
+    end = parse_date(filters.get("end") or "")
+    rows = []
+    seen_keys = set()
+
+    payments = PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
+    if unit:
+        payments = payments.filter(family__unit__slug=unit)
+    if query:
+        payments = payments.filter(
+            Q(family__name__icontains=query)
+            | Q(family__primary_contact__icontains=query)
+            | Q(dropin_child__icontains=query)
+            | Q(method_label__icontains=query)
+        )
+    for payment in payments:
+        if is_placeholder_unit(payment.family.unit):
+            continue
+        paid_on = (payment.paid_at.date() if payment.paid_at else payment.created_at.date()) if payment.paid_at or payment.created_at else None
+        if start and paid_on and paid_on < start:
+            continue
+        if end and paid_on and paid_on > end:
+            continue
+        children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
+        child = payment.dropin_child or (" · ".join(children) if children else "—")
+        key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
+        seen_keys.add(key)
+        method = payment.method_label or ("Card" if payment.stripe_session_id or payment.stripe_payment_intent_id else "Recorded")
+        if payment.status == PortalPayment.STATUS_PENDING:
+            status = "Waiting for card payment"
+        elif payment.status == PortalPayment.STATUS_FAILED:
+            status = "Failed"
+        else:
+            status = "Paid"
+        rows.append(
+            {
+                "date": paid_on.isoformat() if paid_on else "—",
+                "child": child,
+                "family": payment.family.name,
+                "family_slug": payment.family.slug,
+                "family_id": payment.family_id,
+                "unit": payment.family.unit.name,
+                "paid_by": payment.family.primary_contact or payment.family.name,
+                "amount": _money(payment.amount),
+                "method": method,
+                "status": status,
+            }
+        )
+
+    ledger = PortalLedgerEntry.objects.filter(entry_type="payment").select_related("family", "family__unit").order_by("-date", "-created_at")
+    if unit:
+        ledger = ledger.filter(family__unit__slug=unit)
+    if start:
+        ledger = ledger.filter(date__gte=start)
+    if end:
+        ledger = ledger.filter(date__lte=end)
+    if query:
+        ledger = ledger.filter(
+            Q(family__name__icontains=query)
+            | Q(child_name__icontains=query)
+            | Q(description__icontains=query)
+            | Q(family__primary_contact__icontains=query)
+        )
+    for entry in ledger:
+        if is_placeholder_unit(entry.family.unit):
+            continue
+        key = (entry.family_id, entry.date.isoformat(), _money(abs(entry.amount)))
+        if key in seen_keys:
+            continue
+        rows.append(
+            {
+                "date": entry.date.isoformat(),
+                "child": entry.child_name or "—",
+                "family": entry.family.name,
+                "family_slug": entry.family.slug,
+                "family_id": entry.family_id,
+                "unit": entry.family.unit.name,
+                "paid_by": entry.family.primary_contact or entry.family.name,
+                "amount": _money(abs(entry.amount)),
+                "method": entry.description or "In-person / ledger",
+                "status": "Paid",
+            }
+        )
+    rows.sort(key=lambda row: row["date"], reverse=True)
+    total = sum((Decimal(row["amount"]) for row in rows), Decimal("0"))
+    return {"rows": rows, "total_payments": _money(total)}
+
+
+def stripe_settlement_rows(filters=None):
+    from .stripe_services import bank_status_label, refresh_stripe_settlements, stripe_configured, stripe_payout_rows
+
+    filters = filters or {}
+    query = (filters.get("q") or "").strip()
+    unit = (filters.get("unit") or "").strip()
+    start = parse_date(filters.get("start") or "")
+    end = parse_date(filters.get("end") or "")
+    status_filter = (filters.get("status") or "").strip()
+    payments = list(
+        PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
+    )
+    refresh_stripe_settlements(payments)
+    rows = []
+    for payment in payments:
+        if is_placeholder_unit(payment.family.unit):
+            continue
+        if unit and payment.family.unit.slug != unit:
+            continue
+        paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+        if start and paid_on < start:
+            continue
+        if end and paid_on > end:
+            continue
+        children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
+        child = payment.dropin_child or (" · ".join(children) if children else "—")
+        bank_status = bank_status_label(payment.stripe_bank_status)
+        if query:
+            haystack = " ".join(
+                [
+                    payment.family.name,
+                    payment.family.primary_contact or "",
+                    child,
+                    bank_status,
+                    payment.method_label or "",
+                ]
+            ).lower()
+            if query.lower() not in haystack:
+                continue
+        if status_filter and payment.stripe_bank_status != status_filter:
+            continue
+        if payment.status == PortalPayment.STATUS_PENDING:
+            card_status = "Waiting for card"
+        elif payment.status == PortalPayment.STATUS_FAILED:
+            card_status = "Failed"
+        else:
+            card_status = "Paid"
+        rows.append(
+            {
+                "date": paid_on.isoformat(),
+                "child": child,
+                "family": payment.family.name,
+                "family_slug": payment.family.slug,
+                "family_id": payment.family_id,
+                "unit": payment.family.unit.name,
+                "paid_by": payment.family.primary_contact or payment.family.name,
+                "amount": _money(payment.amount),
+                "method": payment.method_label or ("Card" if payment.stripe_session_id else "Recorded"),
+                "status": card_status,
+                "bank_status": bank_status,
+                "bank_date": payment.stripe_bank_date.isoformat() if payment.stripe_bank_date else "—",
+            }
+        )
+    if stripe_configured() and not status_filter:
+        rows.extend(stripe_payout_rows())
+        rows.sort(key=lambda row: row["date"], reverse=True)
+    return {
+        "rows": rows,
+        "statuses": [
+            ("waiting_for_card", "Waiting for card payment"),
+            ("received_by_stripe", "Stripe received — waiting to become available"),
+            ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
+            ("in_transit", "On the way to the bank"),
+            ("in_bank", "Paid out to bank"),
+            ("not_stripe", "Not Stripe — recorded in portal"),
+            ("unknown", "Bank status unavailable"),
+        ],
+    }
 
 
 def balance_report_rows(filters=None):
@@ -478,18 +642,37 @@ ADMIN_DATA_REPORTS = {
         "filters": ("q", "unit"),
     },
     "payments": {
-        "title": "Payments collected",
-        "lead": "Payments posted to family ledgers.",
+        "title": "Who paid what",
+        "lead": "Every payment — who paid, which child, how much, and on what day.",
         "columns": [
             ("date", "Date"),
-            ("family", "Family"),
-            ("unit", "Unit"),
             ("child", "Child"),
-            ("description", "Description"),
+            ("family", "Family"),
+            ("paid_by", "Paid by"),
+            ("unit", "Unit"),
             ("amount", "Amount"),
+            ("method", "Method"),
+            ("status", "Status"),
         ],
-        "filename": "payments-collected.csv",
+        "filename": "payments-who-paid.csv",
         "filters": ("q", "unit", "start", "end"),
+    },
+    "stripe-settlement": {
+        "title": "Stripe & bank payouts",
+        "lead": "Whether Stripe has the payment, or it is still waiting to reach the bank.",
+        "columns": [
+            ("date", "Date paid"),
+            ("child", "Child"),
+            ("family", "Family"),
+            ("paid_by", "Paid by"),
+            ("amount", "Amount"),
+            ("method", "Method"),
+            ("status", "Card / payment"),
+            ("bank_status", "Bank / Stripe"),
+            ("bank_date", "Expected in bank"),
+        ],
+        "filename": "stripe-bank-payouts.csv",
+        "filters": ("q", "unit", "status", "start", "end"),
     },
     "plans": {
         "title": "Billing plans",
@@ -616,6 +799,12 @@ def build_admin_report(slug, filters=None):
         data = payment_report_rows(filters)
         rows = data["rows"]
         extra["summary"] = f"{len(rows)} payments · ${data['total_payments']} collected"
+    elif slug == "stripe-settlement":
+        data = stripe_settlement_rows(filters)
+        rows = data["rows"]
+        extra["summary"] = f"{len(rows)} Stripe and bank rows"
+        extra["statuses"] = [value for value, _label in data["statuses"]]
+        extra["status_choices"] = data["statuses"]
     elif slug == "plans":
         data = billing_plan_rows(filters)
         rows = data["rows"]

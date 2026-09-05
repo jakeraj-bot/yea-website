@@ -291,3 +291,190 @@ def refund_stripe_payment(payment, amount):
     except Exception as exc:
         raise ValueError(f"Stripe could not refund this payment: {exc}") from exc
     return amount
+
+
+BANK_STATUS_LABELS = {
+    "waiting_for_card": "Waiting for parent to finish card payment",
+    "received_by_stripe": "Stripe received — waiting to become available",
+    "waiting_for_bank": "Available in Stripe — waiting for bank payout",
+    "in_transit": "On the way to the bank",
+    "in_bank": "Paid out to bank",
+    "not_stripe": "Not Stripe — recorded in portal",
+    "unknown": "Stripe payment — bank status unavailable",
+}
+
+
+def bank_status_label(code):
+    return BANK_STATUS_LABELS.get(code, code or "—")
+
+
+def _unix_date(value):
+    if not value:
+        return None
+    from datetime import datetime, timezone
+
+    try:
+        return datetime.fromtimestamp(int(value), tz=timezone.utc).date()
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def _payout_charge_map(stripe, limit=15):
+    """Map Stripe charge IDs to the payout that included them."""
+    mapping = {}
+    try:
+        payouts = stripe.Payout.list(limit=limit)
+    except Exception:
+        return mapping
+    for payout in payouts.data:
+        try:
+            transactions = stripe.BalanceTransaction.list(payout=payout.id, limit=100)
+        except Exception:
+            continue
+        for txn in transactions.data:
+            source = getattr(txn, "source", None)
+            source_id = source if isinstance(source, str) else getattr(source, "id", "")
+            if source_id:
+                mapping[source_id] = payout
+    return mapping
+
+
+def refresh_payment_settlement(payment, payout_map=None):
+    """Cache whether Stripe still holds this payment or has paid it out to the bank."""
+    from django.utils import timezone
+
+    from .models import PortalPayment
+
+    has_stripe = bool(payment.stripe_session_id or payment.stripe_payment_intent_id)
+    if not has_stripe:
+        payment.stripe_bank_status = "not_stripe"
+        payment.stripe_settlement_checked_at = timezone.now()
+        payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
+        return payment
+    if payment.status != PortalPayment.STATUS_PAID:
+        payment.stripe_bank_status = "waiting_for_card"
+        payment.stripe_settlement_checked_at = timezone.now()
+        payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
+        return payment
+    if not stripe_configured():
+        payment.stripe_bank_status = "unknown"
+        payment.stripe_settlement_checked_at = timezone.now()
+        payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
+        return payment
+
+    stripe = _stripe()
+    charge_id = payment.stripe_charge_id
+    available_on = payment.stripe_bank_date
+    try:
+        intent_id = payment.stripe_payment_intent_id
+        if not intent_id and payment.stripe_session_id:
+            session = stripe.checkout.Session.retrieve(payment.stripe_session_id, expand=["payment_intent.latest_charge.balance_transaction"])
+            payment_intent = getattr(session, "payment_intent", None)
+            if isinstance(payment_intent, str):
+                intent_id = payment_intent
+            else:
+                intent_id = getattr(payment_intent, "id", "") or ""
+                charge = getattr(payment_intent, "latest_charge", None) if payment_intent else None
+                charge_id = charge if isinstance(charge, str) else getattr(charge, "id", "") or charge_id
+                bt = getattr(charge, "balance_transaction", None) if charge and not isinstance(charge, str) else None
+                available_on = _unix_date(getattr(bt, "available_on", None)) or available_on
+        if intent_id and not charge_id:
+            intent = stripe.PaymentIntent.retrieve(intent_id, expand=["latest_charge.balance_transaction"])
+            intent_id = intent.id
+            charge = getattr(intent, "latest_charge", None)
+            charge_id = charge if isinstance(charge, str) else getattr(charge, "id", "") or charge_id
+            bt = getattr(charge, "balance_transaction", None) if charge and not isinstance(charge, str) else None
+            available_on = _unix_date(getattr(bt, "available_on", None)) or available_on
+        if intent_id and not payment.stripe_payment_intent_id:
+            payment.stripe_payment_intent_id = intent_id
+    except Exception:
+        payment.stripe_bank_status = "unknown"
+        payment.stripe_settlement_checked_at = timezone.now()
+        payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
+        return payment
+
+    payout = None
+    if charge_id and payout_map is not None:
+        payout = payout_map.get(charge_id)
+    status = "waiting_for_bank"
+    today = timezone.localdate()
+    if payout is not None:
+        payout_status = getattr(payout, "status", "") or ""
+        available_on = _unix_date(getattr(payout, "arrival_date", None)) or available_on
+        if payout_status == "paid":
+            status = "in_bank"
+        elif payout_status in {"in_transit", "pending"}:
+            status = "in_transit"
+    elif available_on and available_on > today:
+        status = "received_by_stripe"
+    payment.stripe_charge_id = charge_id or payment.stripe_charge_id
+    payment.stripe_bank_status = status
+    payment.stripe_bank_date = available_on
+    payment.stripe_settlement_checked_at = timezone.now()
+    payment.save(
+        update_fields=[
+            "stripe_payment_intent_id",
+            "stripe_charge_id",
+            "stripe_bank_status",
+            "stripe_bank_date",
+            "stripe_settlement_checked_at",
+        ]
+    )
+    return payment
+
+
+def refresh_stripe_settlements(payments):
+    payout_map = {}
+    if stripe_configured() and any(p.stripe_session_id or p.stripe_payment_intent_id for p in payments):
+        try:
+            payout_map = _payout_charge_map(_stripe())
+        except Exception:
+            payout_map = {}
+    for payment in payments:
+        try:
+            refresh_payment_settlement(payment, payout_map=payout_map)
+        except Exception:
+            continue
+    return payments
+
+
+def stripe_payout_rows(limit=20):
+    if not stripe_configured():
+        return []
+    stripe = _stripe()
+    try:
+        payouts = stripe.Payout.list(limit=limit)
+    except Exception:
+        return []
+    rows = []
+    for payout in payouts.data:
+        amount = Decimal(getattr(payout, "amount", 0) or 0) / Decimal("100")
+        status = getattr(payout, "status", "") or "unknown"
+        if status == "paid":
+            bank = "Paid out to bank"
+        elif status == "in_transit":
+            bank = "On the way to the bank"
+        elif status == "pending":
+            bank = "Stripe payout pending"
+        else:
+            bank = status.replace("_", " ").title()
+        rows.append(
+            {
+                "date": (_unix_date(getattr(payout, "arrival_date", None)) or _unix_date(getattr(payout, "created", None)) or "").isoformat()
+                if (_unix_date(getattr(payout, "arrival_date", None)) or _unix_date(getattr(payout, "created", None)))
+                else "—",
+                "family": "Stripe payout",
+                "family_slug": "",
+                "family_id": "",
+                "child": "—",
+                "paid_by": "Stripe → bank",
+                "amount": f"{amount:.2f}",
+                "method": "Bank payout",
+                "status": bank,
+                "bank_status": bank,
+                "bank_date": (_unix_date(getattr(payout, "arrival_date", None)) or "").isoformat()
+                if _unix_date(getattr(payout, "arrival_date", None))
+                else "—",
+            }
+        )
+    return rows

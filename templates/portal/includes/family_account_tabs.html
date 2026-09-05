@@ -1,4 +1,10 @@
 {% firstof family_id billing.id as tab_family_id %}
+{% if account_child_label %}
+<p class="portal-account-children">
+  <span class="portal-account-children-label">{% if account_child_names|length == 1 %}Child{% else %}Children{% endif %}</span>
+  {{ account_child_label }}
+</p>
+{% endif %}
 <nav class="portal-family-tabs portal-family-tabs-scroll portal-family-tabs-colorful portal-staff-family-tabs" aria-label="Family account">
   {% if portal_area == 'admin' %}
   <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if tab_family_id %}?id={{ tab_family_id }}{% endif %}">Profile</a>

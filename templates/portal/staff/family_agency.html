@@ -17,7 +17,7 @@
     </p>
     {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
-    <h1>4Cs — {{ profile.family_name }}</h1>
+    <h1>4Cs — {{ account_heading_name|default:profile.family_name }}</h1>
     <p class="lead">Agency remittance stays on this account. Parent copays stay on regular billing.</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}

@@ -3494,6 +3494,27 @@
   flex: 1 1 16rem;
 }
 
+.portal-account-children {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.8rem;
+  background: #f4f1fb;
+  border: 1px solid #e4dcf3;
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.portal-account-children-label {
+  display: inline-block;
+  margin-right: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .portal-family-hero-head .portal-family-pager {
   margin: 0.15rem 0 0 auto;
   flex: 0 0 auto;
