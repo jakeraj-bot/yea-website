@@ -30,11 +30,11 @@
         {% if portal_live %}{% csrf_token %}{% endif %}
         <div class="form-group">
           <label for="fund-name">Scholarship name</label>
-          <input id="fund-name" name="name" type="text" class="portal-input" required maxlength="120" placeholder="YEA General Scholarship">
+          <input id="fund-name" name="name" type="text" class="portal-input" required maxlength="120" placeholder="e.g. YEA General Scholarship">
         </div>
         <div class="form-group portal-form-full">
           <label for="fund-description">Description</label>
-          <input id="fund-description" name="description" type="text" class="portal-input" maxlength="255" placeholder="Need-based after-school award">
+          <input id="fund-description" name="description" type="text" class="portal-input" maxlength="255" placeholder="Optional description">
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save scholarship type</button>
