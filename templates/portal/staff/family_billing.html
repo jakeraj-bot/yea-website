@@ -15,7 +15,6 @@
       {% endif %}
       Billing
     </p>
-    {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
     <h1>{% if portal_area == 'admin' %}Family account{% else %}Family billing{% endif %} — {{ account_heading_name|default:billing.family_name }}</h1>
     <p class="lead">Charges &amp; payments · {{ billing_permissions.role_label }}</p>

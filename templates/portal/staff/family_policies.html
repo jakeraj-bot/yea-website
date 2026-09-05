@@ -14,7 +14,6 @@
       {% endif %}
       {{ policy_data.family_name }}
     </p>
-    {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
     <h1>Signed policies — {{ account_heading_name|default:policy_data.family_name }}</h1>
     <p class="lead">{{ policy_data.signed_count }} of {{ policy_data.total_count }} signed · {{ policy_data.policies_per_child }} per child · {{ policy_data.child_count }} child{{ policy_data.child_count|pluralize:"ren" }}</p>

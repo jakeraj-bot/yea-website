@@ -10,7 +10,6 @@
       <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}">{{ billing.family_name }}</a> /
       Refund
     </p>
-    {% include "portal/includes/family_neighbor_nav.html" %}
     </div>
     <h1>Refund — {{ account_heading_name|default:billing.family_name }}</h1>
     <p class="lead">Send money back to the parent’s card. The family balance goes up by the refund amount.</p>
