@@ -1616,6 +1616,12 @@ STAFF_REPORTS = [
         "slug": "school-bus",
     },
     {
+        "name": "Drop-off pickup",
+        "description": "Members who booked drop-off today — who to pick up and who still needs to pay",
+        "format": "Screen",
+        "slug": "drop-off-pickup",
+    },
+    {
         "name": "Member signed policies",
         "description": "All families — view & print signed policies on file",
         "format": "PDF",

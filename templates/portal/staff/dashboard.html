@@ -42,6 +42,7 @@
 
     <div class="portal-quick-actions">
       <a class="btn btn-primary" href="{% url 'portal_staff_page' page='attendance' %}">Attendance roster</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='drop-off-pickup' %}">Drop-off pickup</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='messages' %}">Team messages{% if messages_unread_count %} ({{ messages_unread_count }}){% endif %}</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">Log incident</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='applications' %}">Applications</a>

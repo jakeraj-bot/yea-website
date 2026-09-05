@@ -1,0 +1,120 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Drop-off</h1>
+    <p class="lead">Pick a day and time we have a spot, then pay the drop-off rate to confirm pickup.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if drop_off.settings.parent_note %}
+    <div class="portal-callout card">
+      <p>{{ drop_off.settings.parent_note }}</p>
+    </div>
+    {% endif %}
+
+    <div class="portal-stat-row">
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Request by</span>
+        <strong class="portal-stat-value">{{ drop_off.settings.cutoff_display }}</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Book ahead</span>
+        <strong class="portal-stat-value">{{ drop_off.settings.book_ahead_days }} days</strong>
+      </div>
+      <div class="portal-stat card">
+        <span class="portal-stat-label">Your requests</span>
+        <strong class="portal-stat-value">{{ drop_off.bookings|length }}</strong>
+      </div>
+    </div>
+
+    {% if drop_off.bookings %}
+    <section class="card portal-dropoff-requests">
+      <h2>We have these requests</h2>
+      <p class="form-note">Staff see paid requests on their pickup list for that day.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Day</th>
+              <th>Time</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for booking in drop_off.bookings %}
+            <tr>
+              <td>{{ booking.child }}</td>
+              <td>{{ booking.date_display }}</td>
+              <td>{{ booking.time }}</td>
+              <td>${{ booking.amount }}</td>
+              <td>
+                {% if booking.paid %}
+                <span class="portal-status portal-status-active">{{ booking.status_label }}</span>
+                {% else %}
+                <span class="portal-status">{{ booking.status_label }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>Book a drop-off day</h2>
+      <form method="get" class="portal-dropoff-date-form">
+        <div class="form-group">
+          <label for="drop-off-date">Date</label>
+          <input id="drop-off-date" type="date" name="date" class="portal-input" value="{{ drop_off.care_date }}" min="{{ drop_off.min_date }}" max="{{ drop_off.max_date }}" onchange="this.form.submit()">
+        </div>
+      </form>
+
+      {% if drop_off.window_error %}
+      <p class="form-note">{{ drop_off.window_error }}</p>
+      {% endif %}
+
+      {% if drop_off.slots %}
+      <div class="portal-dropoff-slots">
+        {% for slot in drop_off.slots %}
+        <article class="portal-dropoff-slot{% if not slot.available %} is-full{% endif %}">
+          <div>
+            <strong>{{ slot.label }}</strong>
+            <p class="form-note">{{ slot.start_display }} · ${{ slot.price }} · {{ slot.spots_left }} of {{ slot.capacity }} spots left</p>
+            {% if slot.school_note %}<p class="form-note">{{ slot.school_note }}</p>{% endif %}
+          </div>
+          {% if slot.available and portal_live and parent_authenticated %}
+          <form method="post" action="{% url 'portal_parent_drop_off_book' %}">
+            {% csrf_token %}
+            <input type="hidden" name="care_date" value="{{ drop_off.care_date }}">
+            <input type="hidden" name="slot_id" value="{{ slot.id }}">
+            {% if drop_off.children|length == 1 %}
+            <input type="hidden" name="child_id" value="{{ drop_off.children.0.id }}">
+            {% else %}
+            <label class="visually-hidden" for="child-{{ slot.id }}">Child</label>
+            <select id="child-{{ slot.id }}" name="child_id" class="portal-select" required>
+              {% for child in drop_off.children %}
+              <option value="{{ child.id }}">{{ child.name }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Pay ${{ slot.price }} and request</button>
+          </form>
+          {% elif not slot.available %}
+          <span class="portal-status">Not available</span>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="form-note">No drop-off times are set for this day yet. If a school gets out early, that time has to be added in Drop-off settings first.</p>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}

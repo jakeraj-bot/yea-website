@@ -333,6 +333,27 @@ def build_dashboard_live(unit, program):
                 "link_arg": "messages",
             }
         )
+    from .drop_off_services import pickup_rows
+
+    drop_off_today = pickup_rows(unit=unit, care_date=today)
+    paid_pickups = [row for row in drop_off_today if row["paid"]]
+    waiting = [row for row in drop_off_today if not row["paid"]]
+    if paid_pickups:
+        alerts.append(
+            {
+                "text": f"{len(paid_pickups)} drop-off pickup{'s' if len(paid_pickups) != 1 else ''} today",
+                "link_name": "portal_staff_page",
+                "link_arg": "drop-off-pickup",
+            }
+        )
+    if waiting:
+        alerts.append(
+            {
+                "text": f"{len(waiting)} drop-off request{'s' if len(waiting) != 1 else ''} waiting for payment",
+                "link_name": "portal_staff_page",
+                "link_arg": "drop-off-pickup",
+            }
+        )
     if not alerts:
         pass
 

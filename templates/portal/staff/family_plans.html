@@ -28,6 +28,35 @@
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
 
+    {% if portal_area == 'admin' %}
+    <h2>Member program</h2>
+    <p class="form-note">Drop-off members get a Drop-off tab in the parent portal. Regular after-school members do not.</p>
+    <div class="portal-child-billing-grid">
+      {% for child in billing.children %}
+      <article class="card">
+        <h3>{{ child.name }}</h3>
+        <p>{% if child.is_drop_off %}Drop-off program{% else %}Regular after-school{% endif %}</p>
+        <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="admin">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+          <input type="hidden" name="action" value="update_program">
+          <input type="hidden" name="child_name" value="{{ child.name }}">
+          <div class="form-group">
+            <label class="visually-hidden" for="program-{{ child.child_id|default:child.name }}">Program</label>
+            <select id="program-{{ child.child_id|default:child.name }}" name="program" class="portal-select">
+              <option value="after_school"{% if not child.is_drop_off %} selected{% endif %}>Regular after-school</option>
+              <option value="drop_off"{% if child.is_drop_off %} selected{% endif %}>Drop-off</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm"{% if not billing_live %} disabled{% endif %}>Save program</button>
+        </form>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <h2>Billing plan by child</h2>
     <div class="portal-child-billing-grid">
       {% for child in billing.children %}

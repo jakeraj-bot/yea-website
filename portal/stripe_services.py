@@ -134,6 +134,32 @@ def create_field_trip_checkout_session(request, payment, signup):
     return session
 
 
+def create_drop_off_checkout_session(request, payment, booking):
+    stripe = _stripe()
+    when = booking.care_date.isoformat()
+    line_items = checkout_line_items(
+        payment,
+        f"Drop-off — {booking.slot_label}",
+        f"{booking.child.name} · {when} · {booking.start_time.strftime('%-I:%M %p').lstrip('0')}",
+    )
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        customer=get_or_create_customer(payment.family.parent_account).id,
+        line_items=line_items,
+        success_url=_checkout_success_url(request),
+        cancel_url=request.build_absolute_uri("/portal/parent/drop-off/"),
+        metadata={
+            "portal_payment_id": str(payment.pk),
+            "family_slug": payment.family.slug,
+            "payment_kind": "drop_off",
+            "drop_off_booking_id": str(booking.pk),
+        },
+    )
+    payment.stripe_session_id = session.id
+    payment.save(update_fields=["stripe_session_id"])
+    return session
+
+
 def create_setup_checkout_session(request, account):
     stripe = _stripe()
     customer = get_or_create_customer(account)

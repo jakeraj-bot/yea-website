@@ -1,0 +1,134 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Drop-off settings</h1>
+    <p class="lead">Slots per day, price for each time, and the cutoff for parent requests.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='drop-off-pickup' %}">Today’s pickup list</a>
+    </div>
+
+    <section class="card">
+      <h2>Request rules</h2>
+      <p class="form-note">Parents must request before the cutoff on that day. After the cutoff, that date closes.</p>
+      <form method="post" action="{% url 'portal_admin_drop_off_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="request-cutoff">Request cutoff</label>
+          <input id="request-cutoff" type="time" name="request_cutoff_time" class="portal-input" value="{{ settings.request_cutoff_time }}" required>
+        </div>
+        <div class="form-group">
+          <label for="book-ahead">Days ahead parents can book</label>
+          <input id="book-ahead" type="number" min="0" max="90" name="book_ahead_days" class="portal-input" value="{{ settings.book_ahead_days }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label">
+            <input type="checkbox" name="booking_open"{% if settings.booking_open %} checked{% endif %}>
+            Booking is open
+          </label>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="parent-note">Note on the parent Drop-off tab</label>
+          <textarea id="parent-note" name="parent_note" class="portal-input" rows="3">{{ settings.parent_note }}</textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save request rules</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:1.25rem;">
+      <h2>Time slots</h2>
+      <p class="form-note">Add a time for each unit and weekday — for example Wednesday 1:00 PM when a school gets out early. Set how many children you can take and the price for that time.</p>
+      <form method="post" action="{% url 'portal_admin_drop_off_slot_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="slot-unit">Unit</label>
+          <select id="slot-unit" name="unit_id" class="portal-select" required>
+            {% for unit in units %}
+            <option value="{{ unit.id }}">{{ unit.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="slot-weekday">Weekday</label>
+          <select id="slot-weekday" name="weekday" class="portal-select" required>
+            {% for day in weekdays %}
+            <option value="{{ day.value }}">{{ day.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="slot-time">Time</label>
+          <input id="slot-time" type="time" name="start_time" class="portal-input" required>
+        </div>
+        <div class="form-group">
+          <label for="slot-label">Label</label>
+          <input id="slot-label" type="text" name="label" class="portal-input" placeholder="Early Wednesday 1:00 PM">
+        </div>
+        <div class="form-group">
+          <label for="slot-capacity">Spots</label>
+          <input id="slot-capacity" type="number" min="1" name="capacity" class="portal-input" value="10" required>
+        </div>
+        <div class="form-group">
+          <label for="slot-price">Price</label>
+          <input id="slot-price" type="number" min="0" step="0.01" name="price" class="portal-input" value="20.00" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="slot-note">School / dismissal note</label>
+          <input id="slot-note" type="text" name="school_note" class="portal-input" placeholder="School 18 dismisses at 1:00 on Wednesdays">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Add time slot</button>
+        </div>
+      </form>
+
+      <div class="portal-table-wrap" style="margin-top:1rem;">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th>Day</th>
+              <th>Time</th>
+              <th>Spots</th>
+              <th>Price</th>
+              <th>Note</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for slot in slots %}
+            <tr{% if not slot.is_active %} class="is-muted"{% endif %}>
+              <td>{{ slot.unit }}</td>
+              <td>{{ slot.weekday_label }}</td>
+              <td>{{ slot.label }}<br><span class="form-note">{{ slot.start_display }}</span></td>
+              <td>{{ slot.capacity }}</td>
+              <td>${{ slot.price }}</td>
+              <td>{{ slot.school_note|default:"—" }}</td>
+              <td>
+                {% if slot.is_active %}
+                <form method="post" action="{% url 'portal_admin_drop_off_slot_save' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Turn off</button>
+                </form>
+                {% else %}
+                <span class="form-note">Off</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No time slots yet. Add the regular afternoon time and any early-dismissal days.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

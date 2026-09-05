@@ -100,6 +100,8 @@ def unit_allows_program(unit, program):
         return program_type in {"summer_camp", "summer", "camp", "both", "all"}
     if program == "after_school":
         return program_type in {"after_school", "both", "all", ""}
+    if program == "drop_off":
+        return program_type in {"after_school", "drop_off", "both", "all", ""}
     return True
 
 

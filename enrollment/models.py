@@ -22,6 +22,7 @@ class EnrollmentApplication(models.Model):
     ]
     PROGRAM_CHOICES = [
         ("after_school", "After-school program"),
+        ("drop_off", "Drop-off program"),
         ("before_care", "Before care (waitlist)"),
         ("summer_camp", "Summer camp"),
     ]

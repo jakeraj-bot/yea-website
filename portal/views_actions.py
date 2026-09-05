@@ -1296,6 +1296,26 @@ def staff_billing_action(request, family_slug):
                 )
                 return redirect(redirect_url)
             messages.success(request, "Billing plan updated.")
+        elif action == "update_program":
+            if area != "admin":
+                raise ValueError("Only portal admin can change a member program.")
+            from .drop_off_services import set_child_drop_off
+            from .models import PortalChild
+
+            child = PortalChild.objects.filter(
+                family=family,
+                name=request.POST.get("child_name", "").strip(),
+            ).first()
+            if not child:
+                raise ValueError("Child not found on this account.")
+            set_child_drop_off(child, request.POST.get("program") == "drop_off")
+            if child.is_drop_off:
+                messages.success(
+                    request,
+                    f"{child.name} is now on the drop-off program. The Drop-off tab is on their parent portal.",
+                )
+            else:
+                messages.success(request, f"{child.name} is now on regular after-school.")
         else:
             messages.error(request, "Unknown billing action.")
     except ValueError as exc:
@@ -2043,4 +2063,110 @@ def admin_member_ops(request):
         messages.error(request, str(exc))
 
     return redirect(next_url)
+
+
+@require_POST
+@parent_login_required_post
+def parent_drop_off_book(request):
+    from django.utils.dateparse import parse_date
+
+    from .drop_off_services import create_drop_off_request, family_has_drop_off, start_drop_off_payment
+    from .parent_auth import get_parent_account, portal_preview_mode
+
+    if portal_preview_mode():
+        return redirect("portal_parent_page", page="drop-off")
+    account = get_parent_account(request.user)
+    if not account:
+        return redirect("portal_parent_login")
+    if not family_has_drop_off(account.family):
+        messages.error(request, "This account is not on the drop-off program.")
+        return redirect("portal_parent_page", page="dashboard")
+    care_date = parse_date(request.POST.get("care_date") or "")
+    if not care_date:
+        messages.error(request, "Pick a drop-off date.")
+        return redirect("portal_parent_page", page="drop-off")
+    try:
+        booking = create_drop_off_request(
+            account.family,
+            request.POST.get("child_id"),
+            request.POST.get("slot_id"),
+            care_date,
+        )
+        session = start_drop_off_payment(request, booking)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'drop-off'})}?date={care_date.isoformat()}")
+    if session:
+        messages.success(
+            request,
+            f"We have your drop-off request for {booking.child.name}. Finish payment to confirm pickup.",
+        )
+        return redirect(session.url)
+    messages.success(
+        request,
+        f"We have your drop-off request for {booking.child.name} on {booking.care_date.strftime('%A, %b %-d')}. "
+        "Staff can see it. Pay the drop-off rate here when card checkout is available, or we will confirm it after payment.",
+    )
+    return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'drop-off'})}?date={care_date.isoformat()}")
+
+
+@require_POST
+@admin_login_required_post
+def admin_drop_off_save(request):
+    from .drop_off_services import save_settings
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="drop-off")
+    try:
+        save_settings(request.POST)
+        messages.success(request, "Drop-off settings saved.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="drop-off")
+
+
+@require_POST
+@admin_login_required_post
+def admin_drop_off_slot_save(request):
+    from .drop_off_services import delete_slot, save_slot
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="drop-off")
+    action = request.POST.get("action") or "save"
+    try:
+        if action == "delete":
+            delete_slot(request.POST.get("slot_id"))
+            messages.success(request, "Time slot turned off.")
+        else:
+            save_slot(request.POST, slot_id=request.POST.get("slot_id") or None)
+            messages.success(request, "Drop-off time slot saved.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="drop-off")
+
+
+@require_POST
+def staff_drop_off_mark_paid(request):
+    from django.conf import settings as django_settings
+
+    from .drop_off_services import mark_booking_paid
+    from .models import PortalDropOffBooking
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
+
+    if not portal_preview_mode() and not is_staff_portal_authenticated(request) and not is_admin_portal_authenticated(request):
+        login_url = getattr(django_settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+    if not _needs_live(request):
+        next_page = "drop-off-pickup"
+        return redirect("portal_admin_page" if is_admin_portal_authenticated(request) else "portal_staff_page", page=next_page)
+    booking = PortalDropOffBooking.objects.filter(pk=request.POST.get("booking_id")).first()
+    if not booking:
+        messages.error(request, "Drop-off request not found.")
+    else:
+        mark_booking_paid(booking, method_label=request.POST.get("method_label") or "In person")
+        messages.success(request, f"{booking.child.name} is confirmed — pick them up at {booking.slot_label}.")
+    if is_admin_portal_authenticated(request) and request.POST.get("portal_area") == "admin":
+        return redirect("portal_admin_page", page="drop-off-pickup")
+    return redirect("portal_staff_page", page="drop-off-pickup")
 

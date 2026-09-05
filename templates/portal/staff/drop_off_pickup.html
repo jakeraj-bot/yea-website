@@ -1,0 +1,115 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Drop-off pickup</h1>
+    <p class="lead">{{ drop_off_scope }} — members we need to get, and who already paid.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="portal-toolbar portal-dropoff-date-form">
+      <div class="form-group">
+        <label for="pickup-date">Date</label>
+        <input id="pickup-date" type="date" name="date" class="portal-input" value="{{ pickup_date }}" onchange="this.form.submit()">
+      </div>
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='drop-off' %}">Drop-off settings</a>
+      {% endif %}
+    </form>
+
+    <section class="card">
+      <h2>Who to pick up</h2>
+      <p class="form-note">Paid requests are members we have to get. Unpaid requests still need the parent to finish payment.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Child</th>
+              <th>School</th>
+              <th>Family</th>
+              <th>Parent</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in pickup_rows %}
+            <tr>
+              <td>{{ row.time }}<br><span class="form-note">{{ row.slot_label }}</span></td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.school|default:"—" }}</td>
+              <td>
+                {% if portal_area == 'admin' %}
+                <a href="{% url 'portal_admin_family_detail' family_slug=row.family_slug %}?id={{ row.family_id }}">{{ row.family }}</a>
+                {% else %}
+                <a href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}">{{ row.family }}</a>
+                {% endif %}
+              </td>
+              <td>{{ row.parent|default:"—" }}</td>
+              <td>
+                {% if row.paid %}
+                <span class="portal-status portal-status-active">{{ row.status_label }}</span>
+                {% else %}
+                <span class="portal-status">{{ row.status_label }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if not row.paid %}
+                <form method="post" action="{% url 'portal_staff_drop_off_mark_paid' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="booking_id" value="{{ row.id }}">
+                  <input type="hidden" name="portal_area" value="{{ portal_area }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Mark paid</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No drop-off requests for this day.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:1.25rem;">
+      <h2>Drop-off members</h2>
+      <p class="form-note">These children are on the drop-off program, so the Drop-off tab is on their parent portal.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>School</th>
+              <th>Family</th>
+              <th>Parent</th>
+              {% if portal_area == 'admin' %}<th>Unit</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in drop_off_members %}
+            <tr>
+              <td>{{ row.child }}</td>
+              <td>{{ row.school|default:"—" }}</td>
+              <td>
+                {% if portal_area == 'admin' %}
+                <a href="{% url 'portal_admin_family_detail' family_slug=row.family_slug %}?id={{ row.family_id }}">{{ row.family }}</a>
+                {% else %}
+                <a href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}">{{ row.family }}</a>
+                {% endif %}
+              </td>
+              <td>{{ row.parent|default:"—" }}</td>
+              {% if portal_area == 'admin' %}<td>{{ row.unit }}</td>{% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="{% if portal_area == 'admin' %}5{% else %}4{% endif %}">No drop-off members yet. Approve a drop-off application or change a member’s program on Plans.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

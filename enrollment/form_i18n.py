@@ -14,6 +14,7 @@ RELATIONSHIP_ES = [
 PHONE_TYPE_ES = [("cell", "Teléfono celular"), ("home", "Teléfono de casa")]
 PROGRAM_ES = [
     ("after_school", "Programa después de la escuela"),
+    ("drop_off", "Programa de drop-off"),
     ("before_care", "Cuidado antes de la escuela (lista de espera)"),
     ("summer_camp", "Campamento de verano"),
 ]
