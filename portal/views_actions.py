@@ -373,19 +373,31 @@ def admin_staff_invite(request):
             all_units_access=request.POST.get("all_units_access") == "on" or role == "Portal admin",
             password=password or None,
         )
+        portal_type = "admin" if role == "Portal admin" else "staff"
+        emailed = False
+        if temp_password:
+            from .email_templates import send_staff_welcome_email
+
+            emailed = bool(send_staff_welcome_email(account, username, temp_password, portal_type))
         if created and temp_password:
-            login_path = "/portal/admin/login/" if role == "Portal admin" else "/portal/staff/login/"
-            portal_label = "admin portal" if role == "Portal admin" else "staff portal"
+            login_path = "/portal/admin/login/" if portal_type == "admin" else "/portal/staff/login/"
+            portal_label = "admin portal" if portal_type == "admin" else "staff portal"
+            extra = (
+                f" Login email sent to {account.user.email}."
+                if emailed
+                else " Login email could not be sent — share the password privately."
+            )
             messages.success(
                 request,
                 f"Account created for {account.display_name}. "
                 f"Sign-in username: {username} · Password: {temp_password} "
-                f"(share privately — sign in at {login_path} for the {portal_label})",
+                f"(sign in at {login_path} for the {portal_label}).{extra}",
             )
         elif temp_password:
+            extra = f" Login email sent to {account.user.email}." if emailed else ""
             messages.success(
                 request,
-                f"Updated {account.display_name} and set a new password.",
+                f"Updated {account.display_name} and set a new password.{extra}",
             )
         else:
             messages.success(request, f"Staff account updated for {account.display_name}.")
@@ -412,11 +424,19 @@ def admin_admin_invite(request):
             request.POST.get("email", "").strip(),
             password=password or None,
         )
+        from .email_templates import send_staff_welcome_email
+
+        emailed = bool(send_staff_welcome_email(account, username, temp_password, "admin"))
+        extra = (
+            f" Login email sent to {account.user.email}."
+            if emailed
+            else " Login email could not be sent — share the password privately."
+        )
         messages.success(
             request,
             f"Admin portal login created for {account.display_name}. "
             f"Sign-in username: {username} · Password: {temp_password} "
-            f"(share privately — sign in at /portal/admin/login/)",
+            f"(sign in at /portal/admin/login/).{extra}",
         )
     except Exception as exc:
         messages.error(request, str(exc))
@@ -699,6 +719,29 @@ def admin_fee_save(request):
     except Exception as exc:
         messages.error(request, str(exc))
     return redirect("portal_admin_page", page="fees")
+
+
+@admin_login_required_post
+@require_POST
+def admin_email_template_save(request):
+    from .email_templates import save_email_template
+
+    next_page = request.POST.get("next_page") or "fees"
+    if next_page not in {"fees", "parent-emails", "staff"}:
+        next_page = "fees"
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page=next_page)
+    try:
+        template = save_email_template(
+            request.POST.get("template_key"),
+            request.POST.get("subject"),
+            request.POST.get("body"),
+            is_enabled=request.POST.get("is_enabled") == "on",
+        )
+        messages.success(request, f"Saved “{template.name}” email template.")
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page=next_page)
 
 
 @admin_login_required_post
@@ -2027,6 +2070,13 @@ def admin_member_ops(request):
             emails = request.POST.getlist("emails")
             sent, total = send_parent_emails(request.POST.get("subject"), request.POST.get("body"), emails)
             messages.success(request, f"Sent {sent} of {total} parent email(s).")
+            next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
+        elif action == "send_first_day_reminder":
+            from .email_templates import send_first_day_reminders
+
+            emails = request.POST.getlist("emails")
+            sent, total = send_first_day_reminders(emails or None)
+            messages.success(request, f"Sent the first-day reminder to {sent} of {total} parent(s).")
             next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
         elif action == "save_discount":
             plan = save_discount_plan(

@@ -106,6 +106,9 @@ def ensure_admin_config_minimal():
         PortalProcessingFee.objects.create(name="Card processing", percent=Decimal("2.90"), flat_amount=Decimal("0.30"))
     if not PortalTaxStatementSetting.objects.exists():
         PortalTaxStatementSetting.objects.create()
+    from .email_templates import ensure_email_templates
+
+    ensure_email_templates()
 
 
 def ensure_admin_config_seeded():

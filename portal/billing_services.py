@@ -71,10 +71,10 @@ def get_family_for_billing(family_slug, unit=None, family_id=None):
 
 
 @transaction.atomic
-def post_charge(family, child_name, charge_type, amount, entry_date, description, is_manual=True):
+def post_charge(family, child_name, charge_type, amount, entry_date, description, is_manual=True, notify=True):
     amount = _parse_amount(amount)
     label = description.strip() or charge_type.replace("_", " ").title()
-    PortalLedgerEntry.objects.create(
+    entry = PortalLedgerEntry.objects.create(
         family=family,
         child_name=child_name,
         date=entry_date,
@@ -85,6 +85,11 @@ def post_charge(family, child_name, charge_type, amount, entry_date, description
     )
     family.balance += amount
     family.save(update_fields=["balance"])
+    if notify:
+        from .email_templates import notify_charge_posted
+
+        notify_charge_posted(family, entry)
+    return entry
 
 
 @transaction.atomic

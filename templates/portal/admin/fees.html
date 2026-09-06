@@ -73,6 +73,32 @@
       {% endfor %}
     </div>
 
+    {% if charge_email_template %}
+    <div class="portal-panel card" style="margin-top: 1.5rem;">
+      <h2>Charge notice email</h2>
+      <p class="form-note">Parents get this automatically when a charge is posted to their account. Placeholders: <code>{family_name}</code> <code>{child_name}</code> <code>{description}</code> <code>{amount}</code> <code>{date}</code> <code>{balance}</code> <code>{portal_url}</code>.</p>
+      <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="template_key" value="{{ charge_email_template.key }}">
+        <input type="hidden" name="next_page" value="fees">
+        <div class="form-group portal-form-full">
+          <label>Subject</label>
+          <input name="subject" class="portal-input" value="{{ charge_email_template.subject }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Message</label>
+          <textarea name="body" class="portal-input portal-textarea" rows="10" required>{{ charge_email_template.body }}</textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if charge_email_template.is_enabled %}checked{% endif %}> Send this email when a charge is posted</label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save charge email</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
     <div class="portal-profile-grid" style="margin-top: 1.5rem;">
       <section class="card">
         <h2>Charge types staff can post</h2>

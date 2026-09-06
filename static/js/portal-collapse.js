@@ -1,6 +1,6 @@
 (function () {
   var body = document.body;
-  if (!body || !/portal-area-staff|portal-area-admin/.test(body.className)) return;
+  if (!body || !/portal-area-staff|portal-area-admin|portal-area-parent/.test(body.className)) return;
 
   var STORAGE_KEY = "yea-portal-collapse";
   var pageKey = window.location.pathname;

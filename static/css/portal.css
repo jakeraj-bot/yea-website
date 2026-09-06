@@ -1093,8 +1093,9 @@
 
 .portal-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem 1.25rem;
+  max-width: 100%;
 }
 
 .portal-form-full {
@@ -1117,7 +1118,7 @@
 
 .portal-profile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1rem;
 }
 
@@ -1193,7 +1194,7 @@
 
 .portal-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
   gap: 0.5rem;
   margin-top: 0.35rem;
 }
@@ -1892,10 +1893,9 @@
 
 .portal-families-table th,
 .portal-families-table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   vertical-align: top;
-  white-space: nowrap;
+  white-space: normal;
   font-size: 0.875rem;
   padding: 0.45rem 0.5rem;
 }
@@ -3048,9 +3048,10 @@
 
 .portal-fee-rules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 1rem;
   align-items: start;
+  max-width: 100%;
 }
 
 .portal-fee-rule-card {
@@ -3547,16 +3548,14 @@
 }
 
 .portal-family-tabs-scroll {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  overflow-x: hidden;
   max-width: 100%;
 }
 
 .portal-family-tabs-scroll .portal-family-tab {
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: normal;
+  flex-shrink: 1;
 }
 
 .portal-family-tab {
@@ -3882,6 +3881,40 @@
 
 .portal-dropoff-requests {
   margin-bottom: 1.25rem;
+}
+
+.page-content {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.page-content .card,
+.page-content .portal-panel,
+.page-content .portal-table-wrap,
+.page-content .portal-fee-rule-card {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group .portal-input,
+.form-group .portal-select,
+.form-group .portal-textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .portal-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal-dl-2col {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media print {

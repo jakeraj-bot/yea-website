@@ -314,6 +314,7 @@ urlpatterns = [
     path("admin/scholarship/save/", views_actions.admin_scholarship_save, name="portal_admin_scholarship_save"),
     path("admin/scholarship/fund/save/", views_actions.admin_scholarship_fund_save, name="portal_admin_scholarship_fund_save"),
     path("admin/fee/save/", views_actions.admin_fee_save, name="portal_admin_fee_save"),
+    path("admin/email-template/save/", views_actions.admin_email_template_save, name="portal_admin_email_template_save"),
     path("admin/payment-plan/save/", views_actions.admin_payment_plan_save, name="portal_admin_payment_plan_save"),
     path("admin/payment-plan/delete/", views_actions.admin_payment_plan_delete, name="portal_admin_payment_plan_delete"),
     path("admin/processing-fee/save/", views_actions.admin_processing_fee_save, name="portal_admin_processing_fee_save"),
