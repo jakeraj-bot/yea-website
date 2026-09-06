@@ -1896,9 +1896,14 @@ def member_stripe_webhook(request):
 
     payload = request.body
     signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
-    if handle_member_stripe_webhook(payload, signature):
+    try:
+        if handle_member_stripe_webhook(payload, signature):
+            return HttpResponse(status=200)
+        return HttpResponse(status=400)
+    except Exception:
+        # Stripe retries 500s and will disable the endpoint. Acknowledge the
+        # delivery; payment confirmation can be recovered from Checkout.
         return HttpResponse(status=200)
-    return HttpResponse(status=400)
 
 
 @require_POST
