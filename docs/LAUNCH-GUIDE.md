@@ -212,6 +212,16 @@ Ask your email host for **SMTP settings** (host, port, username, password) and u
 
 - Stripe Dashboard — https://dashboard.stripe.com — for payment records
 
+### Parent portal Stripe webhook
+
+Stripe tells the website when a parent card payment succeeds. The live endpoint is:
+
+`https://www.yeanj.org/portal/stripe/webhook/`
+
+On **Render**, set `MEMBER_STRIPE_WEBHOOK_SECRET` to the signing secret from Stripe Dashboard → Developers → Webhooks → that endpoint → **Reveal** (starts with `whsec_`). Save so Render redeploys.
+
+If Stripe emails you about webhook failures, open that endpoint in the Dashboard, check the latest attempts, and use **Resend** after the site is updated.
+
 ---
 
 ## Part 4 — Security cleanup

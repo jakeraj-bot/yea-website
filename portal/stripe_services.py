@@ -246,12 +246,29 @@ def reconcile_pending_stripe_payments_for_family(family):
     return reconciled
 
 
+def _event_field(event, key, default=None):
+    if event is None:
+        return default
+    if isinstance(event, dict):
+        return event.get(key, default)
+    if hasattr(event, "get"):
+        try:
+            return event.get(key, default)
+        except TypeError:
+            pass
+    return getattr(event, key, default)
+
+
 def handle_member_stripe_webhook(payload, signature):
-    """Process Stripe webhook events for member portal payments."""
+    """Process Stripe webhook events for member portal payments.
+
+    Always acknowledge valid (or unsigned local) events so Stripe does not
+    retry with HTTP 500. Stripe Python 15 Event objects do not have .get().
+    """
     if not stripe_configured():
         return False
     stripe = _stripe()
-    secret = settings.MEMBER_STRIPE_WEBHOOK_SECRET
+    secret = (settings.MEMBER_STRIPE_WEBHOOK_SECRET or "").strip()
     if secret:
         try:
             event = stripe.Webhook.construct_event(payload, signature, secret)
@@ -264,14 +281,18 @@ def handle_member_stripe_webhook(payload, signature):
             event = json.loads(payload)
         except (TypeError, ValueError):
             return False
-    if event.get("type") != "checkout.session.completed":
+    if _event_field(event, "type") != "checkout.session.completed":
         return True
-    session = event.get("data", {}).get("object") or {}
-    if session.get("payment_status") != "paid":
+    data = _event_field(event, "data") or {}
+    session = _event_field(data, "object") or {}
+    if _event_field(session, "payment_status") != "paid":
         return True
-    session_id = session.get("id")
+    session_id = _event_field(session, "id")
     if session_id:
-        confirm_checkout_payment(session_id)
+        try:
+            confirm_checkout_payment(session_id)
+        except Exception:
+            pass
     return True
 
 
