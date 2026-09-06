@@ -9,6 +9,7 @@
 <section class="page-content">
   <div class="container">
     <div class="portal-callout card">
+      <p><strong>How creating an account works:</strong> choose staff or admin, enter their name and email, set a password (or leave it blank for staff so the portal generates one), then pick every unit they can open. After you create the account they get an email with their username, password, and the link to the staff or admin portal. Staff can have more than one unit. Admin logins automatically see every unit.</p>
       <p>Staff sign in at <code>/portal/staff/login/</code>. Admin portal logins sign in at <code>/portal/admin/login/</code> — they are separate accounts even if the same person uses both.</p>
     </div>
 
@@ -35,7 +36,7 @@
         <div class="form-group">
           <label for="staff-password">Password</label>
           <input id="staff-password" name="password" type="text" class="portal-input" autocomplete="new-password" placeholder="At least 8 characters">
-          <p class="form-note">Leave blank to auto-generate — the password is shown once after you create the account.</p>
+          <p class="form-note">Leave blank to auto-generate. The password is emailed to them and shown once on this page.</p>
         </div>
         <div class="form-group">
           <label for="staff-role">Role</label>
@@ -55,12 +56,13 @@
         </div>
         <div class="form-group portal-form-full" id="staff-units-group">
           <label>Unit access (select all that apply)</label>
+          <label class="portal-check-label"><input type="checkbox" name="all_units_access"> All units</label>
           <div class="portal-checkbox-grid">
             {% for unit in units %}
             <label class="portal-check-label"><input type="checkbox" name="unit_slugs" value="{{ unit.slug }}"> {{ unit.name }}</label>
             {% endfor %}
           </div>
-          <p class="form-note">Portal admin role gets all units automatically. Other roles can access multiple locations. For admin portal sign-in, use <strong>Create admin login</strong>.</p>
+          <p class="form-note">Check every location this person should open. Portal admin role gets all units automatically. For admin portal sign-in, use <strong>Create admin login</strong>.</p>
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Create account</button>
@@ -87,7 +89,8 @@
         </div>
         <div class="form-group">
           <label for="admin-email">Email</label>
-          <input id="admin-email" name="email" type="email" class="portal-input" placeholder="optional">
+          <input id="admin-email" name="email" type="email" class="portal-input" required>
+          <p class="form-note">Required so we can email their username, password, and the admin portal link.</p>
         </div>
         <div class="form-group">
           <label for="admin-password">Password</label>
@@ -131,12 +134,47 @@
           </select>
         </div>
         <div class="form-group portal-form-full">
+          <label>Unit access</label>
+          <label class="portal-check-label"><input type="checkbox" name="all_units_access" {% if editing_staff.all_units_access %}checked{% endif %}> All units</label>
+          <div class="portal-checkbox-grid">
+            {% for unit in units %}
+            <label class="portal-check-label"><input type="checkbox" name="unit_slugs" value="{{ unit.slug }}" {% if unit.slug in editing_staff.unit_slugs %}checked{% endif %}> {{ unit.name }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group portal-form-full">
           <label for="staff-new-password">Set new password</label>
           <input id="staff-new-password" name="new_password" type="text" class="portal-input" autocomplete="new-password" placeholder="Leave blank to keep current password">
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Save changes</button>
           <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='staff' %}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if welcome_email_template %}
+    <div class="portal-panel card" style="margin-bottom:1.5rem;">
+      <h2>Welcome email template</h2>
+      <p class="form-note">Sent when you create a staff or admin login. Placeholders: <code>{name}</code> <code>{username}</code> <code>{password}</code> <code>{portal_url}</code> <code>{portal_label}</code>.</p>
+      <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="template_key" value="{{ welcome_email_template.key }}">
+        <input type="hidden" name="next_page" value="staff">
+        <div class="form-group portal-form-full">
+          <label>Subject</label>
+          <input name="subject" class="portal-input" value="{{ welcome_email_template.subject }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Message</label>
+          <textarea name="body" class="portal-input portal-textarea" rows="8" required>{{ welcome_email_template.body }}</textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if welcome_email_template.is_enabled %}checked{% endif %}> Send this email when an account is created</label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-secondary">Save welcome email</button>
         </div>
       </form>
     </div>

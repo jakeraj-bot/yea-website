@@ -158,6 +158,9 @@ def get_staff_users_live():
             extra = list(account.accessible_units.values_list("name", flat=True))
             names = extra or [account.unit.name]
             units_label = ", ".join(dict.fromkeys(names))
+        unit_slugs = [] if account.all_units_access else list(account.accessible_units.values_list("slug", flat=True))
+        if not unit_slugs and not account.all_units_access:
+            unit_slugs = [account.unit.slug]
         login_name = display_username(user.username)
         lowered = user.username.lower()
         if lowered.startswith("admin:") or account.role == "Portal admin":
@@ -187,6 +190,7 @@ def get_staff_users_live():
                 "can_approve_waitlist": account.can_approve_waitlist,
                 "all_units_access": account.all_units_access,
                 "unit_slug": account.unit.slug,
+                "unit_slugs": unit_slugs,
             }
         )
     return rows

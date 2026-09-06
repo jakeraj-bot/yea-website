@@ -4,6 +4,7 @@ from .models import (
     AttendanceRecord,
     PortalBillingDefaultRule,
     PortalChild,
+    PortalEmailTemplate,
     PortalFamily,
     PortalFeeRule,
     PortalPaymentPlan,
@@ -97,3 +98,9 @@ class PortalBillingDefaultRuleAdmin(admin.ModelAdmin):
 class PortalScholarshipFundAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active")
     list_filter = ("is_active",)
+
+
+@admin.register(PortalEmailTemplate)
+class PortalEmailTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "key", "is_enabled", "updated_at")
+    list_filter = ("is_enabled",)

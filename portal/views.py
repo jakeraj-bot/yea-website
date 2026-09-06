@@ -3034,11 +3034,16 @@ def admin_page(request, page):
             context["units"] = get_units_admin()
             context["portal_staff_roles"] = get_staff_roles_admin()
             context["editing_staff"] = next((u for u in context["portal_staff_users"] if str(u.get("id")) == edit_id), None)
+            from .email_templates import get_email_template
+            from .models import PortalEmailTemplate
+
+            context["welcome_email_template"] = get_email_template(PortalEmailTemplate.KEY_STAFF_WELCOME)
         else:
             context["portal_staff_users"] = PORTAL_STAFF_USERS
             context["units"] = UNITS
             context["portal_staff_roles"] = PORTAL_STAFF_ROLES
             context["editing_staff"] = None
+            context["welcome_email_template"] = None
     if page == "agencies":
         edit_id = request.GET.get("edit")
         if context.get("portal_live"):
@@ -3072,6 +3077,10 @@ def admin_page(request, page):
             context["payment_plans"] = get_payment_plans_admin()
             context["processing_fees"] = get_processing_fees_admin()
             context["tax_settings"], context["tax_staff_options"] = get_tax_settings_admin()
+            from .email_templates import get_email_template
+            from .models import PortalEmailTemplate
+
+            context["charge_email_template"] = get_email_template(PortalEmailTemplate.KEY_CHARGE_NOTICE)
         else:
             context["fee_rules"] = FEE_RULES
             context["billing_charge_types"] = BILLING_CHARGE_TYPES
@@ -3079,6 +3088,7 @@ def admin_page(request, page):
             context["processing_fees"] = []
             context["tax_settings"] = None
             context["tax_staff_options"] = []
+            context["charge_email_template"] = None
     if page == "checkin-settings":
         if context.get("portal_live"):
             from .admin_config import get_checkin_settings_admin, get_units_admin
@@ -3298,8 +3308,13 @@ def admin_page(request, page):
             from .member_admin import parent_email_recipients
 
             context["parent_recipients"] = parent_email_recipients()
+            from .email_templates import get_email_template
+            from .models import PortalEmailTemplate
+
+            context["first_day_template"] = get_email_template(PortalEmailTemplate.KEY_FIRST_DAY_REMINDER)
         else:
             context["parent_recipients"] = []
+            context["first_day_template"] = None
         context["preselect_family_id"] = request.GET.get("family_id", "")
     if page == "discounts":
         if context.get("portal_live"):

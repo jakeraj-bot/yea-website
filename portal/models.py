@@ -883,3 +883,27 @@ class PortalSupportViewSession(models.Model):
     def __str__(self):
         return f"{self.family.name} · support view"
 
+
+class PortalEmailTemplate(models.Model):
+    KEY_STAFF_WELCOME = "staff_welcome"
+    KEY_CHARGE_NOTICE = "charge_notice"
+    KEY_FIRST_DAY_REMINDER = "first_day_reminder"
+    KEY_CHOICES = (
+        (KEY_STAFF_WELCOME, "Staff / admin welcome"),
+        (KEY_CHARGE_NOTICE, "Charge posted"),
+        (KEY_FIRST_DAY_REMINDER, "First-day payment reminder"),
+    )
+
+    key = models.SlugField(unique=True, choices=KEY_CHOICES)
+    name = models.CharField(max_length=120)
+    subject = models.CharField(max_length=200)
+    body = models.TextField()
+    is_enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
