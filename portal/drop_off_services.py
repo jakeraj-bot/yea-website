@@ -114,6 +114,24 @@ def save_settings(data):
     return settings_row
 
 
+def _weekday_values(data, key):
+    raw = data.getlist(key) if hasattr(data, "getlist") else data.get(key)
+    if raw in (None, ""):
+        return []
+    if not isinstance(raw, (list, tuple)):
+        raw = [raw]
+    days = []
+    allowed = {choice[0] for choice in WEEKDAYS}
+    for item in raw:
+        try:
+            day = int(item)
+        except (TypeError, ValueError):
+            continue
+        if day in allowed and day not in days:
+            days.append(day)
+    return days
+
+
 def save_slot(data, slot_id=None):
     unit_id = data.get("unit_id") or data.get("unit")
     unit = PortalUnit.objects.filter(pk=unit_id).first() if str(unit_id).isdigit() else None
@@ -155,16 +173,80 @@ def save_slot(data, slot_id=None):
         slot.is_active = is_active
         slot.save()
         return slot
-    return PortalDropOffSlot.objects.create(
+    slot, _created = PortalDropOffSlot.objects.update_or_create(
         unit=unit,
         weekday=weekday,
         start_time=start,
-        label=label,
-        capacity=capacity,
-        price=price,
-        school_note=school_note,
-        is_active=is_active,
+        defaults={
+            "label": label,
+            "capacity": capacity,
+            "price": price,
+            "school_note": school_note,
+            "is_active": is_active,
+        },
     )
+    return slot
+
+
+def save_slots(data):
+    """Create many drop-off slots at once (several days and/or several times)."""
+    if data.get("slot_id"):
+        return [save_slot(data, slot_id=data.get("slot_id"))]
+
+    created = []
+    indexed = False
+    for index in range(20):
+        start = (data.get(f"start_time_{index}") or "").strip()
+        days = _weekday_values(data, f"weekdays_{index}")
+        if not start and not days:
+            continue
+        indexed = True
+        if not start:
+            raise ValueError(f"Enter a time for time {index + 1}.")
+        if not days:
+            raise ValueError(f"Choose at least one weekday for time {index + 1}.")
+        row = {
+            "unit_id": data.get("unit_id"),
+            "unit": data.get("unit"),
+            "unit_slug": data.get("unit_slug"),
+            "start_time": start,
+            "label": data.get(f"label_{index}", ""),
+            "capacity": data.get(f"capacity_{index}"),
+            "price": data.get(f"price_{index}"),
+            "school_note": data.get(f"school_note_{index}", ""),
+        }
+        for day in days:
+            created.append(save_slot({**row, "weekday": day}))
+    if indexed:
+        if not created:
+            raise ValueError("Add at least one time and choose the days it runs.")
+        return created
+
+    days = _weekday_values(data, "weekdays")
+    if days:
+        times = data.getlist("start_time") if hasattr(data, "getlist") else [data.get("start_time")]
+        times = [str(value).strip() for value in times if str(value or "").strip()]
+        if not times:
+            raise ValueError("Enter at least one time.")
+        labels = data.getlist("label") if hasattr(data, "getlist") else [data.get("label")]
+        capacities = data.getlist("capacity") if hasattr(data, "getlist") else [data.get("capacity")]
+        prices = data.getlist("price") if hasattr(data, "getlist") else [data.get("price")]
+        notes = data.getlist("school_note") if hasattr(data, "getlist") else [data.get("school_note")]
+        for i, start in enumerate(times):
+            row = {
+                "unit_id": data.get("unit_id"),
+                "unit": data.get("unit"),
+                "unit_slug": data.get("unit_slug"),
+                "start_time": start,
+                "label": labels[i] if i < len(labels) else "",
+                "capacity": capacities[i] if i < len(capacities) else data.get("capacity"),
+                "price": prices[i] if i < len(prices) else data.get("price"),
+                "school_note": notes[i] if i < len(notes) else data.get("school_note"),
+            }
+            for day in days:
+                created.append(save_slot({**row, "weekday": day}))
+        return created
+    return [save_slot(data)]
 
 
 def delete_slot(slot_id):

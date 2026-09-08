@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -13,11 +13,13 @@ from portal.drop_off_services import (
     family_has_drop_off,
     save_settings,
     save_slot,
+    save_slots,
     set_child_drop_off,
 )
 from portal.models import (
     PortalChild,
     PortalDropOffBooking,
+    PortalDropOffSlot,
     PortalFamily,
     PortalParentAccount,
     PortalStaffAccount,
@@ -246,3 +248,49 @@ class DropOffProgramTests(TestCase):
         settings_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "drop-off"}))
         self.assertContains(settings_page, "Early Wednesday 1:00 PM")
         self.assertContains(settings_page, "Pay when you book.")
+        self.assertContains(settings_page, "Add another time")
+        self.assertContains(settings_page, "All weekdays")
+        self.assertContains(settings_page, 'name="weekdays_0"')
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_save_multiple_days_and_times_at_once(self):
+        self._login(self.admin_user, "admin")
+        response = self.client.post(
+            reverse("portal_admin_drop_off_slot_save"),
+            {
+                "unit_id": str(self.unit.pk),
+                "weekdays_0": ["0", "1", "2", "3", "4"],
+                "start_time_0": "15:00",
+                "label_0": "Regular 3:00 PM",
+                "capacity_0": "10",
+                "price_0": "20.00",
+                "weekdays_1": ["2"],
+                "start_time_1": "13:00",
+                "label_1": "Early Wednesday 1:00 PM",
+                "capacity_1": "8",
+                "price_1": "20.00",
+                "school_note_1": "School 18 dismisses at 1:00 on Wednesdays",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        afternoon = PortalDropOffSlot.objects.filter(unit=self.unit, start_time=time(15, 0), is_active=True)
+        self.assertEqual(afternoon.count(), 5)
+        self.assertEqual(set(afternoon.values_list("weekday", flat=True)), {0, 1, 2, 3, 4})
+        early = PortalDropOffSlot.objects.get(unit=self.unit, start_time=time(13, 0), weekday=2)
+        self.assertEqual(early.label, "Early Wednesday 1:00 PM")
+        self.assertEqual(early.capacity, 8)
+
+    def test_save_slots_creates_each_selected_weekday(self):
+        created = save_slots(
+            {
+                "unit_id": self.unit.pk,
+                "weekdays": [0, 4],
+                "start_time": "16:30",
+                "label": "Late pickup",
+                "capacity": "4",
+                "price": "15.00",
+            }
+        )
+        self.assertEqual(len(created), 2)
+        self.assertEqual({slot.weekday for slot in created}, {0, 4})
+        self.assertTrue(all(slot.start_time == time(16, 30) for slot in created))
