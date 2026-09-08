@@ -26,6 +26,68 @@
     {% include "portal/includes/family_account_tabs.html" %}
 
     <div class="portal-profile-grid">
+      {% if member_info %}
+      <section class="card portal-profile-full portal-collapse-skip" id="edit-member-info">
+        <h2>Edit member info</h2>
+        <p class="form-note">Change parent names, phone, address, and login email here after approval. The parent does not need to re-apply. Saving updates the email they use to sign in and reset their password.</p>
+        <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_member_update' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_member_update' family_slug=family_slug %}{% endif %}" class="portal-form-grid">
+          {% csrf_token %}
+          {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="form-group">
+            <label for="member-family-name">Family name</label>
+            <input id="member-family-name" name="family_name" class="portal-input" value="{{ member_info.family_name }}" required maxlength="120">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="member-address">Home address</label>
+            <input id="member-address" name="home_address" class="portal-input" value="{{ member_info.home_address }}" maxlength="255">
+          </div>
+          <div class="form-group">
+            <label for="member-primary-first">Parent first name</label>
+            <input id="member-primary-first" name="primary_first_name" class="portal-input" value="{{ member_info.primary_first_name }}" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="member-primary-last">Parent last name</label>
+            <input id="member-primary-last" name="primary_last_name" class="portal-input" value="{{ member_info.primary_last_name }}" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="member-primary-email">Parent login email</label>
+            <input id="member-primary-email" name="primary_email" type="email" class="portal-input" value="{{ member_info.primary_email }}" required maxlength="254">
+            {% if member_info.has_parent_login %}
+            <p class="form-note">Username stays <strong>{{ member_info.login_username }}</strong>. They can also sign in with this email.</p>
+            {% else %}
+            <p class="form-note">No parent login yet — this email is saved on the family record and used when a login is created.</p>
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label for="member-primary-phone">Parent phone</label>
+            <input id="member-primary-phone" name="primary_phone" class="portal-input" value="{{ member_info.primary_phone }}" maxlength="30">
+          </div>
+          <div class="form-group">
+            <label for="member-secondary-first">Secondary first name</label>
+            <input id="member-secondary-first" name="secondary_first_name" class="portal-input" value="{{ member_info.secondary_first_name }}" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="member-secondary-last">Secondary last name</label>
+            <input id="member-secondary-last" name="secondary_last_name" class="portal-input" value="{{ member_info.secondary_last_name }}" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="member-secondary-email">Secondary email</label>
+            <input id="member-secondary-email" name="secondary_email" type="email" class="portal-input" value="{{ member_info.secondary_email }}" maxlength="254">
+          </div>
+          <div class="form-group">
+            <label for="member-secondary-phone">Secondary phone</label>
+            <input id="member-secondary-phone" name="secondary_phone" class="portal-input" value="{{ member_info.secondary_phone }}" maxlength="30">
+          </div>
+          <div class="form-group portal-form-full portal-member-info-actions">
+            <button type="submit" class="btn btn-primary">Save member info</button>
+            {% if member_info.primary_email %}
+            <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_family_email' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}{% else %}{% url 'portal_staff_family_email' family_slug=family_slug %}{% endif %}">Email parent</a>
+            {% endif %}
+          </div>
+        </form>
+      </section>
+      {% else %}
       <section class="card">
         <h2>Household</h2>
         <dl class="portal-dl">
@@ -56,6 +118,7 @@
           <dt>Phone</dt><dd>{{ profile.secondary.phone }}</dd>
         </dl>
       </section>
+      {% endif %}
       {% endif %}
 
       {% for child in profile.children %}

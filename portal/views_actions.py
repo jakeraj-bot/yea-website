@@ -1510,6 +1510,77 @@ def family_email_send(request, family_slug):
 
 
 @require_POST
+def family_member_info_save(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import resolve_family, update_family_member_info
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family_slug})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family_slug})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    actor = ""
+    if request.user.is_authenticated:
+        actor = (request.user.get_full_name() or request.user.username or "").strip()
+    try:
+        _info, changes = update_family_member_info(
+            family,
+            {
+                "family_name": request.POST.get("family_name", ""),
+                "home_address": request.POST.get("home_address", ""),
+                "primary_first_name": request.POST.get("primary_first_name", ""),
+                "primary_last_name": request.POST.get("primary_last_name", ""),
+                "primary_email": request.POST.get("primary_email", ""),
+                "primary_phone": request.POST.get("primary_phone", ""),
+                "secondary_first_name": request.POST.get("secondary_first_name", ""),
+                "secondary_last_name": request.POST.get("secondary_last_name", ""),
+                "secondary_email": request.POST.get("secondary_email", ""),
+                "secondary_phone": request.POST.get("secondary_phone", ""),
+            },
+            actor=actor,
+        )
+        if changes:
+            messages.success(request, "Member information saved. Parent login email is up to date.")
+        else:
+            messages.success(request, "Member information is already up to date.")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+
+    return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+
+@require_POST
 @staff_login_required_post
 def staff_create_application(request):
     from enrollment.staff_application import create_staff_application

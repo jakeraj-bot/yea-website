@@ -72,6 +72,10 @@ def resolve_auth_username(portal_type, login_name):
     legacy = User.objects.filter(username__iexact=login_name).first()
     if legacy and user_matches_portal(portal_type, legacy):
         return login_name
+    if portal_type == "parent" and "@" in login_name:
+        by_email = User.objects.filter(email__iexact=login_name).first()
+        if by_email and user_matches_portal("parent", by_email):
+            return by_email.username
     return prefixed
 
 
