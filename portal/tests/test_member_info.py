@@ -300,6 +300,8 @@ class MemberInfoViewTests(TestCase):
         self.assertContains(response, "orengo")
         self.assertContains(response, "wrong@example.com")
         self.assertContains(response, "copy it now")
+        self.assertContains(response, 'id="parent-password-once"')
+        self.assertContains(response, "portal-password-once portal-profile-full portal-collapse-skip")
         self.parent_user.refresh_from_db()
         self.assertTrue(self.parent_user.check_password("NewTempPass123!"))
         self.assertFalse(self.parent_user.check_password("ParentPass123"))
