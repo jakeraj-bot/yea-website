@@ -2183,7 +2183,7 @@ def admin_drop_off_save(request):
 @require_POST
 @admin_login_required_post
 def admin_drop_off_slot_save(request):
-    from .drop_off_services import delete_slot, save_slot
+    from .drop_off_services import delete_slot, save_slots
 
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="drop-off")
@@ -2193,8 +2193,11 @@ def admin_drop_off_slot_save(request):
             delete_slot(request.POST.get("slot_id"))
             messages.success(request, "Time slot turned off.")
         else:
-            save_slot(request.POST, slot_id=request.POST.get("slot_id") or None)
-            messages.success(request, "Drop-off time slot saved.")
+            slots = save_slots(request.POST)
+            if len(slots) == 1:
+                messages.success(request, "Drop-off time slot saved.")
+            else:
+                messages.success(request, f"Saved {len(slots)} drop-off time slots.")
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("portal_admin_page", page="drop-off")
