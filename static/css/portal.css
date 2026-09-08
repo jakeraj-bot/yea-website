@@ -1926,8 +1926,8 @@
 }
 
 .portal-families-table {
-  width: max(100%, 90rem);
-  min-width: 90rem;
+  width: 100%;
+  min-width: 76rem;
   table-layout: fixed;
 }
 
@@ -1941,8 +1941,11 @@
 }
 
 .portal-families-table th {
-  white-space: nowrap;
+  white-space: normal;
   overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+  line-height: 1.25;
 }
 
 .portal-families-table td {
@@ -1976,12 +1979,12 @@
 
 .portal-families-table th[data-col="family"],
 .portal-families-table td[data-col="family"] {
-  width: 11%;
+  width: 8rem;
 }
 
 .portal-families-table th[data-col="contact"],
 .portal-families-table td[data-col="contact"] {
-  width: 12%;
+  width: 8rem;
 }
 
 .portal-visually-hidden {
@@ -2042,36 +2045,41 @@
   min-width: 16rem;
 }
 
+.portal-families-table th[data-col="unit"],
+.portal-families-table td[data-col="unit"] {
+  width: 5.5rem;
+}
+
 .portal-families-table th[data-col="school"],
 .portal-families-table td[data-col="school"] {
-  width: 16rem;
-  min-width: 16rem;
+  width: 12.5rem;
+  min-width: 12.5rem;
   overflow: hidden;
 }
 
 .portal-families-table th[data-col="medical"],
 .portal-families-table td[data-col="medical"] {
-  width: 10%;
+  width: 5rem;
   overflow: visible;
   white-space: normal;
 }
 
 .portal-families-table th[data-col="program"],
 .portal-families-table td[data-col="program"] {
-  width: 12%;
+  width: 7rem;
 }
 
 .portal-families-table th[data-col="billing"],
 .portal-families-table td[data-col="billing"] {
-  width: 9%;
+  width: 6.5rem;
 }
 
 .portal-families-table th[data-col="child-balance"],
 .portal-families-table td[data-col="child-balance"],
 .portal-families-table th[data-col="family-balance"],
 .portal-families-table td[data-col="family-balance"] {
-  width: 9rem;
-  min-width: 9rem;
+  width: 7rem;
+  min-width: 7rem;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
@@ -2082,8 +2090,8 @@
 
 .portal-families-table th[data-col="balance"],
 .portal-families-table td[data-col="balance"] {
-  width: 9rem;
-  min-width: 9rem;
+  width: 7rem;
+  min-width: 7rem;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
@@ -2094,13 +2102,13 @@
 
 .portal-families-table th[data-col="status"],
 .portal-families-table td[data-col="status"] {
-  width: 10%;
+  width: 5.5rem;
 }
 
 .portal-families-table th[data-col="actions"],
 .portal-families-table td[data-col="actions"] {
-  width: 18rem;
-  min-width: 18rem;
+  width: 15rem;
+  min-width: 15rem;
   overflow: hidden;
   white-space: nowrap;
 }
