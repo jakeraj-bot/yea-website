@@ -920,8 +920,7 @@
 }
 
 .portal-table-wrap {
-  overflow-x: clip;
-  overflow-y: visible;
+  overflow: auto;
   max-width: 100%;
   background: #fff;
   border-radius: var(--radius);
@@ -930,8 +929,9 @@
 
 .portal-table {
   width: 100%;
-  max-width: 100%;
-  table-layout: fixed;
+  min-width: max-content;
+  max-width: none;
+  table-layout: auto;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.875rem;
@@ -942,7 +942,8 @@
   padding: 0.45rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   vertical-align: top;
 }
 
@@ -952,12 +953,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .portal-table thead th {
   position: sticky;
-  top: var(--portal-sticky-th, 6rem);
+  top: 0;
   z-index: 5;
+  background: var(--bg-soft);
   box-shadow: 0 1px 0 var(--border);
 }
 
@@ -990,6 +994,28 @@
 
 .portal-amount-debit { color: var(--text-heading); }
 .portal-amount-credit { color: var(--yea-green); font-weight: 600; }
+.portal-amount-debit,
+.portal-amount-credit {
+  white-space: nowrap;
+}
+
+.portal-table td.portal-cell-amount,
+.portal-table [data-col="child-balance"],
+.portal-table [data-col="family-balance"],
+.portal-table [data-col="balance"] {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-money {
+  display: inline-block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+}
 
 .portal-toolbar {
   margin-bottom: 1rem;
@@ -1645,9 +1671,12 @@
 
 .portal-table-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
-  min-width: 8.5rem;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .portal-input-sm {
@@ -1886,27 +1915,41 @@
   position: relative;
 }
 
-/* Keep horizontal scroll on wide staff tables; tooltips escape from cells only. */
+/* Wide families table: scroll inside the wrap so sticky headers stay at the
+   top of the table (not 6rem down over the first rows) and cells keep width. */
 .portal-families-table-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow: auto;
+  max-height: calc(100vh - 11rem);
   display: block;
 }
 
 .portal-families-table {
   width: 100%;
-  min-width: 0;
+  min-width: 76rem;
   table-layout: fixed;
 }
 
 .portal-families-table th,
 .portal-families-table td {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   vertical-align: top;
-  white-space: normal;
   font-size: 0.875rem;
   padding: 0.45rem 0.5rem;
+}
+
+.portal-families-table th {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+  line-height: 1.25;
+}
+
+.portal-families-table td {
+  overflow: hidden;
 }
 
 .portal-families-table td[data-col="child"],
@@ -1936,12 +1979,12 @@
 
 .portal-families-table th[data-col="family"],
 .portal-families-table td[data-col="family"] {
-  width: 11%;
+  width: 8rem;
 }
 
 .portal-families-table th[data-col="contact"],
 .portal-families-table td[data-col="contact"] {
-  width: 12%;
+  width: 8rem;
 }
 
 .portal-visually-hidden {
@@ -1956,7 +1999,23 @@
   border: 0;
 }
 
-.portal-school-edit-form,
+.portal-school-edit-form {
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.portal-school-edit-label {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .portal-school-group-rename {
   display: flex;
   flex-wrap: wrap;
@@ -1965,9 +2024,14 @@
 }
 
 .portal-school-edit-input {
-  min-width: 10.5rem;
-  width: 12rem;
+  min-width: 0;
+  width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-school-edit-form .btn {
+  flex-shrink: 0;
 }
 
 .portal-school-group-rename {
@@ -1981,53 +2045,72 @@
   min-width: 16rem;
 }
 
+.portal-families-table th[data-col="unit"],
+.portal-families-table td[data-col="unit"] {
+  width: 5.5rem;
+}
+
 .portal-families-table th[data-col="school"],
 .portal-families-table td[data-col="school"] {
-  width: 12%;
+  width: 12.5rem;
+  min-width: 12.5rem;
+  overflow: hidden;
 }
 
 .portal-families-table th[data-col="medical"],
 .portal-families-table td[data-col="medical"] {
-  width: 10%;
+  width: 5rem;
   overflow: visible;
   white-space: normal;
 }
 
 .portal-families-table th[data-col="program"],
 .portal-families-table td[data-col="program"] {
-  width: 12%;
+  width: 7rem;
 }
 
 .portal-families-table th[data-col="billing"],
 .portal-families-table td[data-col="billing"] {
-  width: 9%;
+  width: 6.5rem;
 }
 
 .portal-families-table th[data-col="child-balance"],
 .portal-families-table td[data-col="child-balance"],
 .portal-families-table th[data-col="family-balance"],
 .portal-families-table td[data-col="family-balance"] {
-  width: 7%;
+  width: 7rem;
+  min-width: 7rem;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
 }
 
 .portal-families-table th[data-col="balance"],
 .portal-families-table td[data-col="balance"] {
-  width: 7%;
+  width: 7rem;
+  min-width: 7rem;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
 }
 
 .portal-families-table th[data-col="status"],
 .portal-families-table td[data-col="status"] {
-  width: 10%;
+  width: 5.5rem;
 }
 
 .portal-families-table th[data-col="actions"],
 .portal-families-table td[data-col="actions"] {
-  width: 9.5rem;
-  min-width: 0;
-  overflow: visible;
-  white-space: normal;
+  width: 15rem;
+  min-width: 15rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .portal-families-table td[data-col="actions"] {
@@ -2043,8 +2126,17 @@
 
 .portal-families-table .portal-row-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
+}
+
+.portal-families-table .portal-row-actions .btn {
+  margin: 0;
+  white-space: nowrap;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.75rem;
 }
 
 .portal-med-icon-symbol {
@@ -3289,8 +3381,12 @@
 
 .portal-table-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .portal-subheading {
@@ -4053,5 +4149,277 @@
   }
   .portal-collapse-toggle::after {
     display: none;
+  }
+}
+
+.portal-families-table td[data-col="school"] .portal-school-edit-form,
+.portal-families-table td[data-col="school"] .portal-school-edit-label,
+.portal-families-table td[data-col="school"] .portal-school-edit-input {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.portal-member-info-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.portal-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0 0 0.85rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  color: var(--text-heading);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.portal-sidebar-toggle:hover,
+.portal-sidebar-toggle:focus-visible {
+  outline: 2px solid var(--yea-blue);
+  outline-offset: 2px;
+}
+
+.portal-sidebar-toggle-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M9 4v16'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M9 4v16'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.portal-nav a,
+.portal-nav-parent .portal-nav-link,
+.portal-nav-staff .portal-nav-link,
+.portal-nav-admin .portal-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.portal-nav-link::before {
+  content: "";
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask: var(--nav-icon) center / contain no-repeat;
+  mask: var(--nav-icon) center / contain no-repeat;
+}
+
+.portal-nav-link {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3C/svg%3E");
+}
+
+.portal-nav-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.portal-nav-dashboard,
+.portal-nav-staff-dashboard,
+.portal-nav-admin-dashboard,
+.portal-nav-group-overview > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z'/%3E%3C/svg%3E");
+}
+.portal-nav-profile,
+.portal-nav-staff-families,
+.portal-nav-admin-families,
+.portal-nav-group-members > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
+}
+.portal-nav-applications,
+.portal-nav-staff-applications,
+.portal-nav-admin-applications {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M8 13h8M8 17h5'/%3E%3C/svg%3E");
+}
+.portal-nav-policies,
+.portal-nav-staff-policies,
+.portal-nav-admin-policies {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2'/%3E%3Crect x='9' y='3' width='6' height='4' rx='1'/%3E%3Cpath d='M9 12h6M9 16h4'/%3E%3C/svg%3E");
+}
+.portal-nav-billing,
+.portal-nav-admin-billing,
+.portal-nav-group-billing > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='5' width='20' height='14' rx='2'/%3E%3Cpath d='M2 10h20'/%3E%3C/svg%3E");
+}
+.portal-nav-tax {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h12v4H4zM8 8v12M4 20h8'/%3E%3Cpath d='M16 12h4M18 10v8'/%3E%3C/svg%3E");
+}
+.portal-nav-receipts {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2h12v20l-2-1-2 1-2-1-2 1-2-1-2 1z'/%3E%3Cpath d='M8 7h8M8 11h8M8 15h5'/%3E%3C/svg%3E");
+}
+.portal-nav-dropin,
+.portal-nav-dropoff,
+.portal-nav-staff-dropoff,
+.portal-nav-admin-dropoff {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10h13l3 5H6z'/%3E%3Ccircle cx='7.5' cy='17.5' r='1.5'/%3E%3Ccircle cx='16.5' cy='17.5' r='1.5'/%3E%3Cpath d='M5 10V7h8'/%3E%3C/svg%3E");
+}
+.portal-nav-support,
+.portal-nav-staff-support,
+.portal-nav-admin-support,
+.portal-nav-group-communications > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.5 1-1.5 1.7V14'/%3E%3Ccircle cx='12' cy='17' r='.6' fill='black'/%3E%3C/svg%3E");
+}
+.portal-nav-account {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20a7 7 0 0 1 14 0'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-programs,
+.portal-nav-admin-programs,
+.portal-nav-group-organization > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-attendance {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 11 12 14 20 6'/%3E%3Cpath d='M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-waitlist,
+.portal-nav-admin-waitlist {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-agency,
+.portal-nav-admin-agencies {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M5 21V8l7-4 7 4v13'/%3E%3Cpath d='M9 21v-6h6v6'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-messages,
+.portal-nav-admin-messages,
+.portal-nav-admin-comms {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-incidents {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4'/%3E%3Ccircle cx='12' cy='17' r='.6' fill='black'/%3E%3Cpath d='M10.3 4.7 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.7a2 2 0 0 0-3.4 0z'/%3E%3C/svg%3E");
+}
+.portal-nav-staff-reports,
+.portal-nav-admin-reports,
+.portal-nav-group-tools > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19V5'/%3E%3Cpath d='M4 19h16'/%3E%3Cpath d='M8 16v-5M12 16V8M16 16v-3'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-units {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s7-4.4 7-11a7 7 0 1 0-14 0c0 6.6 7 11 7 11z'/%3E%3Ccircle cx='12' cy='10' r='2.5'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-staff {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3'/%3E%3Cpath d='M3 20a6 6 0 0 1 12 0'/%3E%3Cpath d='M16 11h5M18.5 8.5v5'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-collections {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1v22'/%3E%3Cpath d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'/%3E%3C/svg%3E");
+}
+.portal-nav-fieldtrips {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19V7l8-3 8 3v12'/%3E%3Cpath d='M4 11h16'/%3E%3Cpath d='M12 4v15'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-accounts,
+.portal-nav-group-settings > .portal-nav-group-label {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.7 1 1.1 1.7 1.1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-permissions {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-fees {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 10h5a2 2 0 1 1 0 4H9m3 3V7'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-scholarships,
+.portal-nav-admin-discounts {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7'/%3E%3Cpath d='M12 3 4 8h16z'/%3E%3Cpath d='M12 12v10'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-emails {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3 7 9 6 9-6'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-lessons {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0-4 10c0 2 1 3 1 5h6c0-2 1-3 1-5a6 6 0 0 0-4-10z'/%3E%3Cpath d='M9 21h6'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-licensing,
+.portal-nav-admin-compliance {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 5 6v6c0 5 3.5 8 7 9 3.5-1 7-4 7-9V6z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E");
+}
+.portal-nav-admin-checkin {
+  --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3Cpath d='m9 16 2 2 4-4'/%3E%3C/svg%3E");
+}
+
+.portal-shell {
+  transition: grid-template-columns 0.18s ease;
+}
+
+html.portal-nav-collapsed .portal-shell {
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+}
+
+html.portal-nav-collapsed .portal-sidebar {
+  padding: 1rem 0.45rem 1.5rem;
+}
+
+html.portal-nav-collapsed .portal-sidebar-toggle {
+  justify-content: center;
+  padding: 0.55rem 0.35rem;
+}
+
+html.portal-nav-collapsed .portal-sidebar-toggle-label,
+html.portal-nav-collapsed .portal-sidebar-label,
+html.portal-nav-collapsed .portal-sidebar-user-meta,
+html.portal-nav-collapsed .portal-sidebar-staff-badge,
+html.portal-nav-collapsed .portal-sidebar-admin-badge,
+html.portal-nav-collapsed .portal-nav-group-label,
+html.portal-nav-collapsed .portal-sidebar-footer .portal-switch-btn,
+html.portal-nav-collapsed .portal-signout-btn {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html.portal-nav-collapsed .portal-nav-link {
+  font-size: 0;
+  line-height: 0;
+  justify-content: center;
+  padding: 0.55rem 0.35rem;
+  gap: 0;
+}
+
+html.portal-nav-collapsed .portal-nav-link::before {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+html.portal-nav-collapsed .portal-nav-group .portal-nav {
+  margin: 0.2rem 0;
+  padding: 0;
+}
+
+html.portal-nav-collapsed .portal-sidebar-user {
+  justify-content: center;
+  padding: 0.35rem 0 0.75rem;
+}
+
+html.portal-nav-collapsed .portal-sidebar-footer {
+  border-top: none;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 800px) {
+  html.portal-nav-collapsed .portal-shell,
+  html.portal-nav-collapsed .portal-shell--auth {
+    grid-template-columns: 1fr;
+  }
+  html.portal-nav-collapsed .portal-sidebar {
+    padding: 0.75rem 0.65rem;
+  }
+  html.portal-nav-collapsed .portal-nav,
+  html.portal-nav-collapsed .portal-nav-groups {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
   }
 }

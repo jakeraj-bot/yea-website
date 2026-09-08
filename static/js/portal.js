@@ -136,4 +136,48 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
+
+  function initPortalSidebarCollapse() {
+    var toggle = document.getElementById("portal-sidebar-toggle");
+    if (!toggle) return;
+    var storageKey = "yea-portal-sidebar-collapsed";
+    var groups = document.querySelectorAll(".portal-nav-group");
+    var groupWasOpen = [];
+
+    function isCollapsed() {
+      return document.documentElement.classList.contains("portal-nav-collapsed");
+    }
+
+    function applyCollapsed(collapsed) {
+      document.documentElement.classList.toggle("portal-nav-collapsed", collapsed);
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      toggle.setAttribute("title", collapsed ? "Expand menu" : "Collapse menu");
+      var label = toggle.querySelector(".portal-sidebar-toggle-label");
+      if (label) label.textContent = collapsed ? "Expand menu" : "Collapse menu";
+      groups.forEach(function (group, index) {
+        if (collapsed) {
+          groupWasOpen[index] = group.hasAttribute("open");
+          group.setAttribute("open", "");
+        } else if (groupWasOpen.length) {
+          if (groupWasOpen[index]) group.setAttribute("open", "");
+          else group.removeAttribute("open");
+        }
+      });
+      try {
+        window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+      } catch (err) {}
+    }
+
+    applyCollapsed(isCollapsed());
+    toggle.addEventListener("click", function () {
+      applyCollapsed(!isCollapsed());
+    });
+    toggle.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        applyCollapsed(!isCollapsed());
+      }
+    });
+  }
+  initPortalSidebarCollapse();
 });

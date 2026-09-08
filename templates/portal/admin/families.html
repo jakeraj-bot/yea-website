@@ -68,8 +68,8 @@
             </td>
             <td data-col="program">{{ family.program }}</td>
             <td data-col="billing">{{ family.billing_type }}</td>
-            <td data-col="child-balance">${{ family.child_balance }}</td>
-            <td data-col="family-balance">{% if family.is_first_child %}${{ family.family_balance }}{% endif %}</td>
+            <td data-col="child-balance"><span class="portal-money">${{ family.child_balance }}</span></td>
+            <td data-col="family-balance">{% if family.is_first_child %}<span class="portal-money">${{ family.family_balance }}</span>{% endif %}</td>
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
@@ -156,5 +156,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=7"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=8"></script>
 {% endblock %}

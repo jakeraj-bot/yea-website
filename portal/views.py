@@ -227,6 +227,18 @@ FAMILY_TAB_URL_KEYS = {
 }
 
 
+def _attach_member_info(extra, family_slug, unit=None, family_id=None):
+    if extra.get("member_info") is not None or not _portal_families_live():
+        return extra
+    from .member_admin import member_info_for_family, resolve_family
+
+    live_family = resolve_family(family_slug=family_slug, family_id=family_id or extra.get("family_id"), unit=unit)
+    if live_family:
+        extra.setdefault("family_id", live_family.pk)
+        extra["member_info"] = member_info_for_family(live_family)
+    return extra
+
+
 def _family_list_rows_for_neighbors(area, unit=None):
     from .family_list import demo_family_list_rows
 
@@ -333,6 +345,7 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
         extra.update(
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
         )
+    _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
     return _staff_context(
         page_title,
         request=request,
@@ -391,6 +404,7 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     extra.update(
         _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
     )
+    _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
     if area == "admin":
         if _portal_families_live():
             from .member_admin import resolve_family

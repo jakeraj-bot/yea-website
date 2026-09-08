@@ -77,6 +77,194 @@ def parent_email_for_family(family):
     return ""
 
 
+def _split_person_name(full_name):
+    parts = (full_name or "").strip().split()
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], " ".join(parts[1:])
+
+
+def _normalize_member_email(value):
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+
+    email = (value or "").strip().lower()
+    if not email:
+        raise ValueError("Enter a parent email.")
+    try:
+        validate_email(email)
+    except ValidationError:
+        raise ValueError("Enter a valid email address.")
+    return email
+
+
+def _email_in_use(email, exclude_user=None):
+    User = get_user_model()
+    qs = User.objects.filter(email__iexact=email)
+    if exclude_user:
+        qs = qs.exclude(pk=exclude_user.pk)
+    return qs.exists()
+
+
+def member_info_for_family(family):
+    """Current live household/parent fields for the staff/admin edit form."""
+    if not family:
+        return None
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    app = EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at").first()
+    user = account.user if account else None
+    primary_first = (app.primary_first_name if app else "") or ""
+    primary_last = (app.primary_last_name if app else "") or ""
+    if not primary_first and not primary_last:
+        primary_first, primary_last = _split_person_name(family.primary_contact)
+    secondary_first = app.secondary_first_name if app else ""
+    secondary_last = app.secondary_last_name if app else ""
+    return {
+        "family_id": family.pk,
+        "family_name": family.name or (app.family_name if app else ""),
+        "home_address": (app.home_address if app else "") or "",
+        "primary_first_name": primary_first,
+        "primary_last_name": primary_last,
+        "primary_email": parent_email_for_family(family),
+        "primary_phone": (app.primary_phone if app else "") or "",
+        "secondary_first_name": secondary_first or "",
+        "secondary_last_name": secondary_last or "",
+        "secondary_email": (app.secondary_email_address if app else "") or "",
+        "secondary_phone": (app.secondary_phone if app else "") or "",
+        "login_username": display_username(user.username) if user else "",
+        "has_parent_login": bool(account),
+    }
+
+
+def _sync_parent_login_email(family, email, first_name="", last_name=""):
+    """Keep the parent User email (login / password-reset) in sync."""
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if not account:
+        return None
+    user = account.user
+    if _email_in_use(email, exclude_user=user):
+        raise ValueError("That email is already used by another portal login.")
+    updates = []
+    if (user.email or "").strip().lower() != email:
+        user.email = email
+        updates.append("email")
+    if first_name and user.first_name != first_name:
+        user.first_name = first_name
+        updates.append("first_name")
+    if last_name and user.last_name != last_name:
+        user.last_name = last_name
+        updates.append("last_name")
+    if updates:
+        user.save(update_fields=updates)
+    return user
+
+
+def _record_member_info_change(family, changes, actor=""):
+    from .models import PortalProfileChangeRequest
+
+    if not changes:
+        return None
+    account = PortalParentAccount.objects.filter(family=family).first()
+    if not account:
+        return None
+    return PortalProfileChangeRequest.objects.create(
+        account=account,
+        changes=changes,
+        status=PortalProfileChangeRequest.STATUS_APPROVED,
+        reviewed_at=timezone.now(),
+        reviewed_by=(actor or "Staff")[:120],
+        notes="Staff/admin updated live member information.",
+    )
+
+
+@transaction.atomic
+def update_family_member_info(family, data, *, actor=""):
+    """Edit live parent/household details after approval, including login email."""
+    if not family:
+        raise ValueError("Family not found.")
+
+    email = _normalize_member_email(data.get("primary_email"))
+    family_name = (data.get("family_name") or family.name or "").strip()
+    if not family_name:
+        raise ValueError("Enter a family name.")
+    primary_first = (data.get("primary_first_name") or "").strip()
+    primary_last = (data.get("primary_last_name") or "").strip()
+    contact = f"{primary_first} {primary_last}".strip() or family.primary_contact
+    primary_phone = (data.get("primary_phone") or "").strip()
+    home_address = (data.get("home_address") or "").strip()
+    secondary_first = (data.get("secondary_first_name") or "").strip()
+    secondary_last = (data.get("secondary_last_name") or "").strip()
+    secondary_phone = (data.get("secondary_phone") or "").strip()
+    secondary_email = (data.get("secondary_email") or "").strip().lower()
+    if secondary_email:
+        secondary_email = _normalize_member_email(secondary_email)
+
+    before = member_info_for_family(family)
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if _email_in_use(email, exclude_user=account.user if account else None):
+        raise ValueError("That email is already used by another portal login.")
+    _sync_parent_login_email(family, email, first_name=primary_first, last_name=primary_last)
+
+    family_updates = []
+    if family.name != family_name:
+        family.name = family_name
+        family_updates.append("name")
+    if contact and family.primary_contact != contact:
+        family.primary_contact = contact
+        family_updates.append("primary_contact")
+    if family_updates:
+        family.save(update_fields=family_updates)
+
+    app_fields = {
+        "family_name": family_name,
+        "primary_email": email,
+        "primary_email_address": email,
+        "primary_first_name": primary_first or None,
+        "primary_last_name": primary_last or None,
+        "primary_phone": primary_phone or None,
+        "home_address": home_address or None,
+        "secondary_first_name": secondary_first,
+        "secondary_last_name": secondary_last,
+        "secondary_phone": secondary_phone,
+        "secondary_email_address": secondary_email,
+    }
+    applications = list(EnrollmentApplication.objects.filter(portal_family=family))
+    for app in applications:
+        changed = []
+        for field, value in app_fields.items():
+            if value is None:
+                continue
+            if getattr(app, field) != value:
+                setattr(app, field, value)
+                changed.append(field)
+        if changed:
+            app.save(update_fields=changed)
+
+    after = member_info_for_family(family)
+    tracked = [
+        "family_name",
+        "home_address",
+        "primary_first_name",
+        "primary_last_name",
+        "primary_email",
+        "primary_phone",
+        "secondary_first_name",
+        "secondary_last_name",
+        "secondary_email",
+        "secondary_phone",
+    ]
+    changes = {}
+    for key in tracked:
+        old = (before or {}).get(key) or ""
+        new = (after or {}).get(key) or ""
+        if old != new:
+            changes[key] = {"from": old, "to": new}
+    _record_member_info_change(family, changes, actor=actor)
+    return after, changes
+
+
 def _parse_amount(value):
     try:
         amount = Decimal(str(value).replace(",", "").strip())
@@ -525,6 +713,16 @@ def update_application_fields(application, data):
             updates.append("program_label")
         if updates:
             family.save(update_fields=updates)
+        new_email = (application.primary_email or "").strip().lower()
+        if new_email:
+            application.primary_email_address = new_email
+            application.save(update_fields=["primary_email_address"])
+            _sync_parent_login_email(
+                family,
+                new_email,
+                first_name=application.primary_first_name,
+                last_name=application.primary_last_name,
+            )
     return application
 
 

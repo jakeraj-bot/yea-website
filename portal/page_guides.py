@@ -338,6 +338,10 @@ GUIDES = {
                 "body": "Allergies and action plans are on this page. Hover icons in lists for a short reminder.",
             },
             {
+                "title": "Correct parent info",
+                "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets.",
+            },
+            {
                 "title": "Email the parent",
                 "body": "Use Email parent here or on the Email tab. Previous / Next moves you to the next family in your list.",
             },
