@@ -13,6 +13,12 @@
     <div class="portal-toolbar">
       <span class="portal-status portal-status-{{ application.status_slug|default:'under-review' }}">{{ application.status }}</span>
       <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{% append_query parent_pay_query ref=application.reference %}">Download PDF</a>
+      {% if application.can_add_after_school %}
+      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_after_care' reference=application.reference %}">+ After-care</a>
+      {% endif %}
+      {% if application.can_add_before_care %}
+      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_before_care' reference=application.reference %}">+ Before care</a>
+      {% endif %}
     </div>
 
     {% if application.staff_message %}

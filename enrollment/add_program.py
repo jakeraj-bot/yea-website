@@ -8,6 +8,13 @@ from .locations import location_keys_for_program
 from .models import EmergencyContact, EnrollmentApplication, PolicySignature
 from .notifications import send_application_submitted_emails
 
+PROGRAM_LABELS = {
+    "before_care": "Before care",
+    "after_school": "After-care",
+    "drop_off": "Drop-off",
+    "summer_camp": "Summer camp",
+}
+
 
 def programs_for_child_data(child_data):
     programs = child_data.get("programs")
@@ -36,25 +43,41 @@ def primary_applications_by_child(apps):
     return primaries
 
 
-def child_has_before_care(family, first_name, last_name):
+def child_has_program(family, first_name, last_name, program):
     if not family:
         return False
     return (
         EnrollmentApplication.objects.filter(
             portal_family=family,
-            program="before_care",
-            student_first_name__iexact=first_name.strip(),
-            student_last_name__iexact=last_name.strip(),
+            program=program,
+            student_first_name__iexact=(first_name or "").strip(),
+            student_last_name__iexact=(last_name or "").strip(),
         )
         .exclude(status="declined")
         .exists()
     )
 
 
-def can_add_before_care_for_application(app):
-    if not app or not app.portal_family_id or app.program == "before_care":
+def child_has_before_care(family, first_name, last_name):
+    return child_has_program(family, first_name, last_name, "before_care")
+
+
+def child_has_after_school(family, first_name, last_name):
+    return child_has_program(family, first_name, last_name, "after_school")
+
+
+def can_add_program_for_application(app, program):
+    if not app or not app.portal_family_id or app.program == program:
         return False
-    return not child_has_before_care(app.portal_family, app.student_first_name, app.student_last_name)
+    return not child_has_program(app.portal_family, app.student_first_name, app.student_last_name, program)
+
+
+def can_add_before_care_for_application(app):
+    return can_add_program_for_application(app, "before_care")
+
+
+def can_add_after_school_for_application(app):
+    return can_add_program_for_application(app, "after_school")
 
 
 def copy_policy_signatures(source, dest):
@@ -87,37 +110,60 @@ def _clone_field_names():
     return [field.name for field in EnrollmentApplication._meta.fields if field.name not in skip]
 
 
-@transaction.atomic
-def create_before_care_from_application(source, program_location=None):
-    if source.program == "before_care":
-        raise ValueError("This application is already for before care.")
-    if child_has_before_care(source.portal_family, source.student_first_name, source.student_last_name):
-        raise ValueError("Before care is already on the waitlist for this child.")
+def _program_label(program):
+    return PROGRAM_LABELS.get(program) or program.replace("_", " ")
 
-    location_keys = location_keys_for_program("before_care")
-    if not location_keys:
-        raise ValueError("Before care is not available right now.")
 
+def _choose_location(source, program, program_location, location_keys):
     chosen = (program_location or "").strip()
     if not chosen:
         if source.program_location in location_keys:
-            chosen = source.program_location
-        elif source.program_location == "dale_ave" and "school_18" in location_keys:
-            chosen = "school_18"
-        else:
-            chosen = location_keys[0]
-    elif chosen not in location_keys:
-        raise ValueError("That location is not available for before care.")
+            return source.program_location
+        if program == "before_care" and source.program_location == "dale_ave" and "school_18" in location_keys:
+            return "school_18"
+        if location_keys:
+            return location_keys[0]
+        raise ValueError(f"{_program_label(program)} is not available right now.")
+    if chosen not in location_keys:
+        raise ValueError(f"That location is not available for {_program_label(program).lower()}.")
+    return chosen
+
+
+@transaction.atomic
+def create_program_from_application(source, program, program_location=None, status=None):
+    """Clone an existing application onto another program without a new enrollment form."""
+    label = _program_label(program)
+    if source.program == program:
+        raise ValueError(f"This application is already for {label.lower()}.")
+    if child_has_program(source.portal_family, source.student_first_name, source.student_last_name, program):
+        if program == "before_care":
+            raise ValueError("Before care is already on the waitlist for this child.")
+        raise ValueError(f"{label} is already on file for this child.")
+
+    location_keys = location_keys_for_program(program)
+    if not location_keys:
+        raise ValueError(f"{label} is not available right now.")
+
+    chosen = _choose_location(source, program, program_location, location_keys)
+    if status is None:
+        status = "waitlist" if program == "before_care" else "under_review"
+
+    family_group = source.family_group
+    if not family_group:
+        family_group = uuid.uuid4()
+        if source.pk:
+            source.family_group = family_group
+            source.save(update_fields=["family_group"])
 
     data = {name: getattr(source, name) for name in _clone_field_names()}
     data.update(
         {
             "reference": uuid.uuid4(),
-            "family_group": source.family_group or uuid.uuid4(),
-            "program": "before_care",
+            "family_group": family_group,
+            "program": program,
             "program_location": chosen,
-            "needs_dale_ave_bus": False,
-            "status": "waitlist",
+            "needs_dale_ave_bus": False if program == "before_care" else chosen == "dale_ave",
+            "status": status,
             "portal_family": source.portal_family,
         }
     )
@@ -135,6 +181,17 @@ def create_before_care_from_application(source, program_location=None):
         )
 
     copy_policy_signatures(source, app)
-
     send_application_submitted_emails(app)
     return app
+
+
+def create_before_care_from_application(source, program_location=None):
+    return create_program_from_application(
+        source, "before_care", program_location=program_location, status="waitlist"
+    )
+
+
+def create_after_school_from_application(source, program_location=None):
+    return create_program_from_application(
+        source, "after_school", program_location=program_location, status="under_review"
+    )

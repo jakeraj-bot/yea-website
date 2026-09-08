@@ -58,6 +58,17 @@ class BeforeCareWaitlistCorrectionTests(TestCase):
         self.assertEqual(len(items), 1)
         self.assertIn("before care waitlist", items[0]["program"])
         self.assertEqual(items[0]["reference"], str(after.reference))
+        self.assertFalse(items[0]["can_add_after_school"])
+
+    def test_parent_application_list_offers_after_care_for_before_care_only(self):
+        before = _make_application(self.family, status="waitlist")
+        before.program = "before_care"
+        before.save(update_fields=["program"])
+
+        items = parent_application_list_items(self.family)
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["can_add_after_school"])
+        self.assertEqual(items[0]["reference"], str(before.reference))
 
     def test_policies_count_one_packet_per_child(self):
         after = _make_application(self.family, status="under_review")

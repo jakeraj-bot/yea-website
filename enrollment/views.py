@@ -781,6 +781,59 @@ def apply_add_before_care(request, reference):
     )
 
 
+@require_http_methods(["GET", "POST"])
+@parent_login_required
+def apply_add_after_care(request, reference):
+    from .add_program import can_add_after_school_for_application, create_after_school_from_application
+    from .locations import get_enrollment_location_choices, get_location_label, location_keys_for_program
+
+    account = get_parent_account(request.user)
+    application = get_object_or_404(EnrollmentApplication, reference=reference)
+    if application.portal_family_id != account.family_id:
+        messages.error(request, "You can only add After-care for children on your family account.")
+        return redirect("portal_parent_page", page="applications")
+
+    if not can_add_after_school_for_application(application):
+        messages.error(request, "After-care is already on file for this child, or is not available.")
+        return redirect("portal_parent_page", page="applications")
+
+    child_name = f"{application.student_first_name} {application.student_last_name}".strip()
+    location_keys = location_keys_for_program("after_school")
+    location_choices = [(key, label) for key, label in get_enrollment_location_choices() if key in location_keys]
+    default_location = application.program_location if application.program_location in location_keys else ""
+    if not default_location and location_keys:
+        default_location = location_keys[0]
+    location_label = get_location_label(default_location) if default_location else "School 18"
+
+    if request.method == "POST":
+        try:
+            new_app = create_after_school_from_application(
+                application,
+                program_location=request.POST.get("program_location", "").strip() or None,
+            )
+            messages.success(
+                request,
+                f"After-care was added for {child_name} using your existing application. "
+                "No new enrollment form was needed. Before-care waitlist is unchanged.",
+            )
+            return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'application'})}?ref={new_app.reference}")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("portal_parent_page", page="applications")
+
+    return render(
+        request,
+        "enrollment/add_after_care_confirm.html",
+        {
+            "application": application,
+            "child_name": child_name,
+            "location_label": location_label,
+            "location_choices": location_choices,
+            "default_location": default_location,
+        },
+    )
+
+
 @staff_member_required
 def print_application(request, reference):
     from enrollment.policy_display import get_application_policies
