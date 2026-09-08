@@ -85,15 +85,26 @@ def get_member_summaries_for_unit(unit):
         policy_data = get_parent_policy_data_live(family)
         if not policy_data:
             continue
+        children = policy_data.get("children") or []
+        child_summary = ", ".join(
+            f"{child['child_name'].split()[0]} {child['signed_count']}/{child['total_count']}"
+            for child in children
+            if child.get("child_name")
+        )
         summaries.append(
             {
                 "slug": family.slug,
-                "name": family.name,
-                "children": policy_data.get("child_count", 0),
-                "signed": policy_data.get("signed_count", 0),
-                "total": policy_data.get("total_count", 0),
+                "family_name": policy_data.get("family_name") or family.name,
+                "primary_contact": family.primary_contact or family.name,
+                "children": [child.get("child_name", "") for child in children if child.get("child_name")],
+                "child_count": policy_data.get("child_count", len(children)),
+                "unit": policy_data.get("unit") or unit.name,
+                "signed_count": policy_data.get("signed_count", 0),
+                "total_count": policy_data.get("total_count", 0),
+                "policies_per_child": policy_data.get("policies_per_child", 0),
                 "complete": policy_data.get("complete", False),
-                "label": family.primary_contact or family.name,
+                "program_year": policy_data.get("program_year", ""),
+                "child_summary": child_summary,
             }
         )
     return summaries
@@ -266,19 +277,23 @@ def school_bus_report_meta(unit):
 
 
 def pickup_report_for_unit(unit, program_filter="all"):
+    from .live_services import family_profile_live
+
     families = []
     family_details = {}
-    for family in PortalFamily.objects.filter(unit=unit).prefetch_related("children"):
-        children = [c.name for c in family.children.filter(is_active=True)]
+    for family in PortalFamily.objects.filter(unit=unit).prefetch_related("children").order_by("name"):
+        profile = family_profile_live(family.slug, unit=unit, family_id=family.pk)
+        if not profile:
+            continue
         families.append(
             {
                 "slug": family.slug,
                 "name": family.name,
-                "children": children,
+                "children": [child.get("name", "") for child in profile.get("children") or []],
                 "program": family.program_label or "After-School 2026–27",
             }
         )
-        family_details[family.slug] = {"program": family.program_label or "After-School 2026–27"}
+        family_details[family.slug] = profile
     if not families:
         return pickup_report_programs([], {}), pickup_report_data(
             [], {}, program_filter=program_filter
@@ -374,31 +389,44 @@ def build_dashboard_live(unit, program):
 
 
 def weekly_attendance_report_data(unit, program, anchor_date=None):
+    """Mon–Fri present/absent marks plus printable weekday column labels."""
+    from .report_sheets import week_day_columns, _weekday_monday
+
     anchor_date = anchor_date or timezone.localdate()
-    monday = anchor_date - timedelta(days=anchor_date.weekday())
+    monday = _weekday_monday(anchor_date)
     weekdays = [monday + timedelta(days=i) for i in range(5)]
-    roster_children = (
+    friday = weekdays[4]
+    week_days = week_day_columns(weekdays)
+    roster_children = list(
         PortalChild.objects.filter(family__unit=unit, is_active=True).order_by("name")
         if unit
         else []
     )
+    present_lookup = {}
+    if program and roster_children:
+        records = AttendanceRecord.objects.filter(
+            program=program,
+            date__in=weekdays,
+            child_id__in=[child.pk for child in roster_children],
+        )
+        present_lookup = {
+            (record.child_id, record.date): record.status == AttendanceRecord.STATUS_PRESENT
+            for record in records
+        }
     rows = []
     for child in roster_children:
-        day_marks = []
-        present_count = 0
-        for day in weekdays:
-            record = AttendanceRecord.objects.filter(child=child, program=program, date=day).first()
-            present = record and record.status == AttendanceRecord.STATUS_PRESENT
-            day_marks.append(present)
-            if present:
-                present_count += 1
+        day_marks = [bool(present_lookup.get((child.pk, day))) for day in weekdays]
         rows.append(
             {
                 "child": child.name,
                 "days": day_marks,
-                "weekday_labels": [d.strftime("%a") for d in weekdays],
-                "total": present_count,
+                "weekday_labels": [column["label"] for column in week_days],
+                "total": sum(1 for present in day_marks if present),
             }
         )
-    return rows, weekdays
+    return {
+        "weekly_rows": rows,
+        "week_days": week_days,
+        "week_range_display": f"{monday.strftime('%B %d')} – {friday.strftime('%B %d, %Y')}",
+    }
 

@@ -1842,10 +1842,14 @@ def staff_weekly_attendance_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
     program = get_active_program(unit) if unit else None
     sheet_date = date.today()
+    week_range_display = None
     if unit and program:
         from .staff_services import weekly_attendance_report_data
 
-        weekly_rows, weekdays = weekly_attendance_report_data(unit, program, sheet_date)
+        weekly = weekly_attendance_report_data(unit, program, sheet_date)
+        weekly_rows = weekly["weekly_rows"]
+        weekdays = weekly["week_days"]
+        week_range_display = weekly["week_range_display"]
         roster = build_roster(unit, program, sheet_date)
         attendance = build_session_context(unit, program, sheet_date, roster)
     else:
@@ -1862,6 +1866,7 @@ def staff_weekly_attendance_report(request):
             roster=roster,
             weekly_rows=weekly_rows,
             week_days=weekdays,
+            week_range_display=week_range_display or attendance.get("date_display", ""),
             staff_page_slug="reports",
         ),
     )

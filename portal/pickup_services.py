@@ -133,7 +133,9 @@ def pickup_report_data(families, family_details, program_filter="all"):
         profile = family_details.get(slug)
         if not profile:
             continue
-        authorized = pickup_people_from_profile(profile)
+        authorized = family_authorized_pickup(
+            profile, family_slug=slug if _portal_data_live() else None
+        )["authorized"]
         for child in profile.get("children") or []:
             program = child.get("program", family.get("program", ""))
             if program_filter != "all" and program_filter.lower() not in program.lower():
