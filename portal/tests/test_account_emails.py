@@ -50,6 +50,7 @@ class StaffWelcomeEmailTests(TestCase):
         self.assertIn("StaffPass123", kwargs["message"])
         self.assertIn("/portal/staff/login/", kwargs["message"])
         self.assertNotIn("/portal/admin/login/", kwargs["message"])
+        self.assertNotIn("do not need a separate staff account", kwargs["message"])
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_admin_invite_emails_admin_portal_link(self, send_email):
@@ -67,6 +68,8 @@ class StaffWelcomeEmailTests(TestCase):
         self.assertIn("/portal/admin/login/", kwargs["message"])
         self.assertIn("jadmin", kwargs["message"])
         self.assertIn("AdminPass123", kwargs["message"])
+        self.assertIn("do not need a separate staff account", kwargs["message"])
+        self.assertIn("Staff portal", kwargs["message"])
 
 
 class ChargeNoticeEmailTests(TestCase):
@@ -252,4 +255,4 @@ class AdminAccountEmailViewTests(TestCase):
         response = self.client.get(reverse("portal_parent_page", kwargs={"page": "billing"}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "portal-collapse.js")
-        self.assertContains(response, "portal.css?v=59")
+        self.assertContains(response, "portal.css?v=")

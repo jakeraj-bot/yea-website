@@ -9,8 +9,8 @@
 <section class="page-content">
   <div class="container">
     <div class="portal-callout card">
-      <p><strong>How creating an account works:</strong> choose staff or admin, enter their name and email, set a password (or leave it blank for staff so the portal generates one), then pick every unit they can open. After you create the account they get an email with their username, password, and the link to the staff or admin portal. Staff can have more than one unit. Admin logins automatically see every unit.</p>
-      <p>Staff sign in at <code>/portal/staff/login/</code>. Admin portal logins sign in at <code>/portal/admin/login/</code> — they are separate accounts even if the same person uses both.</p>
+      <p><strong>How creating an account works:</strong> choose staff or admin, enter their name and email, set a password (or leave it blank for staff so the portal generates one), then pick every unit they can open. After you create the account they get an email with their username, password, and the sign-in link.</p>
+      <p>Staff sign in at <code>/portal/staff/login/</code>. Admin logins sign in at <code>/portal/admin/login/</code>. An admin uses that <strong>same login</strong> to open Staff portal (attendance, families, and unit work). Do not create a second staff account for a partner who is already an admin — they click <strong>Staff portal</strong> in the header.</p>
     </div>
 
     <div class="portal-toolbar">
@@ -75,7 +75,7 @@
     {% if show_add_admin %}
     <div class="portal-panel card portal-program-form">
       <h2>Create admin portal login</h2>
-      <p class="form-note">Admin logins sign in at <code>/portal/admin/login/</code> with full organization access.</p>
+      <p class="form-note">Admin logins sign in at <code>/portal/admin/login/</code> with full organization access. They can also open Staff portal with this same login — you do not need to create a staff account for them.</p>
       <form class="portal-form-grid" method="post" action="{% if portal_live %}{% url 'portal_admin_admin_invite' %}{% else %}#{% endif %}">
         {% if portal_live %}{% csrf_token %}{% endif %}
         <div class="form-group">

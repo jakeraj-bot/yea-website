@@ -8,6 +8,11 @@
 </section>
 <section class="page-content">
   <div class="container">
+    {% if can_open_staff_portal %}
+    <div class="portal-callout card portal-collapse-skip">
+      <p><strong>Need attendance or a unit roster?</strong> Open <a href="{% url 'portal_area_switch' area='staff' %}">Staff portal</a> in the header. Same login — no extra staff account. Choose the site from the unit menu once you are there. Click <strong>How to use this page</strong> on any staff screen for the steps.</p>
+    </div>
+    {% endif %}
     <div class="portal-stat-row portal-stat-row--colorful">
       <div class="portal-stat card">
         <span class="portal-stat-label">Children enrolled</span>

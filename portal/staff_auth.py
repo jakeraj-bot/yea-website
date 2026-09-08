@@ -120,7 +120,7 @@ def _can_access_unit(user, unit):
 
 
 def billing_permissions_for_staff(account=None, portal_area="staff"):
-    if portal_area == "admin":
+    if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):
         perms = dict(ADMIN_BILLING_PERMISSIONS)
         perms["can_edit_family_plans"] = True
         return perms
@@ -136,7 +136,7 @@ def billing_permissions_for_staff(account=None, portal_area="staff"):
 
 
 def application_permissions_for_staff(account=None, portal_area="staff"):
-    if portal_area == "admin":
+    if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):
         return {
             "can_approve_applications": True,
             "can_approve_waitlist": True,
