@@ -151,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function applyCollapsed(collapsed) {
       document.documentElement.classList.toggle("portal-nav-collapsed", collapsed);
       toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      toggle.setAttribute("title", collapsed ? "Expand menu" : "Collapse menu");
       var label = toggle.querySelector(".portal-sidebar-toggle-label");
       if (label) label.textContent = collapsed ? "Expand menu" : "Collapse menu";
       groups.forEach(function (group, index) {

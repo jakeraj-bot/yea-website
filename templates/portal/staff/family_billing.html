@@ -224,8 +224,8 @@
               </form>
               {% endif %}
             </td>
-            <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
-              {% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
+            <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %} portal-cell-amount">
+              <span class="portal-money">{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}</span>
             </td>
             <td class="portal-row-actions">
               {% if row.editable and billing_live %}

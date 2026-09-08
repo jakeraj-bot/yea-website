@@ -920,8 +920,7 @@
 }
 
 .portal-table-wrap {
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: auto;
   max-width: 100%;
   background: #fff;
   border-radius: var(--radius);
@@ -930,6 +929,7 @@
 
 .portal-table {
   width: 100%;
+  min-width: max-content;
   max-width: none;
   table-layout: auto;
   border-collapse: separate;
@@ -959,8 +959,9 @@
 
 .portal-table thead th {
   position: sticky;
-  top: var(--portal-sticky-th, 6rem);
+  top: 0;
   z-index: 5;
+  background: var(--bg-soft);
   box-shadow: 0 1px 0 var(--border);
 }
 
@@ -993,11 +994,23 @@
 
 .portal-amount-debit { color: var(--text-heading); }
 .portal-amount-credit { color: var(--yea-green); font-weight: 600; }
+.portal-amount-debit,
+.portal-amount-credit {
+  white-space: nowrap;
+}
 
 .portal-table td.portal-cell-amount,
 .portal-table [data-col="child-balance"],
 .portal-table [data-col="family-balance"],
 .portal-table [data-col="balance"] {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-money {
+  display: inline-block;
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: keep-all;
@@ -1658,9 +1671,12 @@
 
 .portal-table-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
-  min-width: 8.5rem;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .portal-input-sm {
@@ -1899,18 +1915,20 @@
   position: relative;
 }
 
-/* Keep horizontal scroll on wide staff tables; tooltips escape from cells only. */
+/* Wide families table: scroll inside the wrap so sticky headers stay at the
+   top of the table (not 6rem down over the first rows) and cells keep width. */
 .portal-families-table-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 11rem);
   display: block;
 }
 
 .portal-families-table {
-  width: 100%;
-  min-width: 72rem;
-  table-layout: auto;
+  width: max(100%, 90rem);
+  min-width: 90rem;
+  table-layout: fixed;
 }
 
 .portal-families-table th,
@@ -1918,9 +1936,17 @@
   overflow-wrap: break-word;
   word-break: normal;
   vertical-align: top;
-  white-space: normal;
   font-size: 0.875rem;
   padding: 0.45rem 0.5rem;
+}
+
+.portal-families-table th {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.portal-families-table td {
+  overflow: hidden;
 }
 
 .portal-families-table td[data-col="child"],
@@ -1973,10 +1999,18 @@
 .portal-school-edit-form {
   display: flex;
   flex-wrap: nowrap;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
   min-width: 0;
+  max-width: 100%;
+}
+
+.portal-school-edit-label {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .portal-school-group-rename {
@@ -1993,6 +2027,10 @@
   box-sizing: border-box;
 }
 
+.portal-school-edit-form .btn {
+  flex-shrink: 0;
+}
+
 .portal-school-group-rename {
   margin: 0 0 1rem;
   padding: 0.75rem;
@@ -2006,9 +2044,9 @@
 
 .portal-families-table th[data-col="school"],
 .portal-families-table td[data-col="school"] {
-  width: 14rem;
-  min-width: 12rem;
-  max-width: 18rem;
+  width: 16rem;
+  min-width: 16rem;
+  overflow: hidden;
 }
 
 .portal-families-table th[data-col="medical"],
@@ -2032,10 +2070,11 @@
 .portal-families-table td[data-col="child-balance"],
 .portal-families-table th[data-col="family-balance"],
 .portal-families-table td[data-col="family-balance"] {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 9rem;
+  min-width: 9rem;
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
   overflow-wrap: normal;
   word-break: keep-all;
   font-variant-numeric: tabular-nums;
@@ -2043,10 +2082,11 @@
 
 .portal-families-table th[data-col="balance"],
 .portal-families-table td[data-col="balance"] {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 9rem;
+  min-width: 9rem;
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
   overflow-wrap: normal;
   word-break: keep-all;
   font-variant-numeric: tabular-nums;
@@ -2059,9 +2099,9 @@
 
 .portal-families-table th[data-col="actions"],
 .portal-families-table td[data-col="actions"] {
-  width: 1%;
-  min-width: 16.5rem;
-  overflow: visible;
+  width: 18rem;
+  min-width: 18rem;
+  overflow: hidden;
   white-space: nowrap;
 }
 
@@ -2087,6 +2127,8 @@
 .portal-families-table .portal-row-actions .btn {
   margin: 0;
   white-space: nowrap;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.75rem;
 }
 
 .portal-med-icon-symbol {
@@ -3331,8 +3373,12 @@
 
 .portal-table-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .portal-subheading {
@@ -4098,6 +4144,13 @@
   }
 }
 
+.portal-families-table td[data-col="school"] .portal-school-edit-form,
+.portal-families-table td[data-col="school"] .portal-school-edit-label,
+.portal-families-table td[data-col="school"] .portal-school-edit-input {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .portal-member-info-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4145,8 +4198,7 @@
   gap: 0.55rem;
 }
 
-.portal-nav-link::before,
-.portal-nav-group-label::after {
+.portal-nav-link::before {
   content: "";
   width: 1.1rem;
   height: 1.1rem;
@@ -4164,10 +4216,6 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-}
-
-.portal-nav-group-label::after {
-  margin-left: auto;
 }
 
 .portal-nav-dashboard,

@@ -112,9 +112,9 @@
             <td>{{ row.family }}</td>
             <td>{{ row.unit }}</td>
             <td>{{ row.fund }}</td>
-            <td>${{ row.full_rate }}/wk</td>
-            <td class="portal-amount-credit">${{ row.discount }}/wk</td>
-            <td><strong>${{ row.parent_amount }}/wk</strong></td>
+            <td><span class="portal-money">${{ row.full_rate }}/wk</span></td>
+            <td class="portal-amount-credit"><span class="portal-money">${{ row.discount }}/wk</span></td>
+            <td><strong class="portal-money">${{ row.parent_amount }}/wk</strong></td>
             <td>{{ row.start }} – {{ row.end }}</td>
             <td>
               <button type="button" class="btn btn-secondary btn-sm" disabled>Edit</button>

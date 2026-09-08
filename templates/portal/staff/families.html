@@ -13,6 +13,19 @@
 
     <div class="portal-table-wrap portal-families-table-wrap">
       <table class="portal-table portal-families-table" id="families-table">
+        <colgroup>
+          <col data-col="family" style="width:10rem">
+          <col data-col="contact" style="width:10rem">
+          <col data-col="child" style="width:10rem">
+          <col data-col="school" style="width:16rem">
+          <col data-col="medical" style="width:7rem">
+          <col data-col="program" style="width:9rem">
+          <col data-col="billing" style="width:8rem">
+          <col data-col="child-balance" style="width:9rem">
+          <col data-col="family-balance" style="width:9rem">
+          <col data-col="status" style="width:7.5rem">
+          <col data-col="actions" style="width:18rem">
+        </colgroup>
         <thead>
           <tr>
             <th data-col="family">Family</th>
@@ -63,8 +76,8 @@
             </td>
             <td data-col="program">{{ family.program }}</td>
             <td data-col="billing">{{ family.billing_type }}</td>
-            <td data-col="child-balance">${{ family.child_balance }}</td>
-            <td data-col="family-balance">{% if family.is_first_child %}${{ family.family_balance }}{% endif %}</td>
+            <td data-col="child-balance"><span class="portal-money">${{ family.child_balance }}</span></td>
+            <td data-col="family-balance">{% if family.is_first_child %}<span class="portal-money">${{ family.family_balance }}</span>{% endif %}</td>
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
@@ -86,5 +99,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=7"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=8"></script>
 {% endblock %}
