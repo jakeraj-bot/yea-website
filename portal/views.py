@@ -599,9 +599,9 @@ def _demo_waitlist_rows():
 
 
 def _can_approve_this_application(request, app, portal_area):
-    from .staff_auth import can_approve_enrollment_application, get_staff_account
+    from .staff_auth import can_approve_enrollment_application, get_staff_account, is_portal_admin
 
-    if portal_area == "admin":
+    if portal_area == "admin" or is_portal_admin(request.user):
         return True
     if not app:
         return False
@@ -625,6 +625,10 @@ def _portal_context(area, page_title, **extra):
         "still_demo_labels": STILL_DEMO_LABELS if live else [],
         **extra,
     }
+    if area in ("staff", "admin"):
+        from .page_guides import page_guide_from_context
+
+        context["page_guide"] = page_guide_from_context(context)
     if area == "admin":
         context.setdefault("can_approve_applications", True)
         context.setdefault("can_approve_waitlist", True)
@@ -1480,6 +1484,7 @@ def staff_page(request, page):
         page.replace("-", " ").title(),
         request=request,
         staff_page_slug="applications" if page == "create-application" else page,
+        page_guide_key=page,
     )
     if page == "messages":
         context.update(_messages_context("staff", "Team messages", request))
@@ -1966,6 +1971,7 @@ def staff_agency_billing(request, family_slug):
             request=request,
             billing=billing,
             staff_page_slug="agency",
+            page_guide_key="agency-billing",
         ),
     )
 
@@ -2502,6 +2508,7 @@ def staff_application_detail(request, app_slug):
                     app_slug=app_slug,
                     is_live_application=True,
                     staff_page_slug="waitlist" if on_waitlist else "applications",
+                    page_guide_key="application-detail",
                     application_urls=application_urls,
                     can_approve_this_application=_can_approve_this_application(request, app, "staff"),
                     **_application_location_context(app),
@@ -2523,6 +2530,7 @@ def staff_application_detail(request, app_slug):
             application=application,
             app_slug=app_slug,
             staff_page_slug="waitlist" if on_waitlist else "applications",
+            page_guide_key="application-detail",
             application_urls=_application_portal_urls("staff", app_slug, waitlist=on_waitlist),
             can_approve_this_application=False,
         ),
@@ -2552,6 +2560,7 @@ def admin_application_detail(request, app_slug):
                     app_slug=app_slug,
                     is_live_application=True,
                     admin_page_slug="waitlist" if on_waitlist else "applications",
+                    page_guide_key="application-detail",
                     application_urls=application_urls,
                     can_approve_this_application=True,
                     **_application_location_context(app),
@@ -2574,6 +2583,7 @@ def admin_application_detail(request, app_slug):
             application=application,
             app_slug=app_slug,
             admin_page_slug="waitlist" if on_waitlist else "applications",
+            page_guide_key="application-detail",
             application_urls=_application_portal_urls("admin", app_slug, waitlist=on_waitlist),
             can_approve_this_application=True,
         ),
@@ -2729,6 +2739,7 @@ def staff_program_roster(request, program_slug):
             roster=roster,
             medical_alert_types=MEDICAL_ALERT_TYPES,
             staff_page_slug="programs",
+            page_guide_key="program-roster",
         ),
     )
 

@@ -3963,6 +3963,74 @@
   gap: 0.45rem 0.85rem;
 }
 
+.portal-howto-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.65rem 1.15rem 0;
+}
+
+.portal-howto-open {
+  border-color: var(--yea-orange);
+  background: var(--yea-yellow-soft);
+  font-weight: 600;
+}
+
+.portal-page-guide-modal {
+  z-index: 220;
+}
+
+.portal-page-guide-panel {
+  width: min(100%, 34rem);
+  max-height: min(90vh, 40rem);
+}
+
+.portal-page-guide-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.portal-page-guide-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.portal-page-guide-kicker {
+  margin: 0 0 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+}
+
+.portal-page-guide-intro {
+  margin: 0 0 0.85rem;
+}
+
+.portal-page-guide-step h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.portal-page-guide-step p {
+  margin: 0;
+}
+
+.portal-page-guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+@media print {
+  .portal-howto-bar,
+  .portal-page-guide-modal {
+    display: none !important;
+  }
+}
+
 @media print {
   .portal-table thead th,
   .simple-table th {

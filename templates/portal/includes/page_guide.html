@@ -1,0 +1,33 @@
+{% if page_guide %}
+<div class="portal-howto-bar portal-no-print">
+  <button type="button" class="btn btn-secondary btn-sm portal-howto-open" data-open-page-guide>
+    How to use this page
+  </button>
+</div>
+<div class="modal portal-page-guide-modal" id="portal-page-guide" hidden>
+  <div class="modal-backdrop" data-close-page-guide></div>
+  <div class="modal-panel portal-page-guide-panel" role="dialog" aria-modal="true" aria-labelledby="portal-page-guide-title">
+    <div class="portal-page-guide-header">
+      <div>
+        <p class="form-note portal-page-guide-kicker">How to</p>
+        <h2 id="portal-page-guide-title">{{ page_guide.title }}</h2>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" data-close-page-guide>Close</button>
+    </div>
+    {% if page_guide.intro %}
+    <p class="portal-page-guide-intro">{{ page_guide.intro }}</p>
+    {% endif %}
+    <p class="form-note" data-guide-status data-template="Step {current} of {total}"></p>
+    {% for step in page_guide.steps %}
+    <div class="portal-page-guide-step"{% if not forloop.first %} hidden{% endif %} data-guide-step>
+      <h3>{{ step.title }}</h3>
+      <p>{{ step.body }}</p>
+    </div>
+    {% endfor %}
+    <div class="portal-page-guide-actions">
+      <button type="button" class="btn btn-secondary" data-guide-prev>Back</button>
+      <button type="button" class="btn btn-primary" data-guide-next>Next</button>
+    </div>
+  </div>
+</div>
+{% endif %}
