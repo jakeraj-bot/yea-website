@@ -131,6 +131,8 @@ def link_applications_by_email(family, email):
 
 
 def application_to_portal_dict(app):
+    from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
+
     contacts = [
         {
             "name": f"{contact.first_name} {contact.last_name}".strip(),
@@ -169,12 +171,12 @@ def application_to_portal_dict(app):
         "signed_policies": signed_policies,
         "family_slug": app.portal_family.slug if app.portal_family_id else "",
         "family_id": app.portal_family_id or "",
+        "can_add_before_care": can_add_before_care_for_application(app),
+        "can_add_after_school": can_add_after_school_for_application(app),
     }
 
 
 def application_list_item(app):
-    from .add_program import can_add_before_care_for_application
-
     data = application_to_portal_dict(app)
     return {
         "reference": data["reference"],
@@ -185,7 +187,8 @@ def application_list_item(app):
         "status": data["status"],
         "status_slug": data["status_slug"],
         "can_edit": app.status == "pending_documents",
-        "can_add_before_care": can_add_before_care_for_application(app),
+        "can_add_before_care": data["can_add_before_care"],
+        "can_add_after_school": data["can_add_after_school"],
     }
 
 
@@ -221,6 +224,7 @@ def parent_application_list_items(family):
             if before:
                 folded.add(before.pk)
                 item["can_add_before_care"] = False
+                item["can_add_after_school"] = False
                 if before.status == "waitlist":
                     item["program"] = f"{item['program']} · before care waitlist"
         items.append(item)
@@ -247,6 +251,7 @@ def _application_family_label(app):
 
 
 def staff_application_row(app):
+    from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
     from .locations import get_unit_for_enrollment_key
 
     unit_name = ""
@@ -277,10 +282,14 @@ def staff_application_row(app):
         "status": STATUS_LABELS.get(app.status, "Under review"),
         "status_slug": (app.status or "under_review").replace("_", "-"),
         "returning": False,
+        "can_add_after_school": can_add_after_school_for_application(app),
+        "can_add_before_care": can_add_before_care_for_application(app),
     }
 
 
 def staff_application_detail(app):
+    from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
+
     data = application_to_portal_dict(app)
     data.update(
         {
@@ -329,6 +338,8 @@ def staff_application_detail(app):
             "secondary_email": app.secondary_email_address or "",
             "secondary_phone": app.secondary_phone or "",
             "program_key": app.program,
+            "can_add_after_school": can_add_after_school_for_application(app),
+            "can_add_before_care": can_add_before_care_for_application(app),
             "payment_plan_key": app.payment_plan,
             "grade_choices": EnrollmentApplication.GRADE_CHOICES,
             "program_choices": EnrollmentApplication.PROGRAM_CHOICES,

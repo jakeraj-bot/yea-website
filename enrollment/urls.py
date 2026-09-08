@@ -9,6 +9,7 @@ urlpatterns = [
     path("confirmation/group/<uuid:family_group>/", views.confirmation_group, name="enrollment_confirmation_group"),
     path("print/<uuid:reference>/", views.print_application, name="enrollment_print"),
     path("add-before-care/<uuid:reference>/", views.apply_add_before_care, name="enrollment_apply_add_before_care"),
+    path("add-after-care/<uuid:reference>/", views.apply_add_after_care, name="enrollment_apply_add_after_care"),
     path("add-child/", views.apply_add_child, name="enrollment_apply_add_child"),
     path("edit/<uuid:reference>/", views.apply_edit_start, name="enrollment_apply_edit"),
     path("help/", views.apply_help, name="enrollment_help"),

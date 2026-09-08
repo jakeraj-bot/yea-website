@@ -1,0 +1,17 @@
+{% if show_add_after_care %}
+{% if portal_area == 'admin' %}
+{% url 'portal_admin_application_review' app_slug=app_slug as add_after_care_url %}
+{% else %}
+{% url 'portal_staff_application_review' app_slug=app_slug as add_after_care_url %}
+{% endif %}
+{% if portal_live %}
+<form method="post" action="{{ add_after_care_url }}" class="portal-inline-form" onsubmit="return confirm('Add After-care for {{ child_name }} using this existing application? No new enrollment form is needed. Before-care waitlist stays the same.');">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="add_after_school">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button type="submit" class="btn btn-secondary btn-sm">+ After-care</button>
+</form>
+{% else %}
+<button type="button" class="btn btn-secondary btn-sm" disabled title="Demo only">+ After-care</button>
+{% endif %}
+{% endif %}

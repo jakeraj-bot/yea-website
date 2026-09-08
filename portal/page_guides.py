@@ -1,4 +1,4 @@
-"""Click-to-open how-to walkthroughs for staff (and shared admin) pages."""
+"""Click-to-open how-to walkthroughs for staff, admin, and selected parent pages."""
 
 GUIDES = {
     "dashboard": {
@@ -141,14 +141,22 @@ GUIDES = {
     },
     "waitlist": {
         "title": "How to use the waitlist",
-        "intro": "Children here are waiting for a before-care or other waitlisted spot, in request order.",
+        "intro": "Children here are waiting for a before-care or other waitlisted spot, in request order. You can also add After-care onto an existing waitlisted before-care record.",
         "steps": [
             {
-                "title": "Read the order",
-                "body": "The # column is the order to offer a spot. Open the application before you approve so you have the right child and program.",
+                "title": "Find the waitlisted child",
+                "body": "Search or scan the list for the child who applied for before-care only. The # column is waitlist order. Open Review if you need to confirm the child and program.",
             },
             {
-                "title": "Approve when a spot opens",
+                "title": "Add After-care",
+                "body": "If they also need after-school, use + After-care on that row. We reuse the existing waitlist application — the parent does not fill out a new enrollment form.",
+            },
+            {
+                "title": "Save",
+                "body": "Confirm to save. After-care is added onto this child's record and goes to the after-school review queue. Their before-care waitlist spot stays as it is.",
+            },
+            {
+                "title": "Approve when a before-care spot opens",
                 "body": "Approve adds them to the roster. You do not need a new application.",
             },
         ],
@@ -186,6 +194,10 @@ GUIDES = {
             {
                 "title": "Print if you need a paper copy",
                 "body": "Use the PDF for files, 4Cs packets, or the family. Previous / Next moves you through the queue.",
+            },
+            {
+                "title": "Add After-care without a new application",
+                "body": "If this child is waitlisted for before-care only and now also needs after-school, use + After-care. Confirm to save. The existing record is reused — before-care waitlist stays the same, and After-care goes to the after-school queue.",
             },
         ],
     },
@@ -429,6 +441,10 @@ GUIDES = {
                 "title": "Switch children if needed",
                 "body": "A family can have more than one child. Open the application you need, then print the PDF if you want a paper copy.",
             },
+            {
+                "title": "Add After-care for a waitlisted before-care child",
+                "body": "Find the waitlisted before-care child, then use + After-care and confirm to save. No new enrollment application is required. After-care is added onto this record; before-care waitlist stays the same.",
+            },
         ],
     },
     "family-policies": {
@@ -452,6 +468,42 @@ GUIDES = {
             {
                 "title": "Write and send",
                 "body": "The address is filled from the profile. Keep the subject clear. Cancel if you are not ready to send.",
+            },
+        ],
+    },
+    "parent-applications": {
+        "title": "How to add After-care",
+        "intro": "If your child is on the before-care waitlist and you also need after-school, add it here. You do not start a new application.",
+        "steps": [
+            {
+                "title": "Find your child",
+                "body": "This list is each child on your account. A before-care-only waitlist child shows Before care and Waitlist.",
+            },
+            {
+                "title": "Click + After-care",
+                "body": "On that child's row, use + After-care. If you do not see that button, After-care is already on file.",
+            },
+            {
+                "title": "Confirm",
+                "body": "Pick the after-school site if asked, then confirm. We reuse the family, medical, contacts, and signed policies already on file.",
+            },
+            {
+                "title": "What happens next",
+                "body": "After-care goes to staff for review. Your before-care waitlist spot does not change. This page will show After-school with a before-care waitlist note.",
+            },
+        ],
+    },
+    "parent-application": {
+        "title": "How to add After-care from this application",
+        "intro": "This is one child's application. If they are waitlisted for before-care only, you can add After-care here without starting over.",
+        "steps": [
+            {
+                "title": "Use + After-care",
+                "body": "The button is at the top with Download PDF. Click it if you also need after-school.",
+            },
+            {
+                "title": "Confirm",
+                "body": "Pick the site if asked, then confirm. Medical information and signed policies stay on file. Before-care waitlist does not change.",
             },
         ],
     },
@@ -479,13 +531,22 @@ def guide_for(key):
 def page_guide_from_context(context):
     key = context.get("page_guide_key")
     if not key:
-        family_tab = context.get("family_tab")
-        if family_tab:
-            key = f"family-{family_tab}"
-        else:
-            slug = context.get("staff_page_slug") or context.get("admin_page_slug")
-            if context.get("portal_area") == "admin" and slug == "dashboard":
-                key = "admin-dashboard"
+        if context.get("portal_area") == "parent":
+            slug = context.get("parent_page_slug")
+            if slug == "applications":
+                key = "parent-applications"
+            elif slug == "application":
+                key = "parent-application"
             else:
-                key = slug
+                return None
+        else:
+            family_tab = context.get("family_tab")
+            if family_tab:
+                key = f"family-{family_tab}"
+            else:
+                slug = context.get("staff_page_slug") or context.get("admin_page_slug")
+                if context.get("portal_area") == "admin" and slug == "dashboard":
+                    key = "admin-dashboard"
+                else:
+                    key = slug
     return guide_for(key)

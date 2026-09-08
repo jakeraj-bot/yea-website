@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Add After-care — Youth Education Academy{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Add After-care</h1>
+    <p class="lead">Use your existing application information — no need to fill everything out again.</p>
+  </div>
+</section>
+
+<section class="page-content">
+  <div class="container apply-container">
+    <div class="card" style="max-width:40rem;margin:0 auto;padding:1.25rem;">
+      <h2 style="margin-top:0;">{{ child_name }}</h2>
+      <p>Add after-school / After-care{% if location_choices|length == 1 %} at <strong>{{ location_label }}</strong>{% endif %} onto this child's existing record.</p>
+      <ul>
+        <li>We reuse your family, student, medical, emergency contact, and policy information from your existing application.</li>
+        <li>You do not start a new enrollment application.</li>
+        <li>If this child is on the before-care waitlist, that waitlist spot stays the same.</li>
+        <li>After-care is sent for review (or the after-school waitlist if that is how this site enrolls).</li>
+      </ul>
+      <form method="post" class="apply-actions" style="margin-top:1.25rem;">
+        {% csrf_token %}
+        {% if location_choices %}
+        <div class="form-group" style="margin-bottom:1rem;text-align:left;">
+          <label for="after-care-location">After-care location</label>
+          <select id="after-care-location" name="program_location" class="portal-select" required>
+            {% for value, label in location_choices %}
+            <option value="{{ value }}"{% if value == default_location %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Add After-care</button>
+        <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='applications' %}">Cancel</a>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

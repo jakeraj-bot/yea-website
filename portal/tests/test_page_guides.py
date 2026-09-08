@@ -42,6 +42,37 @@ class PageGuideCatalogTests(TestCase):
         ):
             self.assertIsNotNone(guide_for(f"family-{tab}"), tab)
 
+    def test_waitlist_guide_explains_adding_after_care(self):
+        guide = guide_for("waitlist")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertEqual(titles[0], "Find the waitlisted child")
+        self.assertEqual(titles[1], "Add After-care")
+        self.assertEqual(titles[2], "Save")
+        self.assertIn("new enrollment form", guide["steps"][1]["body"])
+        self.assertIn("Confirm to save", guide["steps"][2]["body"])
+
+    def test_family_applications_guide_covers_after_care_add(self):
+        guide = guide_for("family-applications")
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("+ After-care", bodies)
+        self.assertIn("No new enrollment application", bodies)
+
+    def test_parent_applications_guide_explains_after_care(self):
+        guide = guide_for("parent-applications")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertEqual(titles[0], "Find your child")
+        self.assertEqual(titles[1], "Click + After-care")
+        self.assertEqual(titles[2], "Confirm")
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("before-care waitlist", bodies)
+        self.assertIn("does not change", bodies)
+
+    def test_parent_context_does_not_use_staff_dashboard_guide(self):
+        guide = page_guide_from_context({"portal_area": "parent", "parent_page_slug": "dashboard"})
+        self.assertIsNone(guide)
+        apps = page_guide_from_context({"portal_area": "parent", "parent_page_slug": "applications"})
+        self.assertEqual(apps["key"], "parent-applications")
+
     def test_context_picks_family_tab_over_families_slug(self):
         guide = page_guide_from_context(
             {"staff_page_slug": "families", "family_tab": "billing", "portal_area": "staff"}
@@ -95,6 +126,18 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, "portal-page-guide.js")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_waitlist_page_has_after_care_walkthrough(self):
+        self._login(self.staff_user, "staff")
+        page = self.client.get(reverse("portal_staff_page", kwargs={"page": "waitlist"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "Find the waitlisted child")
+        self.assertContains(page, "Add After-care")
+        self.assertContains(page, "Confirm to save")
+        self.assertContains(page, 'data-open-page-guide')
+        self.assertContains(page, "portal-page-guide.js")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_staff_attendance_with_same_login(self):
         self._login(self.admin_user, "admin")
         switch = self.client.get(reverse("portal_area_switch", kwargs={"area": "staff"}))
@@ -142,6 +185,24 @@ class StaffPageGuideViewTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertNotContains(page, "How to use this page")
         self.assertNotContains(page, "portal-page-guide.js")
+        self.assertNotContains(page, "How to start the day")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_parent_applications_page_has_after_care_walkthrough(self):
+        User = get_user_model()
+        from portal.models import PortalParentAccount
+
+        parent_user = User.objects.create_user(username="parent:jacobs", password="ParentPass123")
+        PortalParentAccount.objects.create(user=parent_user, family=self.family)
+        self._login(parent_user, "parent")
+        page = self.client.get(reverse("portal_parent_page", kwargs={"page": "applications"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "How to add After-care")
+        self.assertContains(page, "Click + After-care")
+        self.assertContains(page, "does not change")
+        self.assertContains(page, 'data-open-page-guide')
+        self.assertContains(page, "portal-page-guide.js")
 
     def test_portal_admin_keeps_full_permissions_in_staff_area(self):
         billing = billing_permissions_for_staff(self.admin_account, portal_area="staff")

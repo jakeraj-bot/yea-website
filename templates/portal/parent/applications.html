@@ -2,7 +2,7 @@
 {% load portal_tags %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
-  <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child and program.</p></div>
+    <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child and program. If a child is on the before-care waitlist and you also need after-school, use <strong>+ After-care</strong> — no new application. Tap <strong>How to use this page</strong> for the steps.</p></div>
 </section>
 <section class="page-content">
   <div class="container">
@@ -35,6 +35,9 @@
               {% if app.can_add_before_care %}
               <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_before_care' reference=app.reference %}">+ Before care</a>
               {% endif %}
+              {% if app.can_add_after_school %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_after_care' reference=app.reference %}">+ After-care</a>
+              {% endif %}
               {% endif %}
             </td>
           </tr>
@@ -48,7 +51,7 @@
       {% include "portal/includes/add_child_button.html" %}
     </div>
     {% endif %}
-    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a>. Applying for after-school and before care together is one application — before care is added to the waitlist automatically. Already applied for after-school only? Use <strong>+ Before care</strong> on that child's row.</p>
+    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a>. Applying for after-school and before care together is one application — before care is added to the waitlist automatically. Already applied for after-school only? Use <strong>+ Before care</strong> on that child's row. Already on the before-care waitlist and now need after-school? Use <strong>+ After-care</strong> — you do not start a new application.</p>
   </div>
 </section>
 {% endblock %}

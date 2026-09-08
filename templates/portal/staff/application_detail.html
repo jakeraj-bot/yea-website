@@ -52,6 +52,7 @@
       <button type="button" class="btn btn-secondary" disabled title="Demo application only">Reject</button>
       {% endif %}
       <a class="btn btn-secondary" href="{{ application_urls.print }}">Print PDF</a>
+      {% include "portal/includes/add_after_care_form.html" with app_slug=app_slug child_name=application.child_name show_add_after_care=application.can_add_after_school %}
       {% if application.family_slug %}
       {% if portal_area == 'admin' %}
       <a class="btn btn-secondary" href="{% url 'portal_admin_family_applications' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Family account</a>
@@ -86,9 +87,9 @@
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
       {% if can_approve_this_application %}
-      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
       {% else %}
-      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
       {% endif %}
     </div>
     {% elif is_live_application and application.can_review and not can_approve_this_application %}

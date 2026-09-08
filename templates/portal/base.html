@@ -130,7 +130,7 @@
   <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
-  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
+  {% if page_guide %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

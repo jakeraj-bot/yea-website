@@ -639,7 +639,7 @@ def _portal_context(area, page_title, **extra):
         "still_demo_labels": STILL_DEMO_LABELS if live else [],
         **extra,
     }
-    if area in ("staff", "admin"):
+    if area in ("staff", "admin", "parent"):
         from .page_guides import page_guide_from_context
 
         context["page_guide"] = page_guide_from_context(context)

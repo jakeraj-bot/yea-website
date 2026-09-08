@@ -76,7 +76,7 @@
       </article>
     </div>
     {% if parent_authenticated %}
-    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the waitlist at School 18 or School 26 without starting over.</p>
+    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the waitlist at School 18 or School 26 without starting over. Already on the before-care waitlist and now need after-school? Use <strong>+ After-care</strong> on that same row — no new application.</p>
     {% endif %}
     {% if pending_field_trips %}
     <div class="portal-callout card card-accent">

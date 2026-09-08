@@ -59,6 +59,26 @@ def _portal_next_url(request, fallback):
     return fallback
 
 
+def _add_after_school_from_review(request, app, area):
+    from enrollment.add_program import can_add_after_school_for_application, create_after_school_from_application
+
+    if not can_add_after_school_for_application(app):
+        raise ValueError("After-care is already on file for this child, or is not available.")
+    new_app = create_after_school_from_application(
+        app,
+        program_location=request.POST.get("program_location", "").strip() or None,
+    )
+    child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+    messages.success(
+        request,
+        f"After-care added for {child_name} from their existing record. No new application was required. "
+        "They are in the after-school review queue. Before-care waitlist is unchanged.",
+    )
+    detail_name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
+    fallback = reverse(detail_name, kwargs={"app_slug": str(new_app.reference)})
+    return redirect(_portal_next_url(request, fallback))
+
+
 def _application_after_review_url(area, app, action):
     from enrollment.portal_integration import next_reviewable_application
 
@@ -1129,6 +1149,8 @@ def staff_application_review(request, app_slug):
         elif action == "save_note":
             save_internal_note(app, request.POST.get("internal_note", ""))
             messages.success(request, "Internal note saved.")
+        elif action == "add_after_school":
+            return _add_after_school_from_review(request, app, "staff")
         else:
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
@@ -1181,6 +1203,8 @@ def admin_application_review(request, app_slug):
         elif action == "save_note":
             save_internal_note(app, request.POST.get("internal_note", ""))
             messages.success(request, "Internal note saved.")
+        elif action == "add_after_school":
+            return _add_after_school_from_review(request, app, "admin")
         else:
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
