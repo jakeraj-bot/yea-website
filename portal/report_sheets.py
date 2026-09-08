@@ -34,6 +34,19 @@ def _format_iso(d):
     return d.isoformat()
 
 
+def week_day_columns(weekdays):
+    """Printable Mon–Fri column labels used by weekly attendance sheets."""
+    return [
+        {
+            "label": day.strftime("%a"),
+            "date_short": _format_short(day),
+            "date_display": day.strftime("%a, %b %d"),
+            "iso": _format_iso(day),
+        }
+        for day in weekdays
+    ]
+
+
 def sheet_meta(unit_name=None, program=None):
     program = program or ATTENDANCE_SESSION["program"]
     unit = unit_name or ATTENDANCE_SESSION["unit"]
@@ -102,15 +115,7 @@ def weekly_blank_context(sheet_date, unit_name=None, program=None, live=False, u
         "week_start_display": _format_long(monday),
         "week_end_display": _format_long(friday),
         "week_range_display": f"{monday.strftime('%B %d')} – {friday.strftime('%B %d, %Y')}",
-        "week_days": [
-            {
-                "label": day.strftime("%a"),
-                "date_short": _format_short(day),
-                "date_display": day.strftime("%a, %b %d"),
-                "iso": _format_iso(day),
-            }
-            for day in weekdays
-        ],
+        "week_days": week_day_columns(weekdays),
     }
 
 

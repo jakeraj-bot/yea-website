@@ -5,7 +5,7 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Weekly attendance</p>
     <h1>Weekly attendance summary</h1>
-    <p class="lead">Week of {{ attendance.date_display }} · {{ attendance.unit }}</p>
+    <p class="lead">Week of {{ week_range_display }} · {{ attendance.unit }}</p>
   </div>
 </section>
 <section class="page-content">
@@ -30,7 +30,7 @@
               <th>Child</th>
               {% if weekly_rows and week_days %}
                 {% for day in week_days %}
-                <th>{{ day.strftime:"D" }}<br><span class="form-note">{{ day.strftime:"b j" }}</span></th>
+                <th>{{ day.label }}<br><span class="form-note">{{ day.date_short }}</span></th>
                 {% endfor %}
               {% else %}
                 <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>
