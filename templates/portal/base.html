@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
-  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=22">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=59">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=23">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=60">
 </head>
 <body class="portal-body portal-area-{{ portal_area|default:'public' }}">
   <div class="rainbow-bar" aria-hidden="true"></div>
@@ -117,7 +117,7 @@
   {% endwith %}
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
-  <script src="{% static 'js/portal.js' %}?v=2"></script>
+  <script src="{% static 'js/portal.js' %}?v=3"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=2"></script>{% endif %}
   <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}

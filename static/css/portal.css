@@ -162,7 +162,7 @@
   gap: 0;
   min-height: calc(100vh - 120px);
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Login / password-reset / portal hub have no sidebar. Keep the 220px
@@ -716,7 +716,7 @@
 .portal-main {
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   padding: 0 0 2rem;
 }
 
@@ -920,7 +920,8 @@
 }
 
 .portal-table-wrap {
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   max-width: 100%;
   background: #fff;
   border-radius: var(--radius);
@@ -931,7 +932,8 @@
   width: 100%;
   max-width: 100%;
   table-layout: fixed;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.875rem;
 }
 
@@ -950,6 +952,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+.portal-table thead th {
+  position: sticky;
+  top: var(--portal-sticky-th, 6rem);
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border);
 }
 
 .portal-table th.portal-row-num,
@@ -1881,7 +1890,7 @@
 .portal-families-table-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   display: block;
 }
 
@@ -2017,16 +2026,19 @@
 .portal-families-table td[data-col="actions"] {
   width: 9.5rem;
   min-width: 0;
-  position: static;
-  background: #fff;
-  box-shadow: none;
   overflow: visible;
   white-space: normal;
 }
 
+.portal-families-table td[data-col="actions"] {
+  position: static;
+  background: #fff;
+  box-shadow: none;
+}
+
 .portal-families-table thead th[data-col="actions"] {
   background: var(--bg-soft);
-  z-index: 3;
+  z-index: 5;
 }
 
 .portal-families-table .portal-row-actions {
@@ -3886,7 +3898,7 @@
 .page-content {
   max-width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .page-content .card,
@@ -3921,7 +3933,42 @@
   }
 }
 
+.portal-slot-rows {
+  display: grid;
+  gap: 1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.portal-slot-row {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  min-width: 0;
+}
+
+.portal-slot-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.portal-weekday-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+}
+
 @media print {
+  .portal-table thead th,
+  .simple-table th {
+    position: static;
+    box-shadow: none;
+  }
   .portal-collapse-bar {
     display: none;
   }
