@@ -36,7 +36,7 @@
           <a class="btn btn-secondary" href="{% url 'portal_home' %}">All portals</a>
         </div>
       </form>
-      <p class="form-note" style="margin-top:1rem;">Portal admin accounts are created by your organization. Staff unit logins use the <a href="{% url 'portal_staff_login' %}">staff portal sign-in</a> — that is a different URL.</p>
+      <p class="form-note" style="margin-top:1rem;">Portal admin accounts are created by your organization. After you sign in, use <strong>Staff portal</strong> in the header for attendance and unit work — same login, no extra staff account. Unit staff who are not admins sign in at the <a href="{% url 'portal_staff_login' %}">staff portal</a>.</p>
       <p class="form-note"><strong>Sign in at</strong> <code>/portal/admin/login/</code> using your admin username only (not your email, and not the staff portal).</p>
       <p class="form-note">If login stopped working after a deploy, reset your password in Render Shell:</p>
       <pre class="portal-code-snippet">python manage.py create_portal_admin --username YOURUSER --password 'YourNewPass123!'</pre>

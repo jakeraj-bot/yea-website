@@ -126,6 +126,13 @@ def send_staff_welcome_email(account, username, password, portal_type="staff"):
             "portal_label": portal_label,
         },
     )
+    if portal_type == "admin":
+        body = (
+            body.rstrip()
+            + "\n\nYou can open the staff portal from the header after you sign in "
+            "(Staff portal). Same login — you do not need a separate staff account "
+            "to take attendance or work at a unit.\n"
+        )
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 
