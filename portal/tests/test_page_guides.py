@@ -88,6 +88,9 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, "How to use this page")
         self.assertContains(page, "How to take attendance")
         self.assertContains(page, "Check one child in")
+        self.assertContains(page, "Check a group in")
+        self.assertContains(page, "Check out or mark absent")
+        self.assertContains(page, "Read medical icons")
         self.assertContains(page, 'data-open-page-guide')
         self.assertContains(page, "portal-page-guide.js")
 

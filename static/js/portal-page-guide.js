@@ -14,7 +14,9 @@
     if (!steps.length) return;
     index = Math.max(0, Math.min(i, steps.length - 1));
     steps.forEach(function (step, n) {
-      step.hidden = n !== index;
+      var on = n === index;
+      step.hidden = !on;
+      step.classList.toggle("is-active", on);
     });
     if (status) {
       status.textContent = statusTemplate

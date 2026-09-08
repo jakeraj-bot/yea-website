@@ -4008,6 +4008,14 @@
   margin: 0 0 0.85rem;
 }
 
+.portal-page-guide-step {
+  display: none;
+}
+
+.portal-page-guide-step.is-active {
+  display: block;
+}
+
 .portal-page-guide-step h3 {
   margin: 0 0 0.4rem;
   font-size: 1.05rem;

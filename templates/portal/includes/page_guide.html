@@ -19,7 +19,7 @@
     {% endif %}
     <p class="form-note" data-guide-status data-template="Step {current} of {total}"></p>
     {% for step in page_guide.steps %}
-    <div class="portal-page-guide-step"{% if not forloop.first %} hidden{% endif %} data-guide-step>
+    <div class="portal-page-guide-step{% if forloop.first %} is-active{% endif %}"{% if not forloop.first %} hidden{% endif %} data-guide-step>
       <h3>{{ step.title }}</h3>
       <p>{{ step.body }}</p>
     </div>
