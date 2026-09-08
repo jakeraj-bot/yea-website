@@ -180,4 +180,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   initPortalSidebarCollapse();
+
+  document.querySelectorAll("[data-copy-password]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var row = button.closest(".portal-password-once-row");
+      var source = row ? row.querySelector("[data-copy-source]") : null;
+      var value = source ? source.textContent.trim() : "";
+      if (!value) return;
+      function copied() {
+        var original = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(function () {
+          button.textContent = original;
+        }, 2000);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(copied).catch(function () {
+          window.prompt("Copy this password", value);
+        });
+      } else {
+        window.prompt("Copy this password", value);
+      }
+    });
+  });
 });

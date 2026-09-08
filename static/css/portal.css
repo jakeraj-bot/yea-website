@@ -4407,6 +4407,34 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   padding-top: 0.5rem;
 }
 
+.portal-password-once {
+  border-left: 4px solid var(--accent-orange, #f5a623);
+}
+
+.portal-password-once h2,
+.portal-reset-parent-password h3 {
+  margin-top: 0;
+}
+
+.portal-reset-parent-password {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border, #e5e5e5);
+}
+
+.portal-password-once-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.portal-password-once-value {
+  font-size: 1.05rem;
+  user-select: all;
+  word-break: break-all;
+}
+
 @media (max-width: 800px) {
   html.portal-nav-collapsed .portal-shell,
   html.portal-nav-collapsed .portal-shell--auth {

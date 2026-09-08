@@ -354,6 +354,10 @@ GUIDES = {
                 "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets.",
             },
             {
+                "title": "Reset parent password",
+                "body": "You cannot look up the current password. Use Reset parent password, copy the new temporary password once, and give it to the parent by text or email. If they forget again, reset again.",
+            },
+            {
                 "title": "Email the parent",
                 "body": "Use Email parent here or on the Email tab. Previous / Next moves you to the next family in your list.",
             },
@@ -458,6 +462,20 @@ GUIDES = {
             {
                 "title": "Print the packet",
                 "body": "Use Print / Save PDF for files or an audit.",
+            },
+        ],
+    },
+    "billing-settings": {
+        "title": "How to use member accounts",
+        "intro": "This list is every enrolled family ledger, plus parent portal logins.",
+        "steps": [
+            {
+                "title": "Open a family ledger",
+                "body": "Use Manage billing for charges, credits, and payments on one household.",
+            },
+            {
+                "title": "Reset parent password",
+                "body": "You cannot look up the old password. Use Reset password to open the family profile, set a new temporary password, copy it once, and give it to the parent.",
             },
         ],
     },

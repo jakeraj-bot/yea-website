@@ -404,6 +404,11 @@ urlpatterns = [
         name="portal_staff_family_member_update",
     ),
     path(
+        "staff/family/<slug:family_slug>/parent-password/",
+        views_actions.family_parent_password_reset,
+        name="portal_staff_family_parent_password",
+    ),
+    path(
         "staff/family/<slug:family_slug>/billing/",
         views.staff_family_billing,
         name="portal_staff_family_billing",
@@ -514,6 +519,11 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/member/update/",
         views_actions.family_member_info_save,
         name="portal_admin_family_member_update",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/parent-password/",
+        views_actions.family_parent_password_reset,
+        name="portal_admin_family_parent_password",
     ),
     path(
         "admin/family/<slug:family_slug>/billing/",

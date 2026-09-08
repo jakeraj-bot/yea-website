@@ -346,6 +346,13 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
         )
     _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
+    if family_tab == "profile" and request is not None:
+        from .member_admin import consume_parent_password_reset_flash
+
+        extra.setdefault(
+            "parent_password_reset",
+            consume_parent_password_reset_flash(request, family_slug),
+        )
     return _staff_context(
         page_title,
         request=request,
@@ -405,6 +412,13 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
         _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
     )
     _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
+    if family_tab == "profile":
+        from .member_admin import consume_parent_password_reset_flash
+
+        extra.setdefault(
+            "parent_password_reset",
+            consume_parent_password_reset_flash(request, family_slug),
+        )
     if area == "admin":
         if _portal_families_live():
             from .member_admin import resolve_family

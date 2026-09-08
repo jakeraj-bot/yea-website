@@ -52,7 +52,7 @@
     {% if portal_live %}
     <div class="portal-panel card" style="margin-top:2rem;">
       <h2>Parent portal logins</h2>
-      <p class="form-note">Remove a parent login to revoke portal access. The family record, applications, and billing history stay unless you also delete the family.</p>
+      <p class="form-note">Remove a parent login to revoke portal access. The family record, applications, and billing history stay unless you also delete the family. You cannot look up a stored password — reset it from the family profile, copy the new one once, and give it to the parent.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
@@ -74,6 +74,7 @@
               <td>{{ account.email|default:"—" }}</td>
               <td>{{ account.last_login }}</td>
               <td class="portal-row-actions">
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=account.family_slug %}{% if account.family_id %}?id={{ account.family_id }}{% endif %}#reset-parent-password">Reset password</a>
                 <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_billing' family_slug=account.family_slug %}">Billing</a>
                 <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_policies' family_slug=account.family_slug %}">Policies</a>
                 <form method="post" action="{% url 'portal_admin_parent_delete' %}" class="portal-inline-form" onsubmit="return confirm('Delete login for {{ account.username }}? They will no longer be able to sign in.')">
