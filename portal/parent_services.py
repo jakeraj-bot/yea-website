@@ -53,7 +53,8 @@ def _child_balances_from_ledger(family):
 
     portal_children = list(family.children.filter(is_active=True))
     if portal_children:
-        from .billing_services import active_scholarship_for_child, plan_repeat_label
+        from .agency_weeks import parent_charge_periods
+        from .billing_services import active_scholarship_for_child, agency_profile_for, plan_repeat_label
 
         balances = child_balance_map(family)
 
@@ -87,6 +88,19 @@ def _child_balances_from_ledger(family):
                         "scholarship_fund_id": assignment.fund_id,
                     }
                 )
+            profile = agency_profile_for(child)
+            if profile:
+                row["agency_profile_id"] = profile.pk
+                row["agency_name"] = profile.agency.name if profile.agency_id else ""
+                row["four_cs"] = True
+                row["four_cs_periods"] = [
+                    {
+                        "label": period["label"],
+                        "amount": f"{period['amount']:.2f}",
+                        "posted": period["posted"],
+                    }
+                    for period in parent_charge_periods(profile, child.billing_plan)
+                ]
             rows.append(row)
         return rows
 

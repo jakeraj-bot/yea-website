@@ -25,8 +25,45 @@
     </div>
 
     <div class="portal-callout card">
-      <p>This account tracks <strong>agency remittance only</strong> — what {{ billing.agency_name }} pays YEA for this child. Membership fees and parent copays stay on the <a href="{% url 'portal_staff_family_billing' family_slug=billing.slug %}">regular {{ billing.family_name }} billing</a> account.</p>
+      <p>This account tracks <strong>what the agency pays YEA</strong> for this child. Parent copays stay on <a href="{% url 'portal_staff_family_billing' family_slug=billing.slug %}">regular {{ billing.family_name }} billing</a>. Check Received when the agency payment for that week arrives.</p>
     </div>
+
+    {% if billing.weeks %}
+    <h2>Agency expected weeks</h2>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr><th>Week</th><th>Amount</th><th>Received</th></tr>
+        </thead>
+        <tbody>
+          {% for week in billing.weeks %}
+          <tr>
+            <td>{{ week.label }}</td>
+            <td>${{ week.agency_amount }}</td>
+            <td>
+              <form method="post" action="{% url 'portal_agency_week_received' %}">
+                {% csrf_token %}
+                <input type="hidden" name="portal_area" value="staff">
+                <input type="hidden" name="week_id" value="{{ week.id }}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% if week.received %}
+                <input type="hidden" name="received" value="0">
+                <button type="submit" class="btn btn-secondary btn-sm">Received ✓</button>
+                {% else %}
+                <input type="hidden" name="received" value="1">
+                <label class="portal-check-label">
+                  <input type="checkbox" onchange="this.form.submit()">
+                  Mark received
+                </label>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
 
     <h2>Agency ledger</h2>
     <div class="portal-table-wrap">

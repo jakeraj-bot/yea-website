@@ -20,6 +20,7 @@ class PageGuideCatalogTests(TestCase):
             "families",
             "member-policies",
             "agency",
+            "agencies",
             "messages",
             "incidents",
             "support",

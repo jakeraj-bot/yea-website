@@ -1,12 +1,21 @@
 """4Cs / agency billing services for staff portal."""
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.db import transaction
-from django.utils import timezone
+from django.utils.dateparse import parse_date
 
+from .agency_weeks import (
+    parse_money,
+    preview_weeks,
+    refresh_agency_expected_balance,
+    serialize_week,
+    sync_contract_weeks,
+    weekly_from_daily,
+)
 from .demo_data import AGENCY_BILLING, AGENCY_UNIT_DATA
 from .models import (
+    PortalAgency,
     PortalAgencyLedgerEntry,
     PortalAgencyProfile,
     PortalAgencyRemittance,
@@ -14,16 +23,11 @@ from .models import (
     PortalChild,
     PortalFamily,
     PortalProgram,
-    PortalUnit,
 )
 
 
 def _parse_amount(value):
-    try:
-        amount = Decimal(str(value).replace(",", "").strip())
-    except (InvalidOperation, TypeError):
-        raise ValueError("Enter a valid dollar amount.")
-    return amount.quantize(Decimal("0.01"))
+    return parse_money(value, allow_blank=False)
 
 
 DEMO_AGENCY_AUTH_NUMBERS = frozenset({"4CS-2026-8841", "4CS-2026-9012"})
@@ -45,10 +49,18 @@ def _agency_account_from_profile(profile, ledger=None):
         "family_name": profile.family.name,
         "slug": profile.family.slug,
         "child_name": profile.child.name,
+        "child_id": profile.child_id,
         "auth_number": profile.auth_number,
-        "agency_name": "Passaic County 4Cs",
+        "agency_name": profile.agency.name if profile.agency_id else "Passaic County 4Cs",
         "running_balance": f"{profile.agency_balance:.2f}",
         "weekly_agency_rate": f"{profile.weekly_agency_rate:.2f}",
+        "daily_agency_rate": f"{profile.daily_agency_rate:.2f}",
+        "daily_copay": f"{profile.daily_copay:.2f}",
+        "weekly_copay": f"{profile.weekly_copay:.2f}",
+        "contract_start": profile.auth_start.isoformat() if profile.auth_start else "",
+        "contract_end": profile.auth_end.isoformat() if profile.auth_end else "",
+        "profile_id": profile.pk,
+        "weeks": [serialize_week(week) for week in profile.contract_weeks.order_by("week_start")],
         "ledger": ledger,
     }
 
@@ -56,7 +68,7 @@ def _agency_account_from_profile(profile, ledger=None):
 def get_agency_billing_live(family_slug, unit=None):
     profile = (
         PortalAgencyProfile.objects.filter(family__slug=family_slug)
-        .select_related("child", "family")
+        .select_related("child", "family", "agency")
         .first()
     )
     if not profile:
@@ -82,7 +94,8 @@ def get_agency_billing_live(family_slug, unit=None):
 def get_agency_accounts_for_family(family_slug, unit=None):
     profiles = list(
         PortalAgencyProfile.objects.filter(family__slug=family_slug)
-        .select_related("child", "family")
+        .select_related("child", "family", "agency")
+        .prefetch_related("contract_weeks")
         .order_by("child__name")
     )
     if profiles:
@@ -103,6 +116,7 @@ def _empty_agency_page(unit):
         "program_options": ["After-School 2026–27"],
         "pending_4cs": [],
         "agency_live": True,
+        "agency_options": [],
     }
 
 
@@ -155,7 +169,7 @@ def agency_page_data(unit):
 
     profiles = (
         PortalAgencyProfile.objects.filter(unit=unit)
-        .select_related("child", "family")
+        .select_related("child", "family", "agency")
         .order_by("child__name")
     )
     if profiles.exists():
@@ -176,10 +190,12 @@ def agency_page_data(unit):
                     "auth_end": profile.auth_end.isoformat() if profile.auth_end else "",
                     "weekly_copay": f"{profile.weekly_copay:.2f}",
                     "agency_rate": f"{profile.weekly_agency_rate:.2f}",
+                    "agency_name": profile.agency.name if profile.agency_id else "Passaic County 4Cs",
                     "copay_balance": f"{profile.family.balance:.2f}",
                     "agency_balance": f"{profile.agency_balance:.2f}",
                     "last_agency_payment": "",
                     "agency_payment_amount": f"{profile.weekly_agency_rate:.2f}",
+                    "child_id": profile.child_id,
                 }
             )
         data["children"] = children
@@ -229,19 +245,72 @@ def agency_page_data(unit):
         ]
 
     data["agency_live"] = _portal_data_live()
+    data["pending_4cs"] = pending_4cs_rows(unit)
+    data["agency_options"] = list(PortalAgency.objects.filter(is_active=True).order_by("name").values("pk", "name"))
+    return data
+
+
+def pending_4cs_rows(unit=None):
     from .member_admin import pending_4cs_children
 
-    data["pending_4cs"] = [
-        {
-            "child": child.name,
-            "family": child.family.name,
-            "family_slug": child.family.slug,
-            "family_id": child.family_id,
-            "school": child.school or "—",
-        }
-        for child in pending_4cs_children(unit)
-    ]
-    return data
+    rows = []
+    for child in pending_4cs_children(unit):
+        rows.append(
+            {
+                "child": child.name,
+                "child_id": child.pk,
+                "family": child.family.name,
+                "family_slug": child.family.slug,
+                "family_id": child.family_id,
+                "unit": child.family.unit.name if child.family.unit_id else "",
+                "unit_id": child.family.unit_id,
+                "school": child.school or "—",
+            }
+        )
+    return rows
+
+
+def resolve_agency_by_name(name, unit=None):
+    from .admin_config import _slug_unique
+
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Agency name is required.")
+    agency = PortalAgency.objects.filter(name__iexact=name).first()
+    if agency:
+        if unit and not agency.units.filter(pk=unit.pk).exists():
+            agency.units.add(unit)
+        return agency
+    agency = PortalAgency.objects.create(
+        slug=_slug_unique(name, PortalAgency),
+        name=name,
+        is_active=True,
+    )
+    if unit:
+        agency.units.add(unit)
+    return agency
+
+
+def posted_weeks_from_form(data):
+    starts = data.getlist("week_start") if hasattr(data, "getlist") else data.get("week_start") or []
+    ends = data.getlist("week_end") if hasattr(data, "getlist") else data.get("week_end") or []
+    agency_amounts = data.getlist("week_agency") if hasattr(data, "getlist") else data.get("week_agency") or []
+    parent_amounts = data.getlist("week_parent") if hasattr(data, "getlist") else data.get("week_parent") or []
+    rows = []
+    for index, start_raw in enumerate(starts):
+        week_start = parse_date(str(start_raw or "").strip())
+        week_end = parse_date(str(ends[index] if index < len(ends) else "").strip()) if ends else None
+        if not week_start:
+            continue
+        rows.append(
+            {
+                "week_start": week_start,
+                "week_end": week_end,
+                "agency_amount": parse_money(agency_amounts[index] if index < len(agency_amounts) else "0"),
+                "parent_amount": parse_money(parent_amounts[index] if index < len(parent_amounts) else "0"),
+            }
+        )
+    return rows
 
 
 def _portal_data_live():
@@ -255,9 +324,69 @@ def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_c
     from .member_admin import resolve_family
 
     family = resolve_family(family_slug=family_slug, unit=unit)
+def _resolve_family_and_child(unit, family_slug, child_name, child_id=None, grade=""):
+    family = None
+    if unit:
+        family = PortalFamily.objects.filter(unit=unit, slug=family_slug).first()
+    if not family and family_slug:
+        family = PortalFamily.objects.filter(slug=family_slug).first()
+    if child_id:
+        child = PortalChild.objects.select_related("family", "family__unit").filter(pk=child_id).first()
+        if not child:
+            raise ValueError("Member not found.")
+        if unit and child.family.unit_id != unit.pk:
+            raise ValueError("That member is not at this unit.")
+        family = child.family
+        return family, child
     if not family:
         raise ValueError("Family not found.")
+    name = (child_name or "").strip()
+    if not name:
+        raise ValueError("Member name is required.")
+    child = family.children.filter(name=name).first()
+    if child is None:
+        child = PortalChild.objects.create(
+            family=family,
+            name=name,
+            grade=grade or "",
+            is_active=True,
+        )
+    else:
+        if grade:
+            child.grade = grade
+            child.save(update_fields=["grade"])
+        if not child.is_active:
+            child.is_active = True
+            child.save(update_fields=["is_active"])
+    return family, child
 
+
+@transaction.atomic
+def save_agency_member(
+    unit,
+    family_slug,
+    child_name,
+    agency_name,
+    auth_start=None,
+    auth_end=None,
+    daily_agency_rate="0",
+    weekly_agency_rate="0",
+    weekly_agency_overridden=False,
+    daily_copay="0",
+    weekly_copay="0",
+    weekly_copay_overridden=False,
+    posted_weeks=None,
+    reset_week_rates=False,
+    child_id=None,
+    grade="",
+    auth_number="",
+    program_label="",
+    notes="",
+    profile=None,
+):
+    family, child = _resolve_family_and_child(unit, family_slug, child_name, child_id=child_id, grade=grade)
+    if unit is None:
+        unit = family.unit
     family.billing_type = "4Cs"
     if program_label:
         family.program_label = program_label
@@ -288,7 +417,179 @@ def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_c
             "notes": notes,
         },
     )
+    agency = resolve_agency_by_name(agency_name, unit)
+    daily_agency = parse_money(daily_agency_rate)
+    daily_parent = parse_money(daily_copay)
+    if weekly_agency_overridden:
+        weekly_agency = parse_money(weekly_agency_rate)
+    else:
+        weekly_agency = weekly_from_daily(daily_agency) if daily_agency else parse_money(weekly_agency_rate)
+    if weekly_copay_overridden:
+        weekly_parent = parse_money(weekly_copay)
+    else:
+        weekly_parent = weekly_from_daily(daily_parent) if daily_parent else parse_money(weekly_copay)
+
+    defaults = {
+        "unit": unit,
+        "family": family,
+        "agency": agency,
+        "auth_number": (auth_number or "").strip(),
+        "auth_start": auth_start,
+        "auth_end": auth_end,
+        "daily_agency_rate": daily_agency,
+        "weekly_agency_rate": weekly_agency,
+        "weekly_agency_overridden": bool(weekly_agency_overridden),
+        "daily_copay": daily_parent,
+        "weekly_copay": weekly_parent,
+        "weekly_copay_overridden": bool(weekly_copay_overridden),
+        "notes": notes or "",
+    }
+    if profile is None:
+        profile = PortalAgencyProfile.objects.filter(child=child).first()
+    if profile:
+        for key, value in defaults.items():
+            setattr(profile, key, value)
+        profile.save()
+    else:
+        profile = PortalAgencyProfile.objects.create(child=child, **defaults)
+
+    sync_contract_weeks(profile, posted_weeks=posted_weeks or [], reset_overrides=reset_week_rates)
+    refresh_agency_expected_balance(profile)
     return profile
+
+
+@transaction.atomic
+def add_agency_child(
+    unit,
+    family_slug,
+    child_name,
+    grade,
+    auth_number,
+    weekly_copay,
+    weekly_rate,
+    program_label="",
+    notes="",
+    auth_start=None,
+    auth_end=None,
+    agency_name="",
+    daily_agency_rate="0",
+    daily_copay="0",
+    weekly_agency_overridden=True,
+    weekly_copay_overridden=True,
+    posted_weeks=None,
+    reset_week_rates=False,
+    child_id=None,
+):
+    return save_agency_member(
+        unit,
+        family_slug,
+        child_name,
+        agency_name or "Passaic County 4Cs",
+        auth_start=auth_start,
+        auth_end=auth_end,
+        daily_agency_rate=daily_agency_rate,
+        weekly_agency_rate=weekly_rate,
+        weekly_agency_overridden=weekly_agency_overridden,
+        daily_copay=daily_copay,
+        weekly_copay=weekly_copay,
+        weekly_copay_overridden=weekly_copay_overridden,
+        posted_weeks=posted_weeks,
+        reset_week_rates=reset_week_rates,
+        child_id=child_id,
+        grade=grade,
+        auth_number=auth_number,
+        program_label=program_label,
+        notes=notes,
+    )
+
+
+def agency_form_context(profile=None, child=None, family=None, unit=None, data=None):
+    agencies = list(PortalAgency.objects.filter(is_active=True).order_by("name"))
+    form = {
+        "agency_name": "",
+        "family_slug": family.slug if family else "",
+        "family_name": family.name if family else "",
+        "child_name": child.name if child else "",
+        "child_id": child.pk if child else "",
+        "grade": child.grade if child else "",
+        "auth_number": "",
+        "auth_start": "",
+        "auth_end": "",
+        "daily_agency_rate": "",
+        "weekly_agency_rate": "",
+        "weekly_agency_overridden": False,
+        "daily_copay": "",
+        "weekly_copay": "",
+        "weekly_copay_overridden": False,
+        "notes": "",
+        "weeks": [],
+        "locked_member": bool(child),
+        "unit_name": (unit.name if unit else "") or (family.unit.name if family and family.unit_id else ""),
+        "four_cs": True,
+        "profile_id": profile.pk if profile else "",
+    }
+    if profile:
+        form.update(
+            {
+                "agency_name": profile.agency.name if profile.agency_id else "",
+                "family_slug": profile.family.slug,
+                "family_name": profile.family.name,
+                "child_name": profile.child.name,
+                "child_id": profile.child_id,
+                "grade": profile.child.grade,
+                "auth_number": profile.auth_number,
+                "auth_start": profile.auth_start.isoformat() if profile.auth_start else "",
+                "auth_end": profile.auth_end.isoformat() if profile.auth_end else "",
+                "daily_agency_rate": f"{profile.daily_agency_rate:.2f}",
+                "weekly_agency_rate": f"{profile.weekly_agency_rate:.2f}",
+                "weekly_agency_overridden": profile.weekly_agency_overridden,
+                "daily_copay": f"{profile.daily_copay:.2f}",
+                "weekly_copay": f"{profile.weekly_copay:.2f}",
+                "weekly_copay_overridden": profile.weekly_copay_overridden,
+                "notes": profile.notes,
+                "weeks": [serialize_week(week) for week in profile.contract_weeks.order_by("week_start")],
+                "locked_member": True,
+                "unit_name": profile.unit.name if profile.unit_id else form["unit_name"],
+                "profile_id": profile.pk,
+            }
+        )
+    if data:
+        form["agency_name"] = data.get("agency_name", form["agency_name"])
+        form["family_slug"] = data.get("family_slug", form["family_slug"])
+        form["child_name"] = data.get("child_name", form["child_name"])
+        form["child_id"] = data.get("child_id") or form["child_id"]
+        form["auth_number"] = data.get("auth_number", form["auth_number"])
+        form["auth_start"] = data.get("auth_start", form["auth_start"])
+        form["auth_end"] = data.get("auth_end", form["auth_end"])
+        form["daily_agency_rate"] = data.get("daily_agency_rate", form["daily_agency_rate"])
+        form["weekly_agency_rate"] = data.get("weekly_agency_rate", form["weekly_agency_rate"])
+        form["weekly_agency_overridden"] = data.get("weekly_agency_overridden") == "on" or form["weekly_agency_overridden"]
+        form["daily_copay"] = data.get("daily_copay", form["daily_copay"])
+        form["weekly_copay"] = data.get("weekly_copay", form["weekly_copay"])
+        form["weekly_copay_overridden"] = data.get("weekly_copay_overridden") == "on" or form["weekly_copay_overridden"]
+        form["notes"] = data.get("notes", form["notes"])
+        start = parse_date(form["auth_start"] or "") if form["auth_start"] else None
+        end = parse_date(form["auth_end"] or "") if form["auth_end"] else None
+        weekly_agency = parse_money(form["weekly_agency_rate"])
+        weekly_parent = parse_money(form["weekly_copay"])
+        if start and end:
+            form["weeks"] = preview_weeks(start, end, weekly_agency, weekly_parent)
+    elif not form["weeks"] and form["auth_start"] and form["auth_end"]:
+        start = parse_date(form["auth_start"])
+        end = parse_date(form["auth_end"])
+        form["weeks"] = preview_weeks(
+            start,
+            end,
+            parse_money(form["weekly_agency_rate"]),
+            parse_money(form["weekly_copay"]),
+        )
+    return {
+        "form": form,
+        "agencies": agencies,
+        "profile": profile,
+        "child": child,
+        "family": family,
+    }
 
 
 @transaction.atomic

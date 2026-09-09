@@ -4451,3 +4451,16 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     gap: 0.35rem;
   }
 }
+
+.portal-agency-member-form .card {
+  margin-bottom: 1.25rem;
+}
+
+.portal-rate-section h3 {
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+.portal-agency-member-form .portal-input-sm {
+  max-width: 8rem;
+}

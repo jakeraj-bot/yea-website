@@ -1343,6 +1343,27 @@ def staff_billing_action(request, family_slug):
                 request.POST.get("reason", ""),
             )
             messages.success(request, "Refund sent and the family balance was updated.")
+        elif action == "update_4cs_plan":
+            _child, posted = update_child_billing_plan(
+                family,
+                request.POST.get("child_name", "").strip(),
+                request.POST.get("billing_plan", "Weekly"),
+                request.POST.get("billing_amount"),
+                "4Cs",
+                auto_charge=request.POST.get("auto_charge") == "on",
+                next_charge_date=parse_date(request.POST.get("next_charge_date") or "") or None,
+                charge_weekday=request.POST.get("charge_weekday"),
+                charge_month_day=request.POST.get("charge_month_day"),
+            )
+            if posted:
+                count = len(posted)
+                charge_word = "charge" if count == 1 else "charges"
+                messages.success(
+                    request,
+                    f"4Cs copay plan saved. Posted {count} parent {charge_word} to the family ledger.",
+                )
+            else:
+                messages.success(request, "4Cs copay plan saved. Amounts come from the parent copay weeks.")
         elif action == "update_plan":
             if area != "admin":
                 raise ValueError("Only portal admin can edit billing plans.")
@@ -1839,6 +1860,51 @@ def staff_agency_action(request):
         messages.error(request, str(exc))
 
     return redirect(redirect_url)
+
+
+@require_POST
+def agency_week_received(request):
+    from .agency_weeks import mark_agency_week_received, refresh_agency_expected_balance
+    from .models import PortalAgencyContractWeek
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
+
+    area = request.POST.get("portal_area", "staff")
+    fallback = reverse("portal_staff_page", kwargs={"page": "agency"})
+    if area == "admin":
+        fallback = reverse("portal_admin_page", kwargs={"page": "agencies"})
+    if not portal_preview_mode():
+        if area == "admin" and not is_admin_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+        if area != "admin" and not is_staff_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+    week = (
+        PortalAgencyContractWeek.objects.select_related("profile", "profile__family", "profile__child")
+        .filter(pk=request.POST.get("week_id"))
+        .first()
+    )
+    if not week:
+        messages.error(request, "Agency week not found.")
+        return redirect(_portal_next_url(request, fallback))
+    received = request.POST.get("received") in ("1", "on", "true", "yes")
+    mark_agency_week_received(week, received=received)
+    refresh_agency_expected_balance(week.profile)
+    if received:
+        messages.success(
+            request,
+            f"Marked {week.profile.child.name} agency week as received. This stays on the 4Cs tab, not the parent ledger.",
+        )
+    else:
+        messages.success(request, "Unchecked received for that agency week.")
+    return redirect(_portal_next_url(request, fallback))
 
 
 @require_POST

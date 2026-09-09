@@ -14,6 +14,26 @@ from .models import (
     PortalScholarshipAssignment,
     PortalScholarshipFund,
 )
+
+
+def agency_profile_for(child):
+    if not child:
+        return None
+    try:
+        return child.agency_profile
+    except PortalAgencyProfile.DoesNotExist:
+        return None
+
+
+def child_uses_4cs_copay_plan(child):
+    profile = agency_profile_for(child)
+    if not profile:
+        return False
+    billing_type = (child.family.billing_type or "").lower()
+    plan = (child.billing_plan or "").lower()
+    return "4cs" in billing_type or "copay" in plan or "4cs" in plan
+
+
 from .parent_services import get_billing_live
 
 WEEKDAYS = (
@@ -495,28 +515,47 @@ def update_child_billing_plan(
         child.billing_amount = assignment.parent_amount
     elif amount not in (None, ""):
         child.billing_amount = _parse_amount(amount)
+    four_cs_profile = agency_profile_for(child) if billing_label.lower() == "4cs" or "4cs" in billing_label.lower() else None
+    if four_cs_profile:
+        from .agency_weeks import next_unposted_parent_period, typical_parent_period_amount
+
+        child.billing_amount = typical_parent_period_amount(four_cs_profile, child.billing_plan)
+        if not next_charge_date:
+            upcoming = next_unposted_parent_period(four_cs_profile, child.billing_plan)
+            if upcoming:
+                next_charge_date = upcoming["start"]
     if auto_charge is not None:
         child.auto_charge = bool(auto_charge)
-        if child.auto_charge and not child.billing_amount:
+        if child.auto_charge and not child.billing_amount and not four_cs_profile:
             raise ValueError("Set a plan amount before turning on automatic charges.")
         if child.auto_charge:
             child.charge_weekday = _parse_optional_int(charge_weekday, 0, 6)
             child.charge_month_day = _parse_optional_int(charge_month_day, 0, 31)
             label = (child.billing_plan or "").lower()
-            if "month" in label:
+            if four_cs_profile:
+                child.next_charge_date = next_charge_date or timezone.localdate()
+                if child.charge_weekday is None and child.next_charge_date:
+                    child.charge_weekday = child.next_charge_date.weekday()
+            elif "month" in label:
                 child.charge_weekday = None
                 if child.charge_month_day is None:
                     raise ValueError("Pick the day of the month this plan should repeat.")
+                child.next_charge_date = first_plan_charge_date(
+                    next_charge_date,
+                    child.billing_plan,
+                    weekday=child.charge_weekday,
+                    month_day=child.charge_month_day,
+                )
             else:
                 child.charge_month_day = None
                 if child.charge_weekday is None:
                     raise ValueError("Pick the weekday this plan should repeat.")
-            child.next_charge_date = first_plan_charge_date(
-                next_charge_date,
-                child.billing_plan,
-                weekday=child.charge_weekday,
-                month_day=child.charge_month_day,
-            )
+                child.next_charge_date = first_plan_charge_date(
+                    next_charge_date,
+                    child.billing_plan,
+                    weekday=child.charge_weekday,
+                    month_day=child.charge_month_day,
+                )
         else:
             child.next_charge_date = None
             child.charge_weekday = None
@@ -542,17 +581,56 @@ def update_child_billing_plan(
     return child, posted
 
 
+def _post_4cs_copay_period(locked, today):
+    """Post the next parent-copay period. Returns True if a family charge was posted."""
+    from .agency_weeks import mark_parent_period_posted, next_unposted_parent_period
+
+    profile = agency_profile_for(locked)
+    if not profile:
+        return False
+    period = next_unposted_parent_period(profile, locked.billing_plan)
+    if not period:
+        locked.next_charge_date = None
+        return False
+    if period["start"] > today:
+        locked.next_charge_date = period["start"]
+        return False
+    charge_date = period["start"]
+    if locked.last_auto_charge_date == charge_date:
+        mark_parent_period_posted(period["weeks"], charge_date)
+        nxt = next_unposted_parent_period(profile, locked.billing_plan)
+        locked.next_charge_date = nxt["start"] if nxt else None
+        return False
+    amount = period["amount"]
+    if amount > 0:
+        post_charge(
+            locked.family,
+            locked.name,
+            "4cs_copay",
+            amount,
+            charge_date,
+            f"{locked.billing_plan or 'Copay'} — {locked.name} ({period['label']})",
+            is_manual=False,
+        )
+    mark_parent_period_posted(period["weeks"], charge_date)
+    locked.last_auto_charge_date = charge_date
+    nxt = next_unposted_parent_period(profile, locked.billing_plan)
+    locked.next_charge_date = nxt["start"] if nxt else None
+    return amount > 0
+
+
 def run_due_plan_charges(today=None, child=None):
     """Post due child plan charges and advance each next charge date."""
+    from django.db.models import Q
+
     today = today or timezone.localdate()
     due = PortalChild.objects.select_related("family").filter(
         is_active=True,
         auto_charge=True,
         next_charge_date__isnull=False,
         next_charge_date__lte=today,
-        billing_amount__gt=0,
         family__status="Active",
-    )
+    ).filter(Q(billing_amount__gt=0) | Q(agency_profile__isnull=False))
     only_child = child
     if only_child is not None:
         due = due.filter(pk=only_child.pk)
@@ -566,7 +644,10 @@ def run_due_plan_charges(today=None, child=None):
                     .filter(pk=due_child.pk, auto_charge=True, next_charge_date__lte=today)
                     .first()
                 )
-                if not locked or not locked.billing_amount:
+                if not locked:
+                    continue
+                uses_4cs = child_uses_4cs_copay_plan(locked)
+                if not uses_4cs and not locked.billing_amount:
                     continue
                 periods = 0
                 while (
@@ -574,6 +655,14 @@ def run_due_plan_charges(today=None, child=None):
                     and locked.next_charge_date <= today
                     and periods < 8
                 ):
+                    if uses_4cs:
+                        did_post = _post_4cs_copay_period(locked, today)
+                        if did_post:
+                            posted.append(locked)
+                        periods += 1
+                        if not locked.next_charge_date or locked.next_charge_date > today:
+                            break
+                        continue
                     charge_date = locked.next_charge_date
                     if locked.last_auto_charge_date == charge_date:
                         locked.next_charge_date = next_plan_charge_date(
