@@ -183,3 +183,184 @@ def pickup_report_programs(families, family_details):
             elif family.get("program"):
                 programs.add(family["program"])
     return sorted(programs)
+
+
+def _truthy_flag(value):
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def emergency_contacts_from_application(app):
+    """Emergency contacts stored on an enrollment application."""
+    contacts = []
+    if not app:
+        return contacts
+    for contact in app.emergency_contacts.all():
+        name = f"{contact.first_name} {contact.last_name}".strip()
+        if not name:
+            continue
+        contacts.append(
+            {
+                "name": name,
+                "phone": contact.phone or "",
+                "relationship": contact.relationship or "",
+                "authorized_pickup": bool(contact.authorized_pickup),
+            }
+        )
+    return contacts
+
+
+def emergency_contacts_from_profile(profile):
+    """Emergency contacts on a family profile (live or demo)."""
+    contacts = []
+    for contact in (profile or {}).get("emergency_contacts") or []:
+        name = (contact.get("name") or "").strip()
+        if not name:
+            continue
+        contacts.append(
+            {
+                "name": name,
+                "phone": contact.get("phone") or "",
+                "relationship": contact.get("relationship") or "",
+                "authorized_pickup": _truthy_flag(contact.get("authorized_pickup")),
+            }
+        )
+    return contacts
+
+
+def _blank_contact_row():
+    return {
+        "contact_name": "—",
+        "contact_phone": "—",
+        "relationship": "—",
+        "authorized_pickup": "",
+        "authorized_label": "—",
+        "has_contact": False,
+    }
+
+
+def _contact_row(contact):
+    authorized = bool(contact.get("authorized_pickup"))
+    return {
+        "contact_name": contact.get("name") or "—",
+        "contact_phone": contact.get("phone") or "—",
+        "relationship": contact.get("relationship") or "—",
+        "authorized_pickup": "yes" if authorized else "no",
+        "authorized_label": "Yes" if authorized else "No",
+        "has_contact": True,
+    }
+
+
+def child_emergency_contact_rows(base, contacts):
+    if not contacts:
+        return [{**base, **_blank_contact_row()}]
+    return [{**base, **_contact_row(contact)} for contact in contacts]
+
+
+def emergency_contact_report_data(families, family_details):
+    """Build printable emergency-contact rows from demo/preview family profiles."""
+    rows = []
+    for family in families:
+        slug = family.get("slug")
+        profile = family_details.get(slug)
+        if not profile:
+            continue
+        contacts = emergency_contacts_from_profile(profile)
+        family_name = profile.get("family_name", family.get("name", ""))
+        unit_name = ""
+        for child in profile.get("children") or []:
+            unit_name = child.get("location") or child.get("unit_name") or unit_name
+        if not unit_name:
+            unit_name = family.get("unit") or "School 18"
+        unit_slug = family.get("unit_slug") or "school-18"
+        for child in profile.get("children") or []:
+            program = child.get("program", family.get("program", ""))
+            school = (child.get("school") or child.get("location") or "").strip()
+            base = {
+                "child": child.get("name", ""),
+                "family": family_name,
+                "family_slug": slug or "",
+                "unit": child.get("unit_name") or child.get("location") or unit_name,
+                "unit_slug": child.get("unit_slug") or unit_slug,
+                "program": program or "After-school program",
+                "grade": child.get("grade") or "—",
+                "school": school or "—",
+            }
+            rows.extend(child_emergency_contact_rows(base, contacts))
+    rows.sort(key=lambda row: (row["unit"].lower(), row["child"].lower(), row["contact_name"].lower()))
+    return rows
+
+
+def emergency_contact_report_options(rows):
+    programs = sorted({row["program"] for row in rows if row.get("program")})
+    schools = sorted({row["school"] for row in rows if row.get("school") and row["school"] != "—"})
+    grades = sorted({row["grade"] for row in rows if row.get("grade") and row["grade"] != "—"})
+    children = sorted({row["child"] for row in rows if row.get("child")})
+    families = []
+    family_seen = set()
+    units = []
+    unit_seen = set()
+    for row in rows:
+        family_key = row.get("family_slug") or row.get("family")
+        if family_key and family_key not in family_seen:
+            family_seen.add(family_key)
+            families.append({"slug": family_key, "name": row.get("family") or family_key})
+        unit_key = row.get("unit_slug") or row.get("unit")
+        if unit_key and unit_key not in unit_seen:
+            unit_seen.add(unit_key)
+            units.append({"slug": row.get("unit_slug") or "", "name": row.get("unit") or unit_key})
+    families.sort(key=lambda item: item["name"].lower())
+    units.sort(key=lambda item: (item["name"] or "").lower())
+    return {
+        "programs": programs,
+        "schools": schools,
+        "grades": grades,
+        "children": children,
+        "families": families,
+        "units": units,
+    }
+
+
+def filter_emergency_contact_rows(rows, filters=None):
+    """Keep rows that match every selected filter. Empty filters mean 'all'."""
+    filters = filters or {}
+    unit = str(filters.get("unit") or "").strip()
+    program = str(filters.get("program") or "").strip()
+    school = str(filters.get("school") or "").strip()
+    family = str(filters.get("family") or "").strip()
+    child = str(filters.get("child") or "").strip()
+    grade = str(filters.get("grade") or "").strip()
+    query = str(filters.get("q") or "").strip().lower()
+    authorized = str(filters.get("authorized") or "").strip().lower()
+    missing = _truthy_flag(filters.get("missing"))
+    kept = []
+    for row in rows:
+        if unit and row.get("unit_slug") != unit and row.get("unit") != unit:
+            continue
+        if program and row.get("program") != program:
+            continue
+        if school and row.get("school") != school:
+            continue
+        if family and row.get("family_slug") != family and row.get("family") != family:
+            continue
+        if child and row.get("child") != child:
+            continue
+        if grade and row.get("grade") != grade:
+            continue
+        if missing and row.get("has_contact"):
+            continue
+        if authorized in {"yes", "no"} and row.get("authorized_pickup") != authorized:
+            continue
+        if query:
+            haystack = " ".join(
+                [
+                    row.get("contact_name") or "",
+                    row.get("contact_phone") or "",
+                    row.get("relationship") or "",
+                ]
+            ).lower()
+            if query not in haystack:
+                continue
+        kept.append(row)
+    return kept

@@ -597,6 +597,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
                 "name": f"{contact.first_name} {contact.last_name}".strip(),
                 "phone": contact.phone,
                 "relationship": contact.relationship,
+                "authorized_pickup": bool(contact.authorized_pickup),
             }
             for contact in latest_app.emergency_contacts.all()
         ]

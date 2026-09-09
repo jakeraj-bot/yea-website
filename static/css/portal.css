@@ -1096,6 +1096,21 @@
 .portal-member-info-table td {
   white-space: nowrap;
   padding: 0.35rem 0.45rem;
+.portal-report-filters .portal-filter-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.45rem;
+}
+
+.portal-report-missing-row td {
+  background: #fff8e8;
+}
+
+@media print {
+  .portal-report-missing-row td {
+    background: transparent;
+  }
 }
 
 .portal-select,
