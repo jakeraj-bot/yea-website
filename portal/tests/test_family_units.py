@@ -549,6 +549,7 @@ class MultiUnitFamilyVisibilityTests(TestCase):
         self.assertEqual(families.status_code, 200)
         self.assertContains(families, "Child A Rivera")
         self.assertNotContains(families, "Child B Rivera")
+        self.assertContains(families, "School 18 — 1 families · 1 children listed")
         profile = self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "rivera"}))
         self.assertEqual(profile.status_code, 200)
         self.assertContains(profile, "Child A Rivera")
