@@ -1,4 +1,5 @@
 from datetime import time, timedelta
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -359,3 +360,23 @@ class StaffEmergencyContactReportTests(TestCase):
         self.assertEqual(hub.status_code, 200)
         self.assertContains(hub, "Emergency contact list")
         self.assertContains(hub, reverse("portal_staff_emergency_contact_report"))
+        self.assertContains(hub, "portal-reports-grid")
+        self.assertContains(hub, "portal-report-card")
+        self.assertContains(hub, "Member information")
+        self.assertContains(hub, reverse("portal_staff_member_information_report"))
+
+
+class ReportsHubGridCssTests(TestCase):
+    def test_portal_css_keeps_a_multi_column_reports_grid(self):
+        css = Path("static/css/portal.css").read_text()
+        start = css.index(".portal-reports-grid {")
+        card = css.index(".portal-report-card {", start)
+        grid = css[start:card]
+        self.assertIn("display: grid", grid)
+        self.assertIn("repeat(2, minmax(0, 1fr))", grid)
+        self.assertIn("repeat(3, minmax(0, 1fr))", grid)
+        self.assertIn("repeat(4, minmax(0, 1fr))", grid)
+        member_table = css[css.index(".portal-member-info-table th") : css.index(".portal-report-missing-row")]
+        self.assertIn("padding: 0.35rem 0.45rem;", member_table)
+        self.assertIn("}", member_table)
+        self.assertNotIn("padding: 0.35rem 0.45rem;\n.portal-report-filters", member_table)

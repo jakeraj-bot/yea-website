@@ -1096,6 +1096,8 @@
 .portal-member-info-table td {
   white-space: nowrap;
   padding: 0.35rem 0.45rem;
+}
+
 .portal-report-filters .portal-filter-check {
   flex-direction: row;
   align-items: center;
@@ -1639,8 +1641,27 @@
 
 .portal-reports-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
+  align-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .portal-reports-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .portal-reports-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .portal-reports-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .portal-report-card {
@@ -1648,6 +1669,9 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 1.15rem;
+  min-width: 0;
+  max-width: none;
+  width: auto;
 }
 
 .portal-report-card h2 {
@@ -1658,6 +1682,7 @@
 .portal-report-card p {
   margin: 0;
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .portal-status-under-review,
@@ -4055,6 +4080,12 @@
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.page-content .portal-reports-grid > .portal-report-card {
+  max-width: none;
+  min-width: 0;
+  width: auto;
 }
 
 .form-group .portal-input,
