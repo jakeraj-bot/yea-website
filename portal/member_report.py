@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.utils import timezone
 
 from enrollment.models import EnrollmentApplication
+from enrollment.portal_integration import displayed_payment_plan
 
 from .member_admin import is_placeholder_unit
 from .models import PortalAgencyProfile, PortalChild, PortalUnit
@@ -251,15 +252,13 @@ def member_information_rows(*, unit=None):
         types = program_types_for_child(child, apps)
         school = (child.school or "").strip()
         grade = (child.grade or "").strip()
-        plan = (child.billing_plan or "").strip()
-        if apps:
-            app = apps[0]
+        app = apps[0] if apps else None
+        plan = displayed_payment_plan(child, app)
+        if app:
             if not school:
                 school = (app.student_school or "").strip()
             if not grade and hasattr(app, "get_student_grade_display"):
                 grade = (app.get_student_grade_display() or "").strip()
-            if not plan and hasattr(app, "get_payment_plan_display"):
-                plan = (app.get_payment_plan_display() or "").strip()
         billing = (family.billing_type or "Private pay").strip() or "Private pay"
         snapshot = four_cs_snapshot(child, profiles.get(child.pk), on_date=today)
         rows.append(

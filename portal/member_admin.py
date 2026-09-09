@@ -11,7 +11,12 @@ from django.utils import timezone
 
 from core.email_service import send_site_email
 from enrollment.models import EnrollmentApplication
-from enrollment.portal_integration import PAYMENT_TO_BILLING_TYPE, _unique_family_slug, family_display_label
+from enrollment.portal_integration import (
+    PAYMENT_TO_BILLING_TYPE,
+    _unique_family_slug,
+    displayed_payment_plan,
+    family_display_label,
+)
 
 from .models import (
     PortalChild,
@@ -669,7 +674,7 @@ def member_reports():
         )
         school = child.school or (app.student_school if app else "")
         billing = (child.family.billing_type or "Private pay").strip() or "Private pay"
-        plan = child.billing_plan or (app.get_payment_plan_display() if app else "Weekly")
+        plan = displayed_payment_plan(child, app) or "Weekly"
         unit_name, _unit_slug = unit_label_for_child(child)
         rows.append(
             {

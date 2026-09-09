@@ -26,7 +26,7 @@ from portal.models import (
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 
 
-def _application(family, child, *, program="after_school", location="school_18", status="approved"):
+def _application(family, child, *, program="after_school", location="school_18", status="approved", payment_plan="weekly"):
     first, _, last = child.name.partition(" ")
     return EnrollmentApplication.objects.create(
         program=program,
@@ -57,7 +57,7 @@ def _application(family, child, *, program="after_school", location="school_18",
         health_statement="good_health",
         membership_fee_agreed="no",
         payment_method="4cs" if family.billing_type == "4Cs" else "private_pay",
-        payment_plan="weekly",
+        payment_plan=payment_plan,
         payment_plan_signature="Pat",
         payment_plan_signed_date=date(2026, 8, 1),
         status=status,
@@ -362,3 +362,45 @@ class MemberInformationReportTests(TestCase):
         self.assertIn("agency_created", children["Sofia Martinez"])
         waiting_only = build_admin_report("four-cs", {"agency_status": "waiting"})
         self.assertEqual([row["child"] for row in waiting_only["rows"]], ["An Nguyen"])
+
+    def test_empty_billing_plan_falls_back_to_application_payment_plan(self):
+        self.waiting_child.billing_plan = ""
+        self.waiting_child.save(update_fields=["billing_plan"])
+        _application(self.waiting_family, self.waiting_child, payment_plan="monthly")
+
+        rows = {row["child"]: row for row in member_information_rows(unit=self.school_18)}
+        self.assertEqual(rows["An Nguyen"]["plan"], "Monthly")
+
+    def test_staff_set_weekly_plan_is_not_replaced_by_application(self):
+        self.private_child.billing_amount = Decimal("40.00")
+        self.private_child.save(update_fields=["billing_amount"])
+        app = self.private_family.enrollment_applications.get()
+        app.payment_plan = "monthly"
+        app.save(update_fields=["payment_plan"])
+
+        rows = {row["child"]: row for row in member_information_rows(unit=self.school_18)}
+        self.assertEqual(rows["Jordan Jacobs"]["plan"], "Weekly")
+
+    def test_default_weekly_without_staff_details_shows_application_plan(self):
+        self.private_child.billing_plan = "Weekly"
+        self.private_child.billing_amount = None
+        self.private_child.auto_charge = False
+        self.private_child.charge_weekday = None
+        self.private_child.charge_month_day = None
+        self.private_child.next_charge_date = None
+        self.private_child.save(
+            update_fields=[
+                "billing_plan",
+                "billing_amount",
+                "auto_charge",
+                "charge_weekday",
+                "charge_month_day",
+                "next_charge_date",
+            ]
+        )
+        app = self.private_family.enrollment_applications.get()
+        app.payment_plan = "monthly"
+        app.save(update_fields=["payment_plan"])
+
+        rows = {row["child"]: row for row in member_information_rows(unit=self.school_18)}
+        self.assertEqual(rows["Jordan Jacobs"]["plan"], "Monthly")
