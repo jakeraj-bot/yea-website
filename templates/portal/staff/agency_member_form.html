@@ -1,0 +1,304 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='agencies' %}">Agencies</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a> /
+      {% endif %}
+      {% if editing %}Edit agency{% else %}Add agency{% endif %}
+    </p>
+    <h1>{% if editing %}Edit agency{% else %}Add agency{% endif %}{% if form.child_name %} — {{ form.child_name }}{% endif %}</h1>
+    <p class="lead">Set the contract, what the agency pays YEA, and what the parent pays (copay). Parent weeks feed the billing plan. Agency weeks stay on the 4Cs tab.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form class="portal-agency-member-form" method="post" action="{{ form_action }}" id="agency-member-form">
+      {% csrf_token %}
+      {% if form.child_id %}<input type="hidden" name="child_id" value="{{ form.child_id }}">{% endif %}
+      {% if form.locked_member %}<input type="hidden" name="family_slug" value="{{ form.family_slug }}">{% endif %}
+      <input type="hidden" name="weekly_agency_overridden" id="weekly-agency-overridden" value="{% if form.weekly_agency_overridden %}on{% endif %}">
+      <input type="hidden" name="weekly_copay_overridden" id="weekly-parent-overridden" value="{% if form.weekly_copay_overridden %}on{% endif %}">
+
+      <section class="card">
+        <h2>Member &amp; contract</h2>
+        <div class="portal-form-grid">
+          <div class="form-group">
+            <label for="agency-name">Agency name</label>
+            <input id="agency-name" name="agency_name" type="text" class="portal-input" list="agency-name-list" value="{{ form.agency_name }}" required placeholder="e.g. Passaic County 4Cs">
+            <datalist id="agency-name-list">
+              {% for agency in agencies %}
+              <option value="{{ agency.name }}"></option>
+              {% endfor %}
+            </datalist>
+          </div>
+          {% if form.locked_member %}
+          <div class="form-group">
+            <label for="locked-child">Member (child)</label>
+            <input id="locked-child" type="text" class="portal-input" value="{{ form.child_name }}" readonly>
+            <input type="hidden" name="child_name" value="{{ form.child_name }}">
+            <p class="form-note">{{ form.family_name }}{% if form.unit_name %} · {{ form.unit_name }}{% endif %} · 4Cs</p>
+          </div>
+          {% else %}
+          <div class="form-group">
+            <label for="ac-family">Family</label>
+            <select id="ac-family" name="family_slug" class="portal-select" required>
+              <option value="">Select family…</option>
+              {% for fam in family_options %}
+              <option value="{{ fam.slug }}" data-children="{{ fam.children|safe }}" {% if fam.slug == form.family_slug %}selected{% endif %}>{{ fam.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ac-child">Member (child) name</label>
+            <input id="ac-child" name="child_name" type="text" class="portal-input" value="{{ form.child_name }}" required>
+          </div>
+          {% endif %}
+          <div class="form-group">
+            <label for="ac-auth-start">Contract start</label>
+            <input id="ac-auth-start" name="auth_start" type="date" class="portal-input" value="{{ form.auth_start }}" required>
+          </div>
+          <div class="form-group">
+            <label for="ac-auth-end">Contract end</label>
+            <input id="ac-auth-end" name="auth_end" type="date" class="portal-input" value="{{ form.auth_end }}" required>
+          </div>
+          <div class="form-group">
+            <label for="ac-auth">Authorization # (optional)</label>
+            <input id="ac-auth" name="auth_number" type="text" class="portal-input" value="{{ form.auth_number }}">
+          </div>
+        </div>
+      </section>
+
+      <section class="card portal-rate-section">
+        <h2>What the agency pays YEA</h2>
+        <p class="form-note">Weekly starts as daily × 5 school days. You can override weekly, then any individual week.</p>
+        <div class="portal-form-grid">
+          <div class="form-group">
+            <label for="daily-agency">Daily rate</label>
+            <input id="daily-agency" name="daily_agency_rate" type="text" class="portal-input" inputmode="decimal" value="{{ form.daily_agency_rate }}" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="weekly-agency">Weekly rate</label>
+            <input id="weekly-agency" name="weekly_agency_rate" type="text" class="portal-input" inputmode="decimal" value="{{ form.weekly_agency_rate }}" placeholder="0.00">
+          </div>
+        </div>
+        <h3>Weeks in this contract</h3>
+        <div class="portal-table-wrap">
+          <table class="portal-table" id="agency-week-table">
+            <thead>
+              <tr><th>Week</th><th>Agency amount</th></tr>
+            </thead>
+            <tbody id="agency-week-body">
+              {% for week in form.weeks %}
+              <tr>
+                <td>{{ week.label }}</td>
+                <td>
+                  <input type="hidden" name="week_start" value="{{ week.week_start }}">
+                  <input type="hidden" name="week_end" value="{{ week.week_end }}">
+                  <input type="text" name="week_agency" class="portal-input portal-input-sm week-agency-amount" value="{{ week.agency_amount }}" aria-label="Agency amount for {{ week.label }}">
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card portal-rate-section">
+        <h2>What the parent pays YEA (copay)</h2>
+        <p class="form-note">Same weeks. The billing plan uses only these copay amounts — never the agency section.</p>
+        <div class="portal-form-grid">
+          <div class="form-group">
+            <label for="daily-copay">Daily copay</label>
+            <input id="daily-copay" name="daily_copay" type="text" class="portal-input" inputmode="decimal" value="{{ form.daily_copay }}" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="weekly-copay">Weekly copay</label>
+            <input id="weekly-copay" name="weekly_copay" type="text" class="portal-input" inputmode="decimal" value="{{ form.weekly_copay }}" placeholder="0.00">
+          </div>
+        </div>
+        <h3>Copay by week</h3>
+        <div class="portal-table-wrap">
+          <table class="portal-table" id="parent-week-table">
+            <thead>
+              <tr><th>Week</th><th>Parent copay</th></tr>
+            </thead>
+            <tbody id="parent-week-body">
+              {% for week in form.weeks %}
+              <tr>
+                <td>{{ week.label }}</td>
+                <td>
+                  <input type="text" name="week_parent" class="portal-input portal-input-sm week-parent-amount" value="{{ week.parent_amount }}" aria-label="Parent copay for {{ week.label }}">
+                </td>
+              </tr>
+              {% empty %}
+              <tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <label class="portal-check-label">
+          <input type="checkbox" name="reset_week_rates"> Reset every week to the weekly rates (clears per-week overrides)
+        </label>
+      </section>
+
+      <div class="portal-form-actions">
+        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save agency</button>
+        <a class="btn btn-secondary" href="{{ cancel_url }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var previewUrl = "{{ week_preview_url }}";
+  var familyOptions = {
+    {% for fam in family_options %}
+    "{{ fam.slug }}": [{% for kid in fam.children %}{"id": "{{ kid.id }}", "name": "{{ kid.name|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+  function money(n) {
+    var x = parseFloat(String(n || "0").replace(/[^0-9.-]/g, ""));
+    return isNaN(x) ? 0 : x;
+  }
+  function fmt(n) { return money(n).toFixed(2); }
+  function label(start, end) {
+    function one(iso) {
+      var p = iso.split("-");
+      return Number(p[1]) + "/" + Number(p[2]) + "/" + String(p[0]).slice(2);
+    }
+    return one(start) + "–" + one(end);
+  }
+  var agencyWeeklyTouched = document.getElementById("weekly-agency-overridden").value === "on";
+  var parentWeeklyTouched = document.getElementById("weekly-parent-overridden").value === "on";
+  var agencyWeekTouched = {};
+  var parentWeekTouched = {};
+  document.querySelectorAll(".week-agency-amount").forEach(function (input) {
+    var start = input.closest("tr").querySelector('input[name="week_start"]');
+    if (start) agencyWeekTouched[start.value] = true;
+  });
+  document.querySelectorAll(".week-parent-amount").forEach(function (input) {
+    var idx = Array.prototype.indexOf.call(document.querySelectorAll(".week-parent-amount"), input);
+    var starts = document.querySelectorAll('input[name="week_start"]');
+    if (starts[idx]) parentWeekTouched[starts[idx].value] = true;
+  });
+  function setHiddenOverride(id, on) {
+    var el = document.getElementById(id);
+    if (el) el.value = on ? "on" : "";
+  }
+  function renderWeeks(weeks, weeklyAgency, weeklyParent) {
+    var agencyBody = document.getElementById("agency-week-body");
+    var parentBody = document.getElementById("parent-week-body");
+    if (!agencyBody || !parentBody) return;
+    if (!weeks.length) {
+      agencyBody.innerHTML = '<tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
+      parentBody.innerHTML = '<tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
+      return;
+    }
+    agencyBody.innerHTML = "";
+    parentBody.innerHTML = "";
+    weeks.forEach(function (week) {
+      var agencyAmt = agencyWeekTouched[week.week_start] ? (document.querySelector('.week-agency-amount[data-start="' + week.week_start + '"]') ? document.querySelector('.week-agency-amount[data-start="' + week.week_start + '"]').value : week.agency_amount) : week.agency_amount;
+      var parentAmt = parentWeekTouched[week.week_start] ? week.parent_amount : week.parent_amount;
+      if (!agencyWeekTouched[week.week_start]) agencyAmt = weeklyAgency;
+      if (!parentWeekTouched[week.week_start]) parentAmt = weeklyParent;
+      var aRow = document.createElement("tr");
+      aRow.innerHTML = '<td>' + label(week.week_start, week.week_end) + '</td><td>' +
+        '<input type="hidden" name="week_start" value="' + week.week_start + '">' +
+        '<input type="hidden" name="week_end" value="' + week.week_end + '">' +
+        '<input type="text" name="week_agency" class="portal-input portal-input-sm week-agency-amount" data-start="' + week.week_start + '" value="' + fmt(agencyAmt) + '"></td>';
+      agencyBody.appendChild(aRow);
+      var pRow = document.createElement("tr");
+      pRow.innerHTML = '<td>' + label(week.week_start, week.week_end) + '</td><td>' +
+        '<input type="text" name="week_parent" class="portal-input portal-input-sm week-parent-amount" data-start="' + week.week_start + '" value="' + fmt(parentAmt) + '"></td>';
+      parentBody.appendChild(pRow);
+    });
+    bindWeekOverrides();
+  }
+  function bindWeekOverrides() {
+    document.querySelectorAll(".week-agency-amount").forEach(function (input) {
+      input.addEventListener("input", function () {
+        agencyWeekTouched[input.getAttribute("data-start") || ""] = true;
+      });
+    });
+    document.querySelectorAll(".week-parent-amount").forEach(function (input) {
+      input.addEventListener("input", function () {
+        parentWeekTouched[input.getAttribute("data-start") || ""] = true;
+      });
+    });
+  }
+  function refreshWeeks() {
+    var start = document.getElementById("ac-auth-start").value;
+    var end = document.getElementById("ac-auth-end").value;
+    var dailyAgency = document.getElementById("daily-agency").value;
+    var dailyParent = document.getElementById("daily-copay").value;
+    var weeklyAgency = document.getElementById("weekly-agency");
+    var weeklyParent = document.getElementById("weekly-copay");
+    if (!agencyWeeklyTouched && dailyAgency) weeklyAgency.value = fmt(money(dailyAgency) * 5);
+    if (!parentWeeklyTouched && dailyParent) weeklyParent.value = fmt(money(dailyParent) * 5);
+    if (!start || !end) {
+      renderWeeks([], weeklyAgency.value, weeklyParent.value);
+      return;
+    }
+    var params = new URLSearchParams({
+      start: start,
+      end: end,
+      daily_agency: dailyAgency || "0",
+      daily_copay: dailyParent || "0",
+      weekly_agency: weeklyAgency.value || "0",
+      weekly_copay: weeklyParent.value || "0",
+      agency_overridden: agencyWeeklyTouched ? "1" : "0",
+      parent_overridden: parentWeeklyTouched ? "1" : "0"
+    });
+    fetch(previewUrl + "?" + params.toString(), { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!agencyWeeklyTouched) weeklyAgency.value = data.weekly_agency;
+        if (!parentWeeklyTouched) weeklyParent.value = data.weekly_copay;
+        renderWeeks(data.weeks || [], data.weekly_agency, data.weekly_copay);
+      });
+  }
+  document.getElementById("daily-agency").addEventListener("input", function () {
+    agencyWeeklyTouched = false;
+    setHiddenOverride("weekly-agency-overridden", false);
+    refreshWeeks();
+  });
+  document.getElementById("daily-copay").addEventListener("input", function () {
+    parentWeeklyTouched = false;
+    setHiddenOverride("weekly-parent-overridden", false);
+    refreshWeeks();
+  });
+  document.getElementById("weekly-agency").addEventListener("input", function () {
+    agencyWeeklyTouched = true;
+    setHiddenOverride("weekly-agency-overridden", true);
+    Object.keys(agencyWeekTouched).forEach(function (k) { delete agencyWeekTouched[k]; });
+    refreshWeeks();
+  });
+  document.getElementById("weekly-copay").addEventListener("input", function () {
+    parentWeeklyTouched = true;
+    setHiddenOverride("weekly-parent-overridden", true);
+    Object.keys(parentWeekTouched).forEach(function (k) { delete parentWeekTouched[k]; });
+    refreshWeeks();
+  });
+  document.getElementById("ac-auth-start").addEventListener("change", refreshWeeks);
+  document.getElementById("ac-auth-end").addEventListener("change", refreshWeeks);
+  bindWeekOverrides();
+  var familySelect = document.getElementById("ac-family");
+  var childInput = document.getElementById("ac-child");
+  if (familySelect && childInput) {
+    familySelect.addEventListener("change", function () {
+      var kids = familyOptions[familySelect.value] || [];
+      if (kids.length === 1 && !childInput.value) childInput.value = kids[0].name;
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -31,8 +31,55 @@
     {% for billing in agency_accounts %}
     <section class="card">
       <h2>{{ billing.child_name }}</h2>
-      <p class="form-note">{{ billing.agency_name }} · auth {{ billing.auth_number }} · agency rate ${{ billing.weekly_agency_rate }}/week</p>
+      <p class="form-note">{{ billing.agency_name }}{% if billing.auth_number %} · auth {{ billing.auth_number }}{% endif %}{% if billing.contract_start %} · {{ billing.contract_start }} to {{ billing.contract_end }}{% endif %}</p>
+      <p class="form-note">Agency rate ${{ billing.weekly_agency_rate }}/week · parent copay ${{ billing.weekly_copay }}/week. Agency money stays here. Parent copay is on regular billing.</p>
       <p class="portal-balance-total">${{ billing.running_balance }}</p>
+      {% if billing.profile_id %}
+      <p class="portal-form-actions">
+        {% if portal_area == 'admin' %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_edit' profile_id=billing.profile_id %}">Edit agency</a>
+        {% else %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_edit' profile_id=billing.profile_id %}">Edit agency</a>
+        {% endif %}
+      </p>
+      {% endif %}
+      {% if billing.weeks %}
+      <h3>Agency expected weeks</h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr><th>Week</th><th>Agency amount</th><th>Received</th></tr>
+          </thead>
+          <tbody>
+            {% for week in billing.weeks %}
+            <tr>
+              <td>{{ week.label }}</td>
+              <td>${{ week.agency_amount }}</td>
+              <td>
+                <form method="post" action="{% url 'portal_agency_week_received' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="portal_area" value="{{ portal_area }}">
+                  <input type="hidden" name="week_id" value="{{ week.id }}">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  {% if week.received %}
+                  <input type="hidden" name="received" value="0">
+                  <button type="submit" class="btn btn-secondary btn-sm">Received ✓</button>
+                  {% else %}
+                  <input type="hidden" name="received" value="1">
+                  <label class="portal-check-label">
+                    <input type="checkbox" onchange="this.form.submit()">
+                    Mark received
+                  </label>
+                  {% endif %}
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <h3>Agency ledger</h3>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
@@ -66,9 +113,9 @@
       <h2>No 4Cs account</h2>
       <p class="form-note">This family is not linked to a 4Cs agency account yet.</p>
       {% if portal_area == 'admin' %}
-      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='agencies' %}">Agency settings</a>
+      <a class="btn btn-primary" href="{% url 'portal_admin_agency_member_add' %}?family_slug={{ family_slug }}">Add agency</a>
       {% else %}
-      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a>
+      <a class="btn btn-primary" href="{% url 'portal_staff_agency_member_add' %}?family_slug={{ family_slug }}">Add agency</a>
       {% endif %}
     </section>
     {% endif %}

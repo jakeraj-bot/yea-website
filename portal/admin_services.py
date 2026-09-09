@@ -63,6 +63,7 @@ def get_admin_dashboard_live():
         "pending_4cs": [
             {
                 "child": child.name,
+                "child_id": child.pk,
                 "family": child.family.name,
                 "unit": child.family.unit.name,
                 "family_slug": child.family.slug,
