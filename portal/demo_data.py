@@ -613,6 +613,19 @@ FEE_RULES = [
 
 ADMIN_REPORTS = [
     {
+        "name": "Member information",
+        "description": "Printable enrollment roster — school, grade, unit, program, billing, payment plan, and 4Cs. Filter every column.",
+        "format": "PDF / CSV",
+        "slug": "member-information",
+    },
+    {
+        "name": "Member information export",
+        "description": "Same enrollment roster as a spreadsheet-style data report with CSV download",
+        "format": "PDF / CSV",
+        "slug": "member-information-data",
+        "report": "member-information",
+    },
+    {
         "name": "Organization enrollment summary",
         "description": "Headcount by unit, program, and payment type (private pay, 4Cs, scholarship)",
         "format": "PDF / Excel",
@@ -674,7 +687,7 @@ ADMIN_REPORTS = [
     },
     {
         "name": "4Cs members & agencies",
-        "description": "All 4Cs children with agency, authorization, copay, and rate details",
+        "description": "All 4Cs children with agency, daily amount, copay, and waiting status when no agency is on file yet",
         "format": "PDF / CSV",
         "slug": "four-cs",
         "report": "four-cs",
@@ -1596,6 +1609,12 @@ STAFF_REPORTS = [
         "description": "All children in program at this unit",
         "format": "PDF",
         "slug": "roster",
+    },
+    {
+        "name": "Member information",
+        "description": "Printable enrollment roster — school, grade, unit, program, billing, payment plan, and 4Cs. Filter every column.",
+        "format": "PDF / CSV",
+        "slug": "member-information",
     },
     {
         "name": "Authorized pickup report",

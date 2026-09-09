@@ -439,54 +439,9 @@ def balance_report_rows(filters=None):
 
 
 def four_cs_member_rows(filters=None):
-    filters = filters or {}
-    query = (filters.get("q") or "").strip()
-    unit = (filters.get("unit") or "").strip()
-    agency = (filters.get("agency") or "").strip()
-    profiles = (
-        PortalAgencyProfile.objects.select_related("child", "family", "family__unit", "agency", "unit")
-        .order_by("agency__name", "family__name", "child__name")
-    )
-    if unit:
-        profiles = profiles.filter(Q(unit__slug=unit) | Q(family__unit__slug=unit))
-    if agency:
-        profiles = profiles.filter(agency__slug=agency)
-    if query:
-        profiles = profiles.filter(
-            Q(child__name__icontains=query)
-            | Q(family__name__icontains=query)
-            | Q(auth_number__icontains=query)
-            | Q(agency__name__icontains=query)
-        )
-    rows = []
-    agencies = set()
-    for profile in profiles:
-        if is_placeholder_unit(profile.family.unit):
-            continue
-        agency_name = profile.agency.name if profile.agency_id else "—"
-        if profile.agency_id:
-            agencies.add((profile.agency.slug, profile.agency.name))
-        rows.append(
-            {
-                "child": profile.child.name,
-                "family": profile.family.name,
-                "family_slug": profile.family.slug,
-                "family_id": profile.family_id,
-                "unit": profile.family.unit.name,
-                "school": _child_school(profile.child) or "—",
-                "agency": agency_name,
-                "auth_number": profile.auth_number or "—",
-                "auth_start": profile.auth_start.isoformat() if profile.auth_start else "—",
-                "auth_end": profile.auth_end.isoformat() if profile.auth_end else "—",
-                "weekly_copay": _money(profile.weekly_copay),
-                "weekly_agency_rate": _money(profile.weekly_agency_rate),
-                "agency_balance": _money(profile.agency_balance),
-            }
-        )
-    return {
-        "rows": rows,
-        "agencies": sorted(agencies, key=lambda item: item[1]),
-    }
+    from .member_report import four_cs_roster_rows
+
+    return four_cs_roster_rows(filters)
 
 
 def scholarship_report_rows(filters=None):
@@ -732,22 +687,48 @@ ADMIN_DATA_REPORTS = {
     },
     "four-cs": {
         "title": "4Cs members & agencies",
-        "lead": "Every 4Cs child with agency, authorization, and rate details.",
+        "lead": "Every 4Cs child with agency, daily amount, copay, and authorization. Waiting means no agency is on file yet.",
         "columns": [
             ("child", "Child"),
             ("family", "Family"),
             ("unit", "Unit"),
             ("school", "School"),
             ("agency", "Agency"),
+            ("agency_created", "Agency created"),
             ("auth_number", "Authorization"),
             ("auth_start", "Auth start"),
             ("auth_end", "Auth end"),
+            ("daily_agency", "4Cs daily"),
+            ("daily_copay", "4Cs copay"),
             ("weekly_copay", "Weekly copay"),
             ("weekly_agency_rate", "Agency rate"),
             ("agency_balance", "Agency balance"),
         ],
         "filename": "4cs-members.csv",
-        "filters": ("q", "unit", "agency"),
+        "filters": ("q", "unit", "agency", "agency_status"),
+    },
+    "member-information": {
+        "title": "Member information",
+        "lead": "Enrollment roster with school, grade, program, billing, payment plan, and 4Cs details. Filter any column.",
+        "columns": [
+            ("child", "Child"),
+            ("family", "Family"),
+            ("status", "Status"),
+            ("unit", "Unit"),
+            ("school", "School"),
+            ("grade", "Grade"),
+            ("program", "Program type"),
+            ("billing", "Billing type"),
+            ("plan", "Payment plan"),
+            ("four_cs", "4Cs member"),
+            ("four_cs_daily", "4Cs daily"),
+            ("four_cs_copay", "4Cs copay"),
+            ("four_cs_agency", "4Cs agency"),
+            ("four_cs_agency_created", "Agency created"),
+            ("contact", "Contact"),
+        ],
+        "filename": "member-information.csv",
+        "filters": ("q", "school", "grade", "unit", "program", "billing", "plan", "four_cs", "agency_status", "status"),
     },
     "scholarships": {
         "title": "Scholarship assignments",
@@ -840,6 +821,21 @@ def build_admin_report(slug, filters=None):
         rows = data["rows"]
         extra["summary"] = f"{len(rows)} 4Cs members"
         extra["agencies"] = data["agencies"]
+        extra["agency_status_choices"] = [("yes", "Agency on file"), ("waiting", "Waiting for agency"), ("no", "Not 4Cs")]
+    elif slug == "member-information":
+        from .member_report import member_information_report_data
+
+        data = member_information_report_data(filters)
+        rows = data["rows"]
+        extra["summary"] = f"{len(rows)} children"
+        extra["schools"] = data["schools"]
+        extra["grades"] = data["grades"]
+        extra["programs"] = data["programs"]
+        extra["billing_types"] = data["billing_types"]
+        extra["payment_plans"] = data["payment_plans"]
+        extra["statuses"] = data["statuses"]
+        extra["four_cs_choices"] = [("yes", "Yes"), ("no", "No")]
+        extra["agency_status_choices"] = [("yes", "Agency on file"), ("waiting", "Waiting for agency"), ("no", "Not 4Cs")]
     elif slug == "scholarships":
         rows = scholarship_report_rows(filters)
         extra["summary"] = f"{len(rows)} assignments"

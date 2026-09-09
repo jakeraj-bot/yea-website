@@ -2336,13 +2336,15 @@ def admin_data_report(request, report_slug):
 
     if report_slug not in ADMIN_DATA_REPORTS:
         return render(request, "portal/404.html", status=404)
-    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end")}
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status")}
     report = build_admin_report(report_slug, filters) if _portal_data_live() else {
         **ADMIN_DATA_REPORTS[report_slug],
         "rows": [],
         "summary": "No live data in preview mode.",
         "units": [],
         "schools": [],
+        "grades": [],
+        "programs": [],
         "billing_types": [],
         "payment_plans": [],
         "entry_types": [],
@@ -2350,6 +2352,8 @@ def admin_data_report(request, report_slug):
         "funds": [],
         "statuses": [],
         "status_choices": [],
+        "four_cs_choices": [],
+        "agency_status_choices": [],
     }
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")
@@ -2370,6 +2374,7 @@ def admin_data_report(request, report_slug):
                 "admin",
                 report["title"],
                 admin_page_slug="reports",
+                page_guide_key="member-information" if report_slug == "member-information" else None,
                 report=report,
                 filters=filters,
                 csv_query=urlencode(query),
@@ -2444,6 +2449,82 @@ def staff_pickup_report(request):
             selected_program=program,
             generated_date=date.today().strftime("%B %d, %Y"),
             staff_page_slug="reports",
+        ),
+    )
+
+
+MEMBER_INFORMATION_FILTER_KEYS = (
+    "q",
+    "school",
+    "grade",
+    "unit",
+    "program",
+    "billing",
+    "plan",
+    "four_cs",
+    "agency_status",
+    "status",
+)
+
+
+def _member_information_filters(request):
+    return {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
+
+
+def _member_information_csv(report_rows, filename):
+    import csv
+
+    from django.http import HttpResponse
+
+    from .member_report import PRINT_COLUMNS
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow([label for _key, label in PRINT_COLUMNS])
+    for row in report_rows:
+        writer.writerow([row.get(key, "") for key, _label in PRINT_COLUMNS])
+    return response
+
+
+@staff_login_required
+@require_GET
+def staff_member_information_report(request):
+    from .member_report import member_information_report_bundle
+
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _member_information_filters(request)
+    if _portal_data_live() and unit:
+        bundle = member_information_report_bundle(filters=filters, unit=unit, admin=False)
+    else:
+        bundle = {
+            "report_rows": [],
+            "filter_options": {
+                "schools": [],
+                "grades": [],
+                "programs": [],
+                "billing_types": [],
+                "payment_plans": [],
+                "statuses": [],
+                "units": [],
+            },
+            "generated_date": date.today().strftime("%B %d, %Y"),
+        }
+    if request.GET.get("format") == "csv":
+        return _member_information_csv(bundle["report_rows"], "member-information.csv")
+    return render(
+        request,
+        "portal/staff/member_information_report.html",
+        _staff_context(
+            "Member information",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="member-information",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
         ),
     )
 
@@ -3586,6 +3667,50 @@ def admin_enrollment_report(request):
                 dashboard=dashboard,
                 enrollment_by_unit=enrollment_by_unit,
                 families=families,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_member_information_report(request):
+    from .member_report import member_information_report_bundle
+
+    filters = _member_information_filters(request)
+    if _portal_data_live():
+        bundle = member_information_report_bundle(filters=filters, admin=True)
+    else:
+        bundle = {
+            "report_rows": [],
+            "filter_options": {
+                "schools": [],
+                "grades": [],
+                "programs": [],
+                "billing_types": [],
+                "payment_plans": [],
+                "statuses": [],
+                "units": [],
+            },
+            "generated_date": date.today().strftime("%B %d, %Y"),
+        }
+    if request.GET.get("format") == "csv":
+        return _member_information_csv(bundle["report_rows"], "member-information.csv")
+    return render(
+        request,
+        "portal/staff/member_information_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Member information",
+                admin_page_slug="reports",
+                page_guide_key="member-information",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
             ),
         ),
     )

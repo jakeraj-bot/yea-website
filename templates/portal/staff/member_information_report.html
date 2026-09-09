@@ -1,0 +1,198 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block extra_head %}
+<style media="print">
+  @page { size: landscape; margin: 0.4in; }
+</style>
+{% endblock %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Member information</p>
+    <h1>Member information</h1>
+    <p class="lead">
+      {% if show_unit_filter %}
+        {% if report_filters.unit %}{{ report_filters.unit }}{% else %}All units{% endif %}
+      {% else %}
+        {{ staff_unit }}
+      {% endif %}
+      · {{ report_rows|length }} child{{ report_rows|length|pluralize:"ren" }}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="card portal-report-filter-card portal-no-print">
+      <h2>Filters</h2>
+      <p class="form-note">Narrow the list by any column, then print. Clear a filter to bring those rows back.</p>
+      <div class="portal-report-filters">
+        {% if show_unit_filter %}
+        <label class="portal-filter-label">
+          Unit attending
+          <select class="portal-select" name="unit">
+            <option value="">All units</option>
+            {% for slug, name in filter_options.units %}
+            <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="portal-filter-label">
+          School
+          <select class="portal-select" name="school">
+            <option value="">All schools</option>
+            {% for school in filter_options.schools %}
+            <option value="{{ school }}"{% if report_filters.school == school %} selected{% endif %}>{{ school }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Grade
+          <select class="portal-select" name="grade">
+            <option value="">All grades</option>
+            {% for grade in filter_options.grades %}
+            <option value="{{ grade }}"{% if report_filters.grade == grade %} selected{% endif %}>{{ grade }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Program type
+          <select class="portal-select" name="program">
+            <option value="">All programs</option>
+            {% for program in filter_options.programs %}
+            <option value="{{ program }}"{% if report_filters.program == program %} selected{% endif %}>{{ program }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Billing type
+          <select class="portal-select" name="billing">
+            <option value="">All billing types</option>
+            {% for type in filter_options.billing_types %}
+            <option value="{{ type }}"{% if report_filters.billing == type %} selected{% endif %}>{{ type }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Payment plan
+          <select class="portal-select" name="plan">
+            <option value="">All plans</option>
+            {% for plan in filter_options.payment_plans %}
+            <option value="{{ plan }}"{% if report_filters.plan == plan %} selected{% endif %}>{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          4Cs member
+          <select class="portal-select" name="four_cs">
+            <option value="">All</option>
+            <option value="yes"{% if report_filters.four_cs == "yes" %} selected{% endif %}>Yes</option>
+            <option value="no"{% if report_filters.four_cs == "no" %} selected{% endif %}>No</option>
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          4Cs agency
+          <select class="portal-select" name="agency_status">
+            <option value="">All</option>
+            <option value="yes"{% if report_filters.agency_status == "yes" %} selected{% endif %}>Agency on file</option>
+            <option value="waiting"{% if report_filters.agency_status == "waiting" %} selected{% endif %}>Waiting for agency</option>
+            <option value="no"{% if report_filters.agency_status == "no" %} selected{% endif %}>Not 4Cs</option>
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Status
+          <select class="portal-select" name="status">
+            <option value="">All statuses</option>
+            {% for status in filter_options.statuses %}
+            <option value="{{ status }}"{% if report_filters.status == status %} selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Child or family
+          <input class="portal-input" type="search" name="q" value="{{ report_filters.q }}" placeholder="Search name">
+        </label>
+      </div>
+      <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
+        <button type="submit" class="btn btn-secondary">Apply filters</button>
+        <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+        <a class="btn btn-secondary" href="{{ request.get_full_path }}{% if '?' in request.get_full_path %}&amp;{% else %}?{% endif %}format=csv">Download CSV</a>
+        <a class="btn btn-secondary" href="{{ hub_url }}">Back to reports</a>
+      </div>
+    </form>
+
+    <div class="card portal-medical-report-sheet portal-member-info-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Member information</h2>
+          <p class="portal-medical-report-meta">
+            {% if show_unit_filter %}
+              {% if report_filters.unit %}
+                {% for slug, name in filter_options.units %}{% if report_filters.unit == slug %}<strong>{{ name }}</strong>{% endif %}{% endfor %}
+              {% else %}
+                <strong>All units</strong>
+              {% endif %}
+            {% else %}
+              <strong>{{ staff_unit }}</strong>
+            {% endif %}
+            · {{ report_rows|length }} child{{ report_rows|length|pluralize:"ren" }}
+            · Generated {{ generated_date }}
+          </p>
+        </div>
+      </header>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-member-info-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Status</th>
+              {% if show_unit_filter %}<th>Unit</th>{% endif %}
+              <th>School</th>
+              <th>Grade</th>
+              <th>Program type</th>
+              <th>Billing</th>
+              <th>Payment plan</th>
+              <th>4Cs</th>
+              <th>4Cs daily</th>
+              <th>4Cs copay</th>
+              <th>4Cs agency</th>
+              <th>Agency created</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.status }}</td>
+              {% if show_unit_filter %}<td>{{ row.unit }}</td>{% endif %}
+              <td>{{ row.school }}</td>
+              <td>{{ row.grade }}</td>
+              <td>{{ row.program }}</td>
+              <td>{{ row.billing }}</td>
+              <td>{{ row.plan }}</td>
+              <td>{{ row.four_cs }}</td>
+              <td>{{ row.four_cs_daily }}</td>
+              <td>{{ row.four_cs_copay }}</td>
+              <td>{{ row.four_cs_agency }}</td>
+              <td>{{ row.four_cs_agency_created }}</td>
+              <td>{{ row.contact }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="{% if show_unit_filter %}16{% else %}15{% endif %}" class="form-note">No children match these filters.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
