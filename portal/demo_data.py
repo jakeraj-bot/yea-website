@@ -613,6 +613,12 @@ FEE_RULES = [
 
 ADMIN_REPORTS = [
     {
+        "name": "Emergency contact list",
+        "description": "Printable emergency contacts for every child — filter by unit, program, school, family, or missing contacts",
+        "format": "PDF",
+        "slug": "emergency-contacts",
+    },
+    {
         "name": "Organization enrollment summary",
         "description": "Headcount by unit, program, and payment type (private pay, 4Cs, scholarship)",
         "format": "PDF / Excel",
@@ -851,8 +857,18 @@ PARENT_PROFILE = {
         },
     ],
     "emergency_contacts": [
-        {"name": "Grandma Rosa Jacobs", "phone": "973-555-0100", "relationship": "Grandmother"},
-        {"name": "Uncle Mike Jacobs", "phone": "973-555-0199", "relationship": "Uncle"},
+        {
+            "name": "Grandma Rosa Jacobs",
+            "phone": "973-555-0100",
+            "relationship": "Grandmother",
+            "authorized_pickup": True,
+        },
+        {
+            "name": "Uncle Mike Jacobs",
+            "phone": "973-555-0199",
+            "relationship": "Uncle",
+            "authorized_pickup": False,
+        },
     ],
 }
 
@@ -880,8 +896,18 @@ PARENT_PROFILE_MARTINEZ = {
         },
     ],
     "emergency_contacts": [
-        {"name": "Carlos Martinez", "phone": "973-555-0201", "relationship": "Father"},
-        {"name": "Tia Rosa", "phone": "973-555-0202", "relationship": "Aunt"},
+        {
+            "name": "Carlos Martinez",
+            "phone": "973-555-0201",
+            "relationship": "Father",
+            "authorized_pickup": True,
+        },
+        {
+            "name": "Tia Rosa",
+            "phone": "973-555-0202",
+            "relationship": "Aunt",
+            "authorized_pickup": False,
+        },
     ],
 }
 
@@ -1448,8 +1474,18 @@ FAMILY_DETAILS = {
             },
         ],
         "emergency_contacts": [
-            {"name": "Carlos Martinez", "phone": "973-555-0201", "relationship": "Father"},
-            {"name": "Tia Rosa", "phone": "973-555-0202", "relationship": "Aunt"},
+            {
+                "name": "Carlos Martinez",
+                "phone": "973-555-0201",
+                "relationship": "Father",
+                "authorized_pickup": True,
+            },
+            {
+                "name": "Tia Rosa",
+                "phone": "973-555-0202",
+                "relationship": "Aunt",
+                "authorized_pickup": False,
+            },
         ],
     },
 }
@@ -1602,6 +1638,12 @@ STAFF_REPORTS = [
         "description": "Printable list of who may pick up each child — filter by program",
         "format": "PDF",
         "slug": "pickup-report",
+    },
+    {
+        "name": "Emergency contact list",
+        "description": "Printable emergency contacts for each child — filter by unit, program, school, family, grade, or missing contacts",
+        "format": "PDF",
+        "slug": "emergency-contacts",
     },
     {
         "name": "Medical report",
