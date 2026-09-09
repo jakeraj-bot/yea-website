@@ -58,10 +58,14 @@ def _parse_amount(value, allow_zero=False):
     return amount.quantize(Decimal("0.01"))
 
 
-def prepare_billing_for_staff(family, permissions):
+def prepare_billing_for_staff(family, permissions, unit=None):
     billing = get_billing_live(family)
     entries = list(PortalLedgerEntry.objects.filter(family=family).order_by("-date", "-created_at"))
     if entries:
+        if unit:
+            from .unit_visibility import filter_ledger_entries_for_unit
+
+            entries = filter_ledger_entries_for_unit(entries, family, unit)
         ledger = []
         for entry in entries:
             if entry.entry_type in ("payment", "discount", "credit"):
@@ -81,6 +85,10 @@ def prepare_billing_for_staff(family, permissions):
                 }
             )
         billing["ledger"] = ledger
+    if unit:
+        from .unit_visibility import filter_billing_dict_for_unit
+
+        billing = filter_billing_dict_for_unit(billing, family, unit)
     return prepare_billing_preview(billing, permissions)
 
 

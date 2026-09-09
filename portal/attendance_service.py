@@ -4,6 +4,13 @@ from decimal import Decimal
 from django.utils.dateparse import parse_date, parse_time
 
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram, PortalUnit
+from .unit_visibility import (
+    application_belongs_to_unit,
+    child_belongs_to_unit,
+    children_for_unit,
+    families_qs_for_unit,
+    unit_label_for_child,
+)
 
 
 DEFAULT_UNIT_SLUG = "school-18"
@@ -93,11 +100,7 @@ def build_roster(unit, program, attendance_date):
     if not unit or not program:
         return []
 
-    children = (
-        PortalChild.objects.filter(family__unit=unit, is_active=True)
-        .select_related("family")
-        .order_by("name")
-    )
+    children = children_for_unit(unit, active_only=True).order_by("name")
     records = {
         record.child_id: record
         for record in AttendanceRecord.objects.filter(program=program, date=attendance_date, child__in=children)
@@ -169,7 +172,9 @@ def get_or_create_record(child, program, attendance_date):
 
 
 def check_in_child(child_id, program, attendance_date, check_in_time, method="Staff", note=""):
-    child = PortalChild.objects.get(pk=child_id, is_active=True)
+    child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
+    if program and not child_belongs_to_unit(child, program.unit):
+        raise ValueError("This child is not enrolled at this program site.")
     record = get_or_create_record(child, program, attendance_date)
     record.status = AttendanceRecord.STATUS_PRESENT
     record.check_in_time = check_in_time
@@ -182,7 +187,9 @@ def check_in_child(child_id, program, attendance_date, check_in_time, method="St
 
 
 def check_out_child(child_id, program, attendance_date, check_out_time):
-    child = PortalChild.objects.get(pk=child_id, is_active=True)
+    child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
+    if program and not child_belongs_to_unit(child, program.unit):
+        raise ValueError("This child is not enrolled at this program site.")
     record = get_or_create_record(child, program, attendance_date)
     if not record.check_in_time:
         raise ValueError("Child must be checked in before check out.")
@@ -192,7 +199,9 @@ def check_out_child(child_id, program, attendance_date, check_out_time):
 
 
 def mark_absent(child_id, program, attendance_date, note=""):
-    child = PortalChild.objects.get(pk=child_id, is_active=True)
+    child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
+    if program and not child_belongs_to_unit(child, program.unit):
+        raise ValueError("This child is not enrolled at this program site.")
     record = get_or_create_record(child, program, attendance_date)
     record.status = AttendanceRecord.STATUS_ABSENT
     record.check_in_time = None
@@ -205,7 +214,9 @@ def mark_absent(child_id, program, attendance_date, note=""):
 
 
 def undo_absent(child_id, program, attendance_date):
-    child = PortalChild.objects.get(pk=child_id, is_active=True)
+    child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
+    if program and not child_belongs_to_unit(child, program.unit):
+        raise ValueError("This child is not enrolled at this program site.")
     record = get_or_create_record(child, program, attendance_date)
     record.status = AttendanceRecord.STATUS_EXPECTED
     record.check_in_time = None
@@ -223,24 +234,34 @@ def families_for_staff(unit):
     from .family_list import child_balance_map, expand_family_record
 
     repair_family_units_from_applications()
-    families = PortalFamily.objects.filter(unit=unit).prefetch_related("children").order_by("name")
+    families = families_qs_for_unit(unit).prefetch_related("children", "children__unit").order_by("name")
     rows = []
     for family in families:
         balances = child_balance_map(family)
-        active_children = list(family.children.filter(is_active=True).order_by("name"))
-        enrolled_lower = {child.name.lower() for child in active_children}
-        children_specs = [
-            {
-                "name": child.name,
-                "child_id": child.pk,
-                "school": child.school or "—",
-                "balance": balances.get(child.name, Decimal("0")),
-            }
-            for child in active_children
+        active_children = [
+            child
+            for child in family.children.filter(is_active=True).order_by("name")
+            if not unit or child_belongs_to_unit(child, unit)
         ]
+        enrolled_lower = {child.name.lower() for child in active_children}
+        children_specs = []
+        for child in active_children:
+            unit_name, unit_slug = unit_label_for_child(child)
+            children_specs.append(
+                {
+                    "name": child.name,
+                    "child_id": child.pk,
+                    "school": child.school or "—",
+                    "balance": balances.get(child.name, Decimal("0")),
+                    "unit": unit_name,
+                    "unit_slug": unit_slug,
+                }
+            )
         for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
             child_name = f"{app.student_first_name} {app.student_last_name}".strip()
             if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
+                continue
+            if unit and not application_belongs_to_unit(app, unit):
                 continue
             children_specs.append(
                 {
@@ -250,6 +271,8 @@ def families_for_staff(unit):
                     "balance": balances.get(child_name, Decimal("0")),
                 }
             )
+        if not children_specs:
+            continue
         base_row = {
             "id": family.pk,
             "slug": family.slug,

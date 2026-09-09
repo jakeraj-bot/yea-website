@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>All families</h1>
-    <p class="lead">Every unit — {{ family_count|default:families|length }} families · {{ families|length }} children listed · sort by unit or name, then open billing or policies.</p>
+    <p class="lead">Every unit — {{ family_count }} families · {{ families|length }} children listed · sort by unit or name, then open billing or policies.</p>
   </div>
 </section>
 <section class="page-content">
@@ -50,7 +50,7 @@
             data-has-login="{% if family.has_parent_login %}1{% else %}0{% endif %}"
             {% if family.is_first_child %}data-family-group-start{% endif %}
           >
-            <td data-col="unit">{% if family.is_first_child %}{{ family.unit }}{% endif %}</td>
+            <td data-col="unit">{{ family.unit }}</td>
             <td data-col="family">
               <strong>{{ family.name }}</strong>
               {% if family.is_first_child and family.primary_contact %}<span class="portal-family-sub">{{ family.primary_contact }}</span>{% endif %}

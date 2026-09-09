@@ -317,11 +317,11 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
     if not profile:
         return None
     if _portal_families_live():
-        family_meta = family_meta_live(family_slug, unit=unit) or {}
+        family_meta = family_meta_live(family_slug, unit=unit, family_id=family_id) or {}
     else:
         family_meta = next((f for f in FAMILIES if f["slug"] == family_slug), {})
     if _portal_data_live():
-        family_incidents = get_incidents_for_family_live(family_slug)
+        family_incidents = get_incidents_for_family_live(family_slug, unit)
     else:
         family_incidents = get_incidents_for_family(family_slug)
     parent_email = (profile.get("primary") or {}).get("email") or extra.get("parent_email") or ""
@@ -482,7 +482,7 @@ def _family_billing_bundle(request, area, family_slug):
         family = get_family_for_billing(family_slug, unit, family_id=_family_id_from_request(request))
         if not family:
             return None
-        billing = prepare_billing_for_staff(family, permissions)
+        billing = prepare_billing_for_staff(family, permissions, unit=unit)
         if area == "admin":
             from .admin_services import get_member_families_live
 
@@ -1525,8 +1525,9 @@ def staff_page(request, page):
         context.update(_support_context("staff", "Support", request))
     if page == "incidents":
         if context.get("portal_live"):
-            context["incidents"] = get_incidents_live()
-            context["incident_children"] = get_incident_children_live()
+            unit = _staff_unit(request)
+            context["incidents"] = get_incidents_live(unit)
+            context["incident_children"] = get_incident_children_live(unit)
             context["viewing_incident"] = get_incident_live(request.GET.get("view"))
         else:
             context["incidents"] = INCIDENTS
@@ -1703,7 +1704,9 @@ def staff_incidents_print(request):
 def staff_family_policies(request, family_slug):
     from .staff_services import get_family_policies_for_staff
 
-    policy_data = get_family_policies_for_staff(family_slug)
+    policy_data = get_family_policies_for_staff(
+        family_slug, family_id=_family_id_from_request(request) or None, unit=_staff_unit(request)
+    )
     if not policy_data:
         return render(request, "portal/404.html", status=404)
     _attach_family_policy_print_urls(policy_data, "portal_staff_family_policy_print", family_slug)
@@ -1725,7 +1728,9 @@ def staff_family_policy_print(request, family_slug, policy_slug):
     from .staff_services import get_family_policies_for_staff
 
     child_name = request.GET.get("child", "").strip()
-    policy_data = get_family_policies_for_staff(family_slug)
+    policy_data = get_family_policies_for_staff(
+        family_slug, family_id=_family_id_from_request(request) or None, unit=_staff_unit(request)
+    )
     if not policy_data:
         return render(request, "portal/404.html", status=404)
     child_name, policy = _policy_from_family_data(policy_data, child_name, policy_slug)
@@ -1753,7 +1758,7 @@ def staff_member_policies_print(request):
         summaries = get_member_summaries_for_unit(unit) if unit else []
         families_data = []
         for summary in summaries:
-            data = get_family_policies_for_staff(summary["slug"])
+            data = get_family_policies_for_staff(summary["slug"], unit=unit)
             if data:
                 families_data.append(data)
         print_scope = unit.name if unit else "Your unit"

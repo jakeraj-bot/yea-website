@@ -31,6 +31,7 @@
       {% include "portal/staff/includes/school_edit_form.html" with child_id=child.child_id application_id=child.application_id school=child.school %}
     </dd>
     {% if child.program %}<dt>Program</dt><dd>{{ child.program }}</dd>{% endif %}
+    {% if child.unit_name %}<dt>Program site</dt><dd>{{ child.unit_name }}</dd>{% endif %}
     {% if child.billing_type %}<dt>Billing</dt><dd>{{ child.billing_type }}</dd>{% endif %}
     <dt>Allergies</dt><dd>{% if medical.allergies %}{{ medical.allergies }}{% else %}—{% endif %}</dd>
     <dt>Medications</dt><dd>{% if medical.medications %}{{ medical.medications }}{% else %}—{% endif %}</dd>

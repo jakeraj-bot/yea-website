@@ -200,12 +200,18 @@ def agency_page_data(unit):
             )
         data["children"] = children
 
-    families = PortalFamily.objects.filter(unit=unit).order_by("name")
+    from .unit_visibility import child_belongs_to_unit, families_qs_for_unit
+
+    families = families_qs_for_unit(unit).order_by("name")
     data["family_options"] = [
         {
             "slug": family.slug,
             "name": family.name,
-            "children": [c.name for c in family.children.filter(is_active=True)],
+            "children": [
+                child.name
+                for child in family.children.filter(is_active=True)
+                if child_belongs_to_unit(child, unit)
+            ],
         }
         for family in families
     ]
@@ -313,6 +319,11 @@ def _portal_data_live():
     return portal_is_live()
 
 
+@transaction.atomic
+def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_copay, weekly_rate, program_label="", notes="", auth_start=None, auth_end=None):
+    from .member_admin import resolve_family
+
+    family = resolve_family(family_slug=family_slug, unit=unit)
 def _resolve_family_and_child(unit, family_slug, child_name, child_id=None, grade=""):
     family = None
     if unit:
@@ -381,6 +392,31 @@ def save_agency_member(
         family.program_label = program_label
     family.save(update_fields=["billing_type", "program_label"])
 
+    child, created = PortalChild.objects.get_or_create(
+        family=family,
+        name=child_name.strip(),
+        defaults={"grade": grade, "is_active": True, "unit": unit},
+    )
+    if grade:
+        child.grade = grade
+    if unit and child.unit_id != unit.pk:
+        child.unit = unit
+    if grade or (unit and not created):
+        child.save()
+
+    profile, created = PortalAgencyProfile.objects.update_or_create(
+        child=child,
+        defaults={
+            "unit": unit,
+            "family": family,
+            "auth_number": auth_number.strip(),
+            "auth_start": auth_start,
+            "auth_end": auth_end,
+            "weekly_copay": _parse_amount(weekly_copay or "0"),
+            "weekly_agency_rate": _parse_amount(weekly_rate or "0"),
+            "notes": notes,
+        },
+    )
     agency = resolve_agency_by_name(agency_name, unit)
     daily_agency = parse_money(daily_agency_rate)
     daily_parent = parse_money(daily_copay)
@@ -610,8 +646,10 @@ def copay_report_rows(unit):
 
 
 def balances_report_rows(unit):
+    from .unit_visibility import families_qs_for_unit
+
     rows = []
-    for family in PortalFamily.objects.filter(unit=unit).order_by("name"):
+    for family in families_qs_for_unit(unit).order_by("name"):
         if family.balance <= 0:
             continue
         rows.append(

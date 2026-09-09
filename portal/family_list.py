@@ -52,19 +52,22 @@ def expand_family_record(base_row, children_specs, family_balance):
         child_balance = child.get("balance", "0.00")
         if not isinstance(child_balance, str):
             child_balance = format(Decimal(str(child_balance)), ".2f")
-        rows.append(
-            {
-                **base_row,
-                "child_name": child["name"],
-                "child_id": child.get("child_id"),
-                "application_id": child.get("application_id"),
-                "school": child.get("school") or "—",
-                "child_balance": child_balance,
-                "family_balance": family_balance,
-                "balance": family_balance,
-                "is_first_child": index == 0,
-            }
-        )
+        row = {
+            **base_row,
+            "child_name": child["name"],
+            "child_id": child.get("child_id"),
+            "application_id": child.get("application_id"),
+            "school": child.get("school") or "—",
+            "child_balance": child_balance,
+            "family_balance": family_balance,
+            "balance": family_balance,
+            "is_first_child": index == 0,
+        }
+        if child.get("unit"):
+            row["unit"] = child["unit"]
+        if child.get("unit_slug"):
+            row["unit_slug"] = child["unit_slug"]
+        rows.append(row)
     return rows
 
 

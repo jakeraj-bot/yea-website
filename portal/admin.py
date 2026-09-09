@@ -35,8 +35,8 @@ class PortalFamilyAdmin(admin.ModelAdmin):
 
 @admin.register(PortalChild)
 class PortalChildAdmin(admin.ModelAdmin):
-    list_display = ("name", "family", "grade", "is_active")
-    list_filter = ("family__unit", "is_active")
+    list_display = ("name", "family", "unit", "grade", "is_active")
+    list_filter = ("unit", "family__unit", "is_active")
 
 
 @admin.register(AttendanceRecord)

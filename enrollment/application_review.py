@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -60,6 +61,7 @@ def _ensure_child_on_roster(app):
 
     name = child_display_name(app)
     child = family.children.filter(name__iexact=name).first()
+    unit = get_unit_for_enrollment_key(app.program_location) if app.program_location else None
     if child:
         fields = []
         if not child.is_active:
@@ -71,6 +73,9 @@ def _ensure_child_on_roster(app):
         if app.program == "drop_off" and not child.is_drop_off:
             child.is_drop_off = True
             fields.append("is_drop_off")
+        if unit and child.unit_id != unit.id:
+            child.unit = unit
+            fields.append("unit")
         if fields:
             child.save(update_fields=fields)
         if child.is_drop_off:
@@ -81,6 +86,7 @@ def _ensure_child_on_roster(app):
 
     child = PortalChild.objects.create(
         family=family,
+        unit=unit,
         name=name,
         grade=app.get_student_grade_display(),
         school=app.student_school or "",
@@ -137,18 +143,21 @@ def _move_family_to_unit(family, unit):
 
     if not family or not unit or family.unit_id == unit.id:
         return family
+    old_unit_id = family.unit_id
     new_slug = family.slug
     if PortalFamily.objects.filter(unit=unit, slug=family.slug).exclude(pk=family.pk).exists():
         new_slug = _unique_family_slug(unit, family.name)
     family.unit = unit
     family.slug = new_slug
     family.save(update_fields=["unit", "slug"])
+    family.children.filter(Q(unit_id=old_unit_id) | Q(unit__isnull=True)).update(unit=unit)
     return family
 
 
 def _sync_family_to_application_unit(app):
-    """Keep the family account on the same program site as the application."""
+    """Keep a placeholder family on the application site; do not move a multi-unit household."""
     from portal.member_admin import is_placeholder_unit
+    from portal.unit_visibility import family_can_move_home_unit
 
     family = app.portal_family
     if not family or not app.program_location:
@@ -156,7 +165,9 @@ def _sync_family_to_application_unit(app):
     unit = get_unit_for_enrollment_key(app.program_location)
     if not unit or is_placeholder_unit(unit):
         return family
-    return _move_family_to_unit(family, unit)
+    if family_can_move_home_unit(family, unit):
+        return _move_family_to_unit(family, unit)
+    return family
 
 
 def preferred_application_for_family(family):
@@ -176,11 +187,23 @@ def preferred_application_for_family(family):
 
 
 def repair_family_units_from_applications():
-    """Move family accounts off Main location (or the wrong site) onto the application site."""
+    """Move placeholder family accounts onto the application site and sync each child's unit."""
     from portal.member_admin import is_placeholder_unit
+    from portal.unit_visibility import family_can_move_home_unit
 
     moved = 0
     for family in PortalFamily.objects.select_related("unit"):
+        for app in EnrollmentApplication.objects.filter(
+            portal_family=family, status__in=("approved", "enrolled")
+        ):
+            unit = get_unit_for_enrollment_key(app.program_location)
+            if not unit or is_placeholder_unit(unit):
+                continue
+            name = child_display_name(app)
+            child = family.children.filter(name__iexact=name).first()
+            if child and child.unit_id != unit.id:
+                child.unit = unit
+                child.save(update_fields=["unit"])
         app = preferred_application_for_family(family)
         if not app:
             continue
@@ -189,8 +212,9 @@ def repair_family_units_from_applications():
             continue
         if family.unit_id == unit.id:
             continue
-        _move_family_to_unit(family, unit)
-        moved += 1
+        if family_can_move_home_unit(family, unit):
+            _move_family_to_unit(family, unit)
+            moved += 1
     return moved
 
 
@@ -216,13 +240,16 @@ def assign_application_location(app, program_location):
     app.save(update_fields=["program_location", "needs_dale_ave_bus"])
 
     family = app.portal_family
-    if family and family.unit_id != unit.id:
-        _move_family_to_unit(family, unit)
-        sibling_updates = {
-            "program_location": program_location,
-            "needs_dale_ave_bus": app.needs_dale_ave_bus,
-        }
-        EnrollmentApplication.objects.filter(portal_family=family).exclude(pk=app.pk).update(**sibling_updates)
+    if family:
+        from portal.unit_visibility import family_can_move_home_unit
+
+        if family_can_move_home_unit(family, unit):
+            _move_family_to_unit(family, unit)
+        name = child_display_name(app)
+        child = family.children.filter(name__iexact=name).first()
+        if child and child.unit_id != unit.id:
+            child.unit = unit
+            child.save(update_fields=["unit"])
 
     return app
 

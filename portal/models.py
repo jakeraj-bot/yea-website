@@ -70,6 +70,14 @@ class PortalFamily(models.Model):
 
 class PortalChild(models.Model):
     family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="children")
+    unit = models.ForeignKey(
+        "PortalUnit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="enrolled_children",
+        help_text="Program site this child attends. One family account can have children in different units.",
+    )
     name = models.CharField(max_length=120)
     grade = models.CharField(max_length=20, blank=True)
     school = models.CharField(max_length=120, blank=True)
@@ -89,6 +97,13 @@ class PortalChild(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.unit_id and self.family_id:
+            family_unit_id = getattr(self.family, "unit_id", None)
+            if family_unit_id:
+                self.unit_id = family_unit_id
+        super().save(*args, **kwargs)
 
 
 class AttendanceRecord(models.Model):
