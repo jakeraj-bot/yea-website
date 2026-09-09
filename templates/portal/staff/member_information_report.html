@@ -1,11 +1,9 @@
 {% extends "portal/base.html" %}
 {% load static %}
-{% block extra_head %}
+{% block portal_content %}
 <style media="print">
   @page { size: landscape; margin: 0.4in; }
 </style>
-{% endblock %}
-{% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
     <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Member information</p>

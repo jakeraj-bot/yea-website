@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=23">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=74">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=73">
   <script>
     try {
       if (localStorage.getItem("yea-portal-sidebar-collapsed") === "1") {
@@ -21,8 +21,6 @@
       }
     } catch (err) {}
   </script>
-  {% block extra_head %}{% endblock %}
-</head>
 </head>
 <body class="portal-body portal-area-{{ portal_area|default:'public' }}">
   <div class="rainbow-bar" aria-hidden="true"></div>
