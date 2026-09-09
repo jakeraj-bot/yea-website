@@ -2571,6 +2571,17 @@ def staff_member_information_report(request):
             request=request,
             staff_page_slug="reports",
             page_guide_key="member-information",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
 def staff_emergency_contact_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
     filters = _emergency_contact_filters(request)
@@ -3762,6 +3773,25 @@ def admin_member_information_report(request):
     return render(
         request,
         "portal/staff/member_information_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Member information",
+                admin_page_slug="reports",
+                page_guide_key="member-information",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
 def admin_emergency_contact_report(request):
     filters = _emergency_contact_filters(request)
     bundle = _emergency_contact_report_bundle(filters=filters, admin=True)
@@ -3774,12 +3804,6 @@ def admin_emergency_contact_report(request):
             request,
             _portal_context(
                 "admin",
-                "Member information",
-                admin_page_slug="reports",
-                page_guide_key="member-information",
-                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
-                hub_label="Organization reports",
-                show_unit_filter=True,
                 "Emergency contact list",
                 admin_page_slug="reports",
                 page_guide_key="emergency-contacts",
