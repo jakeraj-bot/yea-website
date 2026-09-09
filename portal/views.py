@@ -166,7 +166,14 @@ from enrollment.portal_integration import (
     waitlist_for_admin,
     waitlist_for_staff,
 )
-from .pickup_services import family_authorized_pickup, pickup_report_data, pickup_report_programs
+from .pickup_services import (
+    emergency_contact_report_data,
+    emergency_contact_report_options,
+    family_authorized_pickup,
+    filter_emergency_contact_rows,
+    pickup_report_data,
+    pickup_report_programs,
+)
 from .models import PortalUnit
 from .processing_fees import stripe_fee_display
 from .stripe_services import stripe_configured
@@ -2448,6 +2455,75 @@ def staff_pickup_report(request):
     )
 
 
+def _emergency_contact_filters(request):
+    return {
+        "unit": request.GET.get("unit", "").strip(),
+        "program": request.GET.get("program", "").strip(),
+        "school": request.GET.get("school", "").strip(),
+        "family": request.GET.get("family", "").strip(),
+        "child": request.GET.get("child", "").strip(),
+        "grade": request.GET.get("grade", "").strip(),
+        "q": request.GET.get("q", "").strip(),
+        "authorized": request.GET.get("authorized", "").strip(),
+        "missing": request.GET.get("missing", "").strip(),
+    }
+
+
+def _emergency_contact_report_bundle(unit=None, filters=None, *, admin=False):
+    from .staff_services import emergency_contact_report_for_unit, emergency_contact_report_for_units
+
+    filters = dict(filters or {})
+    if not admin:
+        filters["unit"] = ""
+    if _portal_data_live():
+        if admin:
+            all_rows = emergency_contact_report_for_units()
+        else:
+            all_rows = emergency_contact_report_for_unit(unit)
+    else:
+        all_rows = emergency_contact_report_data(FAMILIES, FAMILY_DETAILS)
+    full_options = emergency_contact_report_options(all_rows)
+    scoped = (
+        filter_emergency_contact_rows(all_rows, {"unit": filters.get("unit")})
+        if admin and filters.get("unit")
+        else all_rows
+    )
+    options = emergency_contact_report_options(scoped)
+    if admin:
+        options["units"] = full_options["units"]
+    rows = filter_emergency_contact_rows(all_rows, filters)
+    missing_children = {row["child"] for row in scoped if not row.get("has_contact")}
+    return {
+        "report_rows": rows,
+        "filter_options": options,
+        "missing_count": len(missing_children),
+        "generated_date": date.today().strftime("%B %d, %Y"),
+    }
+
+
+@staff_login_required
+@require_GET
+def staff_emergency_contact_report(request):
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _emergency_contact_filters(request)
+    bundle = _emergency_contact_report_bundle(unit=unit, filters=filters, admin=False)
+    return render(
+        request,
+        "portal/staff/emergency_contact_report.html",
+        _staff_context(
+            "Emergency contact list",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="emergency-contacts",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
+        ),
+    )
+
+
 @staff_login_required
 @require_GET
 def staff_family_detail(request, family_slug):
@@ -3586,6 +3662,36 @@ def admin_enrollment_report(request):
                 dashboard=dashboard,
                 enrollment_by_unit=enrollment_by_unit,
                 families=families,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_emergency_contact_report(request):
+    filters = _emergency_contact_filters(request)
+    bundle = _emergency_contact_report_bundle(filters=filters, admin=True)
+    from .admin_reports import unit_options
+
+    return render(
+        request,
+        "portal/staff/emergency_contact_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Emergency contact list",
+                admin_page_slug="reports",
+                page_guide_key="emergency-contacts",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                unit_choices=unit_options() if _portal_data_live() else [
+                    (item["slug"], item["name"]) for item in bundle["filter_options"].get("units") or []
+                ],
+                report_filters=filters,
+                **bundle,
             ),
         ),
     )

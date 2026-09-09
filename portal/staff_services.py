@@ -310,6 +310,73 @@ def pickup_report_for_unit(unit, program_filter="all"):
     )
 
 
+def _program_label_for_child(child, app=None):
+    if getattr(child, "is_drop_off", False):
+        return "Drop-off program"
+    if app:
+        return app.get_program_display()
+    return child.family.program_label or "After-school program"
+
+
+def emergency_contact_report_for_unit(unit):
+    """One row per child/contact (or a gap row when a child has none). Unit-scoped."""
+    from .medical import application_for_child
+    from .pickup_services import (
+        child_emergency_contact_rows,
+        emergency_contact_report_data,
+        emergency_contacts_from_application,
+    )
+    from .unit_visibility import children_for_unit, unit_label_for_child
+
+    children = children_for_unit(unit, active_only=True).order_by("family__name", "name")
+    if not children.exists():
+        if portal_is_live():
+            return []
+        from .demo_data import FAMILIES, FAMILY_DETAILS
+
+        return emergency_contact_report_data(FAMILIES, FAMILY_DETAILS)
+
+    rows = []
+    for child in children:
+        unit_name, unit_slug = unit_label_for_child(child)
+        app = application_for_child(child=child, child_name=child.name)
+        contacts = emergency_contacts_from_application(app)
+        school = (child.school or (app.student_school if app else "") or "").strip()
+        grade = child.grade or (app.get_student_grade_display() if app else "") or "—"
+        program = _program_label_for_child(child, app)
+        base = {
+            "child": child.name,
+            "family": child.family.name,
+            "family_slug": child.family.slug,
+            "unit": unit_name or (unit.name if unit else ""),
+            "unit_slug": unit_slug or (unit.slug if unit else ""),
+            "program": program,
+            "grade": grade or "—",
+            "school": school or "—",
+        }
+        rows.extend(child_emergency_contact_rows(base, contacts))
+    rows.sort(key=lambda row: (row["unit"].lower(), row["child"].lower(), row["contact_name"].lower()))
+    return rows
+
+
+def emergency_contact_report_for_units(units=None):
+    """Admin: all visible units, or a given list. Children stay on their own site."""
+    from .member_admin import is_placeholder_unit
+    from .models import PortalUnit
+
+    if units is None:
+        units = [
+            unit
+            for unit in PortalUnit.objects.filter(is_active=True).order_by("name")
+            if not is_placeholder_unit(unit)
+        ]
+    rows = []
+    for unit in units:
+        rows.extend(emergency_contact_report_for_unit(unit))
+    rows.sort(key=lambda row: (row["unit"].lower(), row["child"].lower(), row["contact_name"].lower()))
+    return rows
+
+
 def build_dashboard_live(unit, program):
     today = timezone.localdate()
     roster = build_roster(unit, program, today) if unit and program else []

@@ -169,6 +169,11 @@ urlpatterns = [
         name="portal_staff_pickup_report",
     ),
     path(
+        "staff/reports/emergency-contacts/",
+        views.staff_emergency_contact_report,
+        name="portal_staff_emergency_contact_report",
+    ),
+    path(
         "staff/reports/medical/",
         views.staff_medical_report,
         name="portal_staff_medical_report",
@@ -589,6 +594,11 @@ urlpatterns = [
         "admin/reports/enrollment/",
         views.admin_enrollment_report,
         name="portal_admin_enrollment_report",
+    ),
+    path(
+        "admin/reports/emergency-contacts/",
+        views.admin_emergency_contact_report,
+        name="portal_admin_emergency_contact_report",
     ),
     path(
         "admin/reports/financial/",

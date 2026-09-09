@@ -32,6 +32,7 @@ from portal.staff_services import (
     build_school_bus_roster,
     filter_school_bus_roster,
     get_program_roster,
+    emergency_contact_report_for_unit,
     pickup_report_for_unit,
     weekly_attendance_report_data,
 )
@@ -501,6 +502,10 @@ class MultiUnitFamilyVisibilityTests(TestCase):
         pickup_names = {row["child"] for row in pickup_rows}
         self.assertIn("Child A Rivera", pickup_names)
         self.assertNotIn("Child B Rivera", pickup_names)
+
+        contact_names = {row["child"] for row in emergency_contact_report_for_unit(self.school_18)}
+        self.assertEqual(contact_names, {"Child A Rivera"})
+        self.assertNotIn("Child B Rivera", contact_names)
 
         weekly = weekly_attendance_report_data(self.school_18, self.program_18, date(2026, 9, 7))
         self.assertEqual({row["child"] for row in weekly["weekly_rows"]}, {"Child A Rivera"})
