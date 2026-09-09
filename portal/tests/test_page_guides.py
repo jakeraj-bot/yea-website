@@ -25,6 +25,7 @@ class PageGuideCatalogTests(TestCase):
             "incidents",
             "support",
             "reports",
+            "member-information",
             "emergency-contacts",
         ):
             self.assertIsNotNone(guide_for(key), key)

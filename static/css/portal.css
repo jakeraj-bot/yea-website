@@ -1088,6 +1088,14 @@
   gap: 0.25rem;
 }
 
+.portal-member-info-table {
+  font-size: 0.72rem;
+}
+
+.portal-member-info-table th,
+.portal-member-info-table td {
+  white-space: nowrap;
+  padding: 0.35rem 0.45rem;
 .portal-report-filters .portal-filter-check {
   flex-direction: row;
   align-items: center;
@@ -2814,6 +2822,10 @@
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
+  }
+
+  .portal-member-info-table {
+    font-size: 0.65rem;
   }
 
   .portal-medical-report .container {

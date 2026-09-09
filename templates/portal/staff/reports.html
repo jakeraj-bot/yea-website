@@ -13,6 +13,8 @@
         <p class="form-note">Format: {{ report.format }}</p>
         {% if report.slug == 'pickup-report' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_pickup_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'member-information' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_member_information_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'emergency-contacts' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_emergency_contact_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'medical' %}

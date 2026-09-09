@@ -111,6 +111,50 @@
         </select>
       </label>
       {% endif %}
+      {% if "grade" in report.filters %}
+      <label class="portal-filter-label">
+        Grade
+        <select class="portal-select" name="grade">
+          <option value="">All</option>
+          {% for grade in report.grades %}
+          <option value="{{ grade }}"{% if filters.grade == grade %} selected{% endif %}>{{ grade }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      {% if "program" in report.filters %}
+      <label class="portal-filter-label">
+        Program type
+        <select class="portal-select" name="program">
+          <option value="">All</option>
+          {% for program in report.programs %}
+          <option value="{{ program }}"{% if filters.program == program %} selected{% endif %}>{{ program }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      {% if "four_cs" in report.filters %}
+      <label class="portal-filter-label">
+        4Cs member
+        <select class="portal-select" name="four_cs">
+          <option value="">All</option>
+          {% for value, label in report.four_cs_choices %}
+          <option value="{{ value }}"{% if filters.four_cs == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      {% if "agency_status" in report.filters %}
+      <label class="portal-filter-label">
+        4Cs agency
+        <select class="portal-select" name="agency_status">
+          <option value="">All</option>
+          {% for value, label in report.agency_status_choices %}
+          <option value="{{ value }}"{% if filters.agency_status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
       {% if "start" in report.filters %}
       <label class="portal-filter-label">
         From

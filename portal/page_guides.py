@@ -359,6 +359,11 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs.",
+            },
+            {
+                "title": "Set filters, then print",
+                "body": "Choose date, program, school, billing type, or 4Cs first. Then use the browser Print / Save PDF button.",
                 "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
@@ -371,6 +376,12 @@ GUIDES = {
             },
         ],
     },
+    "member-information": {
+        "title": "How to print member information",
+        "intro": "This is one roster of every enrolled child you are allowed to see. Filter the columns, then print only what you need.",
+        "steps": [
+            {
+                "title": "Check whose children you see",
     "emergency-contacts": {
         "title": "How to print emergency contacts",
         "intro": "This list is who to call for each child at this unit. Narrow the rows, then print only what you need.",
@@ -381,6 +392,15 @@ GUIDES = {
             },
             {
                 "title": "Filter until only the needed rows remain",
+                "body": "Use school, grade, unit, program type (After-Care, Before-Care, Drop-in), billing type, payment plan, 4Cs member, and whether a 4Cs agency is on file. Search by child or family name.",
+            },
+            {
+                "title": "Read 4Cs columns",
+                "body": "Daily amount and copay come from the live 4Cs agency record and this week's contract. If the family is 4Cs but no agency is created yet, those cells say waiting.",
+            },
+            {
+                "title": "Preview, then print or download",
+                "body": "The table updates when you apply filters. Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
                 "body": "Use program, school attending, family, child, grade, contact search, and authorized pickup. Check Only missing contacts to see children with no emergency contact on file.",
             },
             {
