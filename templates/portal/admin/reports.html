@@ -20,7 +20,7 @@
         <p class="form-note">Format: {{ report.format }}</p>
         {% if report.slug == 'member-information' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_member_information_report' %}">Preview &amp; print</a>
-        {% if report.slug == 'emergency-contacts' %}
+        {% elif report.slug == 'emergency-contacts' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_emergency_contact_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'enrollment' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_enrollment_report' %}">Preview &amp; print</a>

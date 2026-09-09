@@ -45,6 +45,8 @@
       card.classList.contains("portal-callout") ||
       card.classList.contains("portal-balance-banner") ||
       card.classList.contains("portal-collapse-skip") ||
+      card.classList.contains("portal-report-filter-card") ||
+      card.classList.contains("portal-school-bus-picker") ||
       card.hidden
     ) {
       return;

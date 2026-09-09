@@ -1096,6 +1096,8 @@
 .portal-member-info-table td {
   white-space: nowrap;
   padding: 0.35rem 0.45rem;
+}
+
 .portal-report-filters .portal-filter-check {
   flex-direction: row;
   align-items: center;
