@@ -59,6 +59,8 @@ def _ensure_child_on_roster(app):
     if not family:
         return None
 
+    from .portal_integration import apply_application_billing_plan, billing_plan_from_application, cadence_defaults_for_plan
+
     name = child_display_name(app)
     child = family.children.filter(name__iexact=name).first()
     unit = get_unit_for_enrollment_key(app.program_location) if app.program_location else None
@@ -76,6 +78,7 @@ def _ensure_child_on_roster(app):
         if unit and child.unit_id != unit.id:
             child.unit = unit
             fields.append("unit")
+        fields.extend(apply_application_billing_plan(child, app, only_if_unset=True))
         if fields:
             child.save(update_fields=fields)
         if child.is_drop_off:
@@ -84,6 +87,8 @@ def _ensure_child_on_roster(app):
             sync_family_program_label(family)
         return child
 
+    plan = billing_plan_from_application(app) or "Weekly"
+    cadence = cadence_defaults_for_plan(plan)
     child = PortalChild.objects.create(
         family=family,
         unit=unit,
@@ -92,6 +97,9 @@ def _ensure_child_on_roster(app):
         school=app.student_school or "",
         is_active=True,
         is_drop_off=app.program == "drop_off",
+        billing_plan=plan,
+        charge_weekday=cadence.get("charge_weekday"),
+        charge_month_day=cadence.get("charge_month_day"),
     )
     if child.is_drop_off:
         from portal.drop_off_services import sync_family_program_label

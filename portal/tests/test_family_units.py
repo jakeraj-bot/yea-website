@@ -38,7 +38,7 @@ from portal.staff_services import (
 )
 
 
-def _make_application(family, *, location="school_18", status="approved"):
+def _make_application(family, *, location="school_18", status="approved", payment_plan="weekly", payment_method="private_pay"):
     return EnrollmentApplication.objects.create(
         program="after_school",
         program_location=location,
@@ -67,8 +67,8 @@ def _make_application(family, *, location="school_18", status="approved"):
         student_school="School 18",
         health_statement="good_health",
         membership_fee_agreed="no",
-        payment_method="private_pay",
-        payment_plan="weekly",
+        payment_method=payment_method,
+        payment_plan=payment_plan,
         payment_plan_signature="Pat",
         payment_plan_signed_date=date(2026, 8, 1),
         status=status,

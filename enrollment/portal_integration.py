@@ -24,6 +24,13 @@ PAYMENT_TO_BILLING_TYPE = {
     "other": "Other",
 }
 
+# Application payment_plan keys → PortalChild.billing_plan labels used by staff billing.
+PAYMENT_PLAN_TO_BILLING_PLAN = {
+    "weekly": "Weekly",
+    "biweekly": "Bi-weekly",
+    "monthly": "Monthly",
+}
+
 STATUS_LABELS = {
     "under_review": "Under review",
     "waitlist": "Waitlist",
@@ -32,6 +39,78 @@ STATUS_LABELS = {
     "enrolled": "Enrolled",
     "declined": "Declined",
 }
+
+
+def billing_plan_from_application(app):
+    """Return the staff billing-plan label for an enrollment application's payment plan."""
+    if not app:
+        return ""
+    key = (getattr(app, "payment_plan", None) or "").strip().lower()
+    if key in PAYMENT_PLAN_TO_BILLING_PLAN:
+        return PAYMENT_PLAN_TO_BILLING_PLAN[key]
+    if hasattr(app, "get_payment_plan_display"):
+        return (app.get_payment_plan_display() or "").strip()
+    return (getattr(app, "payment_plan", None) or "").strip()
+
+
+def child_billing_plan_is_unset(child):
+    """True when staff has not actually chosen a plan (blank or leftover Weekly default)."""
+    plan = (getattr(child, "billing_plan", None) or "").strip()
+    if not plan:
+        return True
+    if plan.lower() != "weekly":
+        return False
+    return not (
+        getattr(child, "billing_amount", None) is not None
+        or bool(getattr(child, "auto_charge", False))
+        or getattr(child, "charge_weekday", None) is not None
+        or getattr(child, "charge_month_day", None) is not None
+        or getattr(child, "next_charge_date", None) is not None
+    )
+
+
+def cadence_defaults_for_plan(plan, on_date=None):
+    """Weekday / month-day defaults that match weekly, bi-weekly, or monthly cadence."""
+    on_date = on_date or timezone.localdate()
+    label = (plan or "").lower()
+    if "month" in label:
+        return {"charge_weekday": None, "charge_month_day": on_date.day}
+    if not plan:
+        return {}
+    return {"charge_weekday": on_date.weekday(), "charge_month_day": None}
+
+
+def apply_application_billing_plan(child, app, *, only_if_unset=True):
+    """Copy the application payment plan onto the child. Does not save. Returns changed fields."""
+    if child is None or app is None:
+        return []
+    if only_if_unset and not child_billing_plan_is_unset(child):
+        return []
+    plan = billing_plan_from_application(app)
+    if not plan:
+        return []
+    fields = []
+    if (child.billing_plan or "").strip() != plan:
+        child.billing_plan = plan
+        fields.append("billing_plan")
+    for field, value in cadence_defaults_for_plan(plan).items():
+        if getattr(child, field, None) != value:
+            setattr(child, field, value)
+            fields.append(field)
+    return fields
+
+
+def displayed_payment_plan(child, app=None):
+    """Billing plan for reports: staff-chosen plan, else the application's payment plan."""
+    if child is not None and not child_billing_plan_is_unset(child):
+        return (child.billing_plan or "").strip()
+    if app is not None:
+        if hasattr(app, "get_payment_plan_display"):
+            label = (app.get_payment_plan_display() or "").strip()
+            if label:
+                return label
+        return billing_plan_from_application(app)
+    return (getattr(child, "billing_plan", None) or "").strip()
 
 
 def _unit_for_location(program_location):
