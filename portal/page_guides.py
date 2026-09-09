@@ -359,16 +359,11 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
-                "body": "Choose date, program, school, billing type, or 4Cs first. Then use the browser Print / Save PDF button.",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Emergency contact list is who to call, with an authorized-pickup column.",
-            },
-            {
-                "title": "Set filters, then print",
-                "body": "Choose date, program, school, family, or missing contacts first. Then use the browser Print / Save PDF button.",
+                "body": "Choose date, program, school, billing type, 4Cs, family, or missing contacts first. Then use the browser Print / Save PDF button.",
             },
             {
                 "title": "Exports",
@@ -382,12 +377,6 @@ GUIDES = {
         "steps": [
             {
                 "title": "Check whose children you see",
-    "emergency-contacts": {
-        "title": "How to print emergency contacts",
-        "intro": "This list is who to call for each child at this unit. Narrow the rows, then print only what you need.",
-        "steps": [
-            {
-                "title": "Check the unit",
                 "body": "Staff see only children at the unit in the header. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
             },
             {
@@ -401,6 +390,19 @@ GUIDES = {
             {
                 "title": "Preview, then print or download",
                 "body": "The table updates when you apply filters. Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
+            },
+        ],
+    },
+    "emergency-contacts": {
+        "title": "How to print emergency contacts",
+        "intro": "This list is who to call for each child at this unit. Narrow the rows, then print only what you need.",
+        "steps": [
+            {
+                "title": "Check the unit",
+                "body": "Staff see only children at the unit in the header. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
+            },
+            {
+                "title": "Filter until only the needed rows remain",
                 "body": "Use program, school attending, family, child, grade, contact search, and authorized pickup. Check Only missing contacts to see children with no emergency contact on file.",
             },
             {
