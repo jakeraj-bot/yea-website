@@ -137,7 +137,7 @@
     {% if portal_live and dashboard.pending_4cs %}
     <div class="portal-alerts card">
       <h2>Approved 4Cs children waiting for authorization</h2>
-      <p class="form-note">These children are enrolled. Add their 4Cs authorization number and copay on the Agencies page or the unit 4Cs screen.</p>
+      <p class="form-note">These children are enrolled on 4Cs. Use <strong>Add agency</strong> to attach the contract, agency rates, and parent copay weeks.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>
@@ -148,8 +148,8 @@
               <td>{{ row.family }}</td>
               <td>{{ row.unit }}</td>
               <td>
+                <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_agency_member_add' %}?child_id={{ row.child_id }}">Add agency</a>
                 <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=row.family_slug %}?id={{ row.family_id }}">Family account</a>
-                <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_page' page='agencies' %}">Add 4Cs info</a>
               </td>
             </tr>
             {% endfor %}

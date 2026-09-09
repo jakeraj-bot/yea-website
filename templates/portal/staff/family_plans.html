@@ -75,7 +75,38 @@
           <dt>Auto charge</dt>
           <dd>{{ child.auto_charge_label|default:"Off" }}</dd>
           <dt>Balance</dt><dd>${{ child.balance }}</dd>
+          {% if child.four_cs %}
+          <dt>4Cs agency</dt><dd>{{ child.agency_name|default:"On file" }}</dd>
+          {% endif %}
         </dl>
+        {% if child.four_cs_periods %}
+        <h4>Copay schedule (from parent weeks)</h4>
+        <ul class="portal-allocation-list">
+          {% for period in child.four_cs_periods %}
+          <li>{{ period.label }} — ${{ period.amount }}{% if period.posted %} · posted{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if child.four_cs %}
+        <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="margin-top: 0.75rem;">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+          <input type="hidden" name="action" value="update_4cs_plan">
+          <input type="hidden" name="child_name" value="{{ child.name }}">
+          <input type="hidden" name="auto_charge" value="on">
+          <div class="form-group portal-form-full">
+            <label for="fourcs-plan-{{ child.child_id }}">How often the parent pays</label>
+            <select id="fourcs-plan-{{ child.child_id }}" name="billing_plan" class="portal-select">
+              <option value="Weekly" {% if child.plan == 'Weekly' or child.plan == 'Weekly copay' %}selected{% endif %}>Weekly</option>
+              <option value="Bi-weekly" {% if 'Bi' in child.plan or 'bi' in child.plan %}selected{% endif %}>Bi-weekly</option>
+              <option value="Monthly" {% if 'onth' in child.plan %}selected{% endif %}>Monthly</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save 4Cs copay plan</button>
+        </form>
+        {% endif %}
         {% if portal_area == 'admin' %}
         <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}" data-auto-charge="{% if child.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ child.next_charge_date|default:'' }}" data-weekday="{{ child.charge_weekday }}" data-month-day="{{ child.charge_month_day }}" data-scholarship-fund="{{ child.scholarship_fund_id|default:'' }}" data-full-rate="{{ child.full_rate|default:'' }}" data-parent-amount="{{ child.parent_amount|default:'' }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
         {% endif %}

@@ -15,7 +15,7 @@
     {% if pending_4cs %}
     <div class="portal-alerts card">
       <h2>Approved 4Cs children waiting for authorization</h2>
-      <p class="form-note">Add each child with <strong>+ Add 4Cs child</strong> on the unit 4Cs page, or record auth/copay here once you have it. They already appear as enrolled on the dashboard.</p>
+      <p class="form-note">These children are enrolled on 4Cs. Use <strong>Add agency</strong> to attach the contract, agency rates, and parent copay weeks.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>
@@ -25,7 +25,10 @@
               <td>{{ child.name }}</td>
               <td>{{ child.family.name }}</td>
               <td>{{ child.family.unit.name }}</td>
-              <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=child.family.slug %}?id={{ child.family_id }}">Family account</a></td>
+              <td>
+                <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_agency_member_add' %}?child_id={{ child.pk }}">Add agency</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=child.family.slug %}?id={{ child.family_id }}">Family account</a>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -35,7 +38,8 @@
     {% endif %}
 
     <div class="portal-toolbar">
-      <a class="btn btn-primary" href="{% url 'portal_admin_page' page='agencies' %}?add=1">+ Add agency</a>
+      <a class="btn btn-primary" href="{% url 'portal_admin_agency_member_add' %}">+ Add agency</a>
+      <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='agencies' %}?add=1">Add agency name</a>
     </div>
 
     {% if show_add_agency or editing_agency %}

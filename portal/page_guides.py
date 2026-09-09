@@ -235,37 +235,71 @@ GUIDES = {
     },
     "agency": {
         "title": "How to use 4Cs / Agency",
-        "intro": "A 4Cs family has two money tracks: regular billing (copays and membership) and the agency remittance account.",
+        "intro": "A 4Cs family has two money tracks: parent copay on regular billing, and what the agency pays YEA on this 4Cs tab.",
         "steps": [
             {
-                "title": "Add a 4Cs child",
-                "body": "Use + Add 4Cs child with the authorization number, parent copay, and agency rate.",
+                "title": "Add an agency",
+                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates.",
             },
             {
-                "title": "Record a parent copay",
-                "body": "Copays post to the family’s regular billing account — not the agency ledger.",
+                "title": "Set daily and weekly rates",
+                "body": "There are two sections: what the agency pays YEA, and what the parent pays (copay). Weekly starts as daily × 5 school days. You can override weekly, then any week.",
             },
             {
-                "title": "Record agency remittance",
-                "body": "When the 4Cs check arrives, record remittance so it can apply across the children on that check.",
+                "title": "Adjust weeks if needed",
+                "body": "Every school week in the contract is listed. Change a week to a different amount or $0 when that week is different.",
             },
             {
-                "title": "Finish waiting children",
-                "body": "If a child is approved but waiting for 4Cs information, open that row and complete the missing fields.",
+                "title": "Parent plan uses copay weeks",
+                "body": "On Plans, pick weekly, bi-weekly, or monthly. The plan adds up parent copay weeks only — never the agency amounts.",
+            },
+            {
+                "title": "Agency ledger is separate",
+                "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
+            },
+        ],
+    },
+    "agencies": {
+        "title": "How to use Agencies (4Cs)",
+        "intro": "A 4Cs family has two money tracks: parent copay on regular billing, and what the agency pays YEA on the 4Cs tab.",
+        "steps": [
+            {
+                "title": "Add an agency",
+                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates. From the waiting list, Add agency opens with that child already filled in.",
+            },
+            {
+                "title": "Set daily and weekly rates",
+                "body": "There are two sections: what the agency pays YEA, and what the parent pays (copay). Weekly starts as daily × 5 school days. You can override weekly, then any week.",
+            },
+            {
+                "title": "Adjust weeks if needed",
+                "body": "Every school week in the contract is listed. Change a week to a different amount or $0 when that week is different.",
+            },
+            {
+                "title": "Parent plan uses copay weeks",
+                "body": "On Plans, pick weekly, bi-weekly, or monthly. The plan adds up parent copay weeks only — never the agency amounts.",
+            },
+            {
+                "title": "Agency ledger is separate",
+                "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
             },
         ],
     },
     "agency-billing": {
         "title": "How to read a 4Cs agency account",
-        "intro": "This ledger is agency remittance for one child. Parent copays and membership live on regular billing.",
+        "intro": "This ledger is what the agency owes YEA for one child. Parent copays live on regular billing.",
         "steps": [
             {
-                "title": "Check the weekly rate and balance",
-                "body": "This page is what the agency owes, not what the parent owes.",
+                "title": "Read the expected weeks",
+                "body": "Each school week shows the agency amount. This is not the parent copay.",
+            },
+            {
+                "title": "Check Received when the check comes in",
+                "body": "Mark Received for that week. It records the agency payment here only.",
             },
             {
                 "title": "Switch to regular billing for copays",
-                "body": "Use Regular billing on the family when you need membership, copays, or parent payments.",
+                "body": "Use Regular billing when you need membership, parent copays, or parent payments.",
             },
         ],
     },
@@ -419,21 +453,25 @@ GUIDES = {
             },
             {
                 "title": "4Cs vs private pay",
-                "body": "A 4Cs copay still belongs on this family’s regular billing. Agency remittance is on the 4Cs tab.",
+                "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
             },
         ],
     },
     "family-agency": {
         "title": "How to use the family 4Cs tab",
-        "intro": "This is the agency side of a 4Cs household.",
+        "intro": "This is the agency side of a 4Cs household — not parent copays.",
         "steps": [
             {
-                "title": "Open the agency account",
-                "body": "Use 4Cs account for remittance history on a child.",
+                "title": "Add or edit the agency",
+                "body": "Use Add agency (or Edit agency) for the child. Set daily/weekly rates and adjust any week that is different.",
             },
             {
-                "title": "If the tab is empty",
-                "body": "Add the child on the unit 4Cs / Agency page first.",
+                "title": "Check Received when the check comes in",
+                "body": "Each agency week has a Received box. Checking it records the agency payment here only.",
+            },
+            {
+                "title": "Parent money is on Billing",
+                "body": "Copay charges from the billing plan post to the family billing tab, not this one.",
             },
         ],
     },

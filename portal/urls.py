@@ -219,6 +219,36 @@ urlpatterns = [
         name="portal_staff_agency_action",
     ),
     path(
+        "staff/agency/member/add/",
+        views.staff_agency_member_add,
+        name="portal_staff_agency_member_add",
+    ),
+    path(
+        "staff/agency/member/<int:profile_id>/edit/",
+        views.staff_agency_member_edit,
+        name="portal_staff_agency_member_edit",
+    ),
+    path(
+        "admin/agency/member/add/",
+        views.admin_agency_member_add,
+        name="portal_admin_agency_member_add",
+    ),
+    path(
+        "admin/agency/member/<int:profile_id>/edit/",
+        views.admin_agency_member_edit,
+        name="portal_admin_agency_member_edit",
+    ),
+    path(
+        "agency/weeks/preview/",
+        views.agency_week_preview,
+        name="portal_agency_week_preview",
+    ),
+    path(
+        "agency/week/received/",
+        views_actions.agency_week_received,
+        name="portal_agency_week_received",
+    ),
+    path(
         "staff/member-policies/print/",
         views.staff_member_policies_print,
         name="portal_staff_member_policies_print",

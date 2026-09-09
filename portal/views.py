@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -134,7 +135,11 @@ from .parent_auth import (
     portal_preview_mode,
     resolve_preview_key,
 )
-from .staff_auth import admin_login_required, staff_login_required, staff_login_required_post
+from .staff_auth import (
+    admin_login_required,
+    staff_login_required,
+    staff_login_required_post,
+)
 from .parent_services import (
     build_parent_preview_live,
     get_account_live,
@@ -2006,6 +2011,180 @@ def staff_agency_billing(request, family_slug):
             staff_page_slug="agency",
             page_guide_key="agency-billing",
         ),
+    )
+
+
+def _agency_member_redirect(area, family):
+    if not family:
+        if area == "admin":
+            return reverse("portal_admin_page", kwargs={"page": "agencies"})
+        return reverse("portal_staff_page", kwargs={"page": "agency"})
+    if area == "admin":
+        url = reverse("portal_admin_family_agency", kwargs={"family_slug": family.slug})
+        return f"{url}?id={family.pk}"
+    return reverse("portal_staff_family_agency", kwargs={"family_slug": family.slug})
+
+
+def _render_agency_member_form(request, area, profile_id=None):
+    from django.utils.dateparse import parse_date
+
+    from .agency_services import agency_form_context, posted_weeks_from_form, save_agency_member
+    from .models import PortalAgencyProfile, PortalChild, PortalFamily
+
+    unit = None if area == "admin" else _staff_unit(request)
+    profile = None
+    child = None
+    family = None
+    if profile_id:
+        qs = PortalAgencyProfile.objects.select_related("child", "family", "agency", "unit")
+        if unit:
+            qs = qs.filter(unit=unit)
+        profile = qs.filter(pk=profile_id).first()
+        if not profile:
+            return render(request, "portal/404.html", status=404)
+        child = profile.child
+        family = profile.family
+        unit = unit or profile.unit
+    else:
+        child_id = request.POST.get("child_id") or request.GET.get("child_id")
+        family_slug = request.POST.get("family_slug") or request.GET.get("family_slug")
+        if child_id:
+            child_qs = PortalChild.objects.select_related("family", "family__unit")
+            if unit:
+                child_qs = child_qs.filter(family__unit=unit)
+            child = child_qs.filter(pk=child_id).first()
+            if child:
+                family = child.family
+                unit = unit or family.unit
+                profile = PortalAgencyProfile.objects.filter(child=child).select_related(
+                    "child", "family", "agency", "unit"
+                ).first()
+        elif family_slug:
+            family_qs = PortalFamily.objects.filter(slug=family_slug)
+            if unit:
+                family_qs = family_qs.filter(unit=unit)
+            family = family_qs.first()
+            unit = unit or (family.unit if family else None)
+
+    if request.method == "POST":
+        if not _portal_data_live():
+            messages.error(request, "This action is not available in design preview mode.")
+            return redirect(_agency_member_redirect(area, family))
+        try:
+            saved = save_agency_member(
+                unit,
+                request.POST.get("family_slug", "").strip(),
+                request.POST.get("child_name", ""),
+                request.POST.get("agency_name", ""),
+                auth_start=parse_date(request.POST.get("auth_start") or "") or None,
+                auth_end=parse_date(request.POST.get("auth_end") or "") or None,
+                daily_agency_rate=request.POST.get("daily_agency_rate", "0"),
+                weekly_agency_rate=request.POST.get("weekly_agency_rate", "0"),
+                weekly_agency_overridden=request.POST.get("weekly_agency_overridden") == "on",
+                daily_copay=request.POST.get("daily_copay", "0"),
+                weekly_copay=request.POST.get("weekly_copay", "0"),
+                weekly_copay_overridden=request.POST.get("weekly_copay_overridden") == "on",
+                posted_weeks=posted_weeks_from_form(request.POST),
+                reset_week_rates=request.POST.get("reset_week_rates") == "on",
+                child_id=request.POST.get("child_id") or None,
+                grade=request.POST.get("grade", ""),
+                auth_number=request.POST.get("auth_number", ""),
+                program_label=request.POST.get("program", ""),
+                notes=request.POST.get("notes", ""),
+                profile=profile,
+            )
+            messages.success(request, f"Agency saved for {saved.child.name}. Parent copay weeks feed the billing plan; agency weeks stay on the 4Cs tab.")
+            return redirect(_agency_member_redirect(area, saved.family))
+        except ValueError as exc:
+            messages.error(request, str(exc))
+
+    extra = agency_form_context(profile=profile, child=child, family=family, unit=unit, data=request.POST or None)
+    if area == "admin":
+        families = PortalFamily.objects.select_related("unit").order_by("name")
+    else:
+        families = PortalFamily.objects.filter(unit=unit).order_by("name") if unit else PortalFamily.objects.none()
+    extra["family_options"] = [
+        {
+            "slug": row.slug,
+            "name": row.name,
+            "children": [{"id": kid.pk, "name": kid.name} for kid in row.children.filter(is_active=True)],
+        }
+        for row in families.prefetch_related("children")
+    ]
+    extra["week_preview_url"] = reverse("portal_agency_week_preview")
+    extra["form_action"] = request.path
+    extra["cancel_url"] = _agency_member_redirect(area, family)
+    extra["editing"] = bool(profile)
+    title = "Edit agency" if profile else "Add agency"
+    if extra["form"].get("child_name"):
+        title = f"{title} — {extra['form']['child_name']}"
+    if area == "admin":
+        context = _portal_context(
+            "admin",
+            title,
+            admin_page_slug="agencies",
+            page_guide_key="agency",
+            **extra,
+        )
+        return render(request, "portal/staff/agency_member_form.html", _finalize_admin_context(request, context))
+    return render(
+        request,
+        "portal/staff/agency_member_form.html",
+        _staff_context(title, request=request, staff_page_slug="agency", page_guide_key="agency", **extra),
+    )
+
+
+@staff_login_required
+@require_http_methods(["GET", "POST"])
+def staff_agency_member_add(request):
+    return _render_agency_member_form(request, "staff")
+
+
+@staff_login_required
+@require_http_methods(["GET", "POST"])
+def staff_agency_member_edit(request, profile_id):
+    return _render_agency_member_form(request, "staff", profile_id=profile_id)
+
+
+@admin_login_required
+@require_http_methods(["GET", "POST"])
+def admin_agency_member_add(request):
+    return _render_agency_member_form(request, "admin")
+
+
+@admin_login_required
+@require_http_methods(["GET", "POST"])
+def admin_agency_member_edit(request, profile_id):
+    return _render_agency_member_form(request, "admin", profile_id=profile_id)
+
+
+@require_GET
+def agency_week_preview(request):
+    from django.utils.dateparse import parse_date
+
+    from .agency_weeks import parse_money, preview_weeks, weekly_from_daily
+    from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
+    from .parent_auth import portal_preview_mode
+
+    if not (portal_preview_mode() or is_staff_portal_authenticated(request) or is_admin_portal_authenticated(request)):
+        return JsonResponse({"error": "Login required."}, status=403)
+    start = parse_date(request.GET.get("start") or "")
+    end = parse_date(request.GET.get("end") or "")
+    daily_agency = parse_money(request.GET.get("daily_agency") or "0")
+    daily_parent = parse_money(request.GET.get("daily_copay") or "0")
+    weekly_agency = parse_money(request.GET.get("weekly_agency") or "0")
+    weekly_parent = parse_money(request.GET.get("weekly_copay") or "0")
+    if request.GET.get("agency_overridden") != "1" and daily_agency:
+        weekly_agency = weekly_from_daily(daily_agency)
+    if request.GET.get("parent_overridden") != "1" and daily_parent:
+        weekly_parent = weekly_from_daily(daily_parent)
+    weeks = preview_weeks(start, end, weekly_agency, weekly_parent) if start and end else []
+    return JsonResponse(
+        {
+            "weeks": weeks,
+            "weekly_agency": f"{weekly_agency:.2f}",
+            "weekly_copay": f"{weekly_parent:.2f}",
+        }
     )
 
 
