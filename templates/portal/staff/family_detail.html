@@ -25,6 +25,24 @@
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
 
+    {% if parent_password_reset %}
+    <section class="card portal-password-once portal-profile-full portal-collapse-skip" id="parent-password-once">
+      <h2>New temporary password — copy it now</h2>
+      <p class="form-note">You cannot look up the old password. This new password is shown once. Text or email it to the parent yourself. Ask them to change it after they sign in if they want.</p>
+      <dl class="portal-dl">
+        <dt>Username</dt>
+        <dd><code>{{ parent_password_reset.username }}</code></dd>
+        <dt>Login email</dt>
+        <dd>{{ parent_password_reset.email|default:"—" }}</dd>
+        <dt>Temporary password</dt>
+        <dd class="portal-password-once-row">
+          <code class="portal-password-once-value" data-copy-source>{{ parent_password_reset.password }}</code>
+          <button type="button" class="btn btn-secondary btn-sm" data-copy-password>Copy password</button>
+        </dd>
+      </dl>
+    </section>
+    {% endif %}
+
     <div class="portal-profile-grid">
       {% if member_info %}
       <section class="card portal-profile-full portal-collapse-skip" id="edit-member-info">
@@ -84,8 +102,34 @@
             {% if member_info.primary_email %}
             <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_family_email' family_slug=family_slug %}{% if family_id %}?id={{ family_id }}{% endif %}{% else %}{% url 'portal_staff_family_email' family_slug=family_slug %}{% endif %}">Email parent</a>
             {% endif %}
+            {% if member_info.has_parent_login %}
+            <a class="btn btn-secondary" href="#reset-parent-password">Reset parent password</a>
+            {% endif %}
           </div>
         </form>
+        {% if member_info.has_parent_login %}
+        <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_parent_password' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_parent_password' family_slug=family_slug %}{% endif %}" class="portal-form-grid portal-reset-parent-password" id="reset-parent-password">
+          {% csrf_token %}
+          {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <div class="form-group portal-form-full">
+            <h3>Reset parent password</h3>
+            <p class="form-note">You cannot see the current password. Set a new temporary password, copy it on the next screen, and give it to the parent. If they forget again, reset again.</p>
+          </div>
+          <div class="form-group">
+            <label for="reset-parent-pass">New temporary password</label>
+            <input id="reset-parent-pass" name="password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
+          </div>
+          <div class="form-group">
+            <label for="reset-parent-pass-confirm">Confirm password</label>
+            <input id="reset-parent-pass-confirm" name="confirm_password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
+          </div>
+          <div class="form-group portal-form-full portal-member-info-actions">
+            <button type="submit" class="btn btn-primary">Set temporary password</button>
+            <button type="submit" class="btn btn-secondary" name="generate" value="1">Generate password</button>
+          </div>
+        </form>
+        {% endif %}
       </section>
       {% else %}
       <section class="card">

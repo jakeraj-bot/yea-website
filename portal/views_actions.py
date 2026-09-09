@@ -1605,6 +1605,81 @@ def family_member_info_save(request, family_slug):
 
 
 @require_POST
+def family_parent_password_reset(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import (
+        reset_parent_portal_password,
+        resolve_family,
+        store_parent_password_reset_flash,
+    )
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family_slug})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family_slug})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    actor = ""
+    if request.user.is_authenticated:
+        actor = (request.user.get_full_name() or request.user.username or "").strip()
+    password = request.POST.get("password", "")
+    confirm = request.POST.get("confirm_password", "")
+    generate = request.POST.get("generate") == "1"
+    if not generate and password != confirm:
+        messages.error(request, "The new password and confirmation do not match.")
+        return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
+
+    try:
+        reset = reset_parent_portal_password(
+            family,
+            password,
+            actor=actor,
+            generate=generate,
+        )
+        store_parent_password_reset_flash(request, reset)
+        messages.success(
+            request,
+            "Temporary parent password set. Copy it now — it will not be shown again. "
+            "You cannot look up the old password.",
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
+
+    return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#parent-password-once"))
+
+
+@require_POST
 @staff_login_required_post
 def staff_create_application(request):
     from enrollment.staff_application import create_staff_application

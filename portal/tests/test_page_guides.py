@@ -51,6 +51,21 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("new enrollment form", guide["steps"][1]["body"])
         self.assertIn("Confirm to save", guide["steps"][2]["body"])
 
+    def test_family_profile_guide_explains_password_reset(self):
+        guide = guide_for("family-profile")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Reset parent password", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("cannot look up the current password", bodies)
+        self.assertIn("copy the new temporary password once", bodies)
+
+    def test_member_accounts_guide_explains_password_reset(self):
+        guide = guide_for("billing-settings")
+        self.assertIsNotNone(guide)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("cannot look up the old password", bodies)
+        self.assertIn("copy it once", bodies)
+
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")
         bodies = " ".join(step["body"] for step in guide["steps"])

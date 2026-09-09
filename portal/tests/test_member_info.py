@@ -2,7 +2,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from portal.member_admin import parent_email_for_family, update_family_member_info
+from django.contrib.auth import authenticate
+
+from portal.member_admin import parent_email_for_family, reset_parent_portal_password, update_family_member_info
 from portal.models import PortalFamily, PortalParentAccount, PortalProfileChangeRequest, PortalStaffAccount, PortalUnit
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
@@ -101,6 +103,58 @@ class UpdateFamilyMemberInfoTests(TestCase):
         )
         stored = resolve_auth_username("parent", "alize.correct@example.com")
         self.assertEqual(stored, "parent:orengo")
+
+
+class ResetParentPortalPasswordTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="orengo",
+            name="Orengo",
+            primary_contact="Alize Parent",
+            status="Active",
+        )
+        self.parent_user = User.objects.create_user(
+            username="parent:orengo",
+            password="ParentPass123",
+            email="alize@example.com",
+            first_name="Alize",
+            last_name="Parent",
+        )
+        PortalParentAccount.objects.create(user=self.parent_user, family=self.family)
+
+    def test_sets_new_password_and_logs_without_storing_it(self):
+        result = reset_parent_portal_password(
+            self.family,
+            "NewTempPass123!",
+            actor="yeaadmin",
+        )
+        self.assertEqual(result["username"], "orengo")
+        self.assertEqual(result["email"], "alize@example.com")
+        self.assertEqual(result["password"], "NewTempPass123!")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("NewTempPass123!"))
+        self.assertFalse(self.parent_user.check_password("ParentPass123"))
+        self.assertNotEqual(self.parent_user.password, "NewTempPass123!")
+        self.assertTrue(self.parent_user.password.startswith("pbkdf2_"))
+        audit = PortalProfileChangeRequest.objects.get(account__family=self.family)
+        self.assertEqual(audit.reviewed_by, "yeaadmin")
+        self.assertEqual(audit.changes, {"parent_password_reset": True})
+        self.assertNotIn("NewTempPass123!", str(audit.changes))
+
+    def test_rejects_weak_password(self):
+        with self.assertRaises(ValueError):
+            reset_parent_portal_password(self.family, "123")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("ParentPass123"))
+
+    def test_generates_password_when_requested(self):
+        result = reset_parent_portal_password(self.family, "", actor="staff", generate=True)
+        self.assertGreaterEqual(len(result["password"]), 8)
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password(result["password"]))
 
 
 class MemberInfoViewTests(TestCase):
@@ -216,6 +270,105 @@ class MemberInfoViewTests(TestCase):
         response = self.client.post(url, {**self._payload(), "family_name": "Other"})
         self.assertEqual(response.status_code, 302)
         self.assertIn("families", response.url)
+
+    def _reset_url(self, area="admin"):
+        name = "portal_admin_family_parent_password" if area == "admin" else "portal_staff_family_parent_password"
+        return reverse(name, kwargs={"family_slug": "orengo"})
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_profile_shows_reset_form_without_existing_password(self):
+        self._login(self.admin, "admin")
+        response = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "orengo"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reset parent password")
+        self.assertContains(response, "You cannot see the current password")
+        self.assertContains(response, reverse("portal_admin_family_parent_password", kwargs={"family_slug": "orengo"}))
+        self.assertNotContains(response, self.parent_user.password)
+        self.assertNotContains(response, "ParentPass123")
+        self.assertNotContains(response, "pbkdf2_")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_set_temporary_password_shown_once(self):
+        self._login(self.admin, "admin")
+        response = self.client.post(
+            self._reset_url("admin"),
+            {"password": "NewTempPass123!", "confirm_password": "NewTempPass123!"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "NewTempPass123!")
+        self.assertContains(response, "orengo")
+        self.assertContains(response, "wrong@example.com")
+        self.assertContains(response, "copy it now")
+        self.assertContains(response, 'id="parent-password-once"')
+        self.assertContains(response, "portal-password-once portal-profile-full portal-collapse-skip")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("NewTempPass123!"))
+        self.assertFalse(self.parent_user.check_password("ParentPass123"))
+        self.assertNotContains(response, self.parent_user.password)
+
+        again = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "orengo"}))
+        self.assertEqual(again.status_code, 200)
+        self.assertNotContains(again, "NewTempPass123!")
+        self.assertNotContains(again, self.parent_user.password)
+        self.assertNotContains(again, "pbkdf2_")
+
+        self.client.logout()
+        login_ok = self.client.post(
+            reverse("portal_parent_login"),
+            {"username": "orengo", "password": "NewTempPass123!"},
+        )
+        self.assertEqual(login_ok.status_code, 302)
+        self.client.logout()
+        login_old = self.client.post(
+            reverse("portal_parent_login"),
+            {"username": "orengo", "password": "ParentPass123"},
+        )
+        self.assertEqual(login_old.status_code, 200)
+        self.assertFalse(authenticate(username="parent:orengo", password="ParentPass123"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_can_reset_parent_password(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            self._reset_url("staff"),
+            {"password": "StaffResetPass123!", "confirm_password": "StaffResetPass123!"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "StaffResetPass123!")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("StaffResetPass123!"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_parent_cannot_reset_password(self):
+        self.client.force_login(self.parent_user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "parent"
+        session.save()
+        response = self.client.post(
+            self._reset_url("admin"),
+            {"password": "HackedPass123!", "confirm_password": "HackedPass123!"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/portal/staff/login/", response.url)
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("ParentPass123"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_cannot_reset_family_in_another_unit(self):
+        other_family = PortalFamily.objects.create(unit=self.other_unit, slug="other", name="Other")
+        other_user = get_user_model().objects.create_user(username="parent:other", password="OtherPass123")
+        PortalParentAccount.objects.create(user=other_user, family=other_family)
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_family_parent_password", kwargs={"family_slug": "other"}),
+            {"password": "NopePass123!", "confirm_password": "NopePass123!"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("families", response.url)
+        other_user.refresh_from_db()
+        self.assertTrue(other_user.check_password("OtherPass123"))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_families_table_keeps_school_and_balance_columns(self):

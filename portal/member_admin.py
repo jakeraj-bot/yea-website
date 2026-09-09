@@ -1,8 +1,11 @@
 """Admin tools for collections, suspend, parent accounts, emails, and family cleanup."""
 
+import secrets
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
@@ -32,6 +35,7 @@ OPEN_APPLICATION_STATUSES = ("under_review", "pending_documents", "waitlist")
 COUNTED_ENROLLED_STATUSES = ("approved", "enrolled")
 PLACEHOLDER_UNIT_SLUGS = {"main-location", "main_location"}
 PLACEHOLDER_UNIT_NAMES = {"main location", "main"}
+PARENT_PASSWORD_RESET_FLASH_KEY = "portal_parent_password_reset_once"
 
 
 def is_placeholder_unit(unit):
@@ -159,6 +163,75 @@ def _sync_parent_login_email(family, email, first_name="", last_name=""):
     if updates:
         user.save(update_fields=updates)
     return user
+
+
+def generate_temporary_parent_password(user=None):
+    """Create a one-time temporary password that passes Django validators."""
+    for _ in range(12):
+        password = f"{secrets.token_urlsafe(10)}Aa1"
+        try:
+            validate_password(password, user=user)
+            return password
+        except ValidationError:
+            continue
+    return f"{secrets.token_urlsafe(16)}Aa1!"
+
+
+def validate_parent_portal_password(password, user=None):
+    new_password = (password or "").strip()
+    if not new_password:
+        raise ValueError("Enter a temporary password, or leave it blank to generate one.")
+    try:
+        validate_password(new_password, user=user)
+    except ValidationError as exc:
+        raise ValueError(" ".join(exc.messages))
+    return new_password
+
+
+def store_parent_password_reset_flash(request, payload):
+    request.session[PARENT_PASSWORD_RESET_FLASH_KEY] = payload
+
+
+def consume_parent_password_reset_flash(request, family_slug=None):
+    if request is None:
+        return None
+    data = request.session.get(PARENT_PASSWORD_RESET_FLASH_KEY)
+    if not data:
+        return None
+    if family_slug and data.get("family_slug") != family_slug:
+        return None
+    request.session.pop(PARENT_PASSWORD_RESET_FLASH_KEY, None)
+    return data
+
+
+@transaction.atomic
+def reset_parent_portal_password(family, password="", *, actor="", generate=False):
+    """Set a new parent portal password. The previous hash cannot be recovered."""
+    if not family:
+        raise ValueError("Family not found.")
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if not account:
+        raise ValueError("This family does not have a parent portal login yet.")
+    user = account.user
+    new_password = (password or "").strip()
+    if generate or not new_password:
+        new_password = generate_temporary_parent_password(user)
+    else:
+        new_password = validate_parent_portal_password(new_password, user=user)
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    _record_member_info_change(
+        family,
+        {"parent_password_reset": True},
+        actor=actor,
+    )
+    return {
+        "family_slug": family.slug,
+        "family_name": family.name,
+        "username": display_username(user.username),
+        "email": user.email or "",
+        "password": new_password,
+    }
 
 
 def _record_member_info_change(family, changes, actor=""):

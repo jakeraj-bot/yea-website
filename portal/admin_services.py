@@ -262,6 +262,7 @@ def get_parent_accounts_live():
             {
                 "id": account.pk,
                 "user_id": user.pk,
+                "family_id": account.family_id,
                 "family_slug": account.family.slug,
                 "family_name": account.family.name,
                 "unit": account.family.unit.name if account.family.unit_id else "—",
