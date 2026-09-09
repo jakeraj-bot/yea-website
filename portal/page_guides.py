@@ -259,6 +259,32 @@ GUIDES = {
             },
         ],
     },
+    "agencies": {
+        "title": "How to use Agencies (4Cs)",
+        "intro": "A 4Cs family has two money tracks: parent copay on regular billing, and what the agency pays YEA on the 4Cs tab.",
+        "steps": [
+            {
+                "title": "Add an agency",
+                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates. From the waiting list, Add agency opens with that child already filled in.",
+            },
+            {
+                "title": "Set daily and weekly rates",
+                "body": "There are two sections: what the agency pays YEA, and what the parent pays (copay). Weekly starts as daily × 5 school days. You can override weekly, then any week.",
+            },
+            {
+                "title": "Adjust weeks if needed",
+                "body": "Every school week in the contract is listed. Change a week to a different amount or $0 when that week is different.",
+            },
+            {
+                "title": "Parent plan uses copay weeks",
+                "body": "On Plans, pick weekly, bi-weekly, or monthly. The plan adds up parent copay weeks only — never the agency amounts.",
+            },
+            {
+                "title": "Agency ledger is separate",
+                "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
+            },
+        ],
+    },
     "agency-billing": {
         "title": "How to read a 4Cs agency account",
         "intro": "This ledger is what the agency owes YEA for one child. Parent copays live on regular billing.",
