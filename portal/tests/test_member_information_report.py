@@ -330,6 +330,7 @@ class MemberInformationReportTests(TestCase):
         self.assertContains(admin, "How to print member information")
         admin_hub = self.client.get(reverse("portal_admin_page", kwargs={"page": "reports"}))
         self.assertContains(admin_hub, reverse("portal_admin_member_information_report"))
+        self.assertContains(admin_hub, reverse("portal_admin_data_report", kwargs={"report_slug": "member-information"}))
         unit_filtered = self.client.get(
             reverse("portal_admin_member_information_report"),
             {"unit": "school-26"},
@@ -340,6 +341,8 @@ class MemberInformationReportTests(TestCase):
         data = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "member-information"}))
         self.assertEqual(data.status_code, 200)
         self.assertContains(data, "Jordan Jacobs")
+        self.assertContains(data, "Member information")
+        self.assertContains(data, "Download CSV")
         csv_response = self.client.get(
             reverse("portal_admin_member_information_report"),
             {"format": "csv", "q": "sofia"},

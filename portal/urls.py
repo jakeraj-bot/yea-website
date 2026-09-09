@@ -596,7 +596,7 @@ urlpatterns = [
         name="portal_admin_enrollment_report",
     ),
     path(
-        "admin/reports/member-information/",
+        "admin/reports/print/member-information/",
         views.admin_member_information_report,
         name="portal_admin_member_information_report",
     ),
