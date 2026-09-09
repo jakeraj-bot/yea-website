@@ -154,6 +154,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertContains(hub, "portal-reports-grid")
         self.assertContains(hub, "portal-report-card")
         self.assertContains(hub, reverse("portal_admin_emergency_contact_report"))
+        self.assertContains(hub, "Member information export")
+        self.assertContains(hub, reverse("portal_admin_data_report", kwargs={"report_slug": "member-information"}))
         member_info = self.client.get(reverse("portal_admin_member_information_report"))
         self.assertEqual(member_info.status_code, 200)
         self.assertContains(member_info, "Jordan Jacobs")

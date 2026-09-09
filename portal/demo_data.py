@@ -624,6 +624,8 @@ ADMIN_REPORTS = [
         "format": "PDF / CSV",
         "slug": "member-information-data",
         "report": "member-information",
+    },
+    {
         "name": "Emergency contact list",
         "description": "Printable emergency contacts for every child — filter by unit, program, school, family, or missing contacts",
         "format": "PDF",
