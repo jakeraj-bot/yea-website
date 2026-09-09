@@ -181,6 +181,7 @@
   var parentWeeklyTouched = document.getElementById("weekly-parent-overridden").value === "on";
   var agencyWeekTouched = {};
   var parentWeekTouched = {};
+  var previewSeq = 0;
   document.querySelectorAll(".week-agency-amount").forEach(function (input) {
     var start = input.closest("tr").querySelector('input[name="week_start"]');
     if (start) agencyWeekTouched[start.value] = true;
@@ -248,6 +249,7 @@
       renderWeeks([], weeklyAgency.value, weeklyParent.value);
       return;
     }
+    var seq = ++previewSeq;
     var params = new URLSearchParams({
       start: start,
       end: end,
@@ -261,6 +263,7 @@
     fetch(previewUrl + "?" + params.toString(), { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (seq !== previewSeq) return;
         if (!agencyWeeklyTouched) weeklyAgency.value = data.weekly_agency;
         if (!parentWeeklyTouched) weeklyParent.value = data.weekly_copay;
         renderWeeks(data.weeks || [], data.weekly_agency, data.weekly_copay);
