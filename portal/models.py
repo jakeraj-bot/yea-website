@@ -416,11 +416,15 @@ class PortalAgencyProfile(models.Model):
         blank=True,
         related_name="child_profiles",
     )
-    auth_number = models.CharField(max_length=64)
+    auth_number = models.CharField(max_length=64, blank=True)
     auth_start = models.DateField(null=True, blank=True)
     auth_end = models.DateField(null=True, blank=True)
-    weekly_copay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    daily_agency_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     weekly_agency_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    weekly_agency_overridden = models.BooleanField(default=False)
+    daily_copay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    weekly_copay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    weekly_copay_overridden = models.BooleanField(default=False)
     use_variable_rates = models.BooleanField(default=False)
     rate_tier_key = models.CharField(max_length=64, blank=True)
     daily_copay_rates = models.JSONField(default=dict, blank=True)
@@ -432,7 +436,34 @@ class PortalAgencyProfile(models.Model):
         ordering = ["child__name"]
 
     def __str__(self):
-        return f"{self.child.name} · {self.auth_number}"
+        return f"{self.child.name} · {self.auth_number or '4Cs'}"
+
+
+class PortalAgencyContractWeek(models.Model):
+    """One school week (Mon–Fri, clipped to the contract) on a child's 4Cs agency profile."""
+
+    profile = models.ForeignKey(
+        PortalAgencyProfile,
+        on_delete=models.CASCADE,
+        related_name="contract_weeks",
+    )
+    week_start = models.DateField()
+    week_end = models.DateField()
+    agency_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    parent_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    agency_overridden = models.BooleanField(default=False)
+    parent_overridden = models.BooleanField(default=False)
+    received = models.BooleanField(default=False)
+    received_at = models.DateTimeField(null=True, blank=True)
+    parent_posted = models.BooleanField(default=False)
+    parent_posted_on = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["week_start"]
+        unique_together = [("profile", "week_start")]
+
+    def __str__(self):
+        return f"{self.profile} · {self.week_start}–{self.week_end}"
 
 
 class PortalAgencyLedgerEntry(models.Model):
