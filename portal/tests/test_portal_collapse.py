@@ -186,6 +186,7 @@ class PortalCollapsePageTests(TestCase):
         reports = self.client.get(reverse("portal_admin_page", kwargs={"page": "reports"}))
         self._assert_collapse_ready(reports)
         self.assertContains(reports, reverse("portal_admin_member_information_report"))
+        self.assertContains(reports, reverse("portal_admin_data_report", kwargs={"report_slug": "member-information"}))
         self.assertContains(reports, reverse("portal_admin_emergency_contact_report"))
         self.assertContains(reports, 'class="card portal-report-card"')
         self.assertNotContains(reports, "portal-collapse-skip")
