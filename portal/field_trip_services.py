@@ -56,7 +56,9 @@ def create_field_trip(data):
 def assign_trip_to_children(trip):
     children = PortalChild.objects.filter(is_active=True, family__status="Active").select_related("family")
     if trip.unit_id:
-        children = children.filter(family__unit=trip.unit)
+        from .unit_visibility import child_unit_q
+
+        children = children.filter(child_unit_q(trip.unit))
     created = 0
     for child in children:
         _, was_created = PortalFieldTripSignup.objects.get_or_create(

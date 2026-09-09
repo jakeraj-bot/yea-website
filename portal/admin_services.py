@@ -64,7 +64,7 @@ def get_admin_dashboard_live():
             {
                 "child": child.name,
                 "family": child.family.name,
-                "unit": child.family.unit.name,
+                "unit": getattr(child.unit, "name", None) or child.family.unit.name,
                 "family_slug": child.family.slug,
                 "family_id": child.family_id,
             }
@@ -80,15 +80,19 @@ def get_enrollment_by_unit_live():
     for unit in PortalUnit.objects.order_by("name"):
         if is_placeholder_unit(unit):
             continue
-        enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
+        from .unit_visibility import children_for_unit
+        from enrollment.locations import enrollment_keys_for_unit
+
+        enrolled = children_for_unit(unit, active_only=True).count()
         capacity = unit.capacity or enrolled
         programs = PortalProgram.objects.filter(unit=unit, is_active=True).count()
+        location_keys = enrollment_keys_for_unit(unit)
         open_apps = EnrollmentApplication.objects.filter(
-            portal_family__unit=unit,
+            program_location__in=location_keys,
             status__in=("under_review", "pending_documents", "waitlist"),
         ).count()
         approved = EnrollmentApplication.objects.filter(
-            portal_family__unit=unit,
+            program_location__in=location_keys,
             status__in=("approved", "enrolled"),
         ).count()
         rows.append(
@@ -106,9 +110,11 @@ def get_enrollment_by_unit_live():
 
 
 def get_units_live():
+    from .unit_visibility import children_for_unit
+
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
-        enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
+        enrolled = children_for_unit(unit, active_only=True).count()
         rows.append(
             {
                 "slug": unit.slug,
@@ -128,6 +134,8 @@ def get_units_live():
 
 
 def get_programs_live():
+    from .unit_visibility import children_for_unit
+
     rows = []
     for program in PortalProgram.objects.select_related("unit").order_by("unit__name", "name"):
         rows.append(
@@ -138,7 +146,7 @@ def get_programs_live():
                 "season": program.season or "",
                 "schedule": f"{program.start_time:%I:%M %p} – {program.end_time:%I:%M %p}",
                 "capacity": program.capacity if program.capacity else "—",
-                "enrolled": PortalChild.objects.filter(family__unit=program.unit, is_active=True).count(),
+                "enrolled": children_for_unit(program.unit, active_only=True).count(),
                 "active": program.is_active,
                 "pk": program.pk,
             }
@@ -203,12 +211,19 @@ def get_member_families_live():
     rows = []
     for family in PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("unit__name", "name"):
         child_names = [c.name for c in family.children.all() if c.is_active]
+        units = []
+        for child in family.children.filter(is_active=True):
+            from .unit_visibility import unit_label_for_child
+
+            label, _slug = unit_label_for_child(child)
+            if label and label not in units:
+                units.append(label)
         rows.append(
             {
                 "id": family.pk,
                 "name": family.name,
                 "slug": family.slug,
-                "unit": family.unit.name,
+                "unit": " · ".join(units) if units else family.unit.name,
                 "primary_contact": family.primary_contact or "—",
                 "children": child_names,
                 "balance": f"{family.balance:.2f}",
@@ -324,32 +339,41 @@ def get_admin_families_live():
 
     from .family_list import child_balance_map, expand_family_record
     from .models import PortalParentAccount
+    from .unit_visibility import unit_label_for_child
+    from enrollment.locations import get_location_label, get_unit_for_enrollment_key
 
     repair_family_units_from_applications()
     rows = []
-    for family in PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("unit__name", "name"):
+    for family in PortalFamily.objects.select_related("unit").prefetch_related("children", "children__unit").order_by("unit__name", "name"):
         balances = child_balance_map(family)
         active_children = list(family.children.filter(is_active=True).order_by("name"))
         enrolled_lower = {child.name.lower() for child in active_children}
-        children_specs = [
-            {
-                "name": child.name,
-                "child_id": child.pk,
-                "school": child.school or "—",
-                "balance": balances.get(child.name, Decimal("0")),
-            }
-            for child in active_children
-        ]
+        children_specs = []
+        for child in active_children:
+            unit_name, unit_slug = unit_label_for_child(child)
+            children_specs.append(
+                {
+                    "name": child.name,
+                    "child_id": child.pk,
+                    "school": child.school or "—",
+                    "balance": balances.get(child.name, Decimal("0")),
+                    "unit": unit_name or family.unit.name,
+                    "unit_slug": unit_slug or family.unit.slug,
+                }
+            )
         for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
             child_name = f"{app.student_first_name} {app.student_last_name}".strip()
             if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
                 continue
+            app_unit = get_unit_for_enrollment_key(app.program_location) if app.program_location else None
             children_specs.append(
                 {
                     "name": child_name,
                     "application_id": app.pk,
                     "school": app.student_school or "—",
                     "balance": balances.get(child_name, Decimal("0")),
+                    "unit": (app_unit.name if app_unit else "") or get_location_label(app.program_location) or family.unit.name,
+                    "unit_slug": app_unit.slug if app_unit else family.unit.slug,
                 }
             )
         base_row = {

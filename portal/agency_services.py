@@ -184,12 +184,18 @@ def agency_page_data(unit):
             )
         data["children"] = children
 
-    families = PortalFamily.objects.filter(unit=unit).order_by("name")
+    from .unit_visibility import child_belongs_to_unit, families_qs_for_unit
+
+    families = families_qs_for_unit(unit).order_by("name")
     data["family_options"] = [
         {
             "slug": family.slug,
             "name": family.name,
-            "children": [c.name for c in family.children.filter(is_active=True)],
+            "children": [
+                child.name
+                for child in family.children.filter(is_active=True)
+                if child_belongs_to_unit(child, unit)
+            ],
         }
         for family in families
     ]
@@ -246,7 +252,9 @@ def _portal_data_live():
 
 @transaction.atomic
 def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_copay, weekly_rate, program_label="", notes="", auth_start=None, auth_end=None):
-    family = PortalFamily.objects.filter(unit=unit, slug=family_slug).first()
+    from .member_admin import resolve_family
+
+    family = resolve_family(family_slug=family_slug, unit=unit)
     if not family:
         raise ValueError("Family not found.")
 
@@ -255,14 +263,17 @@ def add_agency_child(unit, family_slug, child_name, grade, auth_number, weekly_c
         family.program_label = program_label
     family.save(update_fields=["billing_type", "program_label"])
 
-    child, _ = PortalChild.objects.get_or_create(
+    child, created = PortalChild.objects.get_or_create(
         family=family,
         name=child_name.strip(),
-        defaults={"grade": grade, "is_active": True},
+        defaults={"grade": grade, "is_active": True, "unit": unit},
     )
     if grade:
         child.grade = grade
-        child.save(update_fields=["grade"])
+    if unit and child.unit_id != unit.pk:
+        child.unit = unit
+    if grade or (unit and not created):
+        child.save()
 
     profile, created = PortalAgencyProfile.objects.update_or_create(
         child=child,
@@ -334,8 +345,10 @@ def copay_report_rows(unit):
 
 
 def balances_report_rows(unit):
+    from .unit_visibility import families_qs_for_unit
+
     rows = []
-    for family in PortalFamily.objects.filter(unit=unit).order_by("name"):
+    for family in families_qs_for_unit(unit).order_by("name"):
         if family.balance <= 0:
             continue
         rows.append(

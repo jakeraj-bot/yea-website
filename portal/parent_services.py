@@ -268,12 +268,15 @@ def _profile_from_application(family, account):
     enrolled_names = set()
     for child in family.children.filter(is_active=True):
         enrolled_names.add(child.name.lower())
+        from .unit_visibility import unit_label_for_child
+
+        unit_name, _slug = unit_label_for_child(child)
         profile["children"].append(
             {
                 "name": child.name,
                 "dob": "",
                 "grade": child.grade,
-                "location": family.unit.name if getattr(family, "unit_id", None) else "School 18",
+                "location": unit_name or (family.unit.name if getattr(family, "unit_id", None) else "School 18"),
                 "program": family.program_label or "After-school program",
                 "allergies": "",
                 "medications": "",

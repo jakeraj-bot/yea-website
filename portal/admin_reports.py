@@ -40,7 +40,7 @@ def _child_school(child):
 def _active_children():
     return (
         PortalChild.objects.filter(is_active=True)
-        .select_related("family", "family__unit")
+        .select_related("family", "family__unit", "unit")
         .prefetch_related("scholarships__fund")
         .order_by("family__name", "name")
     )
@@ -79,17 +79,21 @@ def billing_plan_rows(filters=None):
     billings = set()
     plans = set()
     for child in _active_children():
-        if is_placeholder_unit(child.family.unit):
+        from .unit_visibility import child_effective_unit, unit_label_for_child
+
+        child_unit = child_effective_unit(child)
+        if is_placeholder_unit(child_unit or child.family.unit):
             continue
         child_school = _child_school(child)
         billing_type = (child.family.billing_type or "Private pay").strip() or "Private pay"
         plan_name = (child.billing_plan or "").strip() or "—"
+        unit_name, unit_slug = unit_label_for_child(child)
         if child_school:
             schools.add(child_school)
         billings.add(billing_type)
         if plan_name != "—":
             plans.add(plan_name)
-        if unit and child.family.unit.slug != unit:
+        if unit and unit_slug != unit:
             continue
         if query and not _name_match(child.name, child.family.name, query):
             continue
@@ -106,7 +110,7 @@ def billing_plan_rows(filters=None):
                 "family": child.family.name,
                 "family_slug": child.family.slug,
                 "family_id": child.family_id,
-                "unit": child.family.unit.name,
+                "unit": unit_name or child.family.unit.name,
                 "school": child_school or "—",
                 "billing": billing_type,
                 "plan": plan_name,
@@ -131,9 +135,13 @@ def missing_billing_plan_rows(filters=None):
     unit = (filters.get("unit") or "").strip()
     rows = []
     for child in _active_children():
-        if is_placeholder_unit(child.family.unit):
+        from .unit_visibility import child_effective_unit, unit_label_for_child
+
+        child_unit = child_effective_unit(child)
+        if is_placeholder_unit(child_unit or child.family.unit):
             continue
-        if unit and child.family.unit.slug != unit:
+        unit_name, unit_slug = unit_label_for_child(child)
+        if unit and unit_slug != unit:
             continue
         if query and not _name_match(child.name, child.family.name, query):
             continue
@@ -153,7 +161,7 @@ def missing_billing_plan_rows(filters=None):
                 "family": child.family.name,
                 "family_slug": child.family.slug,
                 "family_id": child.family_id,
-                "unit": child.family.unit.name,
+                "unit": unit_name or child.family.unit.name,
                 "school": _child_school(child) or "—",
                 "billing": (child.family.billing_type or "Private pay").strip() or "Private pay",
                 "plan": plan or "—",
@@ -173,8 +181,6 @@ def ledger_report_rows(filters=None):
     start = parse_date(filters.get("start") or "")
     end = parse_date(filters.get("end") or "")
     entries = PortalLedgerEntry.objects.select_related("family", "family__unit").order_by("-date", "-created_at")
-    if unit:
-        entries = entries.filter(family__unit__slug=unit)
     if entry_type:
         entries = entries.filter(entry_type=entry_type)
     if start:
@@ -188,8 +194,13 @@ def ledger_report_rows(filters=None):
     rows = []
     charges = Decimal("0")
     credits = Decimal("0")
+    unit_obj = PortalUnit.objects.filter(slug=unit, is_active=True).first() if unit else None
+    from .unit_visibility import ledger_entry_visible_to_unit
+
     for entry in entries:
         if is_placeholder_unit(entry.family.unit):
+            continue
+        if unit_obj and not ledger_entry_visible_to_unit(entry, entry.family, unit_obj):
             continue
         amount = entry.amount or Decimal("0")
         if entry.entry_type == "charge":
@@ -484,7 +495,7 @@ def scholarship_report_rows(filters=None):
     fund = (filters.get("fund") or "").strip()
     status = (filters.get("status") or "").strip()
     assignments = PortalScholarshipAssignment.objects.select_related(
-        "child", "child__family", "child__family__unit", "fund"
+        "child", "child__family", "child__family__unit", "child__unit", "fund"
     ).order_by("fund__name", "child__family__name", "child__name")
     if fund:
         assignments = assignments.filter(fund_id=fund)
@@ -496,16 +507,20 @@ def scholarship_report_rows(filters=None):
         )
     rows = []
     for row in assignments:
-        if is_placeholder_unit(row.child.family.unit):
+        from .unit_visibility import child_effective_unit, unit_label_for_child
+
+        child_unit = child_effective_unit(row.child)
+        if is_placeholder_unit(child_unit or row.child.family.unit):
             continue
         discount = (row.full_rate or Decimal("0")) - (row.parent_amount or Decimal("0"))
+        unit_name, _slug = unit_label_for_child(row.child)
         rows.append(
             {
                 "child": row.child.name,
                 "family": row.child.family.name,
                 "family_slug": row.child.family.slug,
                 "family_id": row.child.family_id,
-                "unit": row.child.family.unit.name,
+                "unit": unit_name or row.child.family.unit.name,
                 "fund": row.fund.name,
                 "full_rate": _money(row.full_rate),
                 "discount": _money(discount),
@@ -525,25 +540,30 @@ def scheduled_charge_rows(filters=None):
     from .billing_services import plan_repeat_label
 
     children = (
-        PortalChild.objects.select_related("family", "family__unit")
+        PortalChild.objects.select_related("family", "family__unit", "unit")
         .filter(is_active=True, auto_charge=True)
         .order_by("next_charge_date", "family__name", "name")
     )
     if unit:
-        children = children.filter(family__unit__slug=unit)
+        from .unit_visibility import child_unit_slug_q
+
+        children = children.filter(child_unit_slug_q(unit))
     rows = []
     for child in children:
         if is_placeholder_unit(child.family.unit):
             continue
         if query and not _name_match(child.name, child.family.name, query):
             continue
+        from .unit_visibility import unit_label_for_child
+
+        unit_name, _slug = unit_label_for_child(child)
         rows.append(
             {
                 "child": child.name,
                 "family": child.family.name,
                 "family_slug": child.family.slug,
                 "family_id": child.family_id,
-                "unit": child.family.unit.name,
+                "unit": unit_name or child.family.unit.name,
                 "plan": child.billing_plan or "—",
                 "amount": _money(child.billing_amount) if child.billing_amount is not None else "—",
                 "repeat": plan_repeat_label(child),

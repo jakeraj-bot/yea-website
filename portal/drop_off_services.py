@@ -492,10 +492,12 @@ def pickup_rows(unit=None, care_date=None, include_unpaid=True):
 
 def drop_off_member_rows(unit=None):
     children = PortalChild.objects.filter(is_active=True, is_drop_off=True).select_related(
-        "family", "family__unit"
+        "family", "family__unit", "unit"
     )
     if unit:
-        children = children.filter(family__unit=unit)
+        from .unit_visibility import child_unit_q
+
+        children = children.filter(child_unit_q(unit))
     rows = []
     for child in children.order_by("family__unit__name", "name"):
         rows.append(
@@ -505,7 +507,7 @@ def drop_off_member_rows(unit=None):
                 "family": child.family.name,
                 "family_slug": child.family.slug,
                 "family_id": child.family_id,
-                "unit": child.family.unit.name if child.family.unit_id else "",
+                "unit": (child.unit.name if child.unit_id else "") or (child.family.unit.name if child.family.unit_id else ""),
                 "parent": child.family.primary_contact,
                 "program": PROGRAM_DROP_OFF,
             }

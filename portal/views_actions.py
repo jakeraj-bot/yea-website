@@ -1278,6 +1278,12 @@ def staff_billing_action(request, family_slug):
         if action == "charge":
             if not permissions.get("can_add_charge"):
                 raise ValueError("Your role cannot post charges.")
+            child_name = request.POST.get("child_name", "").strip()
+            if unit:
+                from .unit_visibility import child_name_allowed_for_unit
+
+                if not child_name_allowed_for_unit(family, child_name, unit):
+                    raise ValueError("That child is not enrolled at this program site.")
             post_charge(
                 family,
                 request.POST.get("child_name", "").strip(),
@@ -1439,16 +1445,19 @@ def staff_update_child_school(request):
             child_id = request.POST.get("child_id", "").strip()
             application_id = request.POST.get("application_id", "").strip()
             if child_id:
-                children = PortalChild.objects.select_related("family")
+                children = PortalChild.objects.select_related("family", "unit")
                 if unit:
-                    children = children.filter(family__unit=unit)
+                    from .unit_visibility import child_unit_q
+
+                    children = children.filter(child_unit_q(unit))
                 child = children.filter(pk=child_id).first()
             if application_id:
                 from enrollment.models import EnrollmentApplication
+                from enrollment.locations import enrollment_keys_for_unit
 
                 applications = EnrollmentApplication.objects.select_related("portal_family")
                 if unit:
-                    applications = applications.filter(portal_family__unit=unit)
+                    applications = applications.filter(program_location__in=enrollment_keys_for_unit(unit))
                 application = applications.filter(pk=application_id).first()
                 if not child and application and application.portal_family:
                     family = resolve_family(

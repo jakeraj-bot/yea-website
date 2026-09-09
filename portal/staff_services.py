@@ -31,6 +31,7 @@ from .demo_data import (
 from .live_services import count_messages_unread_live
 from .medical import alerts_from_medical_dict, application_for_child, medical_from_application
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram
+from .unit_visibility import children_for_unit, families_qs_for_unit
 from .parent_services import get_parent_policy_data_live
 from .pickup_services import pickup_report_data, pickup_report_programs
 
@@ -41,7 +42,7 @@ def get_programs_for_unit(unit):
         return []
     rows = []
     for program in programs:
-        enrolled = PortalChild.objects.filter(family__unit=unit, is_active=True).count()
+        enrolled = children_for_unit(unit, active_only=True).count()
         rows.append(
             {
                 "name": program.name,
@@ -55,11 +56,7 @@ def get_programs_for_unit(unit):
 
 
 def get_program_roster(unit, program_name=None):
-    children = (
-        PortalChild.objects.filter(family__unit=unit, is_active=True)
-        .select_related("family")
-        .order_by("name")
-    )
+    children = children_for_unit(unit, active_only=True).order_by("name")
     if not children.exists():
         return []
     roster = []
@@ -77,7 +74,7 @@ def get_program_roster(unit, program_name=None):
 
 
 def get_member_summaries_for_unit(unit):
-    families = list(PortalFamily.objects.filter(unit=unit).order_by("name"))
+    families = list(families_qs_for_unit(unit).order_by("name"))
     if not families:
         return []
     summaries = []
@@ -86,6 +83,15 @@ def get_member_summaries_for_unit(unit):
         if not policy_data:
             continue
         children = policy_data.get("children") or []
+        if unit:
+            from .unit_visibility import visible_child_names
+
+            allowed = visible_child_names(family, unit, include_pending=True)
+            children = [
+                child
+                for child in children
+                if (child.get("child_name") or "").strip().lower() in allowed
+            ]
         child_summary = ", ".join(
             f"{child['child_name'].split()[0]} {child['signed_count']}/{child['total_count']}"
             for child in children
@@ -110,13 +116,22 @@ def get_member_summaries_for_unit(unit):
     return summaries
 
 
-def get_family_policies_for_staff(family_slug, family_id=None):
+def get_family_policies_for_staff(family_slug, family_id=None, unit=None):
     from .member_admin import resolve_family
+    from .unit_visibility import visible_child_names
 
-    family = resolve_family(family_slug=family_slug, family_id=family_id)
+    family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
     if family:
         live = get_parent_policy_data_live(family)
         if live:
+            if unit:
+                allowed = visible_child_names(family, unit, include_pending=True)
+                live = dict(live)
+                live["children"] = [
+                    child
+                    for child in (live.get("children") or [])
+                    if (child.get("child_name") or "").strip().lower() in allowed
+                ]
             return live
         if portal_is_live():
             return None
@@ -157,11 +172,7 @@ def get_medical_data_for_child(child_name, family_slug=None):
 
 
 def build_medical_report_rows(unit):
-    children = (
-        PortalChild.objects.filter(family__unit=unit, is_active=True)
-        .select_related("family")
-        .order_by("name")
-    )
+    children = children_for_unit(unit, active_only=True).order_by("name")
     if not children.exists():
         if portal_is_live():
             return []
@@ -223,11 +234,7 @@ def _school_name_for_child(child):
 
 
 def build_school_bus_roster(unit):
-    children = (
-        PortalChild.objects.filter(family__unit=unit, is_active=True)
-        .select_related("family")
-        .order_by("name")
-    )
+    children = children_for_unit(unit, active_only=True).order_by("name")
     if not children.exists():
         if portal_is_live():
             return []
@@ -281,7 +288,7 @@ def pickup_report_for_unit(unit, program_filter="all"):
 
     families = []
     family_details = {}
-    for family in PortalFamily.objects.filter(unit=unit).prefetch_related("children").order_by("name"):
+    for family in families_qs_for_unit(unit).prefetch_related("children", "children__unit").order_by("name"):
         profile = family_profile_live(family.slug, unit=unit, family_id=family.pk)
         if not profile:
             continue
@@ -309,7 +316,7 @@ def build_dashboard_live(unit, program):
     session = build_session_context(unit, program, today, roster) if unit and program else {}
     apps = applications_for_staff(unit) if unit else []
     open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents", "Waitlist")]
-    past_due = PortalFamily.objects.filter(unit=unit, balance__gt=Decimal("0")).count()
+    past_due = families_qs_for_unit(unit).filter(balance__gt=Decimal("0")).count()
     unread = count_messages_unread_live(for_admin=False)
 
     alerts = []
@@ -330,7 +337,7 @@ def build_dashboard_live(unit, program):
             }
         )
     overdue_family = (
-        PortalFamily.objects.filter(unit=unit, balance__gt=Decimal("0")).order_by("-balance").first()
+        families_qs_for_unit(unit).filter(balance__gt=Decimal("0")).order_by("-balance").first()
     )
     if overdue_family:
         alerts.append(
@@ -397,11 +404,7 @@ def weekly_attendance_report_data(unit, program, anchor_date=None):
     weekdays = [monday + timedelta(days=i) for i in range(5)]
     friday = weekdays[4]
     week_days = week_day_columns(weekdays)
-    roster_children = list(
-        PortalChild.objects.filter(family__unit=unit, is_active=True).order_by("name")
-        if unit
-        else []
-    )
+    roster_children = list(children_for_unit(unit, active_only=True).order_by("name") if unit else [])
     present_lookup = {}
     if program and roster_children:
         records = AttendanceRecord.objects.filter(

@@ -51,18 +51,20 @@ def program_units():
 
 
 def resolve_family(family_slug=None, family_id=None, unit=None):
+    from .unit_visibility import family_visible_to_unit
+
     if family_id:
         family = PortalFamily.objects.filter(pk=family_id).select_related("unit").first()
         if family:
-            if unit and family.unit_id != unit.pk:
+            if unit and not family_visible_to_unit(family, unit):
                 return None
             return family
     qs = PortalFamily.objects.select_related("unit")
     if family_slug:
         qs = qs.filter(slug=family_slug)
-    if unit:
-        qs = qs.filter(unit=unit)
     families = list(qs)
+    if unit:
+        families = [family for family in families if family_visible_to_unit(family, unit)]
     if not families:
         return None
     if len(families) == 1:
@@ -652,10 +654,13 @@ def apply_discount_to_family(family, plan_id, child_name=""):
 
 
 def member_reports():
-    children = PortalChild.objects.filter(is_active=True).select_related("family", "family__unit")
+    from .unit_visibility import child_effective_unit, unit_label_for_child
+
+    children = PortalChild.objects.filter(is_active=True).select_related("family", "family__unit", "unit")
     rows = []
     for child in children:
-        if is_placeholder_unit(child.family.unit):
+        child_unit = child_effective_unit(child)
+        if is_placeholder_unit(child_unit or child.family.unit):
             continue
         app = (
             EnrollmentApplication.objects.filter(portal_family=child.family, student_first_name__iexact=child.name.split()[0])
@@ -665,11 +670,12 @@ def member_reports():
         school = child.school or (app.student_school if app else "")
         billing = (child.family.billing_type or "Private pay").strip() or "Private pay"
         plan = child.billing_plan or (app.get_payment_plan_display() if app else "Weekly")
+        unit_name, _unit_slug = unit_label_for_child(child)
         rows.append(
             {
                 "child": child.name,
                 "family": child.family.name,
-                "unit": child.family.unit.name,
+                "unit": unit_name or child.family.unit.name,
                 "school": school or "—",
                 "billing": billing,
                 "plan": plan,
@@ -841,7 +847,9 @@ def rename_children_school(child_ids, school, unit=None):
     school = _normalize_school_name(school)
     children = PortalChild.objects.filter(pk__in=child_ids, is_active=True).select_related("family")
     if unit:
-        children = children.filter(family__unit=unit)
+        from .unit_visibility import child_unit_q
+
+        children = children.filter(child_unit_q(unit))
     updated = 0
     for child in children:
         update_child_school(child=child, school=school)
@@ -854,8 +862,11 @@ def known_school_names(unit=None):
     children = PortalChild.objects.filter(is_active=True)
     applications = EnrollmentApplication.objects.exclude(student_school="")
     if unit:
-        children = children.filter(family__unit=unit)
-        applications = applications.filter(portal_family__unit=unit)
+        from .unit_visibility import child_unit_q
+        from enrollment.locations import enrollment_keys_for_unit
+
+        children = children.filter(child_unit_q(unit))
+        applications = applications.filter(program_location__in=enrollment_keys_for_unit(unit))
     names.update(name.strip() for name in children.exclude(school="").values_list("school", flat=True) if name.strip())
     names.update(
         name.strip() for name in applications.values_list("student_school", flat=True) if name.strip()
@@ -868,6 +879,8 @@ def pending_4cs_children(unit=None):
 
     qs = PortalChild.objects.filter(is_active=True, family__billing_type__iexact="4Cs").select_related("family", "family__unit")
     if unit:
-        qs = qs.filter(family__unit=unit)
+        from .unit_visibility import child_unit_q
+
+        qs = qs.filter(child_unit_q(unit))
     profiled = set(PortalAgencyProfile.objects.values_list("child_id", flat=True))
     return [child for child in qs if child.id not in profiled]

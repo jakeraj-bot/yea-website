@@ -65,8 +65,8 @@ def incident_to_dict(incident):
     }
 
 
-def get_incidents_live():
-    unit = get_unit()
+def get_incidents_live(unit=None):
+    unit = unit or get_unit()
     if not unit:
         return []
     return [
@@ -90,21 +90,19 @@ def get_incident_live(incident_id):
     return None
 
 
-def get_incident_children_live():
-    unit = get_unit()
+def get_incident_children_live(unit=None):
+    from .unit_visibility import children_for_unit
+
+    unit = unit or get_unit()
     if not unit:
         return []
-    return list(
-        PortalChild.objects.filter(family__unit=unit, is_active=True)
-        .order_by("name")
-        .values_list("name", flat=True)
-    )
+    return list(children_for_unit(unit, active_only=True).order_by("name").values_list("name", flat=True))
 
 
-def get_incidents_for_family_live(family_slug):
+def get_incidents_for_family_live(family_slug, unit=None):
     if not family_slug:
         return []
-    return [inc for inc in get_incidents_live() if inc.get("family_slug") == family_slug]
+    return [inc for inc in get_incidents_live(unit) if inc.get("family_slug") == family_slug]
 
 
 def get_incidents_for_child_live(child_name):
@@ -521,22 +519,29 @@ def _child_from_application(app):
 
 
 def family_meta_live(family_slug, unit=None, family_id=None):
+    from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
     from portal.member_admin import resolve_family
+
+    from .unit_visibility import application_belongs_to_unit, child_belongs_to_unit
 
     family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
     if not family:
         return None
-    enrolled = [c.name for c in family.children.filter(is_active=True)]
+    enrolled = [
+        child.name
+        for child in family.children.filter(is_active=True)
+        if child_belongs_to_unit(child, unit)
+    ]
     pending = []
-    from enrollment.models import EnrollmentApplication
-
     for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
         child_name = f"{app.student_first_name} {app.student_last_name}".strip()
         if child_name.lower() not in {name.lower() for name in enrolled} and app.status not in {
             "declined",
             "enrolled",
         }:
+            if unit and not application_belongs_to_unit(app, unit):
+                continue
             pending.append(child_name)
     return {
         "id": family.pk,
@@ -570,6 +575,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
     latest_app = applications[0] if applications else None
 
     from .member_admin import parent_email_for_family
+    from .unit_visibility import application_belongs_to_unit, child_belongs_to_unit, unit_label_for_child
 
     primary = {
         "name": family.primary_contact,
@@ -595,25 +601,43 @@ def family_profile_live(family_slug, unit=None, family_id=None):
             for contact in latest_app.emergency_contacts.all()
         ]
 
-    enrolled_names = {c.name.lower() for c in family.children.filter(is_active=True)}
-    children = [
-        {
-            "name": c.name,
-            "grade": c.grade,
-            "school": c.school,
-            "program": "Drop-off program" if c.is_drop_off else (family.program_label or "After-school program"),
-            "is_drop_off": c.is_drop_off,
-            "note": c.note,
-            "child_id": c.pk,
-            "family_slug": family.slug,
-            "can_edit_school": True,
-        }
-        for c in family.children.filter(is_active=True)
+    visible_children = [
+        child
+        for child in family.children.filter(is_active=True)
+        if child_belongs_to_unit(child, unit)
     ]
+    enrolled_names = {child.name.lower() for child in visible_children}
+    children = []
+    for child in visible_children:
+        unit_name, unit_slug = unit_label_for_child(child)
+        children.append(
+            {
+                "name": child.name,
+                "grade": child.grade,
+                "school": child.school,
+                "program": "Drop-off program" if child.is_drop_off else (family.program_label or "After-school program"),
+                "is_drop_off": child.is_drop_off,
+                "note": child.note,
+                "child_id": child.pk,
+                "family_slug": family.slug,
+                "can_edit_school": True,
+                "unit_name": unit_name,
+                "unit_slug": unit_slug,
+                "location": unit_name,
+            }
+        )
+    pending_count = 0
     for app in applications:
         child_name = f"{app.student_first_name} {app.student_last_name}".strip()
-        if child_name.lower() not in enrolled_names and app.status not in {"declined", "enrolled"}:
-            children.append(_child_from_application(app))
+        if child_name.lower() in enrolled_names or app.status in {"declined", "enrolled"}:
+            continue
+        if unit and not application_belongs_to_unit(app, unit):
+            continue
+        child_row = _child_from_application(app)
+        child_row["unit_name"] = child_row.get("location") or ""
+        children.append(child_row)
+        if app.status in {"under_review", "pending_documents", "approved"}:
+            pending_count += 1
 
     return {
         "family_name": family_display_label(family),
@@ -623,12 +647,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
         "secondary": secondary,
         "children": children,
         "emergency_contacts": emergency_contacts,
-        "pending_application_count": sum(
-            1
-            for app in applications
-            if app.status in {"under_review", "pending_documents", "approved"}
-            and f"{app.student_first_name} {app.student_last_name}".strip().lower() not in enrolled_names
-        ),
+        "pending_application_count": pending_count,
     }
 
 

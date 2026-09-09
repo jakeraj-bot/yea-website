@@ -1,19 +1,40 @@
-from datetime import date
+from datetime import date, time
 
 from decimal import Decimal
 
-from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from enrollment.application_review import (
     approve_application,
     repair_family_units_from_applications,
 )
 from enrollment.models import EnrollmentApplication
+from portal.admin_reports import billing_plan_rows
 from portal.admin_services import get_admin_families_live
-from portal.attendance_service import families_for_staff
+from portal.attendance_service import build_roster, families_for_staff
+from portal.billing_services import prepare_billing_for_staff
 from portal.family_list import child_balance_map, expand_demo_families
-from portal.models import PortalFamily, PortalLedgerEntry, PortalUnit
-from portal.staff_services import build_school_bus_roster, filter_school_bus_roster
+from portal.live_services import family_profile_live
+from portal.models import (
+    PortalFamily,
+    PortalLedgerEntry,
+    PortalParentAccount,
+    PortalProgram,
+    PortalStaffAccount,
+    PortalUnit,
+)
+from portal.parent_services import get_profile_live
+from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
+from portal.staff_services import (
+    build_medical_report_rows,
+    build_school_bus_roster,
+    filter_school_bus_roster,
+    get_program_roster,
+    pickup_report_for_unit,
+    weekly_attendance_report_data,
+)
 
 
 def _make_application(family, *, location="school_18", status="approved"):
@@ -328,3 +349,243 @@ class ChildSchoolEditTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.child.refresh_from_db()
         self.assertEqual(self.child.school, "Paterson School 18")
+
+
+def _staff_login(client, user, area="staff"):
+    client.force_login(user)
+    session = client.session
+    session[PORTAL_AUTH_SESSION_KEY] = area
+    session.save()
+
+
+class MultiUnitFamilyVisibilityTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.school_18 = PortalUnit.objects.create(
+            slug="school-18", name="School 18", program_type="after_school", is_active=True
+        )
+        self.school_26 = PortalUnit.objects.create(
+            slug="school-26", name="School 26", program_type="after_school", is_active=True
+        )
+        self.program_18 = PortalProgram.objects.create(
+            unit=self.school_18,
+            name="After-School 18",
+            start_time=time(15, 0),
+            end_time=time(18, 0),
+            is_active=True,
+        )
+        self.program_26 = PortalProgram.objects.create(
+            unit=self.school_26,
+            name="After-School 26",
+            start_time=time(15, 0),
+            end_time=time(18, 0),
+            is_active=True,
+        )
+        self.family = PortalFamily.objects.create(
+            unit=self.school_18,
+            slug="rivera",
+            name="Rivera",
+            primary_contact="Pat Rivera",
+            balance=Decimal("80.00"),
+            status="Active",
+            program_label="After-School",
+        )
+        self.child_a = self.family.children.create(
+            name="Child A Rivera",
+            school="School 18",
+            grade="3rd",
+            is_active=True,
+            unit=self.school_18,
+        )
+        self.child_b = self.family.children.create(
+            name="Child B Rivera",
+            school="School 26",
+            grade="1st",
+            is_active=True,
+            unit=self.school_26,
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name=self.child_a.name,
+            date="2026-09-01",
+            entry_type="charge",
+            description="School 18 tuition",
+            amount=Decimal("35.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name=self.child_b.name,
+            date="2026-09-01",
+            entry_type="charge",
+            description="School 26 tuition",
+            amount=Decimal("45.00"),
+        )
+        self.parent_user = User.objects.create_user(
+            username="parent:rivera",
+            password="ParentPass123",
+            email="pat.rivera@example.com",
+        )
+        PortalParentAccount.objects.create(user=self.parent_user, family=self.family)
+        self.staff_18 = User.objects.create_user(username="staff:s18", password="StaffPass123!")
+        PortalStaffAccount.objects.create(
+            user=self.staff_18,
+            unit=self.school_18,
+            display_name="School 18 Staff",
+            role="Unit director",
+            is_active=True,
+        )
+        self.staff_26 = User.objects.create_user(username="staff:s26", password="StaffPass123!")
+        PortalStaffAccount.objects.create(
+            user=self.staff_26,
+            unit=self.school_26,
+            display_name="School 26 Staff",
+            role="Unit director",
+            is_active=True,
+        )
+        self.admin = User.objects.create_user(username="staff:admin", password="AdminPass123!")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.school_18,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+
+    def test_staff_family_list_only_shows_children_in_their_unit(self):
+        school_18_rows = families_for_staff(self.school_18)
+        school_26_rows = families_for_staff(self.school_26)
+        self.assertEqual({row["child_name"] for row in school_18_rows}, {"Child A Rivera"})
+        self.assertEqual({row["child_name"] for row in school_26_rows}, {"Child B Rivera"})
+        self.assertNotIn("Child B Rivera", [row["child_name"] for row in school_18_rows])
+        self.assertNotIn("Child A Rivera", [row["child_name"] for row in school_26_rows])
+
+    def test_admin_sees_both_children_on_one_family_account(self):
+        rows = get_admin_families_live()
+        rivera = [row for row in rows if row["slug"] == "rivera"]
+        self.assertEqual({row["child_name"] for row in rivera}, {"Child A Rivera", "Child B Rivera"})
+        by_child = {row["child_name"]: row["unit"] for row in rivera}
+        self.assertEqual(by_child["Child A Rivera"], "School 18")
+        self.assertEqual(by_child["Child B Rivera"], "School 26")
+
+    def test_staff_family_profile_hides_the_other_unit_child(self):
+        profile_18 = family_profile_live("rivera", unit=self.school_18, family_id=self.family.pk)
+        profile_26 = family_profile_live("rivera", unit=self.school_26, family_id=self.family.pk)
+        admin_profile = family_profile_live("rivera", family_id=self.family.pk)
+        self.assertEqual({child["name"] for child in profile_18["children"]}, {"Child A Rivera"})
+        self.assertEqual({child["name"] for child in profile_26["children"]}, {"Child B Rivera"})
+        self.assertEqual({child["name"] for child in admin_profile["children"]}, {"Child A Rivera", "Child B Rivera"})
+
+    def test_reports_stay_unit_scoped(self):
+        roster_18 = build_roster(self.school_18, self.program_18, date(2026, 9, 8))
+        roster_26 = build_roster(self.school_26, self.program_26, date(2026, 9, 8))
+        self.assertEqual({row["child"] for row in roster_18}, {"Child A Rivera"})
+        self.assertEqual({row["child"] for row in roster_26}, {"Child B Rivera"})
+
+        medical_18 = {row["child"] for row in build_medical_report_rows(self.school_18)}
+        self.assertEqual(medical_18, {"Child A Rivera"})
+        self.assertNotIn("Child B Rivera", medical_18)
+
+        bus_18_names = [
+            child["child"]
+            for section in build_school_bus_roster(self.school_18)
+            for child in section["children"]
+        ]
+        self.assertEqual(bus_18_names, ["Child A Rivera"])
+        self.assertNotIn("Child B Rivera", bus_18_names)
+
+        program_roster = {row["child"] for row in get_program_roster(self.school_18)}
+        self.assertEqual(program_roster, {"Child A Rivera"})
+
+        _programs, pickup_rows = pickup_report_for_unit(self.school_18)
+        pickup_names = {row["child"] for row in pickup_rows}
+        self.assertIn("Child A Rivera", pickup_names)
+        self.assertNotIn("Child B Rivera", pickup_names)
+
+        weekly = weekly_attendance_report_data(self.school_18, self.program_18, date(2026, 9, 7))
+        self.assertEqual({row["child"] for row in weekly["weekly_rows"]}, {"Child A Rivera"})
+
+        plan_rows = billing_plan_rows({"unit": "school-18"})
+        self.assertEqual({row["child"] for row in plan_rows["rows"]}, {"Child A Rivera"})
+        self.assertNotIn("Child B Rivera", {row["child"] for row in plan_rows["rows"]})
+
+    def test_staff_billing_hides_other_unit_child_names(self):
+        billing = prepare_billing_for_staff(self.family, {"can_add_charge": True}, unit=self.school_18)
+        child_names = {child["name"] for child in billing.get("children") or []}
+        ledger_children = {row.get("child") for row in billing.get("ledger") or []}
+        self.assertEqual(child_names, {"Child A Rivera"})
+        self.assertNotIn("Child B Rivera", child_names)
+        self.assertNotIn("Child B Rivera", ledger_children)
+        self.assertIn("Child A Rivera", ledger_children)
+
+    def test_parent_portal_lists_both_children(self):
+        profile = get_profile_live(self.family, self.family.parent_account)
+        names = {child["name"] for child in profile["children"]}
+        self.assertIn("Child A Rivera", names)
+        self.assertIn("Child B Rivera", names)
+
+    def test_approving_sibling_at_another_school_does_not_move_the_family(self):
+        app = _make_application(self.family, location="school_26", status="under_review")
+        app.student_first_name = "Child C"
+        app.student_last_name = "Rivera"
+        app.student_school = "School 26"
+        app.save()
+        approve_application(app, program_location="school_26")
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.unit_id, self.school_18.id)
+        child_c = self.family.children.get(name="Child C Rivera")
+        self.assertEqual(child_c.unit_id, self.school_26.id)
+        self.assertEqual(repair_family_units_from_applications(), 0)
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.unit_id, self.school_18.id)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_and_admin_and_parent_pages(self):
+        _staff_login(self.client, self.staff_18, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        families = self.client.get(reverse("portal_staff_page", kwargs={"page": "families"}))
+        self.assertEqual(families.status_code, 200)
+        self.assertContains(families, "Child A Rivera")
+        self.assertNotContains(families, "Child B Rivera")
+        profile = self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(profile.status_code, 200)
+        self.assertContains(profile, "Child A Rivera")
+        self.assertNotContains(profile, "Child B Rivera")
+        attendance = self.client.get(reverse("portal_staff_page", kwargs={"page": "attendance"}))
+        self.assertEqual(attendance.status_code, 200)
+        self.assertContains(attendance, "Child A Rivera")
+        self.assertNotContains(attendance, "Child B Rivera")
+        medical = self.client.get(reverse("portal_staff_medical_report"))
+        self.assertEqual(medical.status_code, 200)
+        self.assertContains(medical, "Child A Rivera")
+        self.assertNotContains(medical, "Child B Rivera")
+
+        _staff_login(self.client, self.staff_26, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-26"
+        session.save()
+        families_26 = self.client.get(reverse("portal_staff_page", kwargs={"page": "families"}))
+        self.assertEqual(families_26.status_code, 200)
+        self.assertContains(families_26, "Child B Rivera")
+        self.assertNotContains(families_26, "Child A Rivera")
+
+        _staff_login(self.client, self.admin, "admin")
+        admin_families = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertEqual(admin_families.status_code, 200)
+        self.assertContains(admin_families, "Child A Rivera")
+        self.assertContains(admin_families, "Child B Rivera")
+        admin_account = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(admin_account.status_code, 200)
+        self.assertContains(admin_account, "Child A Rivera")
+        self.assertContains(admin_account, "Child B Rivera")
+
+        self.client.force_login(self.parent_user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "parent"
+        session.save()
+        parent_profile = self.client.get(reverse("portal_parent_page", kwargs={"page": "profile"}))
+        self.assertEqual(parent_profile.status_code, 200)
+        self.assertContains(parent_profile, "Child A Rivera")
+        self.assertContains(parent_profile, "Child B Rivera")
