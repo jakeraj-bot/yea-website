@@ -231,7 +231,7 @@ def families_for_staff(unit):
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
 
-    from .family_list import child_balance_map, expand_family_record
+    from .family_list import child_balance_map, expand_family_record, sort_family_child_rows
 
     repair_family_units_from_applications()
     families = families_qs_for_unit(unit).prefetch_related("children", "children__unit").order_by("name")
@@ -284,7 +284,7 @@ def families_for_staff(unit):
             "has_application": family.enrollment_applications.exists(),
         }
         rows.extend(expand_family_record(base_row, children_specs, family.balance))
-    return rows
+    return sort_family_child_rows(rows)
 
 
 def attendance_redirect(request, attendance_date, extra_query=""):

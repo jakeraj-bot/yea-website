@@ -338,14 +338,14 @@ def get_admin_families_live():
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import family_display_label
 
-    from .family_list import child_balance_map, expand_family_record
+    from .family_list import child_balance_map, expand_family_record, sort_family_child_rows
     from .models import PortalParentAccount
     from .unit_visibility import unit_label_for_child
     from enrollment.locations import get_location_label, get_unit_for_enrollment_key
 
     repair_family_units_from_applications()
     rows = []
-    for family in PortalFamily.objects.select_related("unit").prefetch_related("children", "children__unit").order_by("unit__name", "name"):
+    for family in PortalFamily.objects.select_related("unit").prefetch_related("children", "children__unit").order_by("name"):
         balances = child_balance_map(family)
         active_children = list(family.children.filter(is_active=True).order_by("name"))
         enrolled_lower = {child.name.lower() for child in active_children}
@@ -392,7 +392,7 @@ def get_admin_families_live():
             "has_application": family.enrollment_applications.exists(),
         }
         rows.extend(expand_family_record(base_row, children_specs, family.balance))
-    return rows
+    return sort_family_child_rows(rows)
 
 
 def get_agencies_admin_live():
