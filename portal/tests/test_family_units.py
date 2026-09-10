@@ -812,3 +812,34 @@ class FamiliesListVisitTests(TestCase):
         self.assertIn('params.set("list", "1")', script)
         self.assertIn('params.set("unit", state.unit)', script)
         self.assertIn("child_id", script)
+        self.assertIn("packVisibleColumns", script)
+        self.assertIn("portal-families-table--packed", script)
+        self.assertIn("COL_MIN_WIDTHS", script)
+
+    def test_families_hidden_columns_collapse_instead_of_leaving_gaps(self):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        script = root.joinpath("static/js/staff-families-table.js").read_text()
+        css = root.joinpath("static/css/portal.css").read_text()
+        admin_html = root.joinpath("templates/portal/admin/families.html").read_text()
+        staff_html = root.joinpath("templates/portal/staff/families.html").read_text()
+
+        self.assertIn("packVisibleColumns();", script)
+        self.assertIn('table.classList.toggle("portal-families-table--packed", hiddenAny)', script)
+        self.assertIn('table.style.minWidth = hiddenAny ? minWidth + "rem" : ""', script)
+        self.assertIn("STORAGE_KEY", script)
+        self.assertIn("yea-staff-families-prefs-v6", script)
+
+        self.assertIn(".portal-families-table th[hidden]", css)
+        self.assertIn(".portal-families-table td[hidden]", css)
+        self.assertIn("display: none !important;", css)
+        packed_rule = css.split(".portal-families-table.portal-families-table--packed")[1].split("}")[0]
+        self.assertIn("table-layout: auto", packed_rule)
+        families_print = css.split(".portal-families-table.portal-families-table--packed")[1]
+        self.assertIn("@media print", families_print)
+        self.assertIn(".portal-families-table th[hidden]", families_print.split("@media print", 1)[1])
+        self.assertIn("display: none !important;", families_print.split("@media print", 1)[1])
+
+        self.assertIn("staff-families-table.js", admin_html)
+        self.assertIn("staff-families-table.js", staff_html)
