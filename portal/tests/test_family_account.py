@@ -497,8 +497,9 @@ class FamilyNeighborNavTests(TestCase):
         self.assertNotContains(billing, "portal-family-neighbor-nav")
         profile_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"})
         neighbor = billing.context["family_next"]
-        self.assertEqual(neighbor["url"], next_billing)
-        self.assertNotEqual(neighbor["url"], profile_url)
+        self.assertTrue(neighbor["url"].startswith(next_billing))
+        self.assertIn("Ada Jacobs", neighbor["url"] + neighbor["name"])
+        self.assertNotEqual(neighbor["url"].split("?")[0], profile_url)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_next_preserves_id_and_stays_on_billing(self):
@@ -512,10 +513,9 @@ class FamilyNeighborNavTests(TestCase):
         self.assertContains(billing, "Next · Ada Lee")
         self.assertContains(billing, f"{next_path}?id={self.lee.pk}")
         self.assertNotContains(billing, "portal-family-neighbor-nav")
-        self.assertEqual(
-            billing.context["family_next"]["url"],
-            f"{next_path}?id={self.lee.pk}",
-        )
+        next_url = billing.context["family_next"]["url"]
+        self.assertTrue(next_url.startswith(f"{next_path}?"))
+        self.assertIn(f"id={self.lee.pk}", next_url)
 
         last = self.client.get(
             reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"}),
@@ -552,3 +552,139 @@ class FamilyNeighborNavTests(TestCase):
         next_path = reverse("portal_admin_parent_preview", kwargs={"family_slug": "jacobs"})
         self.assertContains(response, f"{next_path}?id={self.jacobs.pk}")
         self.assertContains(response, "Next: Ada Jacobs")
+
+
+class FamilyListPagerFilterTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.school_18 = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.school_26 = PortalUnit.objects.create(slug="school-26", name="School 26", is_active=True)
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.school_18,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff = User.objects.create_user(username="staff:unit18", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff,
+            unit=self.school_18,
+            display_name="School 18 Staff",
+            role="Unit director",
+            all_units_access=False,
+            is_active=True,
+        )
+        names_18 = [
+            ("ava", "Ava Brooks"),
+            ("ben", "Ben Carter"),
+            ("cara", "Cara Diaz"),
+            ("drew", "Drew Evans"),
+        ]
+        self.families_18 = []
+        for slug, child_name in names_18:
+            family = PortalFamily.objects.create(unit=self.school_18, slug=slug, name=child_name.split()[-1], status="Active")
+            family.children.create(name=child_name, school="Paterson School 18", is_active=True)
+            self.families_18.append(family)
+        other = PortalFamily.objects.create(unit=self.school_26, slug="zoe", name="Foster", status="Active")
+        other.children.create(name="Zoe Foster", school="Paterson School 26", is_active=True)
+        self.other = other
+
+    def _login(self, user, area):
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = area
+        session.save()
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_filtered_unit_opens_third_child_as_three_of_n(self):
+        self._login(self.admin, "admin")
+        cara = self.families_18[2]
+        cara_child = cara.children.get()
+        response = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "cara"}),
+            {
+                "id": cara.pk,
+                "child_id": cara_child.pk,
+                "child": "Cara Diaz",
+                "unit": "school-18",
+                "list": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["family_nav_index"], 3)
+        self.assertEqual(response.context["family_nav_count"], 4)
+        self.assertContains(response, "3 of 4")
+        nxt = response.context["family_next"]
+        self.assertEqual(nxt["slug"], "drew")
+        self.assertEqual(nxt["name"], "Drew Evans")
+        self.assertIn("unit=school-18", nxt["url"])
+        self.assertIn("list=1", nxt["url"])
+        self.assertNotEqual(nxt["slug"], "zoe")
+
+        next_page = self.client.get(nxt["url"])
+        self.assertEqual(next_page.status_code, 200)
+        self.assertEqual(next_page.context["family_nav_index"], 4)
+        self.assertEqual(next_page.context["family_nav_count"], 4)
+        self.assertContains(next_page, "4 of 4")
+        self.assertIsNone(next_page.context["family_next"])
+        self.assertNotIn("zoe", (next_page.context["family_prev"] or {}).get("slug", ""))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_unfiltered_pager_includes_every_visible_child(self):
+        self._login(self.admin, "admin")
+        cara = self.families_18[2]
+        response = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "cara"}),
+            {"id": cara.pk, "child": "Cara Diaz", "list": "1"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["family_nav_count"], 5)
+        self.assertEqual(response.context["family_nav_index"], 3)
+        self.assertEqual(response.context["family_next"]["name"], "Drew Evans")
+
+        unfiltered = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "cara"}),
+            {"id": cara.pk, "child": "Cara Diaz"},
+        )
+        self.assertEqual(unfiltered.context["family_nav_count"], 5)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_pager_walks_sibling_child_rows_in_same_family(self):
+        family = PortalFamily.objects.create(unit=self.school_18, slug="twins", name="Twins", status="Active")
+        older = family.children.create(name="Mia Twins", school="Paterson School 18", is_active=True)
+        younger = family.children.create(name="Noah Twins", school="Paterson School 18", is_active=True)
+        self._login(self.admin, "admin")
+        response = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "twins"}),
+            {
+                "id": family.pk,
+                "child_id": older.pk,
+                "child": "Mia Twins",
+                "unit": "school-18",
+                "list": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["family_next"]["name"], "Noah Twins")
+        self.assertEqual(response.context["family_next"]["slug"], "twins")
+        self.assertIn(f"child_id={younger.pk}", response.context["family_next"]["url"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_pager_stays_in_staff_unit(self):
+        self._login(self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        cara = self.families_18[2]
+        response = self.client.get(
+            reverse("portal_staff_family_detail", kwargs={"family_slug": "cara"}),
+            {"child": "Cara Diaz", "list": "1"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["family_nav_index"], 3)
+        self.assertEqual(response.context["family_nav_count"], 4)
+        self.assertEqual(response.context["family_next"]["name"], "Drew Evans")
+        self.assertNotEqual(response.context["family_next"]["slug"], "zoe")

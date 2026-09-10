@@ -263,7 +263,18 @@ def _family_list_rows_for_neighbors(area, unit=None):
     return demo_family_list_rows(area)
 
 
-def _family_hub_url(area, family_tab, slug, family_id=None, parent_page=None):
+def _family_hub_url(
+    area,
+    family_tab,
+    slug,
+    family_id=None,
+    parent_page=None,
+    list_nav=None,
+    child_id=None,
+    child_name=None,
+):
+    from .family_list import family_list_querystring
+
     if family_tab == "parentview":
         if area != "admin":
             family_tab = "profile"
@@ -274,43 +285,82 @@ def _family_hub_url(area, family_tab, slug, family_id=None, parent_page=None):
             )
         else:
             url = reverse("portal_admin_parent_preview", kwargs={"family_slug": slug})
-        if family_id:
-            url = f"{url}?id={family_id}"
-        return url
-    key = FAMILY_TAB_URL_KEYS.get(family_tab, "family_detail")
-    prefix = "portal_admin_" if area == "admin" else "portal_staff_"
-    url = reverse(f"{prefix}{key}", kwargs={"family_slug": slug})
-    if area == "admin" and family_id:
-        url = f"{url}?id={family_id}"
+    else:
+        key = FAMILY_TAB_URL_KEYS.get(family_tab, "family_detail")
+        prefix = "portal_admin_" if area == "admin" else "portal_staff_"
+        url = reverse(f"{prefix}{key}", kwargs={"family_slug": slug})
+    query = family_list_querystring(
+        list_nav,
+        family_id=family_id if area == "admin" and family_id else None,
+        child_id=child_id,
+        child_name=child_name,
+    )
+    if query:
+        url = f"{url}?{query}"
     return url
 
 
-def _family_neighbor_link(area, household, family_tab, parent_page=None):
-    if not household:
+def _family_neighbor_link(area, row, family_tab, parent_page=None, list_nav=None):
+    from .family_list import child_row_nav_name
+
+    if not row:
         return None
+    child_name = row.get("child_name")
     return {
-        "id": household.get("id"),
-        "slug": household["slug"],
-        "name": household["name"],
+        "id": row.get("id"),
+        "slug": row["slug"],
+        "name": child_row_nav_name(row),
+        "child_id": row.get("child_id"),
+        "child_name": child_name,
         "url": _family_hub_url(
             area,
             family_tab,
-            household["slug"],
-            household.get("id"),
+            row["slug"],
+            row.get("id"),
             parent_page=parent_page,
+            list_nav=list_nav,
+            child_id=row.get("child_id"),
+            child_name=child_name if child_name != "—" else None,
         ),
     }
 
 
 def _family_neighbor_nav(request, area, family_slug, family_tab, family_id=None, parent_page=None):
-    from .family_list import adjacent_households, unique_households_from_rows
+    from .family_list import (
+        adjacent_child_rows,
+        apply_family_list_nav,
+        family_list_querystring,
+        resolve_family_list_nav,
+    )
 
     unit = None if area == "admin" else _staff_unit(request)
-    households = unique_households_from_rows(_family_list_rows_for_neighbors(area, unit))
-    previous, nxt = adjacent_households(households, slug=family_slug, family_id=family_id)
+    list_nav = resolve_family_list_nav(request, area)
+    rows = apply_family_list_nav(_family_list_rows_for_neighbors(area, unit), list_nav)
+    previous, nxt, index, count = adjacent_child_rows(
+        rows,
+        slug=family_slug,
+        family_id=family_id,
+        child_id=list_nav.get("child_id"),
+        child_name=list_nav.get("child"),
+    )
+    current = rows[index - 1] if index else None
+    current_query = family_list_querystring(
+        list_nav,
+        family_id=family_id if area == "admin" and family_id else None,
+        child_id=list_nav.get("child_id") or (current or {}).get("child_id"),
+        child_name=list_nav.get("child") or (current or {}).get("child_name"),
+    )
     return {
-        "family_prev": _family_neighbor_link(area, previous, family_tab, parent_page=parent_page),
-        "family_next": _family_neighbor_link(area, nxt, family_tab, parent_page=parent_page),
+        "family_prev": _family_neighbor_link(
+            area, previous, family_tab, parent_page=parent_page, list_nav=list_nav
+        ),
+        "family_next": _family_neighbor_link(
+            area, nxt, family_tab, parent_page=parent_page, list_nav=list_nav
+        ),
+        "family_nav_index": index,
+        "family_nav_count": count,
+        "family_list_nav": list_nav,
+        "family_account_query": current_query,
     }
 
 

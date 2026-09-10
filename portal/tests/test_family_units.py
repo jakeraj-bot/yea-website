@@ -203,6 +203,25 @@ class FamilyListRowTests(TestCase):
         self.assertEqual(previous["slug"], "chen")
         self.assertIsNone(nxt)
 
+    def test_filtered_child_rows_keep_table_order_and_position(self):
+        from portal.family_list import adjacent_child_rows, apply_family_list_nav
+
+        rows = [
+            {"id": 1, "slug": "ava", "name": "Brooks", "child_name": "Ava Brooks", "child_id": 11, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 2, "slug": "ben", "name": "Carter", "child_name": "Ben Carter", "child_id": 12, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 3, "slug": "cara", "name": "Diaz", "child_name": "Cara Diaz", "child_id": 13, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 4, "slug": "zoe", "name": "Foster", "child_name": "Zoe Foster", "child_id": 14, "unit": "School 26", "unit_slug": "school-26", "school": "Paterson School 26", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+        ]
+        filtered = apply_family_list_nav(rows, {"unit": "school-18", "sort": "child-asc"})
+        self.assertEqual([row["child_name"] for row in filtered], ["Ava Brooks", "Ben Carter", "Cara Diaz"])
+        previous, nxt, index, count = adjacent_child_rows(
+            filtered, slug="cara", family_id=3, child_id=13, child_name="Cara Diaz"
+        )
+        self.assertEqual(index, 3)
+        self.assertEqual(count, 3)
+        self.assertEqual(previous["child_name"], "Ben Carter")
+        self.assertIsNone(nxt)
+
     def test_family_list_defaults_to_child_name_a_to_z(self):
         williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
         adams = PortalFamily.objects.create(unit=self.unit, slug="adams", name="Adams")
@@ -789,3 +808,7 @@ class FamiliesListVisitTests(TestCase):
         self.assertIn("delete saved.search", script)
         self.assertNotIn("toSave.search", script)
         self.assertIn('sort: "child-asc"', script)
+        self.assertIn("applyListLinks", script)
+        self.assertIn('params.set("list", "1")', script)
+        self.assertIn('params.set("unit", state.unit)', script)
+        self.assertIn("child_id", script)
