@@ -11,10 +11,11 @@
   <div class="container">
     {% include "portal/includes/application_tabs.html" %}
     <div class="portal-toolbar">
-      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
+      <a class="btn btn-primary" href="{% url 'portal_staff_review_all' %}">Review all</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='create-application' %}">+ Create application</a>
     </div>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (oldest first)" sort_options="Submitted (oldest first),Submitted (newest first)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table">
@@ -33,7 +34,7 @@
         </thead>
         <tbody>
           {% for app in applications %}
-          <tr>
+          <tr data-submitted="{{ app.submitted_sort }}">
             <td><strong>{{ app.child }}</strong></td>
             <td class="portal-medical-cell">{% medical_badges app.child %}</td>
             <td>{{ app.family }}</td>
