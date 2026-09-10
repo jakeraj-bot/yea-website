@@ -25,9 +25,24 @@
     columns: {},
   };
 
+  function visitSearchQuery() {
+    try {
+      return new URLSearchParams(window.location.search).get("q") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function applyVisitSearch() {
+    state.search = visitSearchQuery();
+    searchInput.value = state.search;
+    state.page = 1;
+  }
+
   function loadPrefs() {
     try {
       var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      delete saved.search;
       Object.assign(state, saved);
     } catch (e) {
       /* ignore */
@@ -40,15 +55,23 @@
         state.columns[col] = input.checked;
       }
     });
-    searchInput.value = state.search || "";
     filterSelect.value = state.filter || "all";
     if (unitFilterSelect) unitFilterSelect.value = state.unit || "all";
     sortSelect.value = state.sort || "name-asc";
     pageSizeSelect.value = state.pageSize || "25";
+    applyVisitSearch();
   }
 
   function savePrefs() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    var toSave = {
+      filter: state.filter,
+      unit: state.unit,
+      sort: state.sort,
+      pageSize: state.pageSize,
+      page: state.page,
+      columns: state.columns,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   }
 
   function parseBalance(value) {
@@ -291,4 +314,9 @@
 
   loadPrefs();
   render();
+
+  window.addEventListener("pageshow", function () {
+    applyVisitSearch();
+    render();
+  });
 })();

@@ -29,6 +29,33 @@ def child_balance_map(family):
     return balances
 
 
+def _name_sort_key(value):
+    return (value or "").casefold()
+
+
+def sort_family_child_rows(rows):
+    """Family name A–Z, then child name A–Z. First child in each household keeps the action row."""
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: (
+            _name_sort_key(row.get("name")),
+            _name_sort_key(row.get("child_name")),
+            row.get("slug") or "",
+            row.get("id") or 0,
+        ),
+    )
+    seen = set()
+    for row in sorted_rows:
+        family_id = row.get("id")
+        if family_id is not None:
+            key = ("id", family_id)
+        else:
+            key = ("slug", row.get("unit"), row.get("slug"))
+        row["is_first_child"] = key not in seen
+        seen.add(key)
+    return sorted_rows
+
+
 def expand_family_record(base_row, children_specs, family_balance):
     """Turn one family dict into one table row per child."""
     family_balance = format(Decimal(str(family_balance)), ".2f")
@@ -47,8 +74,9 @@ def expand_family_record(base_row, children_specs, family_balance):
             }
         ]
 
+    ordered_children = sorted(children_specs, key=lambda child: _name_sort_key(child.get("name")))
     rows = []
-    for index, child in enumerate(children_specs):
+    for index, child in enumerate(ordered_children):
         child_balance = child.get("balance", "0.00")
         if not isinstance(child_balance, str):
             child_balance = format(Decimal(str(child_balance)), ".2f")
@@ -73,7 +101,7 @@ def expand_family_record(base_row, children_specs, family_balance):
 
 def expand_demo_families(families):
     rows = []
-    for family in families:
+    for family in sorted(families, key=lambda item: _name_sort_key(item.get("name"))):
         slug = family["slug"]
         billing = FAMILIES_BILLING.get(slug, {})
         child_balance_lookup = {child["name"]: child["balance"] for child in billing.get("children", [])}
@@ -87,7 +115,7 @@ def expand_demo_families(families):
         ]
         base = {key: value for key, value in family.items() if key != "children"}
         rows.extend(expand_family_record(base, children_specs, family["balance"]))
-    return rows
+    return sort_family_child_rows(rows)
 
 
 def demo_family_list_rows(area):
