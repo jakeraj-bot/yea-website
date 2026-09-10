@@ -395,6 +395,8 @@ class ReportsPrintCssTests(TestCase):
         self.assertIn("overflow: visible !important", print_css)
         self.assertIn("min-width: 0 !important", print_css)
         self.assertIn("white-space: normal !important", print_css)
+        self.assertIn("overflow-wrap: break-word", print_css)
+        self.assertNotIn("overflow-wrap: anywhere", print_css)
         self.assertIn("page-break-inside: auto", print_css)
         self.assertIn("position: static !important", print_css)
         self.assertIn(".portal-toolbar", print_css)

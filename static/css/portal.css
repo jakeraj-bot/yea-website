@@ -2902,7 +2902,7 @@
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    table-layout: auto;
+    table-layout: fixed;
     font-size: 0.68rem;
   }
 
@@ -2935,8 +2935,9 @@
   .portal-medical-report-table th,
   .portal-medical-report-table td {
     overflow: visible !important;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
     white-space: normal !important;
     max-width: none !important;
   }
