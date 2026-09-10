@@ -632,10 +632,10 @@ ADMIN_REPORTS = [
         "slug": "emergency-contacts",
     },
     {
-        "name": "Attendance by grade",
-        "description": "Printable attendance grouped by grade — filter by unit, program, school, date or week, and present/absent",
+        "name": "Weekly attendance",
+        "description": "Monday–Friday attendance sheet — filter by unit, program, school, or multiple grades. Chosen grades stay on one sheet.",
         "format": "PDF / CSV",
-        "slug": "attendance-by-grade",
+        "slug": "weekly-attendance",
     },
     {
         "name": "Organization enrollment summary",
@@ -1624,15 +1624,9 @@ STAFF_REPORTS = [
     },
     {
         "name": "Weekly attendance summary",
-        "description": "Mon–Fri totals per child",
-        "format": "PDF",
-        "slug": "weekly-attendance",
-    },
-    {
-        "name": "Attendance by grade",
-        "description": "Printable attendance grouped by grade — filter by program, school, date or week, child, and present/absent",
+        "description": "Mon–Fri totals per child. Check one or more grades to print those kids on the same sheet.",
         "format": "PDF / CSV",
-        "slug": "attendance-by-grade",
+        "slug": "weekly-attendance",
     },
     {
         "name": "Daily attendance (blank)",

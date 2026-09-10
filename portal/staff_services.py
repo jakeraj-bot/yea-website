@@ -462,41 +462,169 @@ def build_dashboard_live(unit, program):
     }
 
 
-def weekly_attendance_report_data(unit, program, anchor_date=None):
-    """Mon–Fri present/absent marks plus printable weekday column labels."""
-    from .report_sheets import week_day_columns, _weekday_monday
+def _normalized_grade_list(grades):
+    if not grades:
+        return []
+    if isinstance(grades, str):
+        grades = [part.strip() for part in grades.split(",")]
+    return [str(item).strip() for item in grades if str(item).strip()]
 
-    anchor_date = anchor_date or timezone.localdate()
+
+def _grade_sort_key(grade):
+    raw = (grade or "").strip()
+    lower = raw.lower()
+    if lower in {"k", "kindergarten"}:
+        return (0, 0, lower)
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if digits:
+        return (1, int(digits), lower)
+    return (2, 0, lower)
+
+
+def _weekly_status_label(status_keys):
+    if AttendanceRecord.STATUS_PRESENT in status_keys:
+        return AttendanceRecord.STATUS_PRESENT, "Present"
+    if AttendanceRecord.STATUS_ABSENT in status_keys:
+        return AttendanceRecord.STATUS_ABSENT, "Absent"
+    return AttendanceRecord.STATUS_EXPECTED, "Not arrived"
+
+
+def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None, *, admin=False):
+    """Mon–Fri present/absent marks plus printable weekday column labels.
+
+    Empty grade filter includes every grade. Selected grades stay on one sheet.
+    Staff stay scoped to the header unit, including a child at that site whose
+    family account lives elsewhere.
+    """
+    from .member_admin import is_placeholder_unit
+    from .models import PortalProgram, PortalUnit
+    from .report_sheets import parse_sheet_date, week_day_columns, _weekday_monday
+    from .unit_visibility import unit_label_for_child
+
+    filters = dict(filters or {})
+    raw_date = (filters.get("date") or "").strip()
+    if raw_date:
+        anchor_date = parse_sheet_date(raw_date)
+    else:
+        anchor_date = anchor_date or timezone.localdate()
+
     monday = _weekday_monday(anchor_date)
     weekdays = [monday + timedelta(days=i) for i in range(5)]
     friday = weekdays[4]
     week_days = week_day_columns(weekdays)
-    roster_children = list(children_for_unit(unit, active_only=True).order_by("name") if unit else [])
+    selected_grades = _normalized_grade_list(filters.get("grades") or filters.get("grade"))
+    selected_grade_keys = {grade.lower() for grade in selected_grades}
+    query = (filters.get("q") or "").strip().lower()
+    school = (filters.get("school") or "").strip()
+    status_filter = (filters.get("status") or "").strip()
+    program_id = (filters.get("program") or "").strip()
+    unit_slug = (filters.get("unit") or "").strip() if admin else ""
+
+    scoped_unit = unit
+    if admin:
+        scoped_unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first() if unit_slug else None
+
+    if admin and not scoped_unit:
+        roster_children = [
+            child
+            for child in PortalChild.objects.filter(is_active=True)
+            .select_related("family", "family__unit", "unit")
+            .order_by("name", "id")
+            if not is_placeholder_unit(child.unit or (child.family.unit if child.family_id else None))
+        ]
+    else:
+        roster_children = list(children_for_unit(scoped_unit, active_only=True).order_by("name", "id"))
+
+    programs_qs = PortalProgram.objects.filter(is_active=True).select_related("unit").order_by("unit__name", "name")
+    if scoped_unit:
+        programs_qs = programs_qs.filter(unit=scoped_unit)
+    all_programs = list(programs_qs)
+
+    chosen_program = program
+    if program_id:
+        chosen_program = next((item for item in all_programs if str(item.pk) == program_id), None)
+        if chosen_program is None:
+            chosen_program = PortalProgram.objects.filter(pk=program_id, is_active=True).first()
+    record_programs = [chosen_program] if chosen_program else all_programs
+
     present_lookup = {}
-    if program and roster_children:
+    status_lookup = {}
+    if roster_children and record_programs:
         records = AttendanceRecord.objects.filter(
-            program=program,
+            program_id__in=[item.pk for item in record_programs if item],
             date__in=weekdays,
             child_id__in=[child.pk for child in roster_children],
         )
-        present_lookup = {
-            (record.child_id, record.date): record.status == AttendanceRecord.STATUS_PRESENT
-            for record in records
-        }
+        for record in records:
+            key = (record.child_id, record.date)
+            is_present = record.status == AttendanceRecord.STATUS_PRESENT
+            if key not in present_lookup or is_present:
+                present_lookup[key] = is_present
+                status_lookup[key] = record.status
+
     rows = []
+    option_statuses = set()
     for child in roster_children:
+        family = child.family
+        grade = (child.grade or "").strip() or "—"
+        school_name = (child.school or "").strip()
+        unit_name, child_unit_slug = unit_label_for_child(child)
         day_marks = [bool(present_lookup.get((child.pk, day))) for day in weekdays]
-        rows.append(
-            {
-                "child": child.name,
-                "days": day_marks,
-                "weekday_labels": [column["label"] for column in week_days],
-                "total": sum(1 for present in day_marks if present),
-            }
-        )
+        status_keys = [status_lookup.get((child.pk, day)) for day in weekdays]
+        _status_key, status_label = _weekly_status_label(status_keys)
+        option_statuses.add(status_label)
+        row = {
+            "child": child.name,
+            "family": family.name if family else "",
+            "grade": grade,
+            "school": school_name,
+            "unit": unit_name,
+            "unit_slug": child_unit_slug,
+            "program": chosen_program.name if chosen_program else (record_programs[0].name if record_programs else ""),
+            "days": day_marks,
+            "weekday_labels": [column["label"] for column in week_days],
+            "total": sum(1 for present in day_marks if present),
+            "status": status_label,
+        }
+        if selected_grade_keys and grade.lower() not in selected_grade_keys:
+            continue
+        if query:
+            hay = f"{row['child']} {row['family']}".lower()
+            if query not in hay:
+                continue
+        if school and school_name.lower() != school.lower():
+            continue
+        if status_filter and status_label.lower() != status_filter.lower():
+            continue
+        rows.append(row)
+
+    filter_options = {
+        "grades": sorted(
+            {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
+            key=_grade_sort_key,
+        ),
+        "schools": sorted(
+            {(child.school or "").strip() for child in roster_children if (child.school or "").strip()},
+            key=str.lower,
+        ),
+        "programs": [
+            (str(item.pk), item.name if not admin or not item.unit_id else f"{item.name} · {item.unit.name}")
+            for item in all_programs
+        ],
+        "units": [
+            (item.slug, item.name)
+            for item in PortalUnit.objects.filter(is_active=True).order_by("name")
+            if admin and not is_placeholder_unit(item)
+        ],
+        "statuses": sorted(option_statuses, key=str.lower),
+    }
     return {
         "weekly_rows": rows,
         "week_days": week_days,
         "week_range_display": f"{monday.strftime('%B %d')} – {friday.strftime('%B %d, %Y')}",
+        "filter_options": filter_options,
+        "sheet_date": anchor_date.isoformat(),
+        "generated_date": timezone.localdate().strftime("%B %d, %Y"),
+        "selected_grades": selected_grades,
     }
 

@@ -29,8 +29,6 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'weekly-attendance' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_weekly_attendance_report' %}">Preview &amp; print</a>
-        {% elif report.slug == 'attendance-by-grade' %}
-        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_grade_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'attendance-blank-daily' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_blank_daily' %}">Preview &amp; print</a>
         {% elif report.slug == 'attendance-blank-weekly' %}

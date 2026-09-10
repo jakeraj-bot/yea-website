@@ -616,6 +616,11 @@ urlpatterns = [
         name="portal_admin_member_information_report",
     ),
     path(
+        "admin/reports/print/weekly-attendance/",
+        views.admin_weekly_attendance_report,
+        name="portal_admin_weekly_attendance_report",
+    ),
+    path(
         "admin/reports/print/attendance-by-grade/",
         views.admin_attendance_grade_report,
         name="portal_admin_attendance_grade_report",
