@@ -1620,6 +1620,23 @@ a.partner-logo:hover {
   max-width: 760px;
 }
 
+/* Compact login-style boxes only (drop-in login). Enrollment .apply-container
+   and the desktop apply two-column layout stay unchanged. */
+.auth-login-panel {
+  width: min(26rem, calc(100% - 2rem));
+  max-width: 26rem;
+  margin-inline: auto;
+}
+
+.auth-login-panel .form-group input,
+.auth-login-panel .form-group select,
+.auth-login-panel .apply-form input:not([type="checkbox"]):not([type="radio"]),
+.auth-login-panel .apply-form select {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .apply-form-card {
   background: var(--bg);
   border: var(--accent-border) solid var(--border);
