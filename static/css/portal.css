@@ -1003,7 +1003,6 @@
   white-space: nowrap;
 }
 
-<<<<<<< HEAD
 .portal-table--freeze-first th:first-child,
 .portal-table--freeze-first td:first-child {
   position: sticky;
@@ -1030,8 +1029,6 @@
   }
 }
 
-=======
->>>>>>> origin/main
 .portal-table th.portal-row-num,
 .portal-table td.portal-row-num {
   width: 2.4rem;
