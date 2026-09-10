@@ -1169,6 +1169,18 @@
   padding-bottom: 0.45rem;
 }
 
+.portal-grade-filter {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.portal-grade-filter legend {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+
 .portal-report-missing-row td {
   background: #fff8e8;
 }

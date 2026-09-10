@@ -1932,38 +1932,101 @@ def staff_attendance_report(request):
     )
 
 
+def _weekly_attendance_filters(request):
+    return {
+        "q": request.GET.get("q", "").strip(),
+        "unit": request.GET.get("unit", "").strip(),
+        "program": request.GET.get("program", "").strip(),
+        "school": request.GET.get("school", "").strip(),
+        "date": request.GET.get("date", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+        "grades": [value.strip() for value in request.GET.getlist("grade") if value.strip()],
+    }
+
+
+def _weekly_attendance_csv(weekly_rows, week_days, filename):
+    import csv
+
+    from django.http import HttpResponse
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    headers = ["Child", "Family", "Grade", "Unit", "School"]
+    headers.extend([f"{day['label']} {day['date_short']}" for day in week_days or []])
+    headers.append("Total present")
+    writer.writerow(headers)
+    for row in weekly_rows or []:
+        values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school")]
+        values.extend(["Present" if present else "—" for present in row.get("days") or []])
+        values.append(row.get("total", 0))
+        writer.writerow(values)
+    return response
+
+
+def _weekly_attendance_bundle(request, *, unit=None, admin=False):
+    from .staff_services import weekly_attendance_report_data
+
+    filters = _weekly_attendance_filters(request)
+    sheet_date = parse_sheet_date(filters.get("date"))
+    empty_options = {"grades": [], "schools": [], "programs": [], "units": [], "statuses": []}
+    if admin:
+        live = _portal_data_live()
+        program = None
+    else:
+        live = bool(_portal_data_live() and unit)
+        program = get_active_program(unit) if live and unit else None
+    if live or (admin and _portal_data_live()):
+        weekly = weekly_attendance_report_data(unit, program, sheet_date, filters=filters, admin=admin)
+        roster = build_roster(unit, program, sheet_date) if unit and program else []
+        attendance = (
+            build_session_context(unit, program, sheet_date, roster)
+            if unit and program
+            else {**ATTENDANCE_SESSION, "unit": unit.name if unit else "All units"}
+        )
+    else:
+        weekly = {
+            "weekly_rows": None,
+            "week_days": None,
+            "week_range_display": None,
+            "filter_options": empty_options,
+            "sheet_date": sheet_date.isoformat(),
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_grades": filters["grades"],
+        }
+        roster = ATTENDANCE_ROSTER
+        attendance = ATTENDANCE_SESSION
+    return filters, weekly, attendance, roster
+
+
 @staff_login_required
 @require_GET
 def staff_weekly_attendance_report(request):
     unit = _staff_unit(request) if _portal_data_live() else None
-    program = get_active_program(unit) if unit else None
-    sheet_date = date.today()
-    week_range_display = None
-    if unit and program:
-        from .staff_services import weekly_attendance_report_data
-
-        weekly = weekly_attendance_report_data(unit, program, sheet_date)
-        weekly_rows = weekly["weekly_rows"]
-        weekdays = weekly["week_days"]
-        week_range_display = weekly["week_range_display"]
-        roster = build_roster(unit, program, sheet_date)
-        attendance = build_session_context(unit, program, sheet_date, roster)
-    else:
-        weekly_rows = None
-        weekdays = None
-        attendance = ATTENDANCE_SESSION
-        roster = ATTENDANCE_ROSTER
+    filters, weekly, attendance, roster = _weekly_attendance_bundle(request, unit=unit, admin=False)
+    if request.GET.get("format") == "csv":
+        return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
     return render(
         request,
         "portal/staff/weekly_attendance_report.html",
         _staff_context(
             "Weekly attendance summary",
+            request=request,
             attendance=attendance,
             roster=roster,
-            weekly_rows=weekly_rows,
-            week_days=weekdays,
-            week_range_display=week_range_display or attendance.get("date_display", ""),
+            weekly_rows=weekly.get("weekly_rows"),
+            week_days=weekly.get("week_days"),
+            week_range_display=weekly.get("week_range_display") or attendance.get("date_display", ""),
+            filter_options=weekly.get("filter_options") or {},
+            sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
+            generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
+            selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
+            report_filters=filters,
+            show_unit_filter=False,
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
             staff_page_slug="reports",
+            page_guide_key="weekly-attendance",
         ),
     )
 
@@ -2540,49 +2603,6 @@ def _member_information_filters(request):
     return {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
 
 
-ATTENDANCE_GRADE_FILTER_KEYS = (
-    "q",
-    "unit",
-    "program",
-    "school",
-    "grade",
-    "date",
-    "range",
-    "status",
-)
-
-
-def _attendance_grade_filters(request):
-    return {key: request.GET.get(key, "").strip() for key in ATTENDANCE_GRADE_FILTER_KEYS}
-
-
-def _attendance_grade_csv(report_rows, filename, *, week_days=None):
-    import csv
-
-    from django.http import HttpResponse
-
-    from .attendance_grade_report import PRINT_COLUMNS
-
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    writer = csv.writer(response)
-    if week_days:
-        headers = ["Child", "Family", "Grade", "Unit", "School", "Program"]
-        headers.extend([f"{day['label']} {day['date_short']}" for day in week_days])
-        headers.append("Total present")
-        writer.writerow(headers)
-        for row in report_rows:
-            values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school"), row.get("program")]
-            values.extend(["Present" if day.get("present") else day.get("status") for day in row.get("days") or []])
-            values.append(row.get("total", 0))
-            writer.writerow(values)
-        return response
-    writer.writerow([label for _key, label in PRINT_COLUMNS])
-    for row in report_rows:
-        writer.writerow([row.get(key, "") for key, _label in PRINT_COLUMNS])
-    return response
-
-
 def _member_information_csv(report_rows, filename):
     import csv
 
@@ -2690,44 +2710,9 @@ def staff_member_information_report(request):
 @staff_login_required
 @require_GET
 def staff_attendance_grade_report(request):
-    from .attendance_grade_report import attendance_grade_report_bundle
-
-    unit = _staff_unit(request) if _portal_data_live() else None
-    filters = _attendance_grade_filters(request)
-    if _portal_data_live() and unit:
-        bundle = attendance_grade_report_bundle(filters=filters, unit=unit, admin=False)
-    else:
-        bundle = {
-            "report_rows": [],
-            "grade_groups": [],
-            "filter_options": {"schools": [], "grades": [], "statuses": [], "units": [], "programs": []},
-            "generated_date": date.today().strftime("%B %d, %Y"),
-            "period_display": date.today().strftime("%A, %B %d, %Y"),
-            "range_mode": filters.get("range") or "day",
-            "week_days": [],
-            "sheet_date": date.today().isoformat(),
-        }
-    if request.GET.get("format") == "csv":
-        return _attendance_grade_csv(
-            bundle["report_rows"],
-            "attendance-by-grade.csv",
-            week_days=bundle.get("week_days") if bundle.get("range_mode") == "week" else None,
-        )
-    return render(
-        request,
-        "portal/staff/attendance_grade_report.html",
-        _staff_context(
-            "Attendance by grade",
-            request=request,
-            staff_page_slug="reports",
-            page_guide_key="attendance-by-grade",
-            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
-            hub_label="Reports",
-            show_unit_filter=False,
-            report_filters=filters,
-            **bundle,
-        ),
-    )
+    target = reverse("portal_staff_weekly_attendance_report")
+    query = request.GET.urlencode()
+    return redirect(f"{target}?{query}" if query else target)
 
 
 @staff_login_required
@@ -3967,47 +3952,44 @@ def admin_member_information_report(request):
 
 @require_GET
 @admin_login_required
-def admin_attendance_grade_report(request):
-    from .attendance_grade_report import attendance_grade_report_bundle
-
-    filters = _attendance_grade_filters(request)
-    if _portal_data_live():
-        bundle = attendance_grade_report_bundle(filters=filters, admin=True)
-    else:
-        bundle = {
-            "report_rows": [],
-            "grade_groups": [],
-            "filter_options": {"schools": [], "grades": [], "statuses": [], "units": [], "programs": []},
-            "generated_date": date.today().strftime("%B %d, %Y"),
-            "period_display": date.today().strftime("%A, %B %d, %Y"),
-            "range_mode": filters.get("range") or "day",
-            "week_days": [],
-            "sheet_date": date.today().isoformat(),
-        }
+def admin_weekly_attendance_report(request):
+    filters, weekly, attendance, roster = _weekly_attendance_bundle(request, admin=True)
     if request.GET.get("format") == "csv":
-        return _attendance_grade_csv(
-            bundle["report_rows"],
-            "attendance-by-grade.csv",
-            week_days=bundle.get("week_days") if bundle.get("range_mode") == "week" else None,
-        )
+        return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
     return render(
         request,
-        "portal/staff/attendance_grade_report.html",
+        "portal/staff/weekly_attendance_report.html",
         _finalize_admin_context(
             request,
             _portal_context(
                 "admin",
-                "Attendance by grade",
+                "Weekly attendance summary",
                 admin_page_slug="reports",
-                page_guide_key="attendance-by-grade",
+                page_guide_key="weekly-attendance",
                 hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
                 hub_label="Organization reports",
                 show_unit_filter=True,
                 report_filters=filters,
-                **bundle,
+                attendance=attendance,
+                roster=roster,
+                weekly_rows=weekly.get("weekly_rows"),
+                week_days=weekly.get("week_days"),
+                week_range_display=weekly.get("week_range_display") or attendance.get("date_display", ""),
+                filter_options=weekly.get("filter_options") or {},
+                sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
+                generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
+                selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
             ),
         ),
     )
+
+
+@require_GET
+@admin_login_required
+def admin_attendance_grade_report(request):
+    target = reverse("portal_admin_weekly_attendance_report")
+    query = request.GET.urlencode()
+    return redirect(f"{target}?{query}" if query else target)
 
 
 @require_GET

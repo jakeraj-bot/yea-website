@@ -363,7 +363,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Attendance by grade prints who was present or absent, grouped by grade. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check one or more grades to keep those kids on the same page. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
@@ -375,25 +375,25 @@ GUIDES = {
             },
         ],
     },
-    "attendance-by-grade": {
-        "title": "How to print attendance by grade",
-        "intro": "This sheet groups children by grade so you can print one grade or the whole unit. Use it for a day or a Monday–Friday week.",
+    "weekly-attendance": {
+        "title": "How to print weekly attendance",
+        "intro": "This is the Monday–Friday attendance sheet. Check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
         "steps": [
             {
                 "title": "Check whose children you see",
-                "body": "Staff see only children at the unit in the header. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
+                "body": "Staff see only children at the unit in the header, including a child at this site whose family account is at another unit. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
             },
             {
-                "title": "Pick a day or a week",
-                "body": "One day shows present, absent, and not arrived, plus check-in and check-out times. School week shows Monday through Friday marks and a present total.",
+                "title": "Pick the week and grades",
+                "body": "Choose a date in that school week. Leave grades unchecked to include every grade. Check 2nd and 4th, for example, to print both grades on one weekly grid.",
             },
             {
-                "title": "Filter until only the needed rows remain",
-                "body": "Use program, school, grade, present/absent status, and child or family search. Apply filters, then print only what is on the page.",
+                "title": "Narrow further if you need to",
+                "body": "Use program, school, present/absent status, and child or family search. Apply filters, then print only what is on the page.",
             },
             {
                 "title": "Preview, then print or download",
-                "body": "Each grade has its own heading. Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
+                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
             },
         ],
     },
