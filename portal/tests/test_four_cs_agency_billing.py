@@ -242,26 +242,103 @@ class WaitingAuthorizationAddAgencyTests(TestCase):
         self.assertContains(page, "Add agency")
         self.assertContains(page, f"{add_url}?child_id={self.child.pk}")
 
+    def _agency_save_payload(self, **overrides):
+        payload = {
+            "child_id": str(self.child.pk),
+            "family_slug": "rivera",
+            "child_name": "Ada Rivera",
+            "agency_name": "Passaic County 4Cs",
+            "auth_start": "2026-09-01",
+            "auth_end": "2026-09-30",
+            "daily_agency_rate": "22.00",
+            "weekly_agency_rate": "110.00",
+            "daily_copay": "5.30",
+            "weekly_copay": "26.50",
+            "week_start": ["2026-09-01", "2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28"],
+            "week_end": ["2026-09-04", "2026-09-11", "2026-09-18", "2026-09-25", "2026-09-30"],
+            "week_agency": ["110.00", "110.00", "90.00", "110.00", "110.00"],
+            "week_parent": ["26.50", "26.50", "0.00", "26.50", "26.50"],
+        }
+        payload.update(overrides)
+        return payload
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_saving_agency_from_waiting_child_links_the_member(self):
         self._login(self.admin, "admin")
         response = self.client.post(
             reverse("portal_admin_agency_member_add") + f"?child_id={self.child.pk}",
-            {
-                "child_id": str(self.child.pk),
-                "family_slug": "rivera",
-                "child_name": "Ada Rivera",
-                "agency_name": "Passaic County 4Cs",
-                "auth_start": "2026-09-01",
-                "auth_end": "2026-09-30",
-                "daily_agency_rate": "22.00",
-                "weekly_agency_rate": "110.00",
-                "daily_copay": "5.30",
-                "weekly_copay": "26.50",
-            },
+            self._agency_save_payload(),
         )
+        self.assertNotEqual(response.status_code, 500)
         self.assertEqual(response.status_code, 302)
+        family_agency = reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"})
+        self.assertIn(family_agency, response["Location"])
         profile = PortalAgencyProfile.objects.get(child=self.child)
         self.assertEqual(profile.family_id, self.family.pk)
         self.assertEqual(profile.contract_weeks.count(), 5)
         self.assertEqual(profile.weekly_copay, Decimal("26.50"))
+        self.assertEqual(profile.weekly_agency_rate, Decimal("110.00"))
+        self.assertEqual(
+            profile.contract_weeks.get(week_start=date(2026, 9, 14)).agency_amount,
+            Decimal("90.00"),
+        )
+        self.assertEqual(
+            profile.contract_weeks.get(week_start=date(2026, 9, 14)).parent_amount,
+            Decimal("0.00"),
+        )
+        follow = self.client.get(response["Location"])
+        self.assertEqual(follow.status_code, 200)
+        self.assertContains(follow, "Ada Rivera")
+        self.assertContains(follow, "9/14/26")
+        self.assertContains(follow, "$90.00")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_saving_agency_redirects_with_weeks(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_agency_member_add"),
+            self._agency_save_payload(),
+        )
+        self.assertNotEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response["Location"],
+            reverse("portal_staff_family_agency", kwargs={"family_slug": "rivera"}),
+        )
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        self.assertEqual(profile.contract_weeks.count(), 5)
+        follow = self.client.get(response["Location"])
+        self.assertEqual(follow.status_code, 200)
+        self.assertContains(follow, "Agency expected weeks")
+        self.assertContains(follow, "$110.00")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_editing_agency_keeps_posted_weeks(self):
+        self._login(self.admin, "admin")
+        add = self.client.post(
+            reverse("portal_admin_agency_member_add"),
+            self._agency_save_payload(),
+        )
+        self.assertEqual(add.status_code, 302)
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        edit = self.client.post(
+            reverse("portal_admin_agency_member_edit", kwargs={"profile_id": profile.pk}),
+            self._agency_save_payload(
+                daily_agency_rate="22.00",
+                weekly_agency_rate="110.00",
+                week_agency=["110.00", "75.00", "90.00", "110.00", "110.00"],
+                week_parent=["26.50", "10.00", "0.00", "26.50", "26.50"],
+            ),
+        )
+        self.assertNotEqual(edit.status_code, 500)
+        self.assertEqual(edit.status_code, 302)
+        profile.refresh_from_db()
+        self.assertEqual(
+            profile.contract_weeks.get(week_start=date(2026, 9, 7)).agency_amount,
+            Decimal("75.00"),
+        )
+        self.assertEqual(
+            profile.contract_weeks.get(week_start=date(2026, 9, 7)).parent_amount,
+            Decimal("10.00"),
+        )
+        self.assertEqual(profile.contract_weeks.count(), 5)
