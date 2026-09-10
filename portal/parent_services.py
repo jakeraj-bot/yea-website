@@ -129,17 +129,28 @@ def get_billing_live(family):
         demo = FAMILIES_BILLING.get(family.slug, {})
     ledger_qs = PortalLedgerEntry.objects.filter(family=family)
     if ledger_qs.exists():
-        ledger = [
-            {
-                "date": entry.date.isoformat(),
-                "child": entry.child_name,
-                "type": entry.entry_type,
-                "description": entry.description,
-                "amount": f"{abs(entry.amount):.2f}" if entry.entry_type in ("payment", "discount") else f"{entry.amount:.2f}",
-                "manual": entry.is_manual,
-            }
-            for entry in ledger_qs
-        ]
+        from .processing_fees import backfill_stripe_fee_totals, ledger_paid_totals
+
+        backfill_stripe_fee_totals(family.payments.all())
+        ledger = []
+        for entry in ledger_qs:
+            paid, fee, applied = ledger_paid_totals(entry)
+            if entry.entry_type in ("payment", "discount"):
+                amount = f"{paid:.2f}" if entry.entry_type == "payment" else f"{applied:.2f}"
+            else:
+                amount = f"{entry.amount:.2f}"
+            ledger.append(
+                {
+                    "date": entry.date.isoformat(),
+                    "child": entry.child_name,
+                    "type": entry.entry_type,
+                    "description": entry.description,
+                    "amount": amount,
+                    "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
+                    "applied": f"{applied:.2f}",
+                    "manual": entry.is_manual,
+                }
+            )
     else:
         ledger = demo.get("ledger", [])
 
@@ -493,7 +504,10 @@ def record_successful_payment(payment, method_label="Card"):
 
         family = payment.family
         if payment.payment_kind == "balance":
-            family.balance = family.balance - payment.amount
+            from .processing_fees import payment_charged_totals
+
+            tuition, fee, _charged = payment_charged_totals(payment)
+            family.balance = family.balance - tuition
             family.save(update_fields=["balance"])
             PortalLedgerEntry.objects.create(
                 family=family,
@@ -501,7 +515,9 @@ def record_successful_payment(payment, method_label="Card"):
                 date=timezone.localdate(),
                 entry_type="payment",
                 description=f"Online payment — {method_label}",
-                amount=-payment.amount,
+                amount=-tuition,
+                fee_amount=fee,
+                reference_number=payment.receipt_no or "",
             )
         elif payment.payment_kind == "field_trip":
             from .field_trip_services import mark_field_trip_paid

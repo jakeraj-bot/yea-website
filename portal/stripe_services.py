@@ -200,6 +200,12 @@ def confirm_checkout_payment(session_id):
         return None
     if payment.status == PortalPayment.STATUS_PAID:
         return payment
+    from .processing_fees import apply_fee_to_payment, apply_stripe_session_totals
+
+    if getattr(session, "amount_total", None):
+        apply_stripe_session_totals(payment, session)
+    elif not payment.total_charged:
+        apply_fee_to_payment(payment)
     method_label = "Card"
     payment_intent = getattr(session, "payment_intent", None)
     intent_id = payment_intent if isinstance(payment_intent, str) else getattr(payment_intent, "id", "")
@@ -432,13 +438,27 @@ def refresh_payment_settlement(payment, payout_map=None):
 
     from .models import PortalPayment
 
-    has_stripe = bool(payment.stripe_session_id or payment.stripe_payment_intent_id)
+    has_stripe = bool(
+        (payment.stripe_session_id or "").strip()
+        or (payment.stripe_payment_intent_id or "").strip()
+        or (payment.stripe_charge_id or "").strip()
+    )
     if not has_stripe:
         payment.stripe_bank_status = "not_stripe"
         payment.stripe_settlement_checked_at = timezone.now()
         payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
         return payment
+    already_paid_out = bool((payment.stripe_payout_id or "").strip()) or payment.stripe_bank_status in {
+        "in_bank",
+        "in_transit",
+    }
     if payment.status != PortalPayment.STATUS_PAID:
+        # A leftover pending checkout can still be tied to a payout (same charge/PI).
+        # Do not relabel that as "waiting for card" or it shows in two places.
+        if already_paid_out:
+            payment.stripe_settlement_checked_at = timezone.now()
+            payment.save(update_fields=["stripe_settlement_checked_at"])
+            return payment
         payment.stripe_bank_status = "waiting_for_card"
         payment.stripe_settlement_checked_at = timezone.now()
         payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
