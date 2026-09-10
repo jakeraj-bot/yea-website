@@ -57,7 +57,13 @@
                 {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
               </td>
               {% for present in row.days %}
-              <td class="portal-attendance-mark">{% if present %}✓{% else %}<span class="portal-blank-line portal-blank-line--day" aria-hidden="true">&nbsp;</span>{% endif %}</td>
+              <td class="portal-attendance-mark">
+                {% if present %}
+                <span class="portal-blank-line portal-blank-line--day"><span class="portal-attendance-check">✓</span></span>
+                {% else %}
+                <span class="portal-blank-line portal-blank-line--day" aria-hidden="true">&nbsp;</span>
+                {% endif %}
+              </td>
               {% endfor %}
               <td>{{ row.total }}</td>
             </tr>
