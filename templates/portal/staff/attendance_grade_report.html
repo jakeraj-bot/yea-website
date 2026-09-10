@@ -1,9 +1,7 @@
 {% extends "portal/base.html" %}
 {% load static %}
 {% block portal_content %}
-<style media="print">
-  @page { size: landscape; margin: 0.4in; }
-</style>
+{% include "portal/includes/print_wide.html" %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
     <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Attendance by grade</p>

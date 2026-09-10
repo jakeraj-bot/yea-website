@@ -37,6 +37,12 @@ def _status_label(status):
     return STATUS_LABELS.get(status or AttendanceRecord.STATUS_EXPECTED, "Not arrived")
 
 
+def _format_clock(value):
+    if not value:
+        return BLANK
+    return value.strftime("%I:%M %p").lstrip("0")
+
+
 def _parse_range(filters):
     filters = filters or {}
     raw_date = (filters.get("date") or "").strip()
@@ -254,8 +260,8 @@ def attendance_grade_report_bundle(filters=None, *, unit=None, admin=False):
                 "date": day.isoformat(),
                 "status": _status_label(status_key),
                 "status_key": status_key,
-                "check_in": record.check_in_time.strftime("%-I:%M %p") if record and record.check_in_time else BLANK,
-                "check_out": record.check_out_time.strftime("%-I:%M %p") if record and record.check_out_time else BLANK,
+                "check_in": _format_clock(record.check_in_time if record else None),
+                "check_out": _format_clock(record.check_out_time if record else None),
                 "days": [],
                 "total": 1 if status_key == AttendanceRecord.STATUS_PRESENT else 0,
             }

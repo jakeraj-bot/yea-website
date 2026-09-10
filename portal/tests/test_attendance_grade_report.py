@@ -145,6 +145,29 @@ class AttendanceGradeReportTests(TestCase):
         jordan = next(row for row in week["report_rows"] if row["child"] == "Jordan Jacobs")
         self.assertEqual(len(jordan["days"]), 5)
 
+        split_family = PortalFamily.objects.create(unit=self.school_18, slug="brooks", name="Brooks")
+        other_unit_child = PortalChild.objects.create(
+            family=split_family,
+            unit=self.school_26,
+            name="Miles Brooks",
+            grade="3rd",
+            school="Riverside School",
+            is_active=True,
+        )
+        AttendanceRecord.objects.create(
+            child=other_unit_child,
+            program=self.program_26,
+            date=self.today,
+            status=AttendanceRecord.STATUS_PRESENT,
+        )
+        staff_split = attendance_grade_report_bundle({"date": self.today.isoformat()}, unit=self.school_18, admin=False)
+        self.assertNotIn("Miles Brooks", {row["child"] for row in staff_split["report_rows"]})
+        other_unit = attendance_grade_report_bundle({"date": self.today.isoformat()}, unit=self.school_26, admin=False)
+        self.assertIn("Miles Brooks", {row["child"] for row in other_unit["report_rows"]})
+        admin_all = attendance_grade_report_bundle({"date": self.today.isoformat()}, admin=True)
+        self.assertIn("Miles Brooks", {row["child"] for row in admin_all["report_rows"]})
+        self.assertIn("Jordan Jacobs", {row["child"] for row in admin_all["report_rows"]})
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_and_admin_pages_render(self):
         self._login(self.staff_user, "staff")
@@ -158,6 +181,7 @@ class AttendanceGradeReportTests(TestCase):
         self.assertContains(staff, "Jordan Jacobs")
         self.assertNotContains(staff, "Maya Jacobs")
         self.assertNotContains(staff, "Nia Lee")
+        self.assertContains(staff, "landscape")
 
         self._login(self.admin_user, "admin")
         hub = self.client.get(reverse("portal_admin_page", kwargs={"page": "reports"}))
@@ -166,3 +190,15 @@ class AttendanceGradeReportTests(TestCase):
         self.assertEqual(admin.status_code, 200)
         self.assertContains(admin, "Nia Lee")
         self.assertNotContains(admin, "Jordan Jacobs")
+        self.assertContains(admin, "All units")
+        self.assertContains(admin, "portal-collapse-skip")
+        self.assertContains(admin, "landscape")
+
+        csv_page = self.client.get(
+            reverse("portal_admin_attendance_grade_report"),
+            {"unit": "school-26", "format": "csv"},
+        )
+        self.assertEqual(csv_page.status_code, 200)
+        self.assertIn("text/csv", csv_page["Content-Type"])
+        self.assertIn("Nia Lee", csv_page.content.decode())
+        self.assertNotIn("Jordan Jacobs", csv_page.content.decode())

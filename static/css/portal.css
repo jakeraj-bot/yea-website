@@ -2964,7 +2964,8 @@
     display: none !important;
   }
 
-  .portal-medical-report-section {
+  .portal-medical-report-section,
+  .portal-attendance-grade-heading {
     page-break-after: avoid;
     break-after: avoid;
   }

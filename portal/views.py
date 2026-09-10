@@ -2586,6 +2586,8 @@ def _member_information_csv(report_rows, filename):
     for row in report_rows:
         writer.writerow([row.get(key, "") for key, _label in PRINT_COLUMNS])
     return response
+
+
 def _emergency_contact_filters(request):
     return {
         "unit": request.GET.get("unit", "").strip(),
