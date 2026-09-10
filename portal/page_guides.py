@@ -475,7 +475,7 @@ GUIDES = {
             },
             {
                 "title": "Add a charge or record a payment",
-                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or a card you enter for them.",
+                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, money order, or a card you enter for them.",
             },
             {
                 "title": "Credits and deletes",

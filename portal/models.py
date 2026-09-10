@@ -363,6 +363,7 @@ class PortalLedgerEntry(models.Model):
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_manual = models.BooleanField(default=False)
+    reference_number = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -388,6 +389,7 @@ class PortalPayment(models.Model):
     fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_charged = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     method_label = models.CharField(max_length=120, blank=True)
+    reference_number = models.CharField(max_length=64, blank=True)
     payment_kind = models.CharField(max_length=32, default="balance")
     dropin_child = models.CharField(max_length=120, blank=True)
     dropin_program = models.CharField(max_length=120, blank=True)

@@ -10,6 +10,7 @@ from portal.billing_services import (
     first_plan_charge_date,
     post_credit,
     post_payment,
+    staff_payment_note,
     update_child_billing_plan,
     update_ledger_description,
 )
@@ -17,9 +18,11 @@ from portal.models import (
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
+    PortalPayment,
     PortalStaffAccount,
     PortalUnit,
 )
+from portal.parent_services import get_receipts_live, payment_to_receipt_dict
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
 
@@ -287,6 +290,144 @@ class BillingPlanChargeTests(TestCase):
         self.assertEqual(entry.description, "Weekly tuition — after-school")
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(billing, "Weekly tuition — after-school")
+
+
+class MoneyOrderPaymentTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(unit=self.unit, slug="jacobs", name="Jacobs", status="Active")
+        PortalChild.objects.create(family=self.family, name="Jordan Jacobs", is_active=True)
+        self.admin = User.objects.create_user(username="staff:portaladmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+
+    def _login_admin(self):
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "admin"
+        session.save()
+
+    def test_money_order_note_requires_number(self):
+        with self.assertRaises(ValueError):
+            staff_payment_note("money_order", "Weekly tuition")
+        note, number = staff_payment_note("money_order", "Weekly tuition", money_order_number="1234567")
+        self.assertEqual(note, "Money order #1234567 — Weekly tuition")
+        self.assertEqual(number, "1234567")
+        note, number = staff_payment_note("money_order", "", money_order_number="1234567")
+        self.assertEqual(note, "Money order #1234567")
+        self.assertEqual(number, "1234567")
+
+    def test_check_and_cash_notes_still_work(self):
+        note, number = staff_payment_note("check", "Weekly tuition", check_number="2201")
+        self.assertEqual(note, "Check #2201 — Weekly tuition")
+        self.assertEqual(number, "2201")
+        note, number = staff_payment_note("cash", "Weekly tuition")
+        self.assertEqual(note, "Weekly tuition")
+        self.assertEqual(number, "")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_recording_money_order_stores_method_and_number(self):
+        self._login_admin()
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "payment",
+                "child_name": "Jordan Jacobs",
+                "amount": "45.00",
+                "method": "money_order",
+                "money_order_number": "1234567",
+                "note": "Weekly tuition",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="payment")
+        self.assertEqual(entry.reference_number, "1234567")
+        self.assertEqual(entry.description, "Money order #1234567 — Weekly tuition")
+        self.assertEqual(entry.amount, Decimal("-45.00"))
+        payment = PortalPayment.objects.get(family=self.family)
+        self.assertEqual(payment.method_label, "Money order #1234567")
+        self.assertEqual(payment.reference_number, "1234567")
+        self.assertEqual(payment.status, PortalPayment.STATUS_PAID)
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Money order")
+        self.assertContains(billing, "money_order_number")
+        self.assertContains(billing, "Money order #1234567 — Weekly tuition")
+        receipts = get_receipts_live(self.family)
+        self.assertEqual(receipts[0]["method"], "Money order #1234567")
+        self.assertEqual(receipts[0]["description"], "Money order #1234567")
+        printed = payment_to_receipt_dict(payment, "private-pay")
+        self.assertEqual(printed["paid_through"], "Money order")
+        self.assertIn("Money order #1234567", printed["description"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_money_order_without_number_is_rejected(self):
+        self._login_admin()
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "payment",
+                "child_name": "Jordan Jacobs",
+                "amount": "45.00",
+                "method": "money_order",
+                "note": "Weekly tuition",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(PortalLedgerEntry.objects.filter(family=self.family).exists())
+        self.assertFalse(PortalPayment.objects.filter(family=self.family).exists())
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_cash_and_check_payments_still_record(self):
+        self._login_admin()
+        cash = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "payment",
+                "child_name": "Jordan Jacobs",
+                "amount": "20.00",
+                "method": "cash",
+                "note": "Cash at desk",
+            },
+        )
+        self.assertEqual(cash.status_code, 302)
+        check = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "payment",
+                "child_name": "Jordan Jacobs",
+                "amount": "25.00",
+                "method": "check",
+                "check_number": "2201",
+                "note": "Weekly tuition",
+            },
+        )
+        self.assertEqual(check.status_code, 302)
+        descriptions = list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type="payment")
+            .order_by("created_at")
+            .values_list("description", "reference_number")
+        )
+        self.assertEqual(
+            descriptions,
+            [
+                ("Cash at desk", ""),
+                ("Check #2201 — Weekly tuition", "2201"),
+            ],
+        )
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Cash at desk")
+        self.assertContains(billing, "Check #2201 — Weekly tuition")
 
 
 class FamilyNeighborNavTests(TestCase):

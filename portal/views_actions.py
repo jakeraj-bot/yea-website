@@ -1225,6 +1225,8 @@ def staff_billing_action(request, family_slug):
         post_charge,
         post_credit,
         post_payment,
+        staff_payment_method_label,
+        staff_payment_note,
         update_child_billing_plan,
         update_ledger_description,
     )
@@ -1306,17 +1308,20 @@ def staff_billing_action(request, family_slug):
             messages.success(request, "Credit posted to the family ledger.")
         elif action == "payment":
             method = request.POST.get("method", "cash")
-            method_labels = {"card": "Card (staff entry)", "cash": "Cash", "check": "Check"}
-            note = request.POST.get("note", "")
-            if method == "check" and request.POST.get("check_number"):
-                note = f"Check #{request.POST.get('check_number')} — {note}".strip(" —")
+            note, reference = staff_payment_note(
+                method,
+                request.POST.get("note", ""),
+                check_number=request.POST.get("check_number", ""),
+                money_order_number=request.POST.get("money_order_number", ""),
+            )
             post_payment(
                 family,
                 request.POST.get("child_name", "").strip(),
                 request.POST.get("amount", ""),
                 entry_date,
-                method_labels.get(method, method),
+                staff_payment_method_label(method),
                 note,
+                reference_number=reference,
             )
             messages.success(request, "Payment recorded.")
         elif action == "edit_description":
@@ -1845,13 +1850,23 @@ def staff_agency_action(request):
             family = get_family_for_billing(request.POST.get("family_slug", ""), unit)
             if not family:
                 raise ValueError("Family not found.")
+            from .billing_services import staff_payment_method_label, staff_payment_note
+
+            method = request.POST.get("method") or request.POST.get("method_label", "cash")
+            note, reference = staff_payment_note(
+                method,
+                request.POST.get("note", "Weekly copay"),
+                check_number=request.POST.get("check_number", ""),
+                money_order_number=request.POST.get("money_order_number", ""),
+            )
             post_payment(
                 family,
                 request.POST.get("child_name", "").strip(),
                 request.POST.get("amount", ""),
                 parse_date(request.POST.get("date") or "") or timezone.localdate(),
-                request.POST.get("method_label", "Cash"),
-                request.POST.get("note", "Weekly copay"),
+                staff_payment_method_label(method),
+                note,
+                reference_number=reference,
             )
             messages.success(request, "Parent copay posted to regular family billing.")
         else:

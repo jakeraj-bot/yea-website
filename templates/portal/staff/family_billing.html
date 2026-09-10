@@ -141,7 +141,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="record-payment-panel" hidden>
       <h2>Record payment</h2>
-      <p class="form-note">Card (staff entry), cash, or check — when parents pay in person.</p>
+      <p class="form-note">Card (staff entry), cash, check, or money order — when parents pay in person.</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -165,11 +165,16 @@
             <option value="card">Card (staff entry)</option>
             <option value="cash">Cash</option>
             <option value="check">Check</option>
+            <option value="money_order">Money order</option>
           </select>
         </div>
         <div class="form-group portal-form-full" id="check-fields" hidden>
           <label for="pay-check">Check number</label>
           <input id="pay-check" name="check_number" type="text" class="portal-input" placeholder="Check #">
+        </div>
+        <div class="form-group portal-form-full" id="money-order-fields" hidden>
+          <label for="pay-money-order">Money order number <span class="form-note">(required)</span></label>
+          <input id="pay-money-order" name="money_order_number" type="text" class="portal-input" placeholder="Money order #">
         </div>
         <div class="form-group portal-form-full">
           <label for="pay-note">Note (optional)</label>
@@ -289,7 +294,16 @@
   bindPanel("toggle-record-payment", "record-payment-panel", "cancel-record-payment");
   var method = document.getElementById("pay-method");
   var checkFields = document.getElementById("check-fields");
-  if (method && checkFields) method.addEventListener("change", function () { checkFields.hidden = method.value !== "check"; });
+  var moneyOrderFields = document.getElementById("money-order-fields");
+  var moneyOrderInput = document.getElementById("pay-money-order");
+  function syncPayMethodFields() {
+    if (!method) return;
+    if (checkFields) checkFields.hidden = method.value !== "check";
+    if (moneyOrderFields) moneyOrderFields.hidden = method.value !== "money_order";
+    if (moneyOrderInput) moneyOrderInput.required = method.value === "money_order";
+  }
+  if (method) method.addEventListener("change", syncPayMethodFields);
+  syncPayMethodFields();
   document.querySelectorAll(".edit-ledger-desc").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var row = btn.closest("tr");

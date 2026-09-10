@@ -327,6 +327,17 @@ def _profile_from_application(family, account):
     return profile
 
 
+def _receipt_method_label(payment):
+    label = payment.method_label or "Card"
+    if payment.reference_number and "#" not in label:
+        return f"{label} #{payment.reference_number}"
+    if payment.stripe_session_id or payment.stripe_payment_intent_id:
+        if "Card" in label or "ending" in label or label in {"Visa", "Mastercard", "Amex"}:
+            return label
+        return f"Card — {label}"
+    return label
+
+
 def _payment_description(payment):
     if payment.payment_kind == "dropin":
         return f"Drop-in — {payment.dropin_child} · {payment.dropin_program}"
@@ -334,6 +345,13 @@ def _payment_description(payment):
         return f"Field trip — {payment.dropin_child} · {payment.dropin_program}"
     if payment.payment_kind == "drop_off":
         return f"Drop-off — {payment.dropin_child} · {payment.dropin_program}"
+    if payment.reference_number:
+        label = payment.method_label or "Payment"
+        if "#" in label:
+            return label
+        return f"{label} #{payment.reference_number}"
+    if payment.method_label and not (payment.stripe_session_id or payment.stripe_payment_intent_id):
+        return payment.method_label if "payment" in payment.method_label.lower() else f"In-person payment — {payment.method_label}"
     return "Family balance payment"
 
 
@@ -519,7 +537,7 @@ def payment_to_receipt_dict(payment, preview_key):
         "reference": payment.receipt_no,
         "date": timezone.localtime(payment.paid_at).date().isoformat() if payment.paid_at else "",
         "amount": f"{payment.total_charged or payment.amount:.2f}",
-        "method": f"Card — {payment.method_label}",
+        "method": _receipt_method_label(payment),
         "description": _payment_description(payment),
         "child": payment.dropin_child if payment.payment_kind == "dropin" else "",
         "program": payment.dropin_program,
