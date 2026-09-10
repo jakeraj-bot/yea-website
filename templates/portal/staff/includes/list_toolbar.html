@@ -3,7 +3,13 @@
   <div class="portal-list-toolbar-group">
     <label>Sort</label>
     <select class="portal-select portal-list-sort">
+      {% if sort_options %}
+        {% for option in sort_options|split_csv %}
+        <option{% if option == sort_default %} selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+      {% else %}
       <option>{{ sort_default|default:"Name A–Z" }}</option>
+      {% endif %}
     </select>
   </div>
   <div class="portal-list-toolbar-group">

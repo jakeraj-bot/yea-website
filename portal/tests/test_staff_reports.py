@@ -111,6 +111,7 @@ class StaffReportsTests(TestCase):
             reverse("portal_staff_school_bus_report"),
             reverse("portal_staff_pickup_report"),
             reverse("portal_staff_member_information_report"),
+            reverse("portal_staff_attendance_grade_report"),
             reverse("portal_staff_emergency_contact_report"),
             reverse("portal_staff_program_roster", kwargs={"program_slug": "after-school-2026-27"}),
             reverse("portal_staff_balances_export"),
@@ -365,6 +366,8 @@ class StaffEmergencyContactReportTests(TestCase):
         self.assertContains(hub, "portal-report-card")
         self.assertContains(hub, "Member information")
         self.assertContains(hub, reverse("portal_staff_member_information_report"))
+        self.assertContains(hub, "Attendance by grade")
+        self.assertContains(hub, reverse("portal_staff_attendance_grade_report"))
 
 
 class ReportsHubGridCssTests(TestCase):

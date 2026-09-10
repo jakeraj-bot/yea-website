@@ -2755,3 +2755,81 @@ a.partner-logo:hover {
 @media (max-width: 480px) {
   .logo img { height: 64px; }
 }
+
+@media (max-width: 640px) {
+  .header-inner {
+    min-height: 4.5rem;
+    gap: 0.5rem;
+  }
+
+  .logo {
+    min-width: 0;
+  }
+
+  .logo-name {
+    max-width: 8rem;
+    overflow-wrap: anywhere;
+  }
+
+  .nav-toggle {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  .card-grid,
+  .card-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    max-width: 100%;
+    font-size: 16px;
+    min-height: 2.75rem;
+  }
+
+  .apply-page,
+  .apply-container,
+  .apply-form-card {
+    max-width: 100%;
+  }
+
+  .apply-form .form-group input:not([type="checkbox"]):not([type="radio"]),
+  .apply-form .form-group select,
+  .apply-form .form-group textarea {
+    font-size: 16px;
+    min-height: 2.75rem;
+  }
+
+  .apply-page .portal-family-tabs.apply-step-tabs .apply-step-tab,
+  .apply-form-card .apply-section-tabs .portal-family-tab {
+    min-height: 2.75rem;
+  }
+
+  .apply-help-callout-actions .btn,
+  .apply-policy-toolbar .btn {
+    flex: 1 1 auto;
+    min-height: 2.75rem;
+  }
+
+  .apply-policy-toolbar,
+  .apply-help-callout-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .apply-form .form-check-label,
+  .apply-form .option-list li label {
+    min-height: 2.75rem;
+  }
+
+  .portal-table-wrap,
+  .apply-page table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+}
