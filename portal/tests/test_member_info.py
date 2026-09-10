@@ -264,7 +264,7 @@ class MemberInfoViewTests(TestCase):
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_cannot_edit_family_in_another_unit(self):
         other_family = PortalFamily.objects.create(unit=self.other_unit, slug="other", name="Other")
-        _make_application(other_family)
+        _make_application(other_family, location="school_26")
         self._login(self.staff, "staff")
         url = reverse("portal_staff_family_member_update", kwargs={"family_slug": "other"})
         response = self.client.post(url, {**self._payload(), "family_name": "Other"})
