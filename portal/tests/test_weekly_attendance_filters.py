@@ -14,7 +14,7 @@ from portal.models import (
     PortalUnit,
 )
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
-from portal.staff_services import weekly_attendance_report_data
+from portal.staff_services import resolve_weekly_attendance_unit, weekly_attendance_report_data
 
 
 class WeeklyAttendanceGradeFilterTests(TestCase):
@@ -96,6 +96,15 @@ class WeeklyAttendanceGradeFilterTests(TestCase):
             all_units_access=True,
             is_active=True,
         )
+        self.multi_staff_user = User.objects.create_user(username="staff:multi", password="StaffPass123!")
+        multi_account = PortalStaffAccount.objects.create(
+            user=self.multi_staff_user,
+            unit=self.school_18,
+            display_name="Multi Unit Staff",
+            role="Unit director",
+            is_active=True,
+        )
+        multi_account.accessible_units.set([self.school_18, self.school_26])
 
     def _login(self, user, area):
         self.client.force_login(user)
@@ -203,9 +212,13 @@ class WeeklyAttendanceGradeFilterTests(TestCase):
         self.assertNotContains(page, "Nia Lee")
         self.assertContains(page, 'name="grade"')
         self.assertContains(page, 'type="checkbox"')
+        self.assertContains(page, 'name="unit"')
+        self.assertContains(page, "Pick a unit")
+        html = page.content.decode()
+        self.assertIn('value="school-18" selected', html)
+        self.assertNotIn('<option value="">All units</option>', html)
         self.assertNotContains(page, "portal-attendance-grade-heading")
         self.assertContains(page, "landscape")
-        html = page.content.decode()
         self.assertLess(html.find("Jordan Jacobs"), html.find("Maya Jacobs") if "Maya Jacobs" in html else 0)
         self.assertEqual(html.count("<table"), 1)
 
@@ -264,3 +277,227 @@ class WeeklyAttendanceGradeFilterTests(TestCase):
         old = self.client.get(reverse("portal_admin_attendance_grade_report"), {"unit": "school-26"})
         self.assertEqual(old.status_code, 302)
         self.assertIn(reverse("portal_admin_weekly_attendance_report"), old["Location"])
+
+        all_units = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(all_units, "Jordan Jacobs")
+        self.assertContains(all_units, "Maya Jacobs")
+        self.assertContains(all_units, "Nia Lee")
+        self.assertContains(all_units, '<option value="">All units</option>')
+        self.assertContains(all_units, "School 18")
+        self.assertContains(all_units, "School 26")
+
+        one_unit_grades = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"unit": "school-18", "date": self.today.isoformat(), "grade": ["2nd", "4th"]},
+        )
+        self.assertContains(one_unit_grades, "Jordan Jacobs")
+        self.assertContains(one_unit_grades, "Maya Jacobs")
+        self.assertNotContains(one_unit_grades, "Nia Lee")
+        self.assertIn('value="school-18" selected', one_unit_grades.content.decode())
+
+    def test_unit_filter_alone_scopes_staff_and_admin(self):
+        staff_default = weekly_attendance_report_data(self.school_18, self.program_18, self.today)
+        self.assertEqual([row["child"] for row in staff_default["weekly_rows"]], ["Jordan Jacobs", "Maya Jacobs"])
+        self.assertEqual(staff_default["selected_unit_slug"], "school-18")
+        self.assertEqual([slug for slug, _name in staff_default["filter_options"]["units"]], ["school-18"])
+
+        other_unit = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"unit": "school-26"},
+            allowed_units=[self.school_18, self.school_26],
+        )
+        self.assertEqual([row["child"] for row in other_unit["weekly_rows"]], ["Nia Lee"])
+        self.assertEqual(other_unit["selected_unit_name"], "School 26")
+        self.assertEqual(
+            {slug for slug, _name in other_unit["filter_options"]["units"]},
+            {"school-18", "school-26"},
+        )
+
+        admin_one = weekly_attendance_report_data(
+            None, None, self.today, filters={"unit": "school-18"}, admin=True
+        )
+        self.assertEqual({row["child"] for row in admin_one["weekly_rows"]}, {"Jordan Jacobs", "Maya Jacobs"})
+        admin_all = weekly_attendance_report_data(None, None, self.today, admin=True)
+        self.assertEqual(
+            {row["child"] for row in admin_all["weekly_rows"]},
+            {"Jordan Jacobs", "Maya Jacobs", "Nia Lee"},
+        )
+        self.assertEqual(admin_all["selected_unit_name"], "All units")
+        self.assertTrue(admin_all["unit_filter_allows_all"])
+
+    def test_unit_plus_multiple_grades_stay_on_one_sheet(self):
+        payload = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"unit": "school-18", "grades": ["2nd", "4th"]},
+            allowed_units=[self.school_18, self.school_26],
+        )
+        names = [row["child"] for row in payload["weekly_rows"]]
+        self.assertEqual(names, ["Jordan Jacobs", "Maya Jacobs"])
+        self.assertNotIn("Nia Lee", names)
+        self.assertEqual(set(row["grade"] for row in payload["weekly_rows"]), {"2nd", "4th"})
+        self.assertEqual(len(payload["week_days"]), 5)
+
+        admin_fourth = weekly_attendance_report_data(
+            None,
+            None,
+            self.today,
+            filters={"grades": ["4th"]},
+            admin=True,
+        )
+        self.assertEqual({row["child"] for row in admin_fourth["weekly_rows"]}, {"Jordan Jacobs", "Nia Lee"})
+
+        admin_26_fourth = weekly_attendance_report_data(
+            None,
+            None,
+            self.today,
+            filters={"unit": "school-26", "grades": ["2nd", "4th"]},
+            admin=True,
+        )
+        self.assertEqual([row["child"] for row in admin_26_fourth["weekly_rows"]], ["Nia Lee"])
+
+    def test_staff_cannot_open_a_unit_they_are_not_assigned(self):
+        denied = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"unit": "school-26"},
+            allowed_units=[self.school_18],
+        )
+        names = {row["child"] for row in denied["weekly_rows"]}
+        self.assertEqual(names, {"Jordan Jacobs", "Maya Jacobs"})
+        self.assertNotIn("Nia Lee", names)
+        self.assertEqual(denied["selected_unit_slug"], "school-18")
+        self.assertEqual([slug for slug, _name in denied["filter_options"]["units"]], ["school-18"])
+
+        self.assertEqual(
+            resolve_weekly_attendance_unit(
+                "school-26",
+                header_unit=self.school_18,
+                allowed_units=[self.school_18],
+            ),
+            self.school_18,
+        )
+        self.assertEqual(
+            resolve_weekly_attendance_unit(
+                "school-26",
+                header_unit=self.school_18,
+                allowed_units=[self.school_18, self.school_26],
+            ),
+            self.school_26,
+        )
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_page_unit_filter_respects_assigned_units(self):
+        self._login(self.staff_user, "staff")
+        tamper = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"unit": "school-26", "date": self.today.isoformat()},
+        )
+        self.assertEqual(tamper.status_code, 200)
+        self.assertContains(tamper, "Jordan Jacobs")
+        self.assertContains(tamper, "Maya Jacobs")
+        self.assertNotContains(tamper, "Nia Lee")
+        html = tamper.content.decode()
+        self.assertIn('value="school-18" selected', html)
+        self.assertNotIn('value="school-26"', html)
+        self.assertNotIn('<option value="">All units</option>', html)
+
+        self._login(self.multi_staff_user, "staff")
+        allowed = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"unit": "school-26", "date": self.today.isoformat(), "grade": ["2nd", "4th"]},
+        )
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, "Nia Lee")
+        self.assertNotContains(allowed, "Jordan Jacobs")
+        self.assertNotContains(allowed, "Maya Jacobs")
+        allowed_html = allowed.content.decode()
+        self.assertIn('value="school-26" selected', allowed_html)
+        self.assertIn('value="school-18"', allowed_html)
+        self.assertContains(allowed, 'name="grade"')
+        self.assertEqual(allowed_html.count("<table"), 1)
+
+        default_header = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(default_header, "Jordan Jacobs")
+        self.assertNotContains(default_header, "Nia Lee")
+        self.assertIn('value="school-18" selected', default_header.content.decode())
+
+    def _today_column(self):
+        return min(self.today.weekday(), 4)
+
+    def test_daily_kid_totals_count_present_on_the_filtered_sheet(self):
+        idx = self._today_column()
+        staff = weekly_attendance_report_data(self.school_18, self.program_18, self.today)
+        self.assertEqual(staff["day_present_counts"][idx], 1)
+        self.assertEqual(staff["week_days"][idx]["present_count"], 1)
+        self.assertEqual(sum(staff["day_present_counts"]), 1)
+
+        one_grade = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"grades": ["2nd"]},
+        )
+        self.assertEqual(one_grade["day_present_counts"][idx], 0)
+        self.assertEqual([row["child"] for row in one_grade["weekly_rows"]], ["Maya Jacobs"])
+
+        both_grades = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"unit": "school-18", "grades": ["2nd", "4th"]},
+            allowed_units=[self.school_18, self.school_26],
+        )
+        self.assertEqual(both_grades["day_present_counts"][idx], 1)
+
+        admin_all = weekly_attendance_report_data(None, None, self.today, admin=True)
+        self.assertEqual(admin_all["day_present_counts"][idx], 2)
+
+        admin_26 = weekly_attendance_report_data(
+            None, None, self.today, filters={"unit": "school-26"}, admin=True
+        )
+        self.assertEqual(admin_26["day_present_counts"][idx], 1)
+        self.assertEqual(admin_26["week_days"][idx]["present_count"], 1)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_weekly_pages_and_csv_show_daily_kid_totals(self):
+        self._login(self.staff_user, "staff")
+        page = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(page, "portal-day-kid-total")
+        self.assertContains(page, "present")
+        html = page.content.decode()
+        self.assertIn("portal-day-total-heading", html)
+        csv_page = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat(), "format": "csv"},
+        )
+        body = csv_page.content.decode()
+        self.assertIn("Kids present", body)
+        self.assertIn("present)", body)
+
+        self._login(self.admin_user, "admin")
+        admin = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(admin, "portal-day-kid-total")
+        self.assertContains(admin, "How to print weekly attendance")
+        admin_csv = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"unit": "school-26", "format": "csv"},
+        )
+        self.assertIn("Kids present", admin_csv.content.decode())
+        self.assertIn("Nia Lee", admin_csv.content.decode())

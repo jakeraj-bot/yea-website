@@ -99,6 +99,32 @@ GUIDES = {
             },
         ],
     },
+    "admin-attendance": {
+        "title": "How to review attendance",
+        "intro": "This is the live check-in roster for the organization. Pick a unit — or all units — then mark children present or absent the same way staff does.",
+        "steps": [
+            {
+                "title": "Pick a unit",
+                "body": "Use Unit at the top. All units shows every site on one list. Choose one unit to work that site only.",
+            },
+            {
+                "title": "Confirm the date",
+                "body": "Change the date if you are looking at another day. The Monday–Friday sheet with kid totals is under Organization reports.",
+            },
+            {
+                "title": "Check one child in",
+                "body": "Use + Check in. Choose the child, how they arrived, and the time. Add a note if something is unusual.",
+            },
+            {
+                "title": "Check a group in",
+                "body": "Use Bulk / multiples when a bus or whole group arrives together. You can use the program start time if that matches when they walked in.",
+            },
+            {
+                "title": "Check out or mark absent",
+                "body": "+ Check out (or bulk checkout) when they leave. Mark Absent if they will not attend. Undo absent if they show up later.",
+            },
+        ],
+    },
     "drop-off-pickup": {
         "title": "How to run drop-off pickup",
         "intro": "This list is who staff pick up from school for the drop-off program — not the regular after-school attendance roster.",
@@ -377,15 +403,19 @@ GUIDES = {
     },
     "weekly-attendance": {
         "title": "How to print weekly attendance",
-        "intro": "This is the Monday–Friday attendance sheet. Check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
+        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
         "steps": [
             {
-                "title": "Check whose children you see",
-                "body": "Staff see only children at the unit in the header, including a child at this site whose family account is at another unit. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
+                "title": "Pick a unit",
+                "body": "Use the Unit filter on this page. Staff can choose any unit they are allowed to open; it starts on the unit in the header, so you do not have to hunt through the header switcher. Staff cannot see children at a unit they are not assigned to. Admins can choose one unit or All units. A child whose family account is at another site still appears if they attend the unit you picked.",
             },
             {
                 "title": "Pick the week and grades",
-                "body": "Choose a date in that school week. Leave grades unchecked to include every grade. Check 2nd and 4th, for example, to print both grades on one weekly grid.",
+                "body": "Choose a date in that school week. Leave grades unchecked to include every grade at that unit. Check 2nd and 4th, for example, to print both grades on one weekly grid. Unit and grades work together on this same Monday–Friday sheet.",
+            },
+            {
+                "title": "Read the daily kid totals",
+                "body": "The number above Monday is how many children on this filtered sheet were present that day. Tuesday through Friday each have their own count. The numbers follow Unit, grades, and the other filters.",
             },
             {
                 "title": "Narrow further if you need to",
@@ -393,7 +423,7 @@ GUIDES = {
             },
             {
                 "title": "Preview, then print or download",
-                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
+                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Daily kid totals stay in the weekday headers. Filters stay off the printed page.",
             },
         ],
     },

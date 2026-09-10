@@ -481,6 +481,15 @@ def _grade_sort_key(grade):
     return (2, 0, lower)
 
 
+def _day_present_counts(rows, day_count=5):
+    counts = [0] * day_count
+    for row in rows or []:
+        for index, present in enumerate(row.get("days") or []):
+            if index < day_count and present:
+                counts[index] += 1
+    return counts
+
+
 def _weekly_status_label(status_keys):
     if AttendanceRecord.STATUS_PRESENT in status_keys:
         return AttendanceRecord.STATUS_PRESENT, "Present"
@@ -489,15 +498,57 @@ def _weekly_status_label(status_keys):
     return AttendanceRecord.STATUS_EXPECTED, "Not arrived"
 
 
-def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None, *, admin=False):
+def resolve_weekly_attendance_unit(requested_slug, *, header_unit=None, allowed_units=None, admin=False):
+    """Pick the weekly-attendance unit without leaking sites the viewer cannot open."""
+    from .member_admin import is_placeholder_unit
+    from .models import PortalUnit
+
+    requested_slug = (requested_slug or "").strip()
+    if admin:
+        if not requested_slug:
+            return None
+        match = PortalUnit.objects.filter(slug=requested_slug, is_active=True).first()
+        if match and not is_placeholder_unit(match):
+            return match
+        return None
+
+    allowed = []
+    if allowed_units is not None:
+        allowed = [item for item in allowed_units if item and not is_placeholder_unit(item)]
+    elif header_unit and not is_placeholder_unit(header_unit):
+        allowed = [header_unit]
+    if requested_slug:
+        for item in allowed:
+            if item.slug == requested_slug:
+                return item
+    return header_unit
+
+
+def _weekly_unit_choices(*, admin=False, allowed_units=None, unit=None):
+    from .member_admin import is_placeholder_unit
+    from .models import PortalUnit
+
+    if admin:
+        source = list(PortalUnit.objects.filter(is_active=True).order_by("name"))
+    elif allowed_units is not None:
+        source = list(allowed_units)
+    else:
+        source = [unit] if unit else []
+    choices = [(item.slug, item.name) for item in source if item and not is_placeholder_unit(item)]
+    choices.sort(key=lambda pair: (pair[1] or "").lower())
+    return choices
+
+
+def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None, *, admin=False, allowed_units=None):
     """Mon–Fri present/absent marks plus printable weekday column labels.
 
     Empty grade filter includes every grade. Selected grades stay on one sheet.
-    Staff stay scoped to the header unit, including a child at that site whose
-    family account lives elsewhere.
+    Staff can pick one allowed unit (default: the header unit), including a child
+    at that site whose family account lives elsewhere. Admins can pick one unit
+    or all units.
     """
     from .member_admin import is_placeholder_unit
-    from .models import PortalProgram, PortalUnit
+    from .models import PortalProgram
     from .report_sheets import parse_sheet_date, week_day_columns, _weekday_monday
     from .unit_visibility import unit_label_for_child
 
@@ -518,11 +569,10 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
     school = (filters.get("school") or "").strip()
     status_filter = (filters.get("status") or "").strip()
     program_id = (filters.get("program") or "").strip()
-    unit_slug = (filters.get("unit") or "").strip() if admin else ""
-
-    scoped_unit = unit
-    if admin:
-        scoped_unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first() if unit_slug else None
+    unit_slug = (filters.get("unit") or "").strip()
+    scoped_unit = resolve_weekly_attendance_unit(
+        unit_slug, header_unit=unit, allowed_units=allowed_units, admin=admin
+    )
 
     if admin and not scoped_unit:
         roster_children = [
@@ -543,8 +593,10 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
     chosen_program = program
     if program_id:
         chosen_program = next((item for item in all_programs if str(item.pk) == program_id), None)
-        if chosen_program is None:
-            chosen_program = PortalProgram.objects.filter(pk=program_id, is_active=True).first()
+    elif chosen_program and scoped_unit and chosen_program.unit_id != scoped_unit.pk:
+        chosen_program = get_active_program(scoped_unit)
+    if chosen_program and scoped_unit and chosen_program.unit_id != scoped_unit.pk:
+        chosen_program = None
     record_programs = [chosen_program] if chosen_program else all_programs
 
     present_lookup = {}
@@ -598,6 +650,10 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
             continue
         rows.append(row)
 
+    present_counts = _day_present_counts(rows, len(week_days))
+    for column, count in zip(week_days, present_counts):
+        column["present_count"] = count
+
     filter_options = {
         "grades": sorted(
             {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
@@ -611,11 +667,7 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
             (str(item.pk), item.name if not admin or not item.unit_id else f"{item.name} · {item.unit.name}")
             for item in all_programs
         ],
-        "units": [
-            (item.slug, item.name)
-            for item in PortalUnit.objects.filter(is_active=True).order_by("name")
-            if admin and not is_placeholder_unit(item)
-        ],
+        "units": _weekly_unit_choices(admin=admin, allowed_units=allowed_units, unit=unit),
         "statuses": sorted(option_statuses, key=str.lower),
     }
     return {
@@ -626,5 +678,9 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
         "sheet_date": anchor_date.isoformat(),
         "generated_date": timezone.localdate().strftime("%B %d, %Y"),
         "selected_grades": selected_grades,
+        "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
+        "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
+        "unit_filter_allows_all": admin,
+        "day_present_counts": present_counts,
     }
 

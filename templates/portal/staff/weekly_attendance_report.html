@@ -8,7 +8,7 @@
     <h1>Weekly attendance summary</h1>
     <p class="lead">
       {% if show_unit_filter %}
-        {% if report_filters.unit %}{{ report_filters.unit }}{% else %}All units{% endif %}
+        {{ selected_unit_name|default:"All units" }}
       {% else %}
         {{ attendance.unit }}
       {% endif %}
@@ -21,13 +21,15 @@
   <div class="container">
     <form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
       <h2>Filters</h2>
-      <p class="form-note">Kids from the grades you check stay on this same Monday–Friday sheet. Leave grades unchecked to include every grade.</p>
+      <p class="form-note">Pick a unit, then check grades. Those kids stay on this same Monday–Friday sheet. Leave grades unchecked to include every grade at that unit.</p>
       <div class="portal-report-filters">
         {% if show_unit_filter %}
         <label class="portal-filter-label">
           Unit
           <select class="portal-select" name="unit">
+            {% if unit_filter_allows_all %}
             <option value="">All units</option>
+            {% endif %}
             {% for slug, name in filter_options.units %}
             <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
             {% endfor %}
@@ -37,7 +39,7 @@
         <label class="portal-filter-label">
           Program
           <select class="portal-select" name="program">
-            <option value="">{% if show_unit_filter %}All programs{% else %}Current program{% endif %}</option>
+            <option value="">{% if unit_filter_allows_all %}All programs{% else %}Current program{% endif %}</option>
             {% for value, label in filter_options.programs %}
             <option value="{{ value }}"{% if report_filters.program == value %} selected{% endif %}>{{ label }}</option>
             {% endfor %}
@@ -100,11 +102,7 @@
           <h2>Weekly attendance summary</h2>
           <p class="portal-medical-report-meta">
             {% if show_unit_filter %}
-              {% if report_filters.unit %}
-                {% for slug, name in filter_options.units %}{% if report_filters.unit == slug %}<strong>{{ name }}</strong>{% endif %}{% endfor %}
-              {% else %}
-                <strong>All units</strong>
-              {% endif %}
+              <strong>{{ selected_unit_name|default:"All units" }}</strong>
             {% else %}
               <strong>{{ attendance.unit }}</strong>
             {% endif %}
@@ -125,7 +123,11 @@
               {% if show_unit_filter %}<th>Unit</th>{% endif %}
               {% if weekly_rows is not None and week_days %}
                 {% for day in week_days %}
-                <th>{{ day.label }}<br><span class="form-note">{{ day.date_short }}</span></th>
+                <th class="portal-day-total-heading">
+                  <span class="portal-day-kid-total">{{ day.present_count|default:0 }}</span>
+                  <span class="portal-day-kid-total-label">present</span>
+                  {{ day.label }}<br><span class="form-note">{{ day.date_short }}</span>
+                </th>
                 {% endfor %}
               {% else %}
                 <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>

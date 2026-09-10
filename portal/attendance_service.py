@@ -116,6 +116,8 @@ def build_roster(unit, program, attendance_date):
                 "child": child.name,
                 "family": child.family.name,
                 "grade": child.grade,
+                "unit": unit.name if unit else "",
+                "unit_slug": unit.slug if unit else "",
                 "status": row_data["status"],
                 "check_in": row_data["check_in"],
                 "check_out": row_data["check_out"],
@@ -291,8 +293,16 @@ def attendance_redirect(request, attendance_date, extra_query=""):
     from django.shortcuts import redirect
     from django.urls import reverse
 
-    url = reverse("portal_staff_page", kwargs={"page": "attendance"})
+    from .staff_auth import get_portal_auth
+
+    if get_portal_auth(request) == "admin":
+        url = reverse("portal_admin_page", kwargs={"page": "attendance"})
+    else:
+        url = reverse("portal_staff_page", kwargs={"page": "attendance"})
     query = f"date={attendance_date.isoformat()}"
+    unit = (request.POST.get("unit") or request.GET.get("unit") or "").strip()
+    if unit:
+        query = f"{query}&unit={unit}"
     if extra_query:
         query = f"{query}&{extra_query}"
     return redirect(f"{url}?{query}")

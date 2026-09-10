@@ -139,6 +139,7 @@ from .staff_auth import (
     admin_login_required,
     staff_login_required,
     staff_login_required_post,
+    staff_or_admin_login_required_post,
 )
 from .parent_services import (
     build_parent_preview_live,
@@ -888,6 +889,12 @@ def _staff_attendance_context(request):
     program = get_active_program(unit)
     attendance_date = get_attendance_date(request)
     roster = build_roster(unit, program, attendance_date)
+    extras = _attendance_page_links(
+        reverse("portal_staff_page", kwargs={"page": "attendance"}),
+        attendance_date,
+        unit_slug="",
+        show_unit_filter=False,
+    )
     return {
         "attendance": build_session_context(unit, program, attendance_date, roster),
         "roster": roster,
@@ -899,12 +906,95 @@ def _staff_attendance_context(request):
         "show_bulk_checkin_panel": request.GET.get("checkin") == "1" and request.GET.get("bulk") == "1",
         "show_checkout_panel": request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1",
         "show_bulk_checkout_panel": request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1",
+        "attendance_heading": "Attendance",
+        "show_attendance_medical_link": True,
+        **extras,
     }
 
 
-def _attendance_program_or_redirect(request, attendance_date):
+def _attendance_page_links(page_url, attendance_date, *, unit_slug="", show_unit_filter=False, units=None):
+    query = f"date={attendance_date.isoformat()}"
+    if unit_slug:
+        query = f"{query}&unit={unit_slug}"
+    return {
+        "attendance_page_url": page_url,
+        "attendance_qs": query,
+        "attendance_unit_slug": unit_slug,
+        "show_attendance_unit_filter": show_unit_filter,
+        "show_attendance_unit_column": show_unit_filter and not unit_slug,
+        "attendance_units": units or [],
+    }
+
+
+def _admin_attendance_context(request):
+    from .member_admin import program_units
+
+    attendance_date = get_attendance_date(request)
+    units = list(program_units())
+    unit_slug = (request.GET.get("unit") or "").strip()
+    unit = next((item for item in units if item.slug == unit_slug), None) if unit_slug else None
+    if unit:
+        program = get_active_program(unit)
+        roster = build_roster(unit, program, attendance_date)
+        attendance = build_session_context(unit, program, attendance_date, roster)
+    else:
+        roster = []
+        for item in units:
+            program = get_active_program(item)
+            roster.extend(build_roster(item, program, attendance_date))
+        roster.sort(key=lambda row: (row.get("child") or "").lower())
+        attendance = build_session_context(None, None, attendance_date, roster)
+        attendance["unit"] = "All units"
+        attendance["program"] = "All programs"
+    extras = _attendance_page_links(
+        reverse("portal_admin_page", kwargs={"page": "attendance"}),
+        attendance_date,
+        unit_slug=unit.slug if unit else "",
+        show_unit_filter=True,
+        units=[(item.slug, item.name) for item in units],
+    )
+    return {
+        "attendance": attendance,
+        "roster": roster,
+        "attendance_live": portal_is_live(),
+        "attendance_needs_seed": False,
+        "checkin_modes": CHECKIN_MODES,
+        "medical_alert_types": MEDICAL_ALERT_TYPES,
+        "show_checkin_panel": request.GET.get("checkin") == "1" and request.GET.get("bulk") != "1",
+        "show_bulk_checkin_panel": request.GET.get("checkin") == "1" and request.GET.get("bulk") == "1",
+        "show_checkout_panel": request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1",
+        "show_bulk_checkout_panel": request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1",
+        "attendance_heading": "Review attendance",
+        "show_attendance_medical_link": False,
+        "page_guide_key": "admin-attendance",
+        **extras,
+    }
+
+
+def _resolve_attendance_scope(request, child_id=None):
+    """Unit + program for live attendance actions (staff header or admin picker)."""
+    from .member_admin import program_units
+    from .models import PortalChild
+    from .staff_auth import get_portal_auth
+    from .unit_visibility import child_effective_unit
+
+    if get_portal_auth(request) == "admin":
+        slug = (request.POST.get("unit") or request.GET.get("unit") or "").strip()
+        unit = next((item for item in program_units() if item.slug == slug), None) if slug else None
+        if not unit and child_id:
+            child = (
+                PortalChild.objects.select_related("family", "family__unit", "unit")
+                .filter(pk=child_id, is_active=True)
+                .first()
+            )
+            unit = child_effective_unit(child) if child else None
+        return unit, get_active_program(unit) if unit else None
     unit = _staff_unit(request)
-    program = get_active_program(unit)
+    return unit, get_active_program(unit) if unit else None
+
+
+def _attendance_program_or_redirect(request, attendance_date, child_id=None):
+    unit, program = _resolve_attendance_scope(request, child_id=child_id)
     if not unit or not program:
         messages.error(request, "No active program is set up for this unit yet.")
         return None, None, attendance_redirect(request, attendance_date)
@@ -1628,6 +1718,7 @@ def staff_page(request, page):
         if portal_is_live():
             context.update(_staff_attendance_context(request))
         else:
+            attendance_date = get_attendance_date(request)
             context["attendance"] = ATTENDANCE_SESSION
             context["roster"] = ATTENDANCE_ROSTER
             context["attendance_live"] = False
@@ -1637,6 +1728,14 @@ def staff_page(request, page):
             context["show_bulk_checkin_panel"] = request.GET.get("checkin") == "1" and request.GET.get("bulk") == "1"
             context["show_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1"
             context["show_bulk_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1"
+            context["attendance_heading"] = "Attendance"
+            context["show_attendance_medical_link"] = True
+            context.update(
+                _attendance_page_links(
+                    reverse("portal_staff_page", kwargs={"page": "attendance"}),
+                    attendance_date,
+                )
+            )
     if page == "applications":
         context["applications_tab"] = "all"
         if portal_is_live():
@@ -1953,9 +2052,16 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
     headers = ["Child", "Family", "Grade", "Unit", "School"]
-    headers.extend([f"{day['label']} {day['date_short']}" for day in week_days or []])
+    headers.extend(
+        [
+            f"{day['label']} {day['date_short']} ({day.get('present_count', 0)} present)"
+            for day in week_days or []
+        ]
+    )
     headers.append("Total present")
     writer.writerow(headers)
+    present_counts = [day.get("present_count", 0) for day in week_days or []]
+    writer.writerow(["Kids present", "", "", "", ""] + present_counts + [""])
     for row in weekly_rows or []:
         values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school")]
         values.extend(["Present" if present else "—" for present in row.get("days") or []])
@@ -1964,7 +2070,7 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     return response
 
 
-def _weekly_attendance_bundle(request, *, unit=None, admin=False):
+def _weekly_attendance_bundle(request, *, unit=None, admin=False, allowed_units=None):
     from .staff_services import weekly_attendance_report_data
 
     filters = _weekly_attendance_filters(request)
@@ -1977,12 +2083,16 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
         live = bool(_portal_data_live() and unit)
         program = get_active_program(unit) if live and unit else None
     if live or (admin and _portal_data_live()):
-        weekly = weekly_attendance_report_data(unit, program, sheet_date, filters=filters, admin=admin)
+        weekly = weekly_attendance_report_data(
+            unit, program, sheet_date, filters=filters, admin=admin, allowed_units=allowed_units
+        )
+        if not admin and weekly.get("selected_unit_slug"):
+            filters["unit"] = weekly["selected_unit_slug"]
         roster = build_roster(unit, program, sheet_date) if unit and program else []
         attendance = (
             build_session_context(unit, program, sheet_date, roster)
             if unit and program
-            else {**ATTENDANCE_SESSION, "unit": unit.name if unit else "All units"}
+            else {**ATTENDANCE_SESSION, "unit": weekly.get("selected_unit_name") or (unit.name if unit else "All units")}
         )
     else:
         weekly = {
@@ -1993,6 +2103,9 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
             "sheet_date": sheet_date.isoformat(),
             "generated_date": date.today().strftime("%B %d, %Y"),
             "selected_grades": filters["grades"],
+            "selected_unit_slug": filters.get("unit") or (unit.slug if unit else ""),
+            "selected_unit_name": unit.name if unit else ("All units" if admin else ""),
+            "unit_filter_allows_all": admin,
         }
         roster = ATTENDANCE_ROSTER
         attendance = ATTENDANCE_SESSION
@@ -2002,8 +2115,18 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
 @staff_login_required
 @require_GET
 def staff_weekly_attendance_report(request):
+    from .member_admin import is_placeholder_unit
+    from .staff_auth import staff_accessible_units
+
     unit = _staff_unit(request) if _portal_data_live() else None
-    filters, weekly, attendance, roster = _weekly_attendance_bundle(request, unit=unit, admin=False)
+    allowed_units = []
+    if _portal_data_live() and getattr(request, "user", None) and request.user.is_authenticated:
+        allowed_units = [item for item in staff_accessible_units(request.user) if not is_placeholder_unit(item)]
+    elif unit:
+        allowed_units = [unit]
+    filters, weekly, attendance, roster = _weekly_attendance_bundle(
+        request, unit=unit, admin=False, allowed_units=allowed_units
+    )
     if request.GET.get("format") == "csv":
         return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
     return render(
@@ -2021,8 +2144,10 @@ def staff_weekly_attendance_report(request):
             sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
             generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
             selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
+            selected_unit_name=weekly.get("selected_unit_name") or (unit.name if unit else ""),
             report_filters=filters,
-            show_unit_filter=False,
+            show_unit_filter=True,
+            unit_filter_allows_all=False,
             hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
             hub_label="Reports",
             staff_page_slug="reports",
@@ -3378,6 +3503,7 @@ def admin_page(request, page):
         "field-trips": "portal/admin/field_trips.html",
         "drop-off": "portal/admin/drop_off_settings.html",
         "drop-off-pickup": "portal/staff/drop_off_pickup.html",
+        "attendance": "portal/staff/attendance.html",
         "checkin-settings": "portal/admin/checkin_settings.html",
         "reports": "portal/admin/reports.html",
         "messages": "portal/messages/messages.html",
@@ -3873,6 +3999,35 @@ def admin_page(request, page):
             context["families"] = ADMIN_MEMBER_FAMILIES
     if page == "reports":
         context["reports"] = ADMIN_REPORTS
+    if page == "attendance":
+        context["page_title"] = "Review attendance"
+        if portal_is_live():
+            context.update(_admin_attendance_context(request))
+        else:
+            attendance_date = get_attendance_date(request)
+            context["attendance"] = {**ATTENDANCE_SESSION, "unit": "All units"}
+            context["roster"] = ATTENDANCE_ROSTER
+            context["attendance_live"] = False
+            context["checkin_modes"] = CHECKIN_MODES
+            context["medical_alert_types"] = MEDICAL_ALERT_TYPES
+            context["show_checkin_panel"] = request.GET.get("checkin") == "1" and request.GET.get("bulk") != "1"
+            context["show_bulk_checkin_panel"] = request.GET.get("checkin") == "1" and request.GET.get("bulk") == "1"
+            context["show_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") != "1"
+            context["show_bulk_checkout_panel"] = request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1"
+            context["attendance_heading"] = "Review attendance"
+            context["show_attendance_medical_link"] = False
+            context["page_guide_key"] = "admin-attendance"
+            context.update(
+                _attendance_page_links(
+                    reverse("portal_admin_page", kwargs={"page": "attendance"}),
+                    attendance_date,
+                    show_unit_filter=True,
+                    units=[],
+                )
+            )
+        from .page_guides import page_guide_from_context
+
+        context["page_guide"] = page_guide_from_context(context)
     return render(request, template, _finalize_admin_context(request, context))
 
 
@@ -3969,6 +4124,7 @@ def admin_weekly_attendance_report(request):
                 hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
                 hub_label="Organization reports",
                 show_unit_filter=True,
+                unit_filter_allows_all=True,
                 report_filters=filters,
                 attendance=attendance,
                 roster=roster,
@@ -3979,6 +4135,7 @@ def admin_weekly_attendance_report(request):
                 sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
                 generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
                 selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
+                selected_unit_name=weekly.get("selected_unit_name") or "All units",
             ),
         ),
     )
@@ -4340,13 +4497,15 @@ def admin_parent_preview_end(request, family_slug):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_checkin(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
+    child_id = request.POST.get("child_id")
+    _unit, program, redirect_response = _attendance_program_or_redirect(
+        request, attendance_date, child_id=child_id
+    )
     if redirect_response:
         return redirect_response
-    child_id = request.POST.get("child_id")
     method = request.POST.get("method", "Staff")
     note = request.POST.get("note", "")
     check_in_time = parse_time_input(request.POST.get("check_in_time"))
@@ -4364,13 +4523,15 @@ def staff_attendance_checkin(request):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_checkout(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
+    child_id = request.POST.get("child_id")
+    _unit, program, redirect_response = _attendance_program_or_redirect(
+        request, attendance_date, child_id=child_id
+    )
     if redirect_response:
         return redirect_response
-    child_id = request.POST.get("child_id")
     check_out_time = parse_time_input(request.POST.get("check_out_time"))
     try:
         record = check_out_child(child_id, program, attendance_date, check_out_time)
@@ -4381,13 +4542,15 @@ def staff_attendance_checkout(request):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_absent(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
+    child_id = request.POST.get("child_id")
+    _unit, program, redirect_response = _attendance_program_or_redirect(
+        request, attendance_date, child_id=child_id
+    )
     if redirect_response:
         return redirect_response
-    child_id = request.POST.get("child_id")
     note = request.POST.get("note", "")
     try:
         record = mark_absent(child_id, program, attendance_date, note)
@@ -4398,13 +4561,15 @@ def staff_attendance_absent(request):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_undo_absent(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
+    child_id = request.POST.get("child_id")
+    _unit, program, redirect_response = _attendance_program_or_redirect(
+        request, attendance_date, child_id=child_id
+    )
     if redirect_response:
         return redirect_response
-    child_id = request.POST.get("child_id")
     try:
         record = undo_absent(child_id, program, attendance_date)
         messages.success(request, f"{record.child.name} marked as expected again.")
@@ -4414,16 +4579,19 @@ def staff_attendance_undo_absent(request):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_bulk_checkin(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
-    if redirect_response:
-        return redirect_response
+    default_unit, default_program = _resolve_attendance_scope(request)
     child_ids = request.POST.getlist("child_ids")
     method = request.POST.get("method", "Staff")
     count = 0
     for child_id in child_ids:
+        program = default_program
+        if program is None:
+            _unit, program = _resolve_attendance_scope(request, child_id=child_id)
+        if not program:
+            continue
         time_value = request.POST.get(f"check_in_time_{child_id}") or request.POST.get("program_time")
         try:
             check_in_child(child_id, program, attendance_date, parse_time_input(time_value), method)
@@ -4435,15 +4603,18 @@ def staff_attendance_bulk_checkin(request):
 
 
 @require_POST
-@staff_login_required_post
+@staff_or_admin_login_required_post
 def staff_attendance_bulk_checkout(request):
     attendance_date = get_attendance_date(request)
-    _unit, program, redirect_response = _attendance_program_or_redirect(request, attendance_date)
-    if redirect_response:
-        return redirect_response
+    default_unit, default_program = _resolve_attendance_scope(request)
     child_ids = request.POST.getlist("child_ids")
     count = 0
     for child_id in child_ids:
+        program = default_program
+        if program is None:
+            _unit, program = _resolve_attendance_scope(request, child_id=child_id)
+        if not program:
+            continue
         time_value = request.POST.get(f"check_out_time_{child_id}") or request.POST.get("program_time")
         try:
             check_out_child(child_id, program, attendance_date, parse_time_input(time_value))

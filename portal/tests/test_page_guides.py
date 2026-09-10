@@ -28,6 +28,7 @@ class PageGuideCatalogTests(TestCase):
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
+            "admin-attendance",
         ):
             self.assertIsNotNone(guide_for(key), key)
             self.assertGreaterEqual(GUIDES[key]["steps"].__len__(), 2)

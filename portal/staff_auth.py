@@ -191,6 +191,26 @@ def staff_login_required_post(view_func):
     return wrapper
 
 
+def staff_or_admin_login_required_post(view_func):
+    """POST attendance actions used by both staff and admin review screens."""
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if portal_preview_mode():
+            return view_func(request, *args, **kwargs)
+        if is_staff_portal_authenticated(request) or is_admin_portal_authenticated(request):
+            return view_func(request, *args, **kwargs)
+        if activate_portal_area(request, "staff") or activate_portal_area(request, "admin"):
+            return view_func(request, *args, **kwargs)
+        area = get_portal_auth(request)
+        login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+        if area != "admin":
+            login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    return wrapper
+
+
 def admin_login_required(view_func):
     login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
 
