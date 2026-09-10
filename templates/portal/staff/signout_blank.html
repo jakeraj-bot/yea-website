@@ -31,6 +31,14 @@
 
       <div class="portal-table-wrap">
         <table class="portal-table portal-blank-sheet-table portal-blank-sheet-table--signout">
+          <colgroup>
+            <col class="portal-signout-col-num">
+            <col class="portal-signout-col-name">
+            <col class="portal-signout-col-time">
+            <col class="portal-signout-col-sig">
+            <col class="portal-signout-col-rel">
+            <col class="portal-signout-col-init">
+          </colgroup>
           <thead>
             <tr>
               <th class="portal-row-num" scope="col">#</th>
@@ -45,7 +53,7 @@
             {% for row in enrolled_rows %}
             <tr class="portal-blank-sheet-row">
               <td class="portal-row-num">{{ forloop.counter }}</td>
-              <td>
+              <td class="portal-blank-col-name">
                 <strong>{{ row.child }}</strong>
                 {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
               </td>
@@ -62,7 +70,7 @@
             {% for i in extra_blank_rows %}
             <tr class="portal-blank-sheet-row portal-blank-sheet-row--spare">
               <td class="portal-row-num"></td>
-              <td><span class="portal-blank-line" aria-hidden="true">&nbsp;</span></td>
+              <td class="portal-blank-col-name"><span class="portal-blank-line" aria-hidden="true">&nbsp;</span></td>
               <td><span class="portal-blank-line portal-blank-line--time" aria-hidden="true">&nbsp;</span></td>
               <td><span class="portal-blank-line portal-blank-line--sig" aria-hidden="true">&nbsp;</span></td>
               <td><span class="portal-blank-line portal-blank-line--rel" aria-hidden="true">&nbsp;</span></td>
