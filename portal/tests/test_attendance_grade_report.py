@@ -182,6 +182,7 @@ class AttendanceGradeReportTests(TestCase):
         self.assertNotContains(staff, "Maya Jacobs")
         self.assertNotContains(staff, "Nia Lee")
         self.assertContains(staff, "landscape")
+        self.assertContains(staff, "portal-attendance-grade-sheet portal-collapse-skip")
 
         self._login(self.admin_user, "admin")
         hub = self.client.get(reverse("portal_admin_page", kwargs={"page": "reports"}))

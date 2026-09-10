@@ -95,7 +95,7 @@
       </div>
     </form>
 
-    <div class="card portal-medical-report-sheet portal-attendance-grade-sheet">
+    <div class="card portal-medical-report-sheet portal-attendance-grade-sheet portal-collapse-skip">
       <header class="portal-medical-report-header">
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
@@ -118,6 +118,7 @@
       </header>
 
       {% for group in grade_groups %}
+      <div class="portal-attendance-grade-group">
       <h3 class="portal-attendance-grade-heading">{{ group.grade }} <span class="form-note">{{ group.count }} child{{ group.count|pluralize:"ren" }}{% if range_mode != "week" %} · {{ group.present }} present · {{ group.absent }} absent{% endif %}</span></h3>
       <div class="portal-table-wrap">
         <table class="portal-table portal-attendance-grade-table">
@@ -164,6 +165,7 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
       </div>
       {% empty %}
       <p class="form-note">No children match these filters.</p>
