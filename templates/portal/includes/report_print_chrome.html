@@ -1,0 +1,16 @@
+{% load static %}
+<style id="report-print-page-style" media="print">
+@page report-print {
+  size: landscape;
+  margin: 1.2in 0.4in 0.7in 0.4in;
+  @bottom-left {
+    content: "Printed {% now 'M j, Y, g:i A' %}";
+    font-size: 9pt;
+  }
+  @bottom-right {
+    content: "Page " counter(page);
+    font-size: 9pt;
+  }
+}
+</style>
+<script src="{% static 'js/portal-report-print.js' %}?v=3"></script>
