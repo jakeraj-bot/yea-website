@@ -573,7 +573,21 @@ def parent_email_recipients():
     return rows
 
 
-def send_parent_emails(subject, body, emails, reply_to=None):
+def send_parent_emails(
+    subject,
+    body,
+    emails,
+    reply_to=None,
+    attachments=None,
+    *,
+    family=None,
+    unit=None,
+    sender=None,
+    source=None,
+):
+    from .models import PortalParentEmail
+    from .parent_email_log import record_sent_parent_email
+
     subject = (subject or "").strip()
     body = (body or "").strip()
     if not subject or not body:
@@ -588,22 +602,51 @@ def send_parent_emails(subject, body, emails, reply_to=None):
     if not unique:
         raise ValueError("Choose at least one parent.")
     sent = 0
+    delivered = []
     replies = [reply_to] if reply_to else None
     for email in unique:
-        sent += 1 if send_site_email(
+        if send_site_email(
             subject=subject,
             message=body,
             recipient_list=[email],
             reply_to=replies,
-        ) else 0
+            attachments=attachments,
+        ):
+            sent += 1
+            delivered.append(email)
+    if delivered:
+        record_sent_parent_email(
+            subject=subject,
+            body=body,
+            recipients=delivered,
+            attachments=attachments,
+            family=family,
+            unit=unit,
+            sender=sender,
+            source=source or (
+                PortalParentEmail.SOURCE_FAMILY if family else PortalParentEmail.SOURCE_BULK
+            ),
+        )
     return sent, len(unique)
 
 
-def send_family_parent_email(family, subject, body, reply_to=None):
+def send_family_parent_email(family, subject, body, reply_to=None, attachments=None, sender=None):
+    from .models import PortalParentEmail
+
     email = parent_email_for_family(family)
     if not email:
         raise ValueError("This family does not have a parent email on file.")
-    return send_parent_emails(subject, body, [email], reply_to=reply_to)
+    return send_parent_emails(
+        subject,
+        body,
+        [email],
+        reply_to=reply_to,
+        attachments=attachments,
+        family=family,
+        unit=getattr(family, "unit", None),
+        sender=sender,
+        source=PortalParentEmail.SOURCE_FAMILY,
+    )
 
 
 def save_discount_plan(name, kind, value, description="", plan_id=None):

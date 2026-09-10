@@ -161,7 +161,7 @@ def notify_charge_posted(family, entry):
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 
-def send_first_day_reminders(emails=None):
+def send_first_day_reminders(emails=None, sender=None):
     from .member_admin import parent_email_recipients, send_parent_emails
 
     template = get_email_template(PortalEmailTemplate.KEY_FIRST_DAY_REMINDER)
@@ -179,4 +179,12 @@ def send_first_day_reminders(emails=None):
             "portal_url": parent_portal_url(),
         },
     )
-    return send_parent_emails(subject, body, recipients)
+    from .models import PortalParentEmail
+
+    return send_parent_emails(
+        subject,
+        body,
+        recipients,
+        sender=sender,
+        source=PortalParentEmail.SOURCE_REMINDER,
+    )

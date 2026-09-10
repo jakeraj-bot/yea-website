@@ -1551,11 +1551,16 @@ def family_email_send(request, family_slug):
     if request.user.is_authenticated:
         reply_to = (request.user.email or "").strip()
     try:
+        from .parent_email_log import collect_email_attachments
+
+        attachments = collect_email_attachments(request.FILES.getlist("attachments"))
         sent, total = send_family_parent_email(
             family,
             request.POST.get("subject"),
             request.POST.get("body"),
             reply_to=reply_to or None,
+            attachments=attachments,
+            sender=request.user if request.user.is_authenticated else None,
         )
         if sent:
             messages.success(request, f"Email sent to {parent_email_for_family(family)}.")
@@ -2334,15 +2339,29 @@ def admin_member_ops(request):
                 family,
             )
         elif action == "send_parent_emails":
+            from .models import PortalParentEmail
+            from .parent_email_log import collect_email_attachments
+
             emails = request.POST.getlist("emails")
-            sent, total = send_parent_emails(request.POST.get("subject"), request.POST.get("body"), emails)
+            attachments = collect_email_attachments(request.FILES.getlist("attachments"))
+            sent, total = send_parent_emails(
+                request.POST.get("subject"),
+                request.POST.get("body"),
+                emails,
+                attachments=attachments,
+                sender=request.user if request.user.is_authenticated else None,
+                source=PortalParentEmail.SOURCE_BULK,
+            )
             messages.success(request, f"Sent {sent} of {total} parent email(s).")
             next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
         elif action == "send_first_day_reminder":
             from .email_templates import send_first_day_reminders
 
             emails = request.POST.getlist("emails")
-            sent, total = send_first_day_reminders(emails or None)
+            sent, total = send_first_day_reminders(
+                emails or None,
+                sender=request.user if request.user.is_authenticated else None,
+            )
             messages.success(request, f"Sent the first-day reminder to {sent} of {total} parent(s).")
             next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
         elif action == "save_discount":

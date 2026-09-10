@@ -1,0 +1,14 @@
+<div class="form-group portal-form-full portal-email-upload">
+  <label for="{{ upload_id|default:'parent-email' }}-attachments">Upload</label>
+  <input
+    id="{{ upload_id|default:'parent-email' }}-attachments"
+    name="attachments"
+    type="file"
+    class="portal-input portal-email-upload-input"
+    multiple
+    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,application/pdf,image/*"
+    data-email-attachments
+  >
+  <p class="form-note">PDF, photos, Word, Excel, PowerPoint, TXT, or CSV. Up to 5 files, 10 MB each.</p>
+  <ul class="portal-email-attachment-list" data-attachment-list hidden></ul>
+</div>
