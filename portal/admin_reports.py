@@ -194,19 +194,31 @@ def ledger_report_rows(filters=None):
     rows = []
     charges = Decimal("0")
     credits = Decimal("0")
+    parents_paid = Decimal("0")
+    processing_fees = Decimal("0")
     unit_obj = PortalUnit.objects.filter(slug=unit, is_active=True).first() if unit else None
+    from .processing_fees import backfill_stripe_fee_totals, ledger_paid_totals
     from .unit_visibility import ledger_entry_visible_to_unit
 
+    backfill_stripe_fee_totals()
     for entry in entries:
         if is_placeholder_unit(entry.family.unit):
             continue
         if unit_obj and not ledger_entry_visible_to_unit(entry, entry.family, unit_obj):
             continue
         amount = entry.amount or Decimal("0")
+        paid, fee, applied = ledger_paid_totals(entry)
         if entry.entry_type == "charge":
             charges += amount
         elif entry.entry_type in ("payment", "credit", "discount", "refund"):
-            credits += abs(amount)
+            credits += applied
+        if entry.entry_type == "payment":
+            parents_paid += paid
+            processing_fees += fee
+        if entry.entry_type == "payment" and fee:
+            display_amount = _money(-paid) if amount < 0 else _money(paid)
+        else:
+            display_amount = _money(amount)
         rows.append(
             {
                 "date": entry.date.isoformat(),
@@ -217,13 +229,16 @@ def ledger_report_rows(filters=None):
                 "child": entry.child_name or "—",
                 "type": entry.entry_type,
                 "description": entry.description,
-                "amount": _money(amount),
+                "amount": display_amount,
+                "fee": _money(fee) if entry.entry_type == "payment" and fee else "",
             }
         )
     return {
         "rows": rows,
         "total_charges": _money(charges),
         "total_credits": _money(credits),
+        "total_paid": _money(parents_paid),
+        "total_fees": _money(processing_fees),
         "net": _money(charges - credits),
     }
 
@@ -236,8 +251,10 @@ def payment_report_rows(filters=None):
     end = parse_date(filters.get("end") or "")
     rows = []
     seen_keys = set()
+    from .processing_fees import backfill_stripe_fee_totals, payment_charged_totals
 
     payments = PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
+    backfill_stripe_fee_totals(payments)
     if unit:
         payments = payments.filter(family__unit__slug=unit)
     if query:
@@ -257,6 +274,7 @@ def payment_report_rows(filters=None):
             continue
         children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
         child = payment.dropin_child or (" · ".join(children) if children else "—")
+        _tuition, fee, charged = payment_charged_totals(payment)
         key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
         seen_keys.add(key)
         method = payment.method_label or ("Card" if payment.stripe_session_id or payment.stripe_payment_intent_id else "Recorded")
@@ -275,7 +293,8 @@ def payment_report_rows(filters=None):
                 "family_id": payment.family_id,
                 "unit": payment.family.unit.name,
                 "paid_by": payment.family.primary_contact or payment.family.name,
-                "amount": _money(payment.amount),
+                "amount": _money(charged),
+                "fee": _money(fee) if fee else "",
                 "method": method,
                 "status": status,
             }
@@ -298,7 +317,10 @@ def payment_report_rows(filters=None):
     for entry in ledger:
         if is_placeholder_unit(entry.family.unit):
             continue
-        key = (entry.family_id, entry.date.isoformat(), _money(abs(entry.amount)))
+        from .processing_fees import ledger_paid_totals
+
+        paid, fee, applied = ledger_paid_totals(entry)
+        key = (entry.family_id, entry.date.isoformat(), _money(applied))
         if key in seen_keys:
             continue
         rows.append(
@@ -310,7 +332,8 @@ def payment_report_rows(filters=None):
                 "family_id": entry.family_id,
                 "unit": entry.family.unit.name,
                 "paid_by": entry.family.primary_contact or entry.family.name,
-                "amount": _money(abs(entry.amount)),
+                "amount": _money(paid),
+                "fee": _money(fee) if fee else "",
                 "method": entry.description or "In-person / ledger",
                 "status": "Paid",
             }
@@ -364,11 +387,13 @@ def _is_waiting_for_card(payment):
 
 
 def _settlement_payment_row(payment):
+    from .processing_fees import payment_charged_totals
     from .stripe_services import bank_status_label
 
     paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
     children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
     child = payment.dropin_child or (" · ".join(children) if children else "—")
+    _tuition, fee, charged = payment_charged_totals(payment)
     if _payment_already_paid_out(payment):
         card_status = "Paid"
     elif payment.status == PortalPayment.STATUS_PENDING:
@@ -386,7 +411,8 @@ def _settlement_payment_row(payment):
         "family_id": payment.family_id,
         "unit": payment.family.unit.name,
         "paid_by": payment.family.primary_contact or payment.family.name,
-        "amount": _money(payment.amount),
+        "amount": _money(charged),
+        "fee": _money(fee) if fee else "",
         "method": payment.method_label or ("Card" if payment.stripe_session_id else "Recorded"),
         "status": card_status,
         "bank_status": bank_status_label(payment.stripe_bank_status),
@@ -466,6 +492,9 @@ def stripe_settlement_rows(filters=None):
     ]
     stripe_payments = [payment for payment in payments if _is_stripe_card_payment(payment)]
     refresh_stripe_settlements(stripe_payments)
+    from .processing_fees import backfill_stripe_fee_totals
+
+    backfill_stripe_fee_totals(stripe_payments)
 
     claimed_ids = set()
     for payment in stripe_payments:
@@ -749,6 +778,7 @@ ADMIN_DATA_REPORTS = {
             ("type", "Type"),
             ("description", "Description"),
             ("amount", "Amount"),
+            ("fee", "Processing fee"),
         ],
         "filename": "billing-ledger.csv",
         "filters": ("q", "unit", "entry_type", "start", "end"),
@@ -776,6 +806,7 @@ ADMIN_DATA_REPORTS = {
             ("paid_by", "Paid by"),
             ("unit", "Unit"),
             ("amount", "Amount"),
+            ("fee", "Processing fee"),
             ("method", "Method"),
             ("status", "Status"),
         ],
@@ -790,6 +821,7 @@ ADMIN_DATA_REPORTS = {
             ("child", "Child"),
             ("paid_by", "Paid by"),
             ("amount", "Amount"),
+            ("fee", "Processing fee"),
             ("method", "Method"),
             ("date", "Date paid"),
             ("unit", "Unit"),
@@ -942,7 +974,11 @@ def build_admin_report(slug, filters=None):
     if slug == "ledger":
         data = ledger_report_rows(filters)
         rows = data["rows"]
-        extra["summary"] = f"{len(rows)} entries · charges ${data['total_charges']} · credits ${data['total_credits']} · net ${data['net']}"
+        extra["summary"] = (
+            f"{len(rows)} entries · charges ${data['total_charges']} · "
+            f"parents paid ${data['total_paid']} · processing fees ${data['total_fees']} · "
+            f"credits ${data['total_credits']} · net ${data['net']}"
+        )
         extra["entry_types"] = LEDGER_TYPES
     elif slug == "balances":
         data = balance_report_rows(filters)

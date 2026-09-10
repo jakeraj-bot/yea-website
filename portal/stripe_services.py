@@ -200,6 +200,12 @@ def confirm_checkout_payment(session_id):
         return None
     if payment.status == PortalPayment.STATUS_PAID:
         return payment
+    from .processing_fees import apply_fee_to_payment, apply_stripe_session_totals
+
+    if getattr(session, "amount_total", None):
+        apply_stripe_session_totals(payment, session)
+    elif not payment.total_charged:
+        apply_fee_to_payment(payment)
     method_label = "Card"
     payment_intent = getattr(session, "payment_intent", None)
     intent_id = payment_intent if isinstance(payment_intent, str) else getattr(payment_intent, "id", "")
