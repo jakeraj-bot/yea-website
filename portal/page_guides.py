@@ -126,8 +126,12 @@ GUIDES = {
         "intro": "This queue is applications that still need a decision. Waitlist is a separate page.",
         "steps": [
             {
+                "title": "Review all from oldest first",
+                "body": "Use Review all at the top to start with the application that came in first and still needs a decision. Previous and Next move through that same oldest-first queue. Already approved children are not in this list.",
+            },
+            {
                 "title": "Search and open Review",
-                "body": "Find the child, then open Review to read the full application, medical notes, and program choice.",
+                "body": "The list is sorted by received time, oldest first. Find the child, then open Review to read the full application, medical notes, and program choice.",
             },
             {
                 "title": "Create an application for a walk-in",
@@ -359,7 +363,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Attendance by grade prints who was present or absent, grouped by grade. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
@@ -368,6 +372,28 @@ GUIDES = {
             {
                 "title": "Exports",
                 "body": "Outstanding balances and 4Cs copay files download as CSV for spreadsheets.",
+            },
+        ],
+    },
+    "attendance-by-grade": {
+        "title": "How to print attendance by grade",
+        "intro": "This sheet groups children by grade so you can print one grade or the whole unit. Use it for a day or a Monday–Friday week.",
+        "steps": [
+            {
+                "title": "Check whose children you see",
+                "body": "Staff see only children at the unit in the header. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
+            },
+            {
+                "title": "Pick a day or a week",
+                "body": "One day shows present, absent, and not arrived, plus check-in and check-out times. School week shows Monday through Friday marks and a present total.",
+            },
+            {
+                "title": "Filter until only the needed rows remain",
+                "body": "Use program, school, grade, present/absent status, and child or family search. Apply filters, then print only what is on the page.",
+            },
+            {
+                "title": "Preview, then print or download",
+                "body": "Each grade has its own heading. Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
             },
         ],
     },
