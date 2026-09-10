@@ -1,0 +1,176 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<style media="print">
+  @page { size: landscape; margin: 0.4in; }
+</style>
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Attendance by grade</p>
+    <h1>Attendance by grade</h1>
+    <p class="lead">
+      {% if show_unit_filter %}
+        {% if report_filters.unit %}{{ report_filters.unit }}{% else %}All units{% endif %}
+      {% else %}
+        {{ staff_unit }}
+      {% endif %}
+      · {{ period_display }}
+      · {{ report_rows|length }} child{{ report_rows|length|pluralize:"ren" }}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
+      <h2>Filters</h2>
+      <p class="form-note">Print attendance grouped by grade. Choose a day or a school week, then narrow by program, school, or who was present.</p>
+      <div class="portal-report-filters">
+        {% if show_unit_filter %}
+        <label class="portal-filter-label">
+          Unit
+          <select class="portal-select" name="unit">
+            <option value="">All units</option>
+            {% for slug, name in filter_options.units %}
+            <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="portal-filter-label">
+          Program
+          <select class="portal-select" name="program">
+            <option value="">All programs</option>
+            {% for value, label in filter_options.programs %}
+            <option value="{{ value }}"{% if report_filters.program == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          School
+          <select class="portal-select" name="school">
+            <option value="">All schools</option>
+            {% for school in filter_options.schools %}
+            <option value="{{ school }}"{% if report_filters.school == school %} selected{% endif %}>{{ school }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Grade
+          <select class="portal-select" name="grade">
+            <option value="">All grades</option>
+            {% for grade in filter_options.grades %}
+            <option value="{{ grade }}"{% if report_filters.grade == grade %} selected{% endif %}>{{ grade }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Day or week
+          <select class="portal-select" name="range">
+            <option value="day"{% if report_filters.range != "week" %} selected{% endif %}>One day</option>
+            <option value="week"{% if report_filters.range == "week" %} selected{% endif %}>School week (Mon–Fri)</option>
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Date
+          <input class="portal-input" type="date" name="date" value="{{ sheet_date }}">
+        </label>
+        <label class="portal-filter-label">
+          Status
+          <select class="portal-select" name="status">
+            <option value="">All statuses</option>
+            {% for status in filter_options.statuses %}
+            <option value="{{ status }}"{% if report_filters.status == status %} selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Child or family
+          <input class="portal-input" type="search" name="q" value="{{ report_filters.q }}" placeholder="Search name">
+        </label>
+      </div>
+      <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
+        <button type="submit" class="btn btn-secondary">Apply filters</button>
+        <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+        <a class="btn btn-secondary" href="{{ request.get_full_path }}{% if '?' in request.get_full_path %}&amp;{% else %}?{% endif %}format=csv">Download CSV</a>
+        <a class="btn btn-secondary" href="{{ hub_url }}">Back to reports</a>
+      </div>
+    </form>
+
+    <div class="card portal-medical-report-sheet portal-attendance-grade-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Attendance by grade</h2>
+          <p class="portal-medical-report-meta">
+            {% if show_unit_filter %}
+              {% if report_filters.unit %}
+                {% for slug, name in filter_options.units %}{% if report_filters.unit == slug %}<strong>{{ name }}</strong>{% endif %}{% endfor %}
+              {% else %}
+                <strong>All units</strong>
+              {% endif %}
+            {% else %}
+              <strong>{{ staff_unit }}</strong>
+            {% endif %}
+            · {{ period_display }}
+            · {{ report_rows|length }} child{{ report_rows|length|pluralize:"ren" }}
+            · Generated {{ generated_date }}
+          </p>
+        </div>
+      </header>
+
+      {% for group in grade_groups %}
+      <h3 class="portal-attendance-grade-heading">{{ group.grade }} <span class="form-note">{{ group.count }} child{{ group.count|pluralize:"ren" }}{% if range_mode != "week" %} · {{ group.present }} present · {{ group.absent }} absent{% endif %}</span></h3>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-attendance-grade-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              {% if show_unit_filter %}<th>Unit</th>{% endif %}
+              <th>School</th>
+              <th>Program</th>
+              {% if range_mode == "week" %}
+                {% for day in week_days %}
+                <th>{{ day.label }}<br><span class="form-note">{{ day.date_short }}</span></th>
+                {% endfor %}
+                <th>Total</th>
+              {% else %}
+                <th>Status</th>
+                <th>Check in</th>
+                <th>Check out</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in group.rows %}
+            <tr>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
+              <td><strong>{{ row.child }}</strong></td>
+              <td>{{ row.family }}</td>
+              {% if show_unit_filter %}<td>{{ row.unit }}</td>{% endif %}
+              <td>{{ row.school }}</td>
+              <td>{{ row.program }}</td>
+              {% if range_mode == "week" %}
+                {% for day in row.days %}
+                <td>{% if day.present %}✓{% else %}{{ day.status }}{% endif %}</td>
+                {% endfor %}
+                <td>{{ row.total }}</td>
+              {% else %}
+                <td>{{ row.status }}</td>
+                <td>{{ row.check_in }}</td>
+                <td>{{ row.check_out }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% empty %}
+      <p class="form-note">No children match these filters.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

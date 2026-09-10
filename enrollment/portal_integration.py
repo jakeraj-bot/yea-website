@@ -2,6 +2,7 @@
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -356,6 +357,7 @@ def staff_application_row(app):
         "unit": unit_name or "—",
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
+        "submitted_sort": timezone.localtime(app.submitted_at).isoformat(),
         "program": app.get_program_display().replace(" program", ""),
         "school": app.student_school or "—",
         "status": STATUS_LABELS.get(app.status, "Under review"),
@@ -366,7 +368,7 @@ def staff_application_row(app):
     }
 
 
-def staff_application_detail(app):
+def staff_application_detail(app, unit=None):
     from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
 
     data = application_to_portal_dict(app)
@@ -424,22 +426,33 @@ def staff_application_detail(app):
             "program_choices": EnrollmentApplication.PROGRAM_CHOICES,
             "payment_method_choices": EnrollmentApplication.PAYMENT_METHOD_CHOICES,
             "payment_plan_choices": EnrollmentApplication.PAYMENT_PLAN_CHOICES,
-            **application_neighbors(app),
+            **application_neighbors(app, unit=unit),
         }
     )
     return data
 
 
 OPEN_REVIEW_STATUSES = ("under_review", "pending_documents")
+REVIEW_QUEUE_ORDER = ("submitted_at", "id")
+
+
+def _review_queue_queryset(unit=None, unit_slug=None, open_only=True):
+    if unit_slug and not unit:
+        unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first()
+        if not unit:
+            return EnrollmentApplication.objects.none()
+    if unit:
+        qs = applications_queryset_for_unit(unit)
+    else:
+        qs = EnrollmentApplication.objects.all()
+    if open_only:
+        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
+    return qs
 
 
 def application_neighbors(app, unit=None, open_only=True):
-    qs = EnrollmentApplication.objects.all()
-    if unit:
-        qs = applications_queryset_for_unit(unit)
-    if open_only:
-        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
-    slugs = [str(row.reference) for row in qs.order_by("-submitted_at")]
+    qs = _review_queue_queryset(unit=unit, open_only=open_only)
+    slugs = [str(row.reference) for row in qs.order_by(*REVIEW_QUEUE_ORDER)]
     current = str(app.reference)
     try:
         idx = slugs.index(current)
@@ -453,42 +466,36 @@ def application_neighbors(app, unit=None, open_only=True):
     }
 
 
+def first_reviewable_application(unit=None, unit_slug=None):
+    return _review_queue_queryset(unit=unit, unit_slug=unit_slug).order_by(*REVIEW_QUEUE_ORDER).first()
+
+
 def next_reviewable_application(app, unit=None):
-    qs = EnrollmentApplication.objects.filter(status__in=OPEN_REVIEW_STATUSES).exclude(pk=app.pk)
-    if unit:
-        qs = applications_queryset_for_unit(unit).filter(status__in=OPEN_REVIEW_STATUSES).exclude(pk=app.pk)
-    following = qs.filter(submitted_at__lte=app.submitted_at).order_by("-submitted_at").first()
-    return following or qs.order_by("-submitted_at").first()
+    qs = _review_queue_queryset(unit=unit).exclude(pk=app.pk)
+    following = qs.filter(
+        Q(submitted_at__gt=app.submitted_at) | Q(submitted_at=app.submitted_at, pk__gt=app.pk)
+    ).order_by(*REVIEW_QUEUE_ORDER).first()
+    return following or qs.order_by(*REVIEW_QUEUE_ORDER).first()
 
 
 def applications_for_staff(unit=None, include_closed=False):
-    qs = (
-        applications_queryset_for_unit(unit)
-        if unit
-        else EnrollmentApplication.objects.none()
-    )
-    if not include_closed:
-        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
+    if not unit:
+        return []
+    qs = _review_queue_queryset(unit=unit, open_only=not include_closed)
     return [
         staff_application_row(app)
         for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
-            "-submitted_at"
+            *REVIEW_QUEUE_ORDER
         )
     ]
 
 
 def applications_for_admin(unit_slug=None, include_closed=False):
-    if unit_slug:
-        unit = PortalUnit.objects.filter(slug=unit_slug, is_active=True).first()
-        qs = applications_queryset_for_unit(unit) if unit else EnrollmentApplication.objects.none()
-    else:
-        qs = EnrollmentApplication.objects.all()
-    if not include_closed:
-        qs = qs.filter(status__in=OPEN_REVIEW_STATUSES)
+    qs = _review_queue_queryset(unit_slug=unit_slug, open_only=not include_closed)
     return [
         staff_application_row(app)
         for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
-            "-submitted_at"
+            *REVIEW_QUEUE_ORDER
         )
     ]
 

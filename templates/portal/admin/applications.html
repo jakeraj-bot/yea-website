@@ -11,6 +11,7 @@
   <div class="container">
     {% include "portal/includes/application_tabs.html" %}
     <form method="get" class="portal-toolbar portal-form-inline">
+      <a class="btn btn-primary" href="{% url 'portal_admin_review_all' %}{% if applications_unit_filter %}?unit={{ applications_unit_filter }}{% endif %}">Review all</a>
       <label class="portal-filter-label">
         Unit
         <select class="portal-select" name="unit" onchange="this.form.submit()">
@@ -22,7 +23,7 @@
       </label>
     </form>
 
-    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (newest)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" search_id="admin-app-search" %}
+    {% include "portal/staff/includes/list_toolbar.html" with sort_default="Submitted (oldest first)" sort_options="Submitted (oldest first),Submitted (newest first)" filter_options="All,Under review,Pending documents" search_placeholder="Child or family" search_id="admin-app-search" %}
 
     <div class="portal-table-wrap">
       <table class="portal-table" id="admin-applications-table">
@@ -41,7 +42,7 @@
         </thead>
         <tbody>
           {% for app in applications %}
-          <tr data-status="{{ app.status_slug }}">
+          <tr data-status="{{ app.status_slug }}" data-submitted="{{ app.submitted_sort }}">
             <td><strong>{{ app.child }}</strong></td>
             <td class="portal-medical-cell">{% medical_badges app.child %}</td>
             <td>{{ app.family }}</td>

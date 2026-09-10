@@ -160,6 +160,7 @@ from enrollment.portal_integration import (
     application_to_portal_dict,
     applications_for_admin,
     applications_for_staff,
+    first_reviewable_application,
     get_application_by_reference,
     parent_application_list_items,
     staff_application_detail as application_detail_dict,
@@ -2478,6 +2479,49 @@ def _member_information_filters(request):
     return {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
 
 
+ATTENDANCE_GRADE_FILTER_KEYS = (
+    "q",
+    "unit",
+    "program",
+    "school",
+    "grade",
+    "date",
+    "range",
+    "status",
+)
+
+
+def _attendance_grade_filters(request):
+    return {key: request.GET.get(key, "").strip() for key in ATTENDANCE_GRADE_FILTER_KEYS}
+
+
+def _attendance_grade_csv(report_rows, filename, *, week_days=None):
+    import csv
+
+    from django.http import HttpResponse
+
+    from .attendance_grade_report import PRINT_COLUMNS
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    if week_days:
+        headers = ["Child", "Family", "Grade", "Unit", "School", "Program"]
+        headers.extend([f"{day['label']} {day['date_short']}" for day in week_days])
+        headers.append("Total present")
+        writer.writerow(headers)
+        for row in report_rows:
+            values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school"), row.get("program")]
+            values.extend(["Present" if day.get("present") else day.get("status") for day in row.get("days") or []])
+            values.append(row.get("total", 0))
+            writer.writerow(values)
+        return response
+    writer.writerow([label for _key, label in PRINT_COLUMNS])
+    for row in report_rows:
+        writer.writerow([row.get(key, "") for key, _label in PRINT_COLUMNS])
+    return response
+
+
 def _member_information_csv(report_rows, filename):
     import csv
 
@@ -2571,6 +2615,49 @@ def staff_member_information_report(request):
             request=request,
             staff_page_slug="reports",
             page_guide_key="member-information",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
+def staff_attendance_grade_report(request):
+    from .attendance_grade_report import attendance_grade_report_bundle
+
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _attendance_grade_filters(request)
+    if _portal_data_live() and unit:
+        bundle = attendance_grade_report_bundle(filters=filters, unit=unit, admin=False)
+    else:
+        bundle = {
+            "report_rows": [],
+            "grade_groups": [],
+            "filter_options": {"schools": [], "grades": [], "statuses": [], "units": [], "programs": []},
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "period_display": date.today().strftime("%A, %B %d, %Y"),
+            "range_mode": filters.get("range") or "day",
+            "week_days": [],
+            "sheet_date": date.today().isoformat(),
+        }
+    if request.GET.get("format") == "csv":
+        return _attendance_grade_csv(
+            bundle["report_rows"],
+            "attendance-by-grade.csv",
+            week_days=bundle.get("week_days") if bundle.get("range_mode") == "week" else None,
+        )
+    return render(
+        request,
+        "portal/staff/attendance_grade_report.html",
+        _staff_context(
+            "Attendance by grade",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="attendance-by-grade",
             hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
             hub_label="Reports",
             show_unit_filter=False,
@@ -2866,7 +2953,7 @@ def staff_application_detail(request, app_slug):
             on_waitlist = app.status == "waitlist"
             application_urls = _application_portal_urls("staff", app_slug, waitlist=on_waitlist)
             application = _application_with_policy_print_urls(
-                application_detail_dict(app),
+                application_detail_dict(app, unit=_staff_unit(request)),
                 "portal_staff_application_policy_print",
                 app_slug=app_slug,
             )
@@ -2907,6 +2994,17 @@ def staff_application_detail(request, app_slug):
             can_approve_this_application=False,
         ),
     )
+
+
+@staff_login_required
+@require_GET
+def staff_review_all_applications(request):
+    unit = _staff_unit(request) if _portal_data_live() else None
+    app = first_reviewable_application(unit=unit) if unit else None
+    if not app:
+        messages.info(request, "No applications are waiting for review.")
+        return redirect("portal_staff_page", page="applications")
+    return redirect("portal_staff_application_detail", app_slug=str(app.reference))
 
 
 @require_GET
@@ -2960,6 +3058,20 @@ def admin_application_detail(request, app_slug):
             can_approve_this_application=True,
         ),
     )
+
+
+@require_GET
+@admin_login_required
+def admin_review_all_applications(request):
+    unit_slug = request.GET.get("unit", "").strip()
+    app = first_reviewable_application(unit_slug=unit_slug or None) if _portal_data_live() else None
+    if not app:
+        messages.info(request, "No applications are waiting for review.")
+        list_url = reverse("portal_admin_page", kwargs={"page": "applications"})
+        if unit_slug:
+            list_url = f"{list_url}?unit={unit_slug}"
+        return redirect(list_url)
+    return redirect("portal_admin_application_detail", app_slug=str(app.reference))
 
 
 @staff_login_required
@@ -3780,6 +3892,51 @@ def admin_member_information_report(request):
                 "Member information",
                 admin_page_slug="reports",
                 page_guide_key="member-information",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_attendance_grade_report(request):
+    from .attendance_grade_report import attendance_grade_report_bundle
+
+    filters = _attendance_grade_filters(request)
+    if _portal_data_live():
+        bundle = attendance_grade_report_bundle(filters=filters, admin=True)
+    else:
+        bundle = {
+            "report_rows": [],
+            "grade_groups": [],
+            "filter_options": {"schools": [], "grades": [], "statuses": [], "units": [], "programs": []},
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "period_display": date.today().strftime("%A, %B %d, %Y"),
+            "range_mode": filters.get("range") or "day",
+            "week_days": [],
+            "sheet_date": date.today().isoformat(),
+        }
+    if request.GET.get("format") == "csv":
+        return _attendance_grade_csv(
+            bundle["report_rows"],
+            "attendance-by-grade.csv",
+            week_days=bundle.get("week_days") if bundle.get("range_mode") == "week" else None,
+        )
+    return render(
+        request,
+        "portal/staff/attendance_grade_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Attendance by grade",
+                admin_page_slug="reports",
+                page_guide_key="attendance-by-grade",
                 hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
                 hub_label="Organization reports",
                 show_unit_filter=True,

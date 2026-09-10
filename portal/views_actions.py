@@ -79,18 +79,18 @@ def _add_after_school_from_review(request, app, area):
     return redirect(_portal_next_url(request, fallback))
 
 
-def _application_after_review_url(area, app, action):
+def _application_after_review_url(area, app, action, unit=None):
     from enrollment.portal_integration import next_reviewable_application
 
     if action == "waitlist":
-        nxt = next_reviewable_application(app)
+        nxt = next_reviewable_application(app, unit=unit)
         if nxt:
             name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
             return reverse(name, kwargs={"app_slug": str(nxt.reference)})
         list_name = "portal_admin_page" if area == "admin" else "portal_staff_page"
         return reverse(list_name, kwargs={"page": "waitlist"})
     if action in {"approve", "reject"}:
-        nxt = next_reviewable_application(app)
+        nxt = next_reviewable_application(app, unit=unit)
         if nxt:
             name = "portal_admin_application_detail" if area == "admin" else "portal_staff_application_detail"
             return reverse(name, kwargs={"app_slug": str(nxt.reference)})
@@ -1157,7 +1157,9 @@ def staff_application_review(request, app_slug):
         messages.error(request, str(exc))
         return redirect(redirect_url)
 
-    return redirect(_portal_next_url(request, _application_after_review_url("staff", app, action)))
+    from .staff_auth import resolve_staff_unit
+
+    return redirect(_portal_next_url(request, _application_after_review_url("staff", app, action, unit=resolve_staff_unit(request))))
 
 
 @require_POST
