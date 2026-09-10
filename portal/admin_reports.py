@@ -326,12 +326,41 @@ SETTLEMENT_STATUS_CHOICES = [
     ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
     ("in_transit", "On the way to the bank"),
     ("in_bank", "Paid out to bank"),
-    ("not_stripe", "Not Stripe — recorded in portal"),
     ("unknown", "Bank status unavailable"),
 ]
 
 # Payments already assigned to a Stripe payout (arrived or still in transit).
 PAYOUT_GROUP_STATUSES = {"in_bank", "in_transit"}
+
+
+def _is_stripe_card_payment(payment):
+    """True when this portal payment was made through Stripe, not cash/check/money order."""
+    return bool(
+        (payment.stripe_session_id or "").strip()
+        or (payment.stripe_payment_intent_id or "").strip()
+        or (payment.stripe_charge_id or "").strip()
+    )
+
+
+def _stripe_identity_keys(payment):
+    """Stripe ids that uniquely identify one card charge — not family+amount+date."""
+    keys = set()
+    for raw in (payment.stripe_session_id, payment.stripe_payment_intent_id, payment.stripe_charge_id):
+        value = (raw or "").strip()
+        if value:
+            keys.add(value)
+    return keys
+
+
+def _payment_already_paid_out(payment):
+    return bool((payment.stripe_payout_id or "").strip()) or payment.stripe_bank_status in PAYOUT_GROUP_STATUSES
+
+
+def _is_waiting_for_card(payment):
+    """Checkout started but the card has not been charged / marked paid yet."""
+    if _payment_already_paid_out(payment):
+        return False
+    return payment.status == PortalPayment.STATUS_PENDING
 
 
 def _settlement_payment_row(payment):
@@ -340,7 +369,9 @@ def _settlement_payment_row(payment):
     paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
     children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
     child = payment.dropin_child or (" · ".join(children) if children else "—")
-    if payment.status == PortalPayment.STATUS_PENDING:
+    if _payment_already_paid_out(payment):
+        card_status = "Paid"
+    elif payment.status == PortalPayment.STATUS_PENDING:
         card_status = "Waiting for card"
     elif payment.status == PortalPayment.STATUS_FAILED:
         card_status = "Failed"
@@ -365,6 +396,10 @@ def _settlement_payment_row(payment):
         "payout_amount": _money(payment.stripe_payout_amount) if payment.stripe_payout_amount is not None else "",
         "payout_status": payment.stripe_bank_status or "",
         "payout_sort_date": payment.stripe_bank_date.isoformat() if payment.stripe_bank_date else "",
+        "stripe_session_id": (payment.stripe_session_id or "").strip(),
+        "stripe_payment_intent_id": (payment.stripe_payment_intent_id or "").strip(),
+        "stripe_charge_id": (payment.stripe_charge_id or "").strip(),
+        "waiting_for_card": _is_waiting_for_card(payment),
     }
 
 
@@ -422,15 +457,26 @@ def stripe_settlement_rows(filters=None):
     start = parse_date(filters.get("start") or "")
     end = parse_date(filters.get("end") or "")
     status_filter = (filters.get("status") or "").strip()
-    payments = list(
-        PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
-    )
-    refresh_stripe_settlements(payments)
+    payments = [
+        payment
+        for payment in PortalPayment.objects.select_related("family", "family__unit").order_by(
+            "-paid_at", "-created_at"
+        )
+        if not is_placeholder_unit(payment.family.unit)
+    ]
+    stripe_payments = [payment for payment in payments if _is_stripe_card_payment(payment)]
+    refresh_stripe_settlements(stripe_payments)
+
+    claimed_ids = set()
+    for payment in stripe_payments:
+        if payment.status == PortalPayment.STATUS_PAID or _payment_already_paid_out(payment):
+            claimed_ids |= _stripe_identity_keys(payment)
+
     pending_rows = []
+    waiting_for_card_rows = []
     grouped = {}
-    for payment in payments:
-        if is_placeholder_unit(payment.family.unit):
-            continue
+    seen_waiting_ids = set()
+    for payment in stripe_payments:
         if unit and payment.family.unit.slug != unit:
             continue
         paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
@@ -456,6 +502,15 @@ def stripe_settlement_rows(filters=None):
                 continue
         if status_filter and payment.stripe_bank_status != status_filter:
             continue
+        identity = _stripe_identity_keys(payment)
+        if _is_waiting_for_card(payment):
+            if identity and identity & claimed_ids:
+                continue
+            if identity and identity & seen_waiting_ids:
+                continue
+            seen_waiting_ids |= identity
+            waiting_for_card_rows.append(row)
+            continue
         if _payment_in_payout_section(row):
             grouped.setdefault(_payout_group_key(row), []).append(row)
         else:
@@ -467,9 +522,15 @@ def stripe_settlement_rows(filters=None):
         payout_groups.append(_payout_group_header(key, group_rows))
     payout_groups.sort(key=lambda group: (group["date"] or "", group["payout_id"] or ""), reverse=True)
 
+    waiting_to_receive = sum((Decimal(row["amount"]) for row in pending_rows), Decimal("0"))
+    waiting_for_card = sum((Decimal(row["amount"]) for row in waiting_for_card_rows), Decimal("0"))
+
     rows = []
     for row in pending_rows:
-        row["section"] = "Not yet paid out"
+        row["section"] = "Not paid out yet"
+        rows.append(row)
+    for row in waiting_for_card_rows:
+        row["section"] = "Waiting for card"
         rows.append(row)
     for group in payout_groups:
         for row in group["rows"]:
@@ -480,9 +541,12 @@ def stripe_settlement_rows(filters=None):
     return {
         "rows": rows,
         "pending_rows": pending_rows,
+        "waiting_for_card_rows": waiting_for_card_rows,
         "remaining_rows": [],
         "payout_groups": payout_groups,
         "statuses": SETTLEMENT_STATUS_CHOICES,
+        "waiting_to_receive_total": _money(waiting_to_receive),
+        "waiting_for_card_total": _money(waiting_for_card),
     }
 
 
@@ -720,7 +784,7 @@ ADMIN_DATA_REPORTS = {
     },
     "stripe-settlement": {
         "title": "Stripe & bank payouts",
-        "lead": "Member payments that have not reached a bank payout yet, then each Stripe payout with the payments inside it.",
+        "lead": "Only Stripe card payments. Succeeded charges not paid out to the bank yet are at the top, incomplete card checkouts are listed separately, then each Stripe payout.",
         "columns": [
             ("family", "Family"),
             ("child", "Child"),
@@ -892,14 +956,20 @@ def build_admin_report(slug, filters=None):
         data = stripe_settlement_rows(filters)
         rows = data["rows"]
         pending_count = len(data["pending_rows"])
+        waiting_card_count = len(data.get("waiting_for_card_rows") or [])
         payout_count = len(data["payout_groups"])
+        extra["waiting_to_receive_total"] = data.get("waiting_to_receive_total") or "0.00"
+        extra["waiting_for_card_total"] = data.get("waiting_for_card_total") or "0.00"
         extra["summary"] = (
-            f"{pending_count} not yet paid out · {payout_count} bank payout"
-            f"{'' if payout_count == 1 else 's'} · {len(rows)} payments"
+            f"Waiting to receive ${extra['waiting_to_receive_total']} · "
+            f"Waiting for card ${extra['waiting_for_card_total']} · "
+            f"{pending_count} not paid out yet · {waiting_card_count} waiting for card · "
+            f"{payout_count} bank payout{'' if payout_count == 1 else 's'} · {len(rows)} Stripe payments"
         )
         extra["statuses"] = [value for value, _label in data["statuses"]]
         extra["status_choices"] = data["statuses"]
         extra["pending_rows"] = data["pending_rows"]
+        extra["waiting_for_card_rows"] = data.get("waiting_for_card_rows") or []
         extra["remaining_rows"] = data.get("remaining_rows") or []
         extra["payout_groups"] = data["payout_groups"]
         extra["layout"] = "payout_sections"
@@ -957,14 +1027,20 @@ def build_admin_report(slug, filters=None):
     extra["units"] = unit_options()
     extra.setdefault("layout", spec.get("layout") or "table")
     extra.setdefault("pending_rows", [])
+    extra.setdefault("waiting_for_card_rows", [])
     extra.setdefault("remaining_rows", [])
     extra.setdefault("payout_groups", [])
+    extra.setdefault("waiting_to_receive_total", "0.00")
+    extra.setdefault("waiting_for_card_total", "0.00")
     for row in rows:
         row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
     for group in extra.get("payout_groups") or []:
         for row in group.get("rows") or []:
             if "display" not in row:
                 row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
+    for row in extra.get("waiting_for_card_rows") or []:
+        if "display" not in row:
+            row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
     return {
         "slug": slug,
         "title": spec["title"],
