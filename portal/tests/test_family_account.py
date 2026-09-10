@@ -81,13 +81,20 @@ class FamilyAccountHubTests(TestCase):
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertEqual(profile.status_code, 200)
         self.assertEqual(billing.status_code, 200)
-        next_url = reverse("portal_admin_family_detail", kwargs={"family_slug": "martinez"})
-        next_billing = reverse("portal_admin_family_billing", kwargs={"family_slug": "martinez"})
+        # Child rows A–Z: Ada Jacobs (application), Jordan Jacobs, Sofia Martinez.
+        # Opening Jacobs without a child lands on Ada; Next is the next child row.
         self.assertContains(profile, "portal-family-pager-next")
         self.assertNotContains(profile, "portal-family-neighbor-nav")
-        self.assertContains(profile, next_url)
+        self.assertContains(profile, "Next · Jordan Jacobs")
+        self.assertContains(profile, "1 of 3")
         self.assertContains(billing, "portal-family-pager-next")
-        self.assertContains(billing, next_billing)
+        self.assertContains(billing, reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        jordan = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"}),
+            {"id": self.family.pk, "child": "Jordan Jacobs"},
+        )
+        self.assertContains(jordan, reverse("portal_admin_family_detail", kwargs={"family_slug": "martinez"}))
+        self.assertContains(jordan, "Next · Sofia Martinez")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_member_account_has_next_button_to_next_family(self):
@@ -95,7 +102,12 @@ class FamilyAccountHubTests(TestCase):
         response = self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "portal-family-pager-next")
-        self.assertContains(response, reverse("portal_staff_family_detail", kwargs={"family_slug": "martinez"}))
+        self.assertContains(response, "Next · Jordan Jacobs")
+        jordan = self.client.get(
+            reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}),
+            {"child": "Jordan Jacobs"},
+        )
+        self.assertContains(jordan, reverse("portal_staff_family_detail", kwargs={"family_slug": "martinez"}))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_billing_has_refund_button_not_wide_table(self):
