@@ -176,6 +176,29 @@
   overflow: visible;
 }
 
+/* Login-style pages: fill the leftover viewport and center the compact card. */
+.portal-body.portal-area-public:has(.portal-auth-card) {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-area-public:has(.portal-auth-card) .portal-shell--auth {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.portal-area-public:has(.portal-auth-card) .portal-shell--auth .portal-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 auto;
+  padding-block: 1.25rem 1.75rem;
+  box-sizing: border-box;
+}
+
 @media (max-width: 800px) {
   .portal-shell,
   .portal-shell--auth {
@@ -737,22 +760,62 @@
   margin-inline: auto;
 }
 
-.portal-auth-heading {
+/* Beat .portal-area-public .portal-main .container so the login panel
+   stays a compact card, not the 1080px site slab. */
+.portal-area-public .portal-main .container.portal-auth-heading {
+  width: min(28rem, calc(100% - 2rem));
+  max-width: 28rem;
   text-align: center;
-  max-width: 36rem;
 }
 
 .portal-auth-heading .lead {
   margin-inline: auto;
 }
 
-.portal-auth-card {
-  max-width: 32rem;
-  margin-inline: auto;
+.portal-area-public .portal-main .container.portal-auth-card {
+  width: min(26rem, calc(100% - 2rem));
+  max-width: 26rem;
+}
+
+.portal-auth-card .card {
+  padding: 1.15rem 1.1rem 1.25rem;
+  box-sizing: border-box;
+}
+
+.portal-auth-card .portal-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.portal-auth-card .form-group input,
+.portal-auth-card .form-group select,
+.portal-auth-card .portal-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-auth-card .portal-code-snippet {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.portal-shell--auth .portal-hero,
+.portal-shell--auth .page-content {
+  width: 100%;
+}
+
+.portal-shell--auth:has(.portal-auth-card) .portal-hero {
+  border-bottom: none;
+  background: transparent;
+}
+
+.portal-shell--auth:has(.portal-auth-card) .page-content {
+  padding-block: 0;
 }
 
 .portal-shell--auth .portal-hero-compact {
-  padding-block: 2rem 1.25rem;
+  padding-block: 0 0.75rem;
 }
 
 .portal-email-recipients {
