@@ -1,0 +1,28 @@
+{% load static %}
+<style id="attendance-print-page-style" media="print">
+@page attendance-print {
+  size: {% if attendance_sheet_kind == 'daily' or attendance_sheet_kind == 'daily-blank' %}portrait{% else %}landscape{% endif %};
+  margin: 0.45in 0.4in 0.7in 0.4in;
+  @bottom-left {
+    content: "Printed {{ print_stamp|default:generated_date }}";
+    font-size: 9pt;
+  }
+  @bottom-right {
+    content: "Page " counter(page);
+    font-size: 9pt;
+  }
+}
+.portal-attendance-print-sheet {
+  page: attendance-print;
+}
+</style>
+<script>
+document.addEventListener("beforeprint", function () {
+  var stamp = new Date().toLocaleString();
+  var style = document.getElementById("attendance-print-page-style");
+  if (!style) return;
+  style.textContent = style.textContent.replace(/content: "Printed [^"]*";/, 'content: "Printed ' + stamp.replace(/"/g, "") + '";');
+  var nodes = document.querySelectorAll("[data-print-stamp]");
+  for (var i = 0; i < nodes.length; i++) nodes[i].textContent = "Printed " + stamp;
+});
+</script>

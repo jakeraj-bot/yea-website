@@ -1,0 +1,17 @@
+{% load static %}
+<tr class="portal-print-title-row">
+  <th colspan="{{ colspan }}" scope="colgroup">
+    <div class="portal-print-running-header">
+      <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo portal-print-running-logo">
+      <div>
+        <strong class="portal-print-running-title">{{ sheet_title }}</strong>
+        <p class="portal-medical-report-meta">
+          <strong>{{ selected_unit_name|default:unit_name }}</strong>
+          {% if program_name %} · {{ program_name }}{% endif %}
+          {% if selected_grades %} · Grades {{ selected_grades|join:", " }}{% else %} · All grades{% endif %}
+          · {{ sheet_subtitle }}
+        </p>
+      </div>
+    </div>
+  </th>
+</tr>

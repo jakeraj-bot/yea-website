@@ -418,12 +418,82 @@ GUIDES = {
                 "body": "The number above Monday is how many children on this filtered sheet were present that day. Tuesday through Friday each have their own count. The numbers follow Unit, grades, and the other filters.",
             },
             {
+                "title": "Read the grid like the blank sheet",
+                "body": "Grade sits under the child’s name. Unit is in the page header, not a column. A check means present; if they were not there, the cell is a blank line so you can write on a printout.",
+            },
+            {
                 "title": "Narrow further if you need to",
                 "body": "Use program, school, present/absent status, and child or family search. Apply filters, then print only what is on the page.",
             },
             {
                 "title": "Preview, then print or download",
-                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Daily kid totals stay in the weekday headers. Filters stay off the printed page.",
+                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. The header, kid totals, page number, and print date/time repeat on every printed page. Filters stay off the printed page.",
+            },
+        ],
+    },
+    "weekly-attendance-blank": {
+        "title": "How to print a blank weekly sheet",
+        "intro": "This is the Monday–Friday grid with names filled in and empty lines to mark by hand. Filters match the filled weekly sheet.",
+        "steps": [
+            {
+                "title": "Pick a unit",
+                "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Pick the week and grades",
+                "body": "Choose a date in that school week. Check one or more grades to keep those kids on the same grid. Leave grades unchecked for every grade at that unit.",
+            },
+            {
+                "title": "Read the listed counts",
+                "body": "The number above Monday is how many children are listed on this filtered sheet. Tuesday through Friday show the same listed count. Extra blank rows at the bottom are for walk-ins.",
+            },
+            {
+                "title": "Print",
+                "body": "Use Print / Save PDF. The header, listed counts, page number, and print date/time appear on every printed page.",
+            },
+        ],
+    },
+    "daily-attendance": {
+        "title": "How to print daily attendance",
+        "intro": "This is the sign-in sheet for one day, with check-in and check-out times filled in when they exist.",
+        "steps": [
+            {
+                "title": "Pick a unit",
+                "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units. You will not see children from a unit you cannot open.",
+            },
+            {
+                "title": "Pick the day and grades",
+                "body": "Change the date if you need another day. Check grades to keep those kids on one sheet.",
+            },
+            {
+                "title": "Read the day’s kid total",
+                "body": "The number above the weekday is how many children on this filtered sheet were present that day. Grade sits under the child’s name. Empty check-in or check-out cells are blank lines, not dashes.",
+            },
+            {
+                "title": "Print",
+                "body": "Use Print / Save PDF. The header, day’s total, page number, and print date/time appear on every printed page.",
+            },
+        ],
+    },
+    "daily-attendance-blank": {
+        "title": "How to print a blank daily sheet",
+        "intro": "This is a paper sign-in sheet with enrolled names and empty lines for times and signatures.",
+        "steps": [
+            {
+                "title": "Pick a unit",
+                "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Pick the day and grades",
+                "body": "Set the date, then check grades if you only need some classrooms. Names match the filled daily sheet for those filters.",
+            },
+            {
+                "title": "Read the listed count",
+                "body": "The number above the weekday is how many children are listed on this filtered sheet. Extra blank rows at the bottom are for walk-ins.",
+            },
+            {
+                "title": "Print",
+                "body": "Use Print / Save PDF. The header, listed count, page number, and print date/time appear on every printed page.",
             },
         ],
     },

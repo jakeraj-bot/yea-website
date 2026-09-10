@@ -24,6 +24,12 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_emergency_contact_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'weekly-attendance' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_weekly_attendance_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'attendance' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_attendance_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'attendance-blank-daily' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_attendance_blank_daily' %}">Preview &amp; print</a>
+        {% elif report.slug == 'attendance-blank-weekly' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_attendance_blank_weekly' %}">Preview &amp; print</a>
         {% elif report.slug == 'enrollment' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_enrollment_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'financial' %}

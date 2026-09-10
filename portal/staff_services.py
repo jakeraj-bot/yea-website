@@ -539,35 +539,16 @@ def _weekly_unit_choices(*, admin=False, allowed_units=None, unit=None):
     return choices
 
 
-def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None, *, admin=False, allowed_units=None):
-    """Mon–Fri present/absent marks plus printable weekday column labels.
-
-    Empty grade filter includes every grade. Selected grades stay on one sheet.
-    Staff can pick one allowed unit (default: the header unit), including a child
-    at that site whose family account lives elsewhere. Admins can pick one unit
-    or all units.
-    """
+def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_units=None):
+    """Shared unit / program / roster scope for weekly and daily attendance sheets."""
     from .member_admin import is_placeholder_unit
     from .models import PortalProgram
-    from .report_sheets import parse_sheet_date, week_day_columns, _weekday_monday
-    from .unit_visibility import unit_label_for_child
+    from .report_sheets import parse_sheet_date
 
     filters = dict(filters or {})
     raw_date = (filters.get("date") or "").strip()
-    if raw_date:
-        anchor_date = parse_sheet_date(raw_date)
-    else:
-        anchor_date = anchor_date or timezone.localdate()
-
-    monday = _weekday_monday(anchor_date)
-    weekdays = [monday + timedelta(days=i) for i in range(5)]
-    friday = weekdays[4]
-    week_days = week_day_columns(weekdays)
+    sheet_date = parse_sheet_date(raw_date) if raw_date else timezone.localdate()
     selected_grades = _normalized_grade_list(filters.get("grades") or filters.get("grade"))
-    selected_grade_keys = {grade.lower() for grade in selected_grades}
-    query = (filters.get("q") or "").strip().lower()
-    school = (filters.get("school") or "").strip()
-    status_filter = (filters.get("status") or "").strip()
     program_id = (filters.get("program") or "").strip()
     unit_slug = (filters.get("unit") or "").strip()
     scoped_unit = resolve_weekly_attendance_unit(
@@ -599,6 +580,123 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
         chosen_program = None
     record_programs = [chosen_program] if chosen_program else all_programs
 
+    return {
+        "filters": filters,
+        "sheet_date": sheet_date,
+        "scoped_unit": scoped_unit,
+        "roster_children": roster_children,
+        "chosen_program": chosen_program,
+        "record_programs": record_programs,
+        "all_programs": all_programs,
+        "selected_grades": selected_grades,
+        "selected_grade_keys": {grade.lower() for grade in selected_grades},
+        "query": (filters.get("q") or "").strip().lower(),
+        "school": (filters.get("school") or "").strip(),
+        "status_filter": (filters.get("status") or "").strip(),
+        "unit_choices": _weekly_unit_choices(admin=admin, allowed_units=allowed_units, unit=unit),
+        "admin": admin,
+    }
+
+
+def _sheet_child_identity(child, chosen_program, record_programs):
+    from .unit_visibility import unit_label_for_child
+
+    family = child.family
+    unit_name, child_unit_slug = unit_label_for_child(child)
+    return {
+        "child": child.name,
+        "family": family.name if family else "",
+        "grade": (child.grade or "").strip() or "—",
+        "school": (child.school or "").strip(),
+        "unit": unit_name,
+        "unit_slug": child_unit_slug,
+        "program": chosen_program.name if chosen_program else (record_programs[0].name if record_programs else ""),
+    }
+
+
+def _row_matches_sheet_filters(row, *, selected_grade_keys, query, school, status_filter=""):
+    grade = (row.get("grade") or "").strip()
+    if selected_grade_keys and grade.lower() not in selected_grade_keys:
+        return False
+    if query:
+        hay = f"{row.get('child') or ''} {row.get('family') or ''}".lower()
+        if query not in hay:
+            return False
+    school_name = row.get("school") or ""
+    if school and school_name.lower() != school.lower():
+        return False
+    if status_filter and (row.get("status") or "").lower() != status_filter.lower():
+        return False
+    return True
+
+
+def _sheet_filter_options(scope, statuses=None):
+    roster_children = scope["roster_children"]
+    all_programs = scope["all_programs"]
+    admin = scope["admin"]
+    return {
+        "grades": sorted(
+            {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
+            key=_grade_sort_key,
+        ),
+        "schools": sorted(
+            {(child.school or "").strip() for child in roster_children if (child.school or "").strip()},
+            key=str.lower,
+        ),
+        "programs": [
+            (str(item.pk), item.name if not admin or not item.unit_id else f"{item.name} · {item.unit.name}")
+            for item in all_programs
+        ],
+        "units": scope["unit_choices"],
+        "statuses": sorted(statuses or [], key=str.lower),
+    }
+
+
+def _sheet_unit_meta(scope):
+    scoped_unit = scope["scoped_unit"]
+    admin = scope["admin"]
+    chosen_program = scope["chosen_program"]
+    record_programs = scope["record_programs"]
+    program_name = chosen_program.name if chosen_program else (
+        record_programs[0].name if record_programs else "All programs"
+    )
+    if admin and not scoped_unit:
+        program_name = chosen_program.name if chosen_program else "All programs"
+    return {
+        "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
+        "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
+        "unit_filter_allows_all": admin,
+        "program_name": program_name,
+        "unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
+        "sheet_date": scope["sheet_date"].isoformat(),
+        "generated_date": timezone.localdate().strftime("%B %d, %Y"),
+        "selected_grades": scope["selected_grades"],
+    }
+
+
+def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None, *, admin=False, allowed_units=None):
+    """Mon–Fri present/absent marks plus printable weekday column labels.
+
+    Empty grade filter includes every grade. Selected grades stay on one sheet.
+    Staff can pick one allowed unit (default: the header unit), including a child
+    at that site whose family account lives elsewhere. Admins can pick one unit
+    or all units.
+    """
+    from .report_sheets import week_day_columns, _weekday_monday
+
+    filters = dict(filters or {})
+    if not (filters.get("date") or "").strip() and anchor_date:
+        filters["date"] = anchor_date.isoformat()
+    scope = attendance_sheet_scope(unit, program, filters, admin=admin, allowed_units=allowed_units)
+    sheet_date = scope["sheet_date"]
+    monday = _weekday_monday(sheet_date)
+    weekdays = [monday + timedelta(days=i) for i in range(5)]
+    friday = weekdays[4]
+    week_days = week_day_columns(weekdays)
+    roster_children = scope["roster_children"]
+    record_programs = scope["record_programs"]
+    chosen_program = scope["chosen_program"]
+
     present_lookup = {}
     status_lookup = {}
     if roster_children and record_programs:
@@ -617,70 +715,111 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
     rows = []
     option_statuses = set()
     for child in roster_children:
-        family = child.family
-        grade = (child.grade or "").strip() or "—"
-        school_name = (child.school or "").strip()
-        unit_name, child_unit_slug = unit_label_for_child(child)
         day_marks = [bool(present_lookup.get((child.pk, day))) for day in weekdays]
         status_keys = [status_lookup.get((child.pk, day)) for day in weekdays]
         _status_key, status_label = _weekly_status_label(status_keys)
         option_statuses.add(status_label)
         row = {
-            "child": child.name,
-            "family": family.name if family else "",
-            "grade": grade,
-            "school": school_name,
-            "unit": unit_name,
-            "unit_slug": child_unit_slug,
-            "program": chosen_program.name if chosen_program else (record_programs[0].name if record_programs else ""),
+            **_sheet_child_identity(child, chosen_program, record_programs),
             "days": day_marks,
             "weekday_labels": [column["label"] for column in week_days],
             "total": sum(1 for present in day_marks if present),
             "status": status_label,
         }
-        if selected_grade_keys and grade.lower() not in selected_grade_keys:
-            continue
-        if query:
-            hay = f"{row['child']} {row['family']}".lower()
-            if query not in hay:
-                continue
-        if school and school_name.lower() != school.lower():
-            continue
-        if status_filter and status_label.lower() != status_filter.lower():
+        if not _row_matches_sheet_filters(
+            row,
+            selected_grade_keys=scope["selected_grade_keys"],
+            query=scope["query"],
+            school=scope["school"],
+            status_filter=scope["status_filter"],
+        ):
             continue
         rows.append(row)
 
     present_counts = _day_present_counts(rows, len(week_days))
+    listed_count = len(rows)
     for column, count in zip(week_days, present_counts):
         column["present_count"] = count
+        column["listed_count"] = listed_count
 
-    filter_options = {
-        "grades": sorted(
-            {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
-            key=_grade_sort_key,
-        ),
-        "schools": sorted(
-            {(child.school or "").strip() for child in roster_children if (child.school or "").strip()},
-            key=str.lower,
-        ),
-        "programs": [
-            (str(item.pk), item.name if not admin or not item.unit_id else f"{item.name} · {item.unit.name}")
-            for item in all_programs
-        ],
-        "units": _weekly_unit_choices(admin=admin, allowed_units=allowed_units, unit=unit),
-        "statuses": sorted(option_statuses, key=str.lower),
-    }
     return {
         "weekly_rows": rows,
         "week_days": week_days,
         "week_range_display": f"{monday.strftime('%B %d')} – {friday.strftime('%B %d, %Y')}",
-        "filter_options": filter_options,
-        "sheet_date": anchor_date.isoformat(),
-        "generated_date": timezone.localdate().strftime("%B %d, %Y"),
-        "selected_grades": selected_grades,
-        "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
-        "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
-        "unit_filter_allows_all": admin,
+        "filter_options": _sheet_filter_options(scope, option_statuses),
+        "listed_count": listed_count,
         "day_present_counts": present_counts,
+        **_sheet_unit_meta(scope),
+    }
+
+
+def daily_attendance_report_data(unit, program, sheet_date=None, filters=None, *, admin=False, allowed_units=None):
+    """One-day attendance roster with the same unit / grade / name filters as weekly."""
+    from .attendance_service import record_for_row
+    from .report_sheets import _format_long
+
+    filters = dict(filters or {})
+    if not (filters.get("date") or "").strip() and sheet_date:
+        filters["date"] = sheet_date.isoformat()
+    scope = attendance_sheet_scope(unit, program, filters, admin=admin, allowed_units=allowed_units)
+    day = scope["sheet_date"]
+    roster_children = scope["roster_children"]
+    record_programs = scope["record_programs"]
+    chosen_program = scope["chosen_program"]
+
+    records_by_child = {}
+    if roster_children and record_programs:
+        records = AttendanceRecord.objects.filter(
+            program_id__in=[item.pk for item in record_programs if item],
+            date=day,
+            child_id__in=[child.pk for child in roster_children],
+        )
+        for record in records:
+            existing = records_by_child.get(record.child_id)
+            if existing is None or (
+                record.status == AttendanceRecord.STATUS_PRESENT
+                and existing.status != AttendanceRecord.STATUS_PRESENT
+            ):
+                records_by_child[record.child_id] = record
+
+    rows = []
+    option_statuses = set()
+    for child in roster_children:
+        row_data = record_for_row(records_by_child.get(child.pk))
+        status_label = {
+            AttendanceRecord.STATUS_PRESENT: "Present",
+            AttendanceRecord.STATUS_ABSENT: "Absent",
+        }.get(row_data["status"], "Not arrived")
+        option_statuses.add(status_label)
+        row = {
+            **_sheet_child_identity(child, chosen_program, record_programs),
+            "status": status_label,
+            "check_in": row_data["check_in"],
+            "check_out": row_data["check_out"],
+            "method": row_data["method"],
+            "present": row_data["status"] == AttendanceRecord.STATUS_PRESENT,
+        }
+        if not _row_matches_sheet_filters(
+            row,
+            selected_grade_keys=scope["selected_grade_keys"],
+            query=scope["query"],
+            school=scope["school"],
+            status_filter=scope["status_filter"],
+        ):
+            continue
+        rows.append(row)
+
+    listed_count = len(rows)
+    present_count = sum(1 for row in rows if row["present"])
+    meta = _sheet_unit_meta(scope)
+    return {
+        "daily_rows": rows,
+        "listed_count": listed_count,
+        "present_count": present_count,
+        "sheet_date_display": _format_long(day),
+        "day_label": day.strftime("%A"),
+        "day_date_short": day.strftime("%b %d"),
+        "filter_options": _sheet_filter_options(scope, option_statuses),
+        **meta,
     }
 
