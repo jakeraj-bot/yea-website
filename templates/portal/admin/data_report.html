@@ -182,10 +182,20 @@
         </div>
       </header>
       {% if report.layout == "payout_sections" %}
+      <div class="portal-payout-meta" id="stripe-payout-totals">
+        <span>Waiting to receive ${{ report.waiting_to_receive_total }}</span>
+        <span>Waiting for card ${{ report.waiting_for_card_total }}</span>
+      </div>
+      <p class="form-note">Waiting to receive is Stripe charges that already succeeded but have not been paid out to the bank yet. Waiting for card is a checkout the parent has not finished — that money is not on the way to the bank.</p>
       <section class="portal-payout-section" id="not-yet-paid-out">
-        <h3 class="portal-medical-report-section">Not yet paid out</h3>
-        <p class="form-note">These member payments are not in a Stripe bank payout yet.</p>
-        {% include "portal/admin/includes/report_table.html" with rows=report.pending_rows freeze_first="1" empty_message="No payments are waiting for a bank payout." %}
+        <h3 class="portal-medical-report-section">Not paid out yet</h3>
+        <p class="form-note">Stripe charges that succeeded. This is the money still waiting to hit the bank.</p>
+        {% include "portal/admin/includes/report_table.html" with rows=report.pending_rows freeze_first="1" empty_message="No succeeded Stripe charges are waiting for a bank payout." %}
+      </section>
+      <section class="portal-payout-section" id="waiting-for-card">
+        <h3 class="portal-medical-report-section">Waiting for card</h3>
+        <p class="form-note">The parent started a Stripe checkout but the card has not been charged yet. This is not included in Waiting to receive.</p>
+        {% include "portal/admin/includes/report_table.html" with rows=report.waiting_for_card_rows freeze_first="1" empty_message="No unfinished Stripe card checkouts." %}
       </section>
       {% if report.payout_groups %}
       {% for group in report.payout_groups %}
