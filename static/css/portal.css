@@ -2703,6 +2703,10 @@
 }
 
 /* Sign-out sheet: leftover table width was landing on # and pushing names right. */
+.portal-blank-sheet-table--signout {
+  table-layout: fixed;
+}
+
 .portal-blank-sheet-table--signout col.portal-signout-col-num {
   width: 2.1rem;
 }
@@ -3230,11 +3234,19 @@
     font-size: 0.7rem;
   }
 
+  .portal-blank-sheet-table--signout {
+    table-layout: fixed !important;
+  }
+
+  .portal-blank-sheet-table--signout col.portal-signout-col-num {
+    width: 2rem !important;
+  }
+
   .portal-blank-sheet-table--signout th.portal-row-num,
   .portal-blank-sheet-table--signout td.portal-row-num {
-    width: 1.5rem !important;
-    min-width: 1.35rem !important;
-    max-width: 1.85rem !important;
+    width: 2rem !important;
+    min-width: 1.6rem !important;
+    max-width: 2.1rem !important;
     padding-left: 0 !important;
     padding-right: 0.2rem !important;
   }
@@ -3242,8 +3254,6 @@
   .portal-blank-sheet-table--signout .portal-blank-col-name {
     padding-left: 0.1rem !important;
     padding-right: 0.35rem;
-    width: auto !important;
-    max-width: 12rem !important;
   }
 
   .portal-print-title-row {
