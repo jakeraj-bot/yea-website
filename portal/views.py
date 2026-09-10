@@ -665,12 +665,25 @@ def _admin_family_ops_context(family):
     from .member_admin import SUSPEND_REASONS, matching_prior_balances
     from .models import PortalDiscountPlan, PortalPriorBalance
 
+    from .family_merge import describe_family, suggested_merge_families
+
+    merge_candidates = []
+    for other in suggested_merge_families(family):
+        merge_candidates.append(
+            {
+                "id": other.pk,
+                "label": describe_family(other),
+                "name": other.name,
+                "unit": other.unit.name if other.unit_id else "",
+            }
+        )
     return {
         "family_id": family.pk,
         "suspend_reasons": SUSPEND_REASONS,
         "matching_prior_balances": matching_prior_balances(family),
         "discount_plans": PortalDiscountPlan.objects.filter(is_active=True),
         "unlinked_prior_balances": PortalPriorBalance.objects.filter(linked_family__isnull=True),
+        "merge_candidates": merge_candidates,
     }
 
 

@@ -561,6 +561,10 @@ GUIDES = {
                 "title": "Email the parent",
                 "body": "Use Email parent here or on the Email tab. Previous / Next moves you to the next family in your list.",
             },
+            {
+                "title": "Merge a duplicate account (admin)",
+                "body": "If the same child or parent shows up twice, open the account you want to keep and use Merge a duplicate account. That moves children, payments, attendance, and applications onto one family login. Kids at two sites stay on this same household — staff still only see the children at their unit.",
+            },
         ],
     },
     "family-pickup": {

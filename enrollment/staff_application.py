@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils.text import slugify
 
 from enrollment.models import EnrollmentApplication
-from enrollment.portal_integration import link_applications_by_email
+from enrollment.portal_integration import find_existing_family_for_parent, link_applications_by_email
 
 from portal.models import PortalFamily, PortalUnit
 
@@ -58,7 +58,17 @@ def create_staff_application(form, unit):
     save_draft = form.get("action") == "draft"
     today = date.today()
 
-    portal_family = _get_or_create_family(unit, family_name, parent_first, parent_last, email, payment_method)
+    portal_family = _get_or_create_family(
+        unit,
+        family_name,
+        parent_first,
+        parent_last,
+        email,
+        payment_method,
+        student_first=student_first,
+        student_last=student_last,
+        student_dob=form.get("student_dob"),
+    )
 
     app = EnrollmentApplication.objects.create(
         family_group=uuid.uuid4(),
@@ -105,9 +115,24 @@ def create_staff_application(form, unit):
     return app
 
 
-def _get_or_create_family(unit, family_name, parent_first, parent_last, email, payment_method):
+def _get_or_create_family(
+    unit,
+    family_name,
+    parent_first,
+    parent_last,
+    email,
+    payment_method,
+    student_first="",
+    student_last="",
+    student_dob=None,
+):
     billing_type = {"4cs": "4Cs", "private_pay": "Private pay"}.get(payment_method, "Private pay")
-    existing = PortalFamily.objects.filter(unit=unit, primary_contact__icontains=parent_last).first()
+    existing = find_existing_family_for_parent(
+        email=email,
+        child_first=student_first,
+        child_last=student_last,
+        child_dob=student_dob,
+    )
     if existing:
         return existing
     base_slug = slugify(family_name) or "family"

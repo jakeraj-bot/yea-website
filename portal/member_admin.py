@@ -488,10 +488,7 @@ def create_parent_account_for_family(family, username, password, email=""):
 @transaction.atomic
 def create_account_from_application(application, username, password):
     from enrollment.locations import get_unit_for_enrollment_key
-    from enrollment.portal_integration import link_applications_to_family
-
-    if application.portal_family_id and PortalParentAccount.objects.filter(family=application.portal_family).exists():
-        raise ValueError("This application already has a parent portal login.")
+    from enrollment.portal_integration import find_existing_family_for_parent, link_applications_to_family
 
     unit = get_unit_for_enrollment_key(application.program_location)
     if not unit or is_placeholder_unit(unit):
@@ -499,8 +496,19 @@ def create_account_from_application(application, username, password):
     if not unit:
         raise ValueError("No program unit is set up yet.")
 
-    family = application.portal_family
-    if not family:
+    family = application.portal_family or find_existing_family_for_parent(
+        email=application.primary_email,
+        child_first=application.student_first_name,
+        child_last=application.student_last_name,
+        child_dob=application.student_dob,
+    )
+    if family:
+        if not application.portal_family_id:
+            link_applications_to_family([application], family)
+        existing_login = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+        if existing_login:
+            return family, display_username(existing_login.user.username)
+    else:
         family = PortalFamily.objects.create(
             unit=unit,
             slug=_unique_family_slug(unit, application.family_name or "Family"),

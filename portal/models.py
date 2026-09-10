@@ -362,6 +362,7 @@ class PortalLedgerEntry(models.Model):
     entry_type = models.CharField(max_length=32)
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_manual = models.BooleanField(default=False)
     reference_number = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

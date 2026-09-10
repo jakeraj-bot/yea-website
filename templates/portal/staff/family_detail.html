@@ -188,6 +188,36 @@
       </section>
     </div>
 
+    {% if portal_area == 'admin' and portal_live and family_id %}
+    <section class="card portal-profile-full" id="merge-family-account">
+      <h2>Merge a duplicate account</h2>
+      <p class="form-note">One household should have one family login. Children can attend different sites on this same account. Merging moves children, payments, attendance, and applications here. Payment history is kept.</p>
+      <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid" onsubmit="return confirm('Merge the extra account into this family? Payments and attendance stay. The extra login is removed.');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="merge_family">
+        <input type="hidden" name="family_id" value="{{ family_id }}">
+        <input type="hidden" name="family_slug" value="{{ family_slug }}">
+        <div class="form-group portal-form-full">
+          <label for="source-family-id">Extra family to merge in</label>
+          {% if merge_candidates %}
+          <select id="source-family-id" name="source_family_id" class="portal-input" required>
+            <option value="">Choose the duplicate…</option>
+            {% for candidate in merge_candidates %}
+            <option value="{{ candidate.id }}">{{ candidate.name }}{% if candidate.unit %} · {{ candidate.unit }}{% endif %} (id {{ candidate.id }})</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input id="source-family-id" name="source_family_id" class="portal-input" type="number" min="1" placeholder="Family id of the extra account" required>
+          <p class="form-note">No automatic match. Enter the extra family’s id from All families if you already confirmed it is the same household.</p>
+          {% endif %}
+        </div>
+        <div class="form-group portal-form-full">
+          <button type="submit" class="btn btn-primary">Merge into this account</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+
     <section class="card portal-profile-full portal-family-email-card">
       <h2>Email parent</h2>
       {% include "portal/includes/family_email_form.html" with form_id="profile-email" %}

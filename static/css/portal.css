@@ -1212,8 +1212,25 @@
   }
 }
 
-.portal-print-title-row {
+.portal-print-title-row,
+.portal-print-header-spacer {
   display: none;
+}
+
+.portal-report-print-frame {
+  width: 100%;
+  border-collapse: collapse;
+  border: none;
+}
+
+.portal-report-print-frame > thead {
+  display: none;
+}
+
+.portal-report-print-frame > tbody > tr > td.portal-report-print-body {
+  padding: 0;
+  border: none;
+  vertical-align: top;
 }
 
 .portal-print-running-header {
@@ -1235,6 +1252,10 @@
 }
 
 .portal-attendance-print-footer {
+  display: none;
+}
+
+.portal-report-print-running-bar {
   display: none;
 }
 
@@ -2702,6 +2723,52 @@
   min-height: 1.85rem;
 }
 
+/* Sign-out sheet: leftover table width was landing on # and pushing names right. */
+.portal-blank-sheet-table--signout {
+  table-layout: fixed;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-num {
+  width: 2.1rem;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-name {
+  width: 18%;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-time {
+  width: 11%;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-sig {
+  width: 42%;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-rel {
+  width: 14%;
+}
+
+.portal-blank-sheet-table--signout col.portal-signout-col-init {
+  width: 8%;
+}
+
+.portal-blank-sheet-table--signout th.portal-row-num,
+.portal-blank-sheet-table--signout td.portal-row-num {
+  width: 2.1rem;
+  min-width: 1.75rem;
+  max-width: 2.35rem;
+  padding-left: 0.15rem;
+  padding-right: 0.3rem;
+}
+
+.portal-blank-sheet-table--signout .portal-blank-col-name {
+  width: auto;
+  min-width: 7.5rem;
+  padding-left: 0.2rem;
+  padding-right: 0.45rem;
+  text-align: left;
+}
+
 .portal-paper-receipt-stack {
   display: flex;
   flex-direction: column;
@@ -3008,12 +3075,25 @@
 
 @media print {
   @page {
-    margin: 0.4in;
+    margin: 0.45in 0.4in 0.7in 0.4in;
   }
 
   @page landscape-sheet {
     size: landscape;
-    margin: 0.4in;
+    margin: 0.45in 0.4in 0.7in 0.4in;
+  }
+
+  @page report-print {
+    size: landscape;
+    margin: 1.2in 0.4in 0.7in 0.4in;
+    @bottom-left {
+      content: "Printed";
+      font-size: 9pt;
+    }
+    @bottom-right {
+      content: "Page " counter(page);
+      font-size: 9pt;
+    }
   }
 
   .portal-no-print,
@@ -3065,11 +3145,86 @@
     max-width: none !important;
     page-break-inside: auto;
     break-inside: auto;
-    page: landscape-sheet;
+    page: report-print;
   }
 
   .portal-medical-report-sheet.portal-attendance-print-sheet {
     page: attendance-print;
+  }
+
+  .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header,
+  body:has(.portal-report-print-running-bar) .portal-medical-report-sheet:not(.portal-attendance-print-sheet) > .portal-medical-report-header {
+    display: none !important;
+  }
+
+  body:has(.portal-report-print-running-bar) .portal-print-title-row {
+    display: none !important;
+  }
+
+  .portal-print-header-spacer,
+  .portal-print-header-spacer th {
+    height: 0.95in;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    line-height: 0;
+    font-size: 0;
+  }
+
+  .portal-report-print-running-bar {
+    display: flex;
+    position: fixed;
+    top: 0.28in;
+    left: 0.4in;
+    right: 0.4in;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0 0 0.3rem;
+    border-bottom: 2px solid #222;
+    background: #fff;
+    z-index: 9999;
+  }
+
+  .portal-report-print-running-bar .portal-medical-report-logo {
+    width: 2.6rem;
+    height: auto;
+  }
+
+  .portal-report-print-running-bar h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1.05rem;
+  }
+
+  .portal-report-print-frame {
+    width: 100% !important;
+    border-collapse: collapse;
+    border: none;
+  }
+
+  .portal-report-print-frame > thead {
+    display: table-header-group;
+  }
+
+  .portal-report-print-frame > tbody {
+    display: table-row-group;
+  }
+
+  .portal-report-print-frame > tbody > tr > td.portal-report-print-body {
+    padding: 0;
+    border: none;
+    vertical-align: top;
+  }
+
+  .portal-print-title-row .portal-medical-report-header {
+    display: flex !important;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.25rem;
+    border-bottom: none;
+  }
+
+  .portal-print-title-row .portal-medical-report-header h2 {
+    font-size: 1.05rem;
   }
 
   .portal-table-wrap,
@@ -3099,7 +3254,10 @@
 
   .portal-table thead,
   .simple-table thead,
-  .portal-families-table thead {
+  .portal-families-table thead,
+  .portal-medical-report-table thead,
+  .portal-member-info-table thead,
+  .portal-report-print-frame thead {
     display: table-header-group;
   }
 
@@ -3188,7 +3346,31 @@
     font-size: 0.7rem;
   }
 
+  .portal-blank-sheet-table--signout {
+    table-layout: fixed !important;
+  }
+
+  .portal-blank-sheet-table--signout col.portal-signout-col-num {
+    width: 2rem !important;
+  }
+
+  .portal-blank-sheet-table--signout th.portal-row-num,
+  .portal-blank-sheet-table--signout td.portal-row-num {
+    width: 2rem !important;
+    min-width: 1.6rem !important;
+    max-width: 2.1rem !important;
+    padding-left: 0 !important;
+    padding-right: 0.2rem !important;
+  }
+
+  .portal-blank-sheet-table--signout .portal-blank-col-name {
+    padding-left: 0.1rem !important;
+    padding-right: 0.35rem;
+  }
+
   .portal-print-title-row {
+  .portal-print-title-row,
+  .portal-print-header-spacer {
     display: table-row;
   }
 

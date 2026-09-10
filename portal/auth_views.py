@@ -8,7 +8,11 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods
 
 from core.spam_protection import is_honeypot_triggered, is_rate_limited, record_attempt
-from enrollment.portal_integration import family_display_label, link_applications_by_email
+from enrollment.portal_integration import (
+    family_display_label,
+    find_existing_family_for_parent,
+    link_applications_by_email,
+)
 
 from .forms import ParentSignupForm, PortalAuthenticationForm
 from .models import PortalFamily, PortalParentAccount, PortalUnit
@@ -126,7 +130,9 @@ def parent_signup(request):
                 .order_by("-submitted_at")
                 .first()
             )
-            existing_family = matching_app.portal_family if matching_app else None
+            existing_family = find_existing_family_for_parent(email=email)
+            if existing_family is None and matching_app is not None:
+                existing_family = matching_app.portal_family
             if existing_family and PortalParentAccount.objects.filter(family=existing_family).exists():
                 messages.error(
                     request,

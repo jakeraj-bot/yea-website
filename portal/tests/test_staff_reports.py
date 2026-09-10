@@ -130,6 +130,20 @@ class StaffReportsTests(TestCase):
                 self.assertEqual(response.status_code, 200, url)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_signout_sheet_keeps_child_names_in_left_name_column(self):
+        response = self.client.get(reverse("portal_staff_signout_blank"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="portal-table portal-blank-sheet-table portal-blank-sheet-table--signout"')
+        self.assertContains(response, 'class="portal-signout-col-num"')
+        self.assertContains(response, 'class="portal-blank-col-name"')
+        self.assertContains(response, "<strong>Jordan Jacobs</strong>")
+        self.assertContains(response, 'class="portal-blank-sheet-meta">4th</span>')
+        css = Path("static/css/portal.css").read_text()
+        self.assertIn(".portal-blank-sheet-table--signout th.portal-row-num", css)
+        self.assertIn(".portal-blank-sheet-table--signout .portal-blank-col-name", css)
+        self.assertIn("padding-left: 0.2rem;", css)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_pickup_report_lists_enrolled_children(self):
         response = self.client.get(reverse("portal_staff_pickup_report"))
         self.assertEqual(response.status_code, 200)
@@ -407,6 +421,14 @@ class ReportsPrintCssTests(TestCase):
         self.assertIn("position: static !important", print_css)
         self.assertIn(".portal-toolbar", print_css)
         self.assertIn(".portal-howto-bar", print_css)
+        self.assertIn("@page report-print", print_css)
+        self.assertIn('content: "Page " counter(page)', print_css)
+        self.assertIn(".portal-report-print-frame", print_css)
+        self.assertIn(".portal-report-print-running-bar", print_css)
+        self.assertIn("position: fixed", print_css)
+        self.assertIn(".portal-medical-report-sheet:has(.portal-print-title-row)", print_css)
+        self.assertIn("page: report-print", print_css)
+        self.assertIn("page: attendance-print", print_css)
         wrap_rule = css[css.index(".portal-table-wrap {"): css.index(".portal-table-wrap {") + 160]
         self.assertIn("overflow: auto", wrap_rule)
         self.assertIn("@media print", site)
