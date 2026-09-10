@@ -37,7 +37,9 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("display: none !important", print_css)
 
         screen = css.split("@media print {\n  @page", 1)[0]
-        self.assertIn(".portal-print-title-row {\n  display: none;\n}", screen)
+        self.assertIn(".portal-print-header-spacer", print_css)
+        self.assertIn(".portal-print-title-row", screen)
+        self.assertIn("display: none", screen[screen.index(".portal-print-title-row"): screen.index(".portal-print-title-row") + 120])
         self.assertIn(".portal-report-print-frame", screen)
 
     def test_shared_print_template_and_script_are_wired(self):
@@ -55,6 +57,7 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("portal-attendance-print-sheet", js)
         self.assertIn("portalWrapReportSheetsForPrint", js)
         self.assertIn("portal-report-print-running-bar", js)
+        self.assertIn("portal-print-header-spacer", js)
         self.assertIn("insertBefore", js)
         self.assertIn("beforeprint", js)
 

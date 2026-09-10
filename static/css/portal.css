@@ -1212,7 +1212,8 @@
   }
 }
 
-.portal-print-title-row {
+.portal-print-title-row,
+.portal-print-header-spacer {
   display: none;
 }
 
@@ -3084,6 +3085,16 @@
     display: none !important;
   }
 
+  .portal-print-header-spacer,
+  .portal-print-header-spacer th {
+    height: 0.95in;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    line-height: 0;
+    font-size: 0;
+  }
+
   .portal-report-print-running-bar {
     display: flex;
     position: fixed;
@@ -3259,7 +3270,8 @@
     font-size: 0.7rem;
   }
 
-  .portal-print-title-row {
+  .portal-print-title-row,
+  .portal-print-header-spacer {
     display: table-row;
   }
 

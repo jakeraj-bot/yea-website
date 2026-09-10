@@ -31,6 +31,16 @@
     return row;
   }
 
+  function makeSpacerRow(colspan) {
+    var row = document.createElement("tr");
+    row.className = "portal-print-header-spacer";
+    var th = document.createElement("th");
+    th.setAttribute("colspan", String(colspan || 1));
+    th.setAttribute("scope", "colgroup");
+    row.appendChild(th);
+    return row;
+  }
+
   function wrapSheetWithoutTables(sheet, header) {
     var frame = document.createElement("table");
     frame.className = "portal-report-print-frame";
@@ -77,7 +87,9 @@
         if (table.classList.contains("portal-report-print-frame")) continue;
         var thead = table.tHead || table.querySelector("thead");
         if (!thead) continue;
-        thead.insertBefore(makeTitleRow(header, headerColspan(thead)), thead.firstChild);
+        var span = headerColspan(thead);
+        thead.insertBefore(makeTitleRow(header, span), thead.firstChild);
+        thead.insertBefore(makeSpacerRow(span), thead.firstChild);
         injected += 1;
       }
       if (!injected) wrapSheetWithoutTables(sheet, header);
