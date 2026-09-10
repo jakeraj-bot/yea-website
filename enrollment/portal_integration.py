@@ -154,19 +154,131 @@ def _program_label_from_child(child_data):
     return dict(EnrollmentApplication.PROGRAM_CHOICES).get(program, "After-school program")
 
 
+def _parent_email_from_values(*values):
+    for value in values:
+        email = (value or "").strip()
+        if email:
+            return email
+    return ""
+
+
+def find_existing_family_for_parent(
+    *,
+    email="",
+    child_first="",
+    child_last="",
+    child_dob=None,
+    child_name="",
+):
+    """Return the existing household for this parent/child, across every unit.
+
+    One family account is shared even when children attend different sites.
+    Match by parent email first, then by the same child first+last+date of birth
+    so two different kids who share a first name are not combined.
+    """
+    email = _parent_email_from_values(email)
+    if email:
+        account = (
+            PortalParentAccount.objects.filter(user__email__iexact=email)
+            .select_related("family", "family__unit")
+            .order_by("pk")
+            .first()
+        )
+        if account:
+            return account.family
+        linked = (
+            EnrollmentApplication.objects.filter(
+                Q(primary_email__iexact=email) | Q(primary_email_address__iexact=email),
+                portal_family__isnull=False,
+            )
+            .select_related("portal_family", "portal_family__unit")
+            .order_by("-submitted_at")
+            .first()
+        )
+        if linked:
+            return linked.portal_family
+
+    first = (child_first or "").strip()
+    last = (child_last or "").strip()
+    full_name = (child_name or "").strip() or " ".join(part for part in [first, last] if part).strip()
+    if first and last and child_dob:
+        same_child_app = (
+            EnrollmentApplication.objects.filter(
+                student_first_name__iexact=first,
+                student_last_name__iexact=last,
+                student_dob=child_dob,
+                portal_family__isnull=False,
+            )
+            .select_related("portal_family", "portal_family__unit")
+            .order_by("-submitted_at")
+            .first()
+        )
+        if same_child_app:
+            return same_child_app.portal_family
+    return None
+
+
+def _create_parent_user_for_family(family, username, password, email, first_name="", last_name=""):
+    User = get_user_model()
+    from portal.usernames import portal_username
+
+    user = User.objects.create_user(
+        username=portal_username("parent", username.strip()),
+        email=(email or "").strip(),
+        password=password,
+        first_name=(first_name or "").strip(),
+        last_name=(last_name or "").strip(),
+    )
+    PortalParentAccount.objects.create(user=user, family=family)
+    return user
+
+
 @transaction.atomic
 def create_portal_account_from_enrollment(session_data, username, password):
+    """Create or reuse one family account for this enrollment.
+
+    Returns (family, user, created_new_login). A second apply from the same
+    parent email never creates a second household.
+    """
     family_fields = session_data
     first_child = (session_data.get("children") or [{}])[0]
     unit = _unit_for_location(first_child.get("program_location", "school_18"))
     if not unit:
         raise RuntimeError("Portal is not set up yet. Run: python manage.py seed_portal")
 
+    email = _parent_email_from_values(
+        family_fields.get("primary_email"),
+        family_fields.get("primary_email_address"),
+    )
+    family = find_existing_family_for_parent(
+        email=email,
+        child_first=first_child.get("student_first_name", ""),
+        child_last=first_child.get("student_last_name", ""),
+        child_dob=first_child.get("student_dob"),
+    )
+
     primary_name = " ".join(
         part
         for part in [family_fields.get("primary_first_name", ""), family_fields.get("primary_last_name", "")]
         if part
     ).strip()
+
+    if family:
+        account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+        if account:
+            if not family.primary_contact and primary_name:
+                family.primary_contact = primary_name
+                family.save(update_fields=["primary_contact"])
+            return family, account.user, False
+        user = _create_parent_user_for_family(
+            family,
+            username,
+            password,
+            email,
+            first_name=family_fields.get("primary_first_name", ""),
+            last_name=family_fields.get("primary_last_name", ""),
+        )
+        return family, user, True
 
     family = PortalFamily.objects.create(
         unit=unit,
@@ -178,19 +290,15 @@ def create_portal_account_from_enrollment(session_data, username, password):
         program_label=_program_label_from_child(first_child),
         status="Pending enrollment",
     )
-
-    User = get_user_model()
-    from portal.usernames import portal_username
-
-    user = User.objects.create_user(
-        username=portal_username("parent", username.strip()),
-        email=(family_fields.get("primary_email") or family_fields.get("primary_email_address", "")).strip(),
-        password=password,
-        first_name=family_fields.get("primary_first_name", "").strip(),
-        last_name=family_fields.get("primary_last_name", "").strip(),
+    user = _create_parent_user_for_family(
+        family,
+        username,
+        password,
+        email,
+        first_name=family_fields.get("primary_first_name", ""),
+        last_name=family_fields.get("primary_last_name", ""),
     )
-    PortalParentAccount.objects.create(user=user, family=family)
-    return family, user
+    return family, user, True
 
 
 def link_applications_to_family(applications, family):

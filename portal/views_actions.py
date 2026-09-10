@@ -2272,6 +2272,25 @@ def admin_member_ops(request):
                 f"Portal account created for {family.name}. Username: {username}.",
             )
             next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
+        elif action == "merge_family":
+            if not family:
+                raise ValueError("Family not found.")
+            from .family_merge import merge_families
+            from .models import PortalFamily
+
+            source = PortalFamily.objects.filter(pk=request.POST.get("source_family_id")).first()
+            if not source:
+                raise ValueError("Choose the extra family account to merge in.")
+            keep, dropped_name = merge_families(family, source)
+            messages.success(
+                request,
+                f"Merged {dropped_name} into {keep.name}. Payments, attendance, applications, "
+                "and children are on this one family account now.",
+            )
+            next_url = _with_family_id(
+                reverse("portal_admin_family_detail", kwargs={"family_slug": keep.slug}),
+                keep,
+            )
         elif action == "delete_family":
             if not family:
                 raise ValueError("Family not found.")
