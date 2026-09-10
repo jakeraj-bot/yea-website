@@ -375,6 +375,44 @@ def _payment_in_payout_section(row):
     return row.get("payout_status") in PAYOUT_GROUP_STATUSES
 
 
+def _payout_group_key(row):
+    if row.get("payout_id"):
+        return ("id", row["payout_id"])
+    date = row.get("payout_sort_date") or row.get("bank_date") or row.get("date") or "unknown"
+    return ("date", date)
+
+
+def _payout_group_header(key, rows):
+    first = rows[0]
+    payout_id = first.get("payout_id") or ""
+    date = first.get("payout_sort_date") or first.get("bank_date") or "—"
+    if date == "—":
+        date = ""
+    descriptor = next((row.get("payout_descriptor") for row in rows if row.get("payout_descriptor")), "")
+    payout_amount = next((row.get("payout_amount") for row in rows if row.get("payout_amount")), "")
+    member_total = _money(sum((Decimal(row["amount"]) for row in rows), Decimal("0")))
+    status = first.get("bank_status") or "Paid out to bank"
+    kind, ident = key
+    if kind == "id":
+        title_bits = ["Stripe payout"]
+        if date:
+            title_bits.append(date)
+        title = " · ".join(title_bits)
+    else:
+        title = f"Bank payout · {ident}" if ident and ident != "unknown" else "Bank payout"
+    return {
+        "key": f"{kind}:{ident}",
+        "title": title,
+        "payout_id": payout_id,
+        "date": date or "—",
+        "amount": payout_amount or member_total,
+        "member_total": member_total,
+        "descriptor": descriptor,
+        "status": status,
+        "rows": rows,
+    }
+
+
 def stripe_settlement_rows(filters=None):
     from .stripe_services import refresh_stripe_settlements
 
@@ -389,7 +427,7 @@ def stripe_settlement_rows(filters=None):
     )
     refresh_stripe_settlements(payments)
     pending_rows = []
-    remaining_rows = []
+    grouped = {}
     for payment in payments:
         if is_placeholder_unit(payment.family.unit):
             continue
@@ -419,22 +457,31 @@ def stripe_settlement_rows(filters=None):
         if status_filter and payment.stripe_bank_status != status_filter:
             continue
         if _payment_in_payout_section(row):
-            remaining_rows.append(row)
+            grouped.setdefault(_payout_group_key(row), []).append(row)
         else:
             pending_rows.append(row)
+
+    payout_groups = []
+    for key, group_rows in grouped.items():
+        group_rows.sort(key=lambda item: item["date"], reverse=True)
+        payout_groups.append(_payout_group_header(key, group_rows))
+    payout_groups.sort(key=lambda group: (group["date"] or "", group["payout_id"] or ""), reverse=True)
 
     rows = []
     for row in pending_rows:
         row["section"] = "Not yet paid out"
         rows.append(row)
-    for row in remaining_rows:
-        row["section"] = "Remaining payments"
-        rows.append(row)
+    for group in payout_groups:
+        for row in group["rows"]:
+            row["section"] = group["title"]
+            if group["payout_id"]:
+                row["section"] = f"{group['title']} ({group['payout_id']})"
+            rows.append(row)
     return {
         "rows": rows,
         "pending_rows": pending_rows,
-        "remaining_rows": remaining_rows,
-        "payout_groups": [],
+        "remaining_rows": [],
+        "payout_groups": payout_groups,
         "statuses": SETTLEMENT_STATUS_CHOICES,
     }
 
