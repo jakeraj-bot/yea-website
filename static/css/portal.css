@@ -1216,6 +1216,22 @@
   display: none;
 }
 
+.portal-report-print-frame {
+  width: 100%;
+  border-collapse: collapse;
+  border: none;
+}
+
+.portal-report-print-frame > thead {
+  display: none;
+}
+
+.portal-report-print-frame > tbody > tr > td.portal-report-print-body {
+  padding: 0;
+  border: none;
+  vertical-align: top;
+}
+
 .portal-print-running-header {
   display: flex;
   align-items: flex-start;
@@ -2978,12 +2994,25 @@
 
 @media print {
   @page {
-    margin: 0.4in;
+    margin: 0.45in 0.4in 0.7in 0.4in;
   }
 
   @page landscape-sheet {
     size: landscape;
-    margin: 0.4in;
+    margin: 0.45in 0.4in 0.7in 0.4in;
+  }
+
+  @page report-print {
+    size: landscape;
+    margin: 0.45in 0.4in 0.7in 0.4in;
+    @bottom-left {
+      content: "Printed";
+      font-size: 9pt;
+    }
+    @bottom-right {
+      content: "Page " counter(page);
+      font-size: 9pt;
+    }
   }
 
   .portal-no-print,
@@ -3035,11 +3064,46 @@
     max-width: none !important;
     page-break-inside: auto;
     break-inside: auto;
-    page: landscape-sheet;
+    page: report-print;
   }
 
   .portal-medical-report-sheet.portal-attendance-print-sheet {
     page: attendance-print;
+  }
+
+  .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header {
+    display: none !important;
+  }
+
+  .portal-report-print-frame {
+    width: 100% !important;
+    border-collapse: collapse;
+    border: none;
+  }
+
+  .portal-report-print-frame > thead {
+    display: table-header-group;
+  }
+
+  .portal-report-print-frame > tbody {
+    display: table-row-group;
+  }
+
+  .portal-report-print-frame > tbody > tr > td.portal-report-print-body {
+    padding: 0;
+    border: none;
+    vertical-align: top;
+  }
+
+  .portal-print-title-row .portal-medical-report-header {
+    display: flex !important;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.25rem;
+    border-bottom: none;
+  }
+
+  .portal-print-title-row .portal-medical-report-header h2 {
+    font-size: 1.05rem;
   }
 
   .portal-table-wrap,
@@ -3069,7 +3133,10 @@
 
   .portal-table thead,
   .simple-table thead,
-  .portal-families-table thead {
+  .portal-families-table thead,
+  .portal-medical-report-table thead,
+  .portal-member-info-table thead,
+  .portal-report-print-frame thead {
     display: table-header-group;
   }
 
