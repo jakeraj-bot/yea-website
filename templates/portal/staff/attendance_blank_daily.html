@@ -1,40 +1,53 @@
 {% extends "portal/base.html" %}
 {% load static %}
 {% block portal_content %}
+{% include "portal/includes/attendance_print_chrome.html" %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Blank daily attendance</p>
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Blank daily attendance</p>
     <h1>Daily attendance — blank sheet</h1>
     <p class="lead">Manual sign-in for {{ sheet_date_display }}</p>
   </div>
 </section>
 <section class="page-content portal-blank-report">
   <div class="container">
-    {% include "portal/staff/includes/report_date_toolbar.html" %}
+    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit and grades, then print. Names match the filled daily sheet for those filters. Fill in times and signatures by hand." %}
 
-    <div class="portal-medical-report-sheet card portal-blank-sheet">
-      <header class="portal-medical-report-header">
+    <div class="portal-medical-report-sheet card portal-blank-sheet portal-attendance-print-sheet">
+      <header class="portal-medical-report-header portal-no-print">
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
           <h2>Daily attendance sign-in sheet</h2>
           <p class="portal-medical-report-meta">
-            <strong>{{ unit }}</strong> · {{ program }}<br>
+            <strong>{{ selected_unit_name|default:unit_name }}</strong>
+            {% if program_name %} · {{ program_name }}{% endif %}<br>
             <span class="portal-blank-sheet-date">Date: {{ sheet_date_display }}</span>
-            · {{ enrolled_count }} enrolled
+            · {{ listed_count }} listed
           </p>
         </div>
       </header>
 
       <div class="portal-blank-sheet-fields portal-no-print">
-        <p class="form-note">Names are pulled from your active enrollment roster. Pick a date, then print — fill in times and signatures by hand. Extra blank rows at the bottom are for walk-ins.</p>
+        <p class="form-note">Names are pulled from the filtered enrollment roster. Extra blank rows at the bottom are for walk-ins.</p>
       </div>
 
       <div class="portal-table-wrap">
-        <table class="portal-table portal-blank-sheet-table">
+        <table class="portal-table portal-blank-sheet-table portal-attendance-print-table">
           <thead>
+            {% include "portal/staff/includes/attendance_sheet_print_header.html" with colspan=6 sheet_title="Daily attendance sign-in sheet" sheet_subtitle=sheet_date_display %}
             <tr>
               <th class="portal-row-num" scope="col">#</th>
               <th class="portal-blank-col-name">Child name</th>
+              <th class="portal-day-total-heading" colspan="4">
+                <span class="portal-day-kid-total">{{ listed_count|default:0 }}</span>
+                <span class="portal-day-kid-total-label">listed</span>
+                <span class="portal-blank-day-label">{{ day_label }}</span>
+                <span class="portal-blank-day-date">{{ day_date_short }}</span>
+              </th>
+            </tr>
+            <tr>
+              <th class="portal-row-num" scope="col"><span class="visually-hidden">#</span></th>
+              <th class="portal-blank-col-name"><span class="visually-hidden">Child name</span></th>
               <th class="portal-blank-col-time">Check in</th>
               <th class="portal-blank-col-time">Check out</th>
               <th class="portal-blank-col-sig">Parent / pickup signature</th>
@@ -42,7 +55,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for row in enrolled_rows %}
+            {% for row in daily_rows %}
             <tr class="portal-blank-sheet-row">
               <td class="portal-row-num">{{ forloop.counter }}</td>
               <td>
@@ -56,7 +69,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6" class="portal-blank-sheet-empty">No active enrollments found for this unit.</td>
+              <td colspan="6" class="portal-blank-sheet-empty">No children match these filters.</td>
             </tr>
             {% endfor %}
             {% for i in extra_blank_rows %}
@@ -73,9 +86,10 @@
         </table>
       </div>
 
-      <footer class="portal-medical-report-footer">
+      <footer class="portal-medical-report-footer portal-no-print">
         <p>Staff: verify authorized pickup before release. Retain signed sheets per licensing requirements.</p>
       </footer>
+      <p class="portal-attendance-print-footer" aria-hidden="true"><span data-print-stamp>Printed {{ print_stamp }}</span></p>
     </div>
   </div>
 </section>

@@ -1,174 +1,75 @@
 {% extends "portal/base.html" %}
 {% load static %}
 {% block portal_content %}
-{% include "portal/includes/print_wide.html" %}
+{% include "portal/includes/attendance_print_chrome.html" %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
     <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Weekly attendance</p>
     <h1>Weekly attendance summary</h1>
     <p class="lead">
-      {% if show_unit_filter %}
-        {{ selected_unit_name|default:"All units" }}
-      {% else %}
-        {{ attendance.unit }}
-      {% endif %}
+      {{ selected_unit_name|default:unit_name }}
       · Week of {{ week_range_display }}
-      · {% if weekly_rows is not None %}{{ weekly_rows|length }}{% else %}{{ roster|length }}{% endif %} children
+      · {{ weekly_rows|length }} children
     </p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    <form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
-      <h2>Filters</h2>
-      <p class="form-note">Pick a unit, then check grades. Those kids stay on this same Monday–Friday sheet. Leave grades unchecked to include every grade at that unit.</p>
-      <div class="portal-report-filters">
-        {% if show_unit_filter %}
-        <label class="portal-filter-label">
-          Unit
-          <select class="portal-select" name="unit">
-            {% if unit_filter_allows_all %}
-            <option value="">All units</option>
-            {% endif %}
-            {% for slug, name in filter_options.units %}
-            <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        {% endif %}
-        <label class="portal-filter-label">
-          Program
-          <select class="portal-select" name="program">
-            <option value="">{% if unit_filter_allows_all %}All programs{% else %}Current program{% endif %}</option>
-            {% for value, label in filter_options.programs %}
-            <option value="{{ value }}"{% if report_filters.program == value %} selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="portal-filter-label">
-          School
-          <select class="portal-select" name="school">
-            <option value="">All schools</option>
-            {% for school in filter_options.schools %}
-            <option value="{{ school }}"{% if report_filters.school == school %} selected{% endif %}>{{ school }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="portal-filter-label">
-          Week of
-          <input class="portal-input" type="date" name="date" value="{{ sheet_date }}">
-        </label>
-        <label class="portal-filter-label">
-          Status
-          <select class="portal-select" name="status">
-            <option value="">All statuses</option>
-            {% for status in filter_options.statuses %}
-            <option value="{{ status }}"{% if report_filters.status == status %} selected{% endif %}>{{ status }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="portal-filter-label">
-          Child or family
-          <input class="portal-input" type="search" name="q" value="{{ report_filters.q }}" placeholder="Search name">
-        </label>
-      </div>
-      <fieldset class="portal-grade-filter">
-        <legend>Grades</legend>
-        <p class="form-note">Check more than one grade to print them together. Uncheck all to show every grade.</p>
-        <div class="portal-checkbox-grid">
-          {% for grade in filter_options.grades %}
-          <label class="portal-check-label">
-            <input type="checkbox" name="grade" value="{{ grade }}"{% if grade in selected_grades %} checked{% endif %}>
-            {{ grade }}
-          </label>
-          {% empty %}
-          <p class="form-note">No grades on this roster yet.</p>
-          {% endfor %}
-        </div>
-      </fieldset>
-      <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
-        <button type="submit" class="btn btn-secondary">Apply filters</button>
-        <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
-        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
-        <a class="btn btn-secondary" href="{{ request.get_full_path }}{% if '?' in request.get_full_path %}&amp;{% else %}?{% endif %}format=csv">Download CSV</a>
-        <a class="btn btn-secondary" href="{{ hub_url }}">Back to reports</a>
-      </div>
-    </form>
+    {% include "portal/staff/includes/attendance_sheet_filters.html" with show_csv=True filter_help="Pick a unit, then check grades. Those kids stay on this same Monday–Friday sheet. Leave grades unchecked to include every grade at that unit." %}
 
-    <div class="portal-medical-report-sheet card portal-collapse-skip">
-      <header class="portal-medical-report-header">
+    <div class="portal-medical-report-sheet card portal-collapse-skip portal-attendance-print-sheet">
+      <header class="portal-medical-report-header portal-no-print">
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
-          <h2>Weekly attendance summary</h2>
+          <h2>Weekly attendance sheet</h2>
           <p class="portal-medical-report-meta">
-            {% if show_unit_filter %}
-              <strong>{{ selected_unit_name|default:"All units" }}</strong>
-            {% else %}
-              <strong>{{ attendance.unit }}</strong>
-            {% endif %}
-            · Mon–Fri totals per child
+            <strong>{{ selected_unit_name|default:unit_name }}</strong>
             · {% if selected_grades %}Grades {{ selected_grades|join:", " }}{% else %}All grades{% endif %}
-            · {% if weekly_rows is not None %}{{ weekly_rows|length }}{% else %}{{ roster|length }}{% endif %} children
+            · {{ weekly_rows|length }} children
             · {{ week_range_display }}
           </p>
         </div>
       </header>
       <div class="portal-table-wrap">
-        <table class="portal-table">
+        <table class="portal-table portal-blank-sheet-table portal-blank-sheet-table--weekly portal-attendance-print-table">
           <thead>
+            {% include "portal/staff/includes/attendance_sheet_print_header.html" with colspan=8 sheet_title="Weekly attendance sheet" sheet_subtitle=week_range_display %}
             <tr>
               <th class="portal-row-num" scope="col">#</th>
-              <th>Child</th>
-              <th>Grade</th>
-              {% if show_unit_filter %}<th>Unit</th>{% endif %}
-              {% if weekly_rows is not None and week_days %}
-                {% for day in week_days %}
-                <th class="portal-day-total-heading">
-                  <span class="portal-day-kid-total">{{ day.present_count|default:0 }}</span>
-                  <span class="portal-day-kid-total-label">present</span>
-                  {{ day.label }}<br><span class="form-note">{{ day.date_short }}</span>
-                </th>
-                {% endfor %}
-              {% else %}
-                <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>
-              {% endif %}
-              <th>Total days</th>
+              <th class="portal-blank-col-name">Child name</th>
+              {% for day in week_days %}
+              <th class="portal-day-total-heading portal-blank-col-day">
+                <span class="portal-day-kid-total">{{ day.present_count|default:0 }}</span>
+                <span class="portal-day-kid-total-label">present</span>
+                <span class="portal-blank-day-label">{{ day.label }}</span>
+                <span class="portal-blank-day-date">{{ day.date_short }}</span>
+              </th>
+              {% endfor %}
+              <th class="portal-blank-col-total">Total days</th>
             </tr>
           </thead>
           <tbody>
-            {% if weekly_rows is not None %}
-              {% for row in weekly_rows %}
-              <tr>
-                <td class="portal-row-num">{{ forloop.counter }}</td>
-                <td><strong>{{ row.child }}</strong></td>
-                <td>{{ row.grade }}</td>
-                {% if show_unit_filter %}<td>{{ row.unit }}</td>{% endif %}
-                {% for present in row.days %}
-                <td>{% if present %}✓{% else %}—{% endif %}</td>
-                {% endfor %}
-                <td>{{ row.total }}</td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="{% if show_unit_filter %}9{% else %}8{% endif %}" class="form-note">No children match these filters.</td>
-              </tr>
+            {% for row in weekly_rows %}
+            <tr class="portal-blank-sheet-row">
+              <td class="portal-row-num">{{ forloop.counter }}</td>
+              <td>
+                <strong>{{ row.child }}</strong>
+                {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
+              </td>
+              {% for present in row.days %}
+              <td class="portal-attendance-mark">{% if present %}✓{% else %}<span class="portal-blank-line portal-blank-line--day" aria-hidden="true">&nbsp;</span>{% endif %}</td>
               {% endfor %}
-            {% else %}
-              {% for row in roster %}
-              <tr>
-                <td class="portal-row-num">{{ forloop.counter }}</td>
-                <td><strong>{{ row.child }}</strong></td>
-                <td>{{ row.grade }}</td>
-                {% if show_unit_filter %}<td>{{ attendance.unit }}</td>{% endif %}
-                <td>{% if row.check_in %}✓{% else %}—{% endif %}</td>
-                <td>—</td><td>—</td><td>—</td><td>—</td>
-                <td>{% if row.check_in %}1{% else %}0{% endif %}</td>
-              </tr>
-              {% endfor %}
-            {% endif %}
+              <td>{{ row.total }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="portal-blank-sheet-empty">No children match these filters.</td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
+      <p class="portal-attendance-print-footer" aria-hidden="true"><span data-print-stamp>Printed {{ print_stamp }}</span></p>
     </div>
   </div>
 </section>

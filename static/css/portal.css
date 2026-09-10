@@ -1212,6 +1212,36 @@
   }
 }
 
+.portal-print-title-row {
+  display: none;
+}
+
+.portal-print-running-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  text-align: left;
+  white-space: normal;
+}
+
+.portal-print-running-logo {
+  width: 2.6rem;
+  height: auto;
+}
+
+.portal-print-running-title {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.portal-attendance-print-footer {
+  display: none;
+}
+
+.portal-attendance-mark {
+  text-align: center;
+}
+
 .portal-report-missing-row td {
   background: #fff8e8;
 }
@@ -2993,6 +3023,10 @@
     page: landscape-sheet;
   }
 
+  .portal-medical-report-sheet.portal-attendance-print-sheet {
+    page: attendance-print;
+  }
+
   .portal-table-wrap,
   .portal-families-table-wrap,
   .page-content .portal-table-wrap {
@@ -3093,6 +3127,25 @@
 
   .portal-blank-sheet-table--weekly {
     font-size: 0.7rem;
+  }
+
+  .portal-print-title-row {
+    display: table-row;
+  }
+
+  .portal-print-title-row th {
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 2px solid #222;
+    padding-bottom: 0.35rem;
+  }
+
+  .portal-attendance-print-table thead {
+    display: table-header-group;
+  }
+
+  .portal-attendance-print-footer {
+    display: none;
   }
 }
 

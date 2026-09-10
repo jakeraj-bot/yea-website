@@ -638,6 +638,24 @@ ADMIN_REPORTS = [
         "slug": "weekly-attendance",
     },
     {
+        "name": "Daily attendance",
+        "description": "Sign-in sheet for one day — filter by unit, program, school, or multiple grades.",
+        "format": "PDF",
+        "slug": "attendance",
+    },
+    {
+        "name": "Daily attendance (blank)",
+        "description": "Manual sign-in sheet with enrolled names — print and fill by hand. Same unit and grade filters as the filled sheet.",
+        "format": "PDF",
+        "slug": "attendance-blank-daily",
+    },
+    {
+        "name": "Weekly attendance (blank)",
+        "description": "Mon–Fri grid with enrolled names for manual tracking. Same unit and grade filters as weekly attendance.",
+        "format": "PDF",
+        "slug": "attendance-blank-weekly",
+    },
+    {
         "name": "Organization enrollment summary",
         "description": "Headcount by unit, program, and payment type (private pay, 4Cs, scholarship)",
         "format": "PDF / Excel",

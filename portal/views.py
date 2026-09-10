@@ -5,13 +5,11 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from datetime import date
+from datetime import date, timedelta
 
 from .report_sheets import (
-    daily_blank_context,
     parse_sheet_date,
     signout_blank_context,
-    weekly_blank_context,
 )
 
 from .attendance_service import (
@@ -2007,30 +2005,6 @@ def staff_school_bus_report(request):
     )
 
 
-@staff_login_required
-@require_GET
-def staff_attendance_report(request):
-    unit = _staff_unit(request) if _portal_data_live() else None
-    program = get_active_program(unit) if unit else None
-    sheet_date = date.today()
-    if unit and program:
-        roster = build_roster(unit, program, sheet_date)
-        attendance = build_session_context(unit, program, sheet_date, roster)
-    else:
-        attendance = ATTENDANCE_SESSION
-        roster = ATTENDANCE_ROSTER
-    return render(
-        request,
-        "portal/staff/attendance_report.html",
-        _staff_context(
-            "Daily attendance sheet",
-            attendance=attendance,
-            roster=roster,
-            staff_page_slug="reports",
-        ),
-    )
-
-
 def _weekly_attendance_filters(request):
     return {
         "q": request.GET.get("q", "").strip(),
@@ -2041,6 +2015,189 @@ def _weekly_attendance_filters(request):
         "status": request.GET.get("status", "").strip(),
         "grades": [value.strip() for value in request.GET.getlist("grade") if value.strip()],
     }
+
+
+def _attendance_print_stamp():
+    return timezone.localtime().strftime("%b %d, %Y %I:%M %p").replace(" 0", " ")
+
+
+def _attendance_sheet_allowed_units(request, *, admin=False):
+    from .member_admin import is_placeholder_unit
+    from .staff_auth import staff_accessible_units
+
+    unit = _staff_unit(request) if _portal_data_live() else None
+    if admin:
+        return unit, []
+    allowed_units = []
+    if _portal_data_live() and getattr(request, "user", None) and request.user.is_authenticated:
+        allowed_units = [item for item in staff_accessible_units(request.user) if not is_placeholder_unit(item)]
+    elif unit:
+        allowed_units = [unit]
+    return unit, allowed_units
+
+
+def _attendance_sheet_hub(request, *, admin=False):
+    if admin:
+        return {
+            "hub_url": reverse("portal_admin_page", kwargs={"page": "reports"}),
+            "hub_label": "Organization reports",
+        }
+    return {
+        "hub_url": reverse("portal_staff_page", kwargs={"page": "reports"}),
+        "hub_label": "Reports",
+    }
+
+
+def _attendance_sheet_page_extras(request, *, kind, admin=False):
+    from .report_sheets import EXTRA_BLANK_ROWS
+    from .staff_services import daily_attendance_report_data, weekly_attendance_report_data
+
+    filters = _weekly_attendance_filters(request)
+    blank = kind in ("weekly-blank", "daily-blank")
+    if blank:
+        filters = {**filters, "status": ""}
+    unit, allowed_units = _attendance_sheet_allowed_units(request, admin=admin)
+    live = _portal_data_live() if admin else bool(_portal_data_live() and unit)
+    program = None if admin else (get_active_program(unit) if live and unit else None)
+    hub = _attendance_sheet_hub(request, admin=admin)
+    empty_options = {"grades": [], "schools": [], "programs": [], "units": [], "statuses": []}
+    sheet_date = parse_sheet_date(filters.get("date"))
+    base = {
+        "report_filters": filters,
+        "show_unit_filter": True,
+        "unit_filter_allows_all": admin,
+        "show_status_filter": not blank,
+        "print_stamp": _attendance_print_stamp(),
+        "extra_blank_rows": range(EXTRA_BLANK_ROWS),
+        "attendance_sheet_kind": kind,
+        **hub,
+    }
+    if kind in ("weekly", "weekly-blank"):
+        if live or (admin and _portal_data_live()):
+            weekly = weekly_attendance_report_data(
+                unit, program, sheet_date, filters=filters, admin=admin, allowed_units=allowed_units
+            )
+            if not admin and weekly.get("selected_unit_slug"):
+                filters["unit"] = weekly["selected_unit_slug"]
+        else:
+            from .report_sheets import week_day_columns, _weekday_monday
+
+            monday = _weekday_monday(sheet_date)
+            weekdays = [monday + timedelta(days=i) for i in range(5)]
+            week_days = week_day_columns(weekdays)
+            weekly = {
+                "weekly_rows": [],
+                "week_days": week_days,
+                "week_range_display": f"{monday.strftime('%B %d')} – {weekdays[4].strftime('%B %d, %Y')}",
+                "filter_options": empty_options,
+                "sheet_date": sheet_date.isoformat(),
+                "generated_date": date.today().strftime("%B %d, %Y"),
+                "selected_grades": filters["grades"],
+                "selected_unit_slug": filters.get("unit") or (unit.slug if unit else ""),
+                "selected_unit_name": unit.name if unit else ("All units" if admin else ""),
+                "unit_filter_allows_all": admin,
+                "listed_count": 0,
+                "program_name": ATTENDANCE_SESSION.get("program", ""),
+                "unit_name": unit.name if unit else ATTENDANCE_SESSION.get("unit", ""),
+            }
+        count_label = "listed" if blank else "present"
+        return {
+            **base,
+            "date_label": "Week of",
+            "weekly_rows": weekly.get("weekly_rows") or [],
+            "week_days": weekly.get("week_days") or [],
+            "week_range_display": weekly.get("week_range_display") or "",
+            "filter_options": weekly.get("filter_options") or empty_options,
+            "sheet_date": weekly.get("sheet_date") or sheet_date.isoformat(),
+            "generated_date": weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
+            "selected_grades": weekly.get("selected_grades") or filters.get("grades") or [],
+            "selected_unit_name": weekly.get("selected_unit_name") or (unit.name if unit else ""),
+            "listed_count": weekly.get("listed_count") or len(weekly.get("weekly_rows") or []),
+            "count_label": count_label,
+            "program_name": weekly.get("program_name") or "",
+            "unit_name": weekly.get("unit_name") or weekly.get("selected_unit_name") or "",
+            "report_filters": filters,
+            "page_guide_key": "weekly-attendance-blank" if blank else "weekly-attendance",
+        }
+
+    if live or (admin and _portal_data_live()):
+        daily = daily_attendance_report_data(
+            unit, program, sheet_date, filters=filters, admin=admin, allowed_units=allowed_units
+        )
+        if not admin and daily.get("selected_unit_slug"):
+            filters["unit"] = daily["selected_unit_slug"]
+    else:
+        daily = {
+            "daily_rows": [
+                {
+                    "child": row.get("child"),
+                    "grade": row.get("grade", ""),
+                    "check_in": row.get("check_in", ""),
+                    "check_out": row.get("check_out", ""),
+                    "method": row.get("method", ""),
+                    "present": bool(row.get("check_in")),
+                    "status": row.get("status", ""),
+                }
+                for row in ATTENDANCE_ROSTER
+            ],
+            "filter_options": empty_options,
+            "sheet_date": sheet_date.isoformat(),
+            "sheet_date_display": sheet_date.strftime("%A, %B %d, %Y"),
+            "day_label": sheet_date.strftime("%A"),
+            "day_date_short": sheet_date.strftime("%b %d"),
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_grades": filters["grades"],
+            "selected_unit_name": unit.name if unit else ATTENDANCE_SESSION.get("unit", ""),
+            "listed_count": len(ATTENDANCE_ROSTER),
+            "present_count": sum(1 for row in ATTENDANCE_ROSTER if row.get("check_in")),
+            "program_name": ATTENDANCE_SESSION.get("program", ""),
+            "unit_name": unit.name if unit else ATTENDANCE_SESSION.get("unit", ""),
+        }
+    count_label = "listed" if blank else "present"
+    day_total = daily.get("listed_count") if blank else daily.get("present_count")
+    return {
+        **base,
+        "date_label": "Date",
+        "daily_rows": daily.get("daily_rows") or [],
+        "roster": daily.get("daily_rows") or [],
+        "filter_options": daily.get("filter_options") or empty_options,
+        "sheet_date": daily.get("sheet_date") or sheet_date.isoformat(),
+        "sheet_date_display": daily.get("sheet_date_display") or "",
+        "day_label": daily.get("day_label") or "",
+        "day_date_short": daily.get("day_date_short") or "",
+        "generated_date": daily.get("generated_date") or date.today().strftime("%B %d, %Y"),
+        "selected_grades": daily.get("selected_grades") or filters.get("grades") or [],
+        "selected_unit_name": daily.get("selected_unit_name") or (unit.name if unit else ""),
+        "listed_count": daily.get("listed_count") or 0,
+        "present_count": daily.get("present_count") or 0,
+        "day_total": day_total or 0,
+        "count_label": count_label,
+        "program_name": daily.get("program_name") or "",
+        "unit_name": daily.get("unit_name") or daily.get("selected_unit_name") or "",
+        "report_filters": filters,
+        "page_guide_key": "daily-attendance-blank" if blank else "daily-attendance",
+        "attendance": {
+            "unit": daily.get("unit_name") or daily.get("selected_unit_name") or "",
+            "program": daily.get("program_name") or "",
+            "date_display": daily.get("sheet_date_display") or "",
+        },
+    }
+
+
+@staff_login_required
+@require_GET
+def staff_attendance_report(request):
+    extras = _attendance_sheet_page_extras(request, kind="daily", admin=False)
+    return render(
+        request,
+        "portal/staff/attendance_report.html",
+        _staff_context(
+            "Daily attendance sheet",
+            request=request,
+            staff_page_slug="reports",
+            **extras,
+        ),
+    )
 
 
 def _weekly_attendance_csv(weekly_rows, week_days, filename):
@@ -2064,94 +2221,28 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     writer.writerow(["Kids present", "", "", "", ""] + present_counts + [""])
     for row in weekly_rows or []:
         values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school")]
-        values.extend(["Present" if present else "—" for present in row.get("days") or []])
+        values.extend(["Present" if present else "" for present in row.get("days") or []])
         values.append(row.get("total", 0))
         writer.writerow(values)
     return response
 
 
-def _weekly_attendance_bundle(request, *, unit=None, admin=False, allowed_units=None):
-    from .staff_services import weekly_attendance_report_data
-
-    filters = _weekly_attendance_filters(request)
-    sheet_date = parse_sheet_date(filters.get("date"))
-    empty_options = {"grades": [], "schools": [], "programs": [], "units": [], "statuses": []}
-    if admin:
-        live = _portal_data_live()
-        program = None
-    else:
-        live = bool(_portal_data_live() and unit)
-        program = get_active_program(unit) if live and unit else None
-    if live or (admin and _portal_data_live()):
-        weekly = weekly_attendance_report_data(
-            unit, program, sheet_date, filters=filters, admin=admin, allowed_units=allowed_units
-        )
-        if not admin and weekly.get("selected_unit_slug"):
-            filters["unit"] = weekly["selected_unit_slug"]
-        roster = build_roster(unit, program, sheet_date) if unit and program else []
-        attendance = (
-            build_session_context(unit, program, sheet_date, roster)
-            if unit and program
-            else {**ATTENDANCE_SESSION, "unit": weekly.get("selected_unit_name") or (unit.name if unit else "All units")}
-        )
-    else:
-        weekly = {
-            "weekly_rows": None,
-            "week_days": None,
-            "week_range_display": None,
-            "filter_options": empty_options,
-            "sheet_date": sheet_date.isoformat(),
-            "generated_date": date.today().strftime("%B %d, %Y"),
-            "selected_grades": filters["grades"],
-            "selected_unit_slug": filters.get("unit") or (unit.slug if unit else ""),
-            "selected_unit_name": unit.name if unit else ("All units" if admin else ""),
-            "unit_filter_allows_all": admin,
-        }
-        roster = ATTENDANCE_ROSTER
-        attendance = ATTENDANCE_SESSION
-    return filters, weekly, attendance, roster
-
-
 @staff_login_required
 @require_GET
 def staff_weekly_attendance_report(request):
-    from .member_admin import is_placeholder_unit
-    from .staff_auth import staff_accessible_units
-
-    unit = _staff_unit(request) if _portal_data_live() else None
-    allowed_units = []
-    if _portal_data_live() and getattr(request, "user", None) and request.user.is_authenticated:
-        allowed_units = [item for item in staff_accessible_units(request.user) if not is_placeholder_unit(item)]
-    elif unit:
-        allowed_units = [unit]
-    filters, weekly, attendance, roster = _weekly_attendance_bundle(
-        request, unit=unit, admin=False, allowed_units=allowed_units
-    )
+    extras = _attendance_sheet_page_extras(request, kind="weekly", admin=False)
     if request.GET.get("format") == "csv":
-        return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
+        return _weekly_attendance_csv(
+            extras.get("weekly_rows") or [], extras.get("week_days") or [], "weekly-attendance.csv"
+        )
     return render(
         request,
         "portal/staff/weekly_attendance_report.html",
         _staff_context(
             "Weekly attendance summary",
             request=request,
-            attendance=attendance,
-            roster=roster,
-            weekly_rows=weekly.get("weekly_rows"),
-            week_days=weekly.get("week_days"),
-            week_range_display=weekly.get("week_range_display") or attendance.get("date_display", ""),
-            filter_options=weekly.get("filter_options") or {},
-            sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
-            generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
-            selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
-            selected_unit_name=weekly.get("selected_unit_name") or (unit.name if unit else ""),
-            report_filters=filters,
-            show_unit_filter=True,
-            unit_filter_allows_all=False,
-            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
-            hub_label="Reports",
             staff_page_slug="reports",
-            page_guide_key="weekly-attendance",
+            **extras,
         ),
     )
 
@@ -2174,23 +2265,15 @@ def _report_names(unit, program):
 @staff_login_required
 @require_GET
 def staff_attendance_blank_daily(request):
-    sheet_date = parse_sheet_date(request.GET.get("date"))
-    live, unit, program = _report_sheet_sources(request)
-    unit_name, program_name = _report_names(unit, program)
+    extras = _attendance_sheet_page_extras(request, kind="daily-blank", admin=False)
     return render(
         request,
         "portal/staff/attendance_blank_daily.html",
         _staff_context(
             "Daily attendance — blank sheet",
+            request=request,
             staff_page_slug="reports",
-            **daily_blank_context(
-                sheet_date,
-                unit_name,
-                program_name,
-                live=live,
-                unit=unit,
-                program_obj=program,
-            ),
+            **extras,
         ),
     )
 
@@ -2198,23 +2281,15 @@ def staff_attendance_blank_daily(request):
 @staff_login_required
 @require_GET
 def staff_attendance_blank_weekly(request):
-    sheet_date = parse_sheet_date(request.GET.get("date"))
-    live, unit, program = _report_sheet_sources(request)
-    unit_name, program_name = _report_names(unit, program)
+    extras = _attendance_sheet_page_extras(request, kind="weekly-blank", admin=False)
     return render(
         request,
         "portal/staff/attendance_blank_weekly.html",
         _staff_context(
             "Weekly attendance — blank sheet",
+            request=request,
             staff_page_slug="reports",
-            **weekly_blank_context(
-                sheet_date,
-                unit_name,
-                program_name,
-                live=live,
-                unit=unit,
-                program_obj=program,
-            ),
+            **extras,
         ),
     )
 
@@ -4105,39 +4180,51 @@ def admin_member_information_report(request):
     )
 
 
+def _admin_attendance_sheet(request, kind, title, template):
+    extras = _attendance_sheet_page_extras(request, kind=kind, admin=True)
+    if kind == "weekly" and request.GET.get("format") == "csv":
+        return _weekly_attendance_csv(
+            extras.get("weekly_rows") or [], extras.get("week_days") or [], "weekly-attendance.csv"
+        )
+    return render(
+        request,
+        template,
+        _finalize_admin_context(
+            request,
+            _portal_context("admin", title, admin_page_slug="reports", **extras),
+        ),
+    )
+
+
 @require_GET
 @admin_login_required
 def admin_weekly_attendance_report(request):
-    filters, weekly, attendance, roster = _weekly_attendance_bundle(request, admin=True)
-    if request.GET.get("format") == "csv":
-        return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
-    return render(
-        request,
-        "portal/staff/weekly_attendance_report.html",
-        _finalize_admin_context(
-            request,
-            _portal_context(
-                "admin",
-                "Weekly attendance summary",
-                admin_page_slug="reports",
-                page_guide_key="weekly-attendance",
-                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
-                hub_label="Organization reports",
-                show_unit_filter=True,
-                unit_filter_allows_all=True,
-                report_filters=filters,
-                attendance=attendance,
-                roster=roster,
-                weekly_rows=weekly.get("weekly_rows"),
-                week_days=weekly.get("week_days"),
-                week_range_display=weekly.get("week_range_display") or attendance.get("date_display", ""),
-                filter_options=weekly.get("filter_options") or {},
-                sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
-                generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
-                selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
-                selected_unit_name=weekly.get("selected_unit_name") or "All units",
-            ),
-        ),
+    return _admin_attendance_sheet(
+        request, "weekly", "Weekly attendance summary", "portal/staff/weekly_attendance_report.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_attendance_report(request):
+    return _admin_attendance_sheet(
+        request, "daily", "Daily attendance sheet", "portal/staff/attendance_report.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_attendance_blank_daily(request):
+    return _admin_attendance_sheet(
+        request, "daily-blank", "Daily attendance — blank sheet", "portal/staff/attendance_blank_daily.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_attendance_blank_weekly(request):
+    return _admin_attendance_sheet(
+        request, "weekly-blank", "Weekly attendance — blank sheet", "portal/staff/attendance_blank_weekly.html"
     )
 
 

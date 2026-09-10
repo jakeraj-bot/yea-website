@@ -28,6 +28,9 @@ class PageGuideCatalogTests(TestCase):
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
+            "weekly-attendance-blank",
+            "daily-attendance",
+            "daily-attendance-blank",
             "admin-attendance",
         ):
             self.assertIsNotNone(guide_for(key), key)
