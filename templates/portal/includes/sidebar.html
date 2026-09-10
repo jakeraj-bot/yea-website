@@ -89,6 +89,7 @@
     <li><a class="portal-nav-link portal-nav-staff-applications{% if staff_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='applications' %}" title="Applications">Applications</a></li>
     <li><a class="portal-nav-link portal-nav-staff-waitlist{% if staff_page_slug == 'waitlist' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='waitlist' %}" title="Waitlist">Waitlist</a></li>
     <li><a class="portal-nav-link portal-nav-staff-families{% if staff_page_slug == 'families' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='families' %}" title="Families">Families</a></li>
+    <li><a class="portal-nav-link portal-nav-staff-emails{% if staff_page_slug == 'emails-sent' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='emails-sent' %}" title="Emails sent">Emails sent</a></li>
     <li><a class="portal-nav-link portal-nav-staff-policies{% if staff_page_slug == 'member-policies' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='member-policies' %}" title="Member policies">Member policies</a></li>
     <li><a class="portal-nav-link portal-nav-staff-agency{% if staff_page_slug == 'agency' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='agency' %}" title="4Cs / Agency">4Cs / Agency</a></li>
     <li><a class="portal-nav-link portal-nav-staff-messages{% if staff_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='messages' %}" title="Team messages">Team messages</a></li>
@@ -157,12 +158,13 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-communications"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'parent-emails' or admin_page_slug == 'support' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-communications"{% if admin_page_slug == 'messages' or admin_page_slug == 'communications' or admin_page_slug == 'parent-emails' or admin_page_slug == 'emails-sent' or admin_page_slug == 'support' %} open{% endif %}>
       <summary class="portal-nav-group-label">Communications</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-messages{% if admin_page_slug == 'messages' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='messages' %}" title="Team messages">Team messages</a></li>
         <li><a class="portal-nav-link portal-nav-admin-comms{% if admin_page_slug == 'communications' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='communications' %}" title="Parent comms">Parent comms</a></li>
         <li><a class="portal-nav-link portal-nav-admin-emails{% if admin_page_slug == 'parent-emails' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='parent-emails' %}" title="Email parents">Email parents</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-email-ledger{% if admin_page_slug == 'emails-sent' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='emails-sent' %}" title="Emails sent">Emails sent</a></li>
         <li><a class="portal-nav-link portal-nav-admin-support{% if admin_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='support' %}" title="Support inbox">Support inbox</a></li>
       </ul>
     </details>

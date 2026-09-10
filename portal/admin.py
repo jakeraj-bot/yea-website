@@ -7,6 +7,8 @@ from .models import (
     PortalEmailTemplate,
     PortalFamily,
     PortalFeeRule,
+    PortalParentEmail,
+    PortalParentEmailAttachment,
     PortalPaymentPlan,
     PortalProcessingFee,
     PortalProgram,
@@ -104,3 +106,29 @@ class PortalScholarshipFundAdmin(admin.ModelAdmin):
 class PortalEmailTemplateAdmin(admin.ModelAdmin):
     list_display = ("name", "key", "is_enabled", "updated_at")
     list_filter = ("is_enabled",)
+
+
+class PortalParentEmailAttachmentInline(admin.TabularInline):
+    model = PortalParentEmailAttachment
+    extra = 0
+    readonly_fields = ("original_name", "content_type", "size", "file")
+
+
+@admin.register(PortalParentEmail)
+class PortalParentEmailAdmin(admin.ModelAdmin):
+    list_display = ("subject", "sender_name", "sent_at", "unit", "family")
+    list_filter = ("source", "unit", "sent_at")
+    search_fields = ("subject", "sender_name", "body")
+    readonly_fields = (
+        "family",
+        "unit",
+        "sent_by",
+        "sender_name",
+        "recipients",
+        "subject",
+        "body",
+        "attachment_names",
+        "source",
+        "sent_at",
+    )
+    inlines = [PortalParentEmailAttachmentInline]

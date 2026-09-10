@@ -17,7 +17,21 @@ def email_is_configured():
     return True
 
 
-def send_site_email(subject, message, recipient_list, *, fail_silently=True, reply_to=None):
+def _attach_files(email, attachments):
+    for item in attachments or []:
+        if isinstance(item, (tuple, list)) and item:
+            name = item[0]
+            content = item[1] if len(item) > 1 else b""
+            mimetype = item[2] if len(item) > 2 else None
+            email.attach(name, content, mimetype)
+        elif hasattr(item, "read"):
+            name = getattr(item, "name", "attachment")
+            content = item.read()
+            mimetype = getattr(item, "content_type", None)
+            email.attach(name, content, mimetype)
+
+
+def send_site_email(subject, message, recipient_list, *, fail_silently=True, reply_to=None, attachments=None):
     recipients = [email.strip() for email in recipient_list if email and email.strip()]
     if not recipients:
         logger.warning("Email skipped (no recipients): subject=%r", subject)
@@ -40,6 +54,7 @@ def send_site_email(subject, message, recipient_list, *, fail_silently=True, rep
             to=recipients,
             reply_to=list(reply_to or []),
         )
+        _attach_files(email, attachments)
         sent = email.send(fail_silently=False)
         logger.info("Email sent: subject=%r recipients=%s", subject, recipients)
         return sent

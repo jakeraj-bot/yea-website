@@ -42,7 +42,7 @@
     </div>
     {% endif %}
 
-    <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid card portal-panel">
+    <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid card portal-panel" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="send_parent_emails">
       <div class="form-group portal-form-full">
@@ -53,6 +53,7 @@
         <label for="email-body">Message</label>
         <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
       </div>
+      {% include "portal/includes/parent_email_upload.html" with upload_id="parent-emails" %}
       <div class="form-group portal-form-full">
         <label>Recipients</label>
         <p class="form-note">Search and check the parents you want to include. Unchecked parents will not receive the email.</p>
@@ -76,6 +77,7 @@
         <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Send email</button>
       </div>
     </form>
+    {% include "portal/includes/parent_email_ledger.html" %}
   </div>
 </section>
 {% endblock %}
