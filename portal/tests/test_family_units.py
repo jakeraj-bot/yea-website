@@ -735,6 +735,40 @@ class FamiliesListVisitTests(TestCase):
         self.assertEqual(returned.wsgi_request.GET.get("q", ""), "")
         self.assertEqual(_family_names_from_table(returned.content.decode()), ["adams", "nguyen"])
 
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_child_names_link_to_family_account(self):
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        adams_url = reverse("portal_admin_family_detail", kwargs={"family_slug": "adams"})
+        williams_url = reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"})
+        self.assertIn(f'<a href="{adams_url}?id={self.adams.pk}">Mia Adams</a>', html)
+        self.assertIn(f'<a href="{williams_url}?id={self.williams.pk}">Aiden Williams</a>', html)
+        self.assertIn(f'<a href="{williams_url}?id={self.williams.pk}">Zoe Williams</a>', html)
+        self.assertContains(response, ">Account</a>")
+        self.assertContains(response, ">Parent view</a>")
+        self.assertContains(response, ">Delete</button>")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_child_names_link_to_family_account(self):
+        _staff_login(self.client, self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        response = self.client.get(reverse("portal_staff_page", kwargs={"page": "families"}))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        adams_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "adams"})
+        nguyen_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "nguyen"})
+        williams_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "williams"})
+        self.assertIn(f'<a href="{adams_url}">Mia Adams</a>', html)
+        self.assertIn(f'<a href="{nguyen_url}">An Nguyen</a>', html)
+        self.assertNotIn("Zoe Williams", html)
+        self.assertNotIn("Aiden Williams", html)
+        self.assertNotIn(williams_url, html)
+        self.assertContains(response, ">Profile</a>")
+
     def test_families_table_script_does_not_persist_search(self):
         from pathlib import Path
 
