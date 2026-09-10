@@ -377,15 +377,15 @@ GUIDES = {
     },
     "weekly-attendance": {
         "title": "How to print weekly attendance",
-        "intro": "This is the Monday–Friday attendance sheet. Check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
+        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
         "steps": [
             {
-                "title": "Check whose children you see",
-                "body": "Staff see only children at the unit in the header, including a child at this site whose family account is at another unit. School 18 staff will not see School 26 children. Admins can choose one unit or all units.",
+                "title": "Pick a unit",
+                "body": "Use the Unit filter on this page. Staff can choose any unit they are allowed to open; it starts on the unit in the header, so you do not have to hunt through the header switcher. Staff cannot see children at a unit they are not assigned to. Admins can choose one unit or All units. A child whose family account is at another site still appears if they attend the unit you picked.",
             },
             {
                 "title": "Pick the week and grades",
-                "body": "Choose a date in that school week. Leave grades unchecked to include every grade. Check 2nd and 4th, for example, to print both grades on one weekly grid.",
+                "body": "Choose a date in that school week. Leave grades unchecked to include every grade at that unit. Check 2nd and 4th, for example, to print both grades on one weekly grid. Unit and grades work together on this same Monday–Friday sheet.",
             },
             {
                 "title": "Narrow further if you need to",

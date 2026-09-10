@@ -1964,7 +1964,7 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     return response
 
 
-def _weekly_attendance_bundle(request, *, unit=None, admin=False):
+def _weekly_attendance_bundle(request, *, unit=None, admin=False, allowed_units=None):
     from .staff_services import weekly_attendance_report_data
 
     filters = _weekly_attendance_filters(request)
@@ -1977,12 +1977,16 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
         live = bool(_portal_data_live() and unit)
         program = get_active_program(unit) if live and unit else None
     if live or (admin and _portal_data_live()):
-        weekly = weekly_attendance_report_data(unit, program, sheet_date, filters=filters, admin=admin)
+        weekly = weekly_attendance_report_data(
+            unit, program, sheet_date, filters=filters, admin=admin, allowed_units=allowed_units
+        )
+        if not admin and weekly.get("selected_unit_slug"):
+            filters["unit"] = weekly["selected_unit_slug"]
         roster = build_roster(unit, program, sheet_date) if unit and program else []
         attendance = (
             build_session_context(unit, program, sheet_date, roster)
             if unit and program
-            else {**ATTENDANCE_SESSION, "unit": unit.name if unit else "All units"}
+            else {**ATTENDANCE_SESSION, "unit": weekly.get("selected_unit_name") or (unit.name if unit else "All units")}
         )
     else:
         weekly = {
@@ -1993,6 +1997,9 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
             "sheet_date": sheet_date.isoformat(),
             "generated_date": date.today().strftime("%B %d, %Y"),
             "selected_grades": filters["grades"],
+            "selected_unit_slug": filters.get("unit") or (unit.slug if unit else ""),
+            "selected_unit_name": unit.name if unit else ("All units" if admin else ""),
+            "unit_filter_allows_all": admin,
         }
         roster = ATTENDANCE_ROSTER
         attendance = ATTENDANCE_SESSION
@@ -2002,8 +2009,18 @@ def _weekly_attendance_bundle(request, *, unit=None, admin=False):
 @staff_login_required
 @require_GET
 def staff_weekly_attendance_report(request):
+    from .member_admin import is_placeholder_unit
+    from .staff_auth import staff_accessible_units
+
     unit = _staff_unit(request) if _portal_data_live() else None
-    filters, weekly, attendance, roster = _weekly_attendance_bundle(request, unit=unit, admin=False)
+    allowed_units = []
+    if _portal_data_live() and getattr(request, "user", None) and request.user.is_authenticated:
+        allowed_units = [item for item in staff_accessible_units(request.user) if not is_placeholder_unit(item)]
+    elif unit:
+        allowed_units = [unit]
+    filters, weekly, attendance, roster = _weekly_attendance_bundle(
+        request, unit=unit, admin=False, allowed_units=allowed_units
+    )
     if request.GET.get("format") == "csv":
         return _weekly_attendance_csv(weekly.get("weekly_rows") or [], weekly.get("week_days") or [], "weekly-attendance.csv")
     return render(
@@ -2021,8 +2038,10 @@ def staff_weekly_attendance_report(request):
             sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
             generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
             selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
+            selected_unit_name=weekly.get("selected_unit_name") or (unit.name if unit else ""),
             report_filters=filters,
-            show_unit_filter=False,
+            show_unit_filter=True,
+            unit_filter_allows_all=False,
             hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
             hub_label="Reports",
             staff_page_slug="reports",
@@ -3969,6 +3988,7 @@ def admin_weekly_attendance_report(request):
                 hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
                 hub_label="Organization reports",
                 show_unit_filter=True,
+                unit_filter_allows_all=True,
                 report_filters=filters,
                 attendance=attendance,
                 roster=roster,
@@ -3979,6 +3999,7 @@ def admin_weekly_attendance_report(request):
                 sheet_date=weekly.get("sheet_date") or date.today().isoformat(),
                 generated_date=weekly.get("generated_date") or date.today().strftime("%B %d, %Y"),
                 selected_grades=weekly.get("selected_grades") or filters.get("grades") or [],
+                selected_unit_name=weekly.get("selected_unit_name") or "All units",
             ),
         ),
     )
