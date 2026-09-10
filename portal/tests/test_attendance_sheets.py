@@ -1,4 +1,5 @@
 from datetime import time
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -189,7 +190,14 @@ class AttendanceSheetFilterTests(TestCase):
         self.assertContains(page, "portal-blank-sheet-meta")
         self.assertNotIn("<th>Unit</th>", html)
         self.assertNotIn("<th>Grade</th>", html)
-        self.assertIn("portal-blank-line--day", html)
+        self.assertContains(page, "portal-attendance-check")
+        self.assertContains(page, "portal-blank-line--day")
+        css = (Path(__file__).resolve().parents[2] / "static" / "css" / "portal.css").read_text()
+        mark_css = css.split(".portal-table td.portal-attendance-mark {", 1)[1].split("}", 1)[0]
+        self.assertIn("text-align: center", mark_css)
+        print_css = css.split("@media print", 2)[-1]
+        self.assertIn(".portal-table td.portal-attendance-mark", print_css)
+        self.assertIn(".portal-attendance-check", print_css)
         self.assertNotIn(">—<", html)
         self.assertContains(page, "portal-print-title-row")
         self.assertContains(page, "counter(page)")

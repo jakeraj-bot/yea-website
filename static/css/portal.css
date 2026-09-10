@@ -1238,7 +1238,22 @@
   display: none;
 }
 
-.portal-attendance-mark {
+.portal-table td.portal-attendance-mark {
+  text-align: center;
+  vertical-align: bottom;
+}
+
+.portal-attendance-mark .portal-blank-line--day {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.portal-attendance-check {
+  display: block;
+  width: 100%;
+  line-height: 1.5rem;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -3123,6 +3138,20 @@
 
   .portal-blank-line {
     border-bottom-color: #999;
+  }
+
+  .portal-table td.portal-attendance-mark {
+    text-align: center;
+  }
+
+  .portal-attendance-mark .portal-blank-line--day {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+
+  .portal-attendance-check {
+    text-align: center;
   }
 
   .portal-blank-sheet-table--weekly {
