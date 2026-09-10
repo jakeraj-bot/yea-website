@@ -386,6 +386,46 @@ def _payout_charge_map(stripe, limit=15):
     return mapping
 
 
+def _payout_descriptor(payout):
+    return (
+        (getattr(payout, "statement_descriptor", None) or "")
+        or (getattr(payout, "description", None) or "")
+        or ""
+    ).strip()
+
+
+def _payout_amount_decimal(payout):
+    return Decimal(getattr(payout, "amount", 0) or 0) / Decimal("100")
+
+
+SETTLEMENT_SAVE_FIELDS = [
+    "stripe_payment_intent_id",
+    "stripe_charge_id",
+    "stripe_bank_status",
+    "stripe_bank_date",
+    "stripe_settlement_checked_at",
+    "stripe_payout_id",
+    "stripe_payout_descriptor",
+    "stripe_payout_amount",
+]
+
+
+def _apply_payout_cache(payment, payout):
+    """Copy payout id, bank descriptor, amount, and arrival date onto the payment."""
+    if payout is None:
+        return payment
+    payout_status = getattr(payout, "status", "") or ""
+    payment.stripe_payout_id = getattr(payout, "id", "") or payment.stripe_payout_id
+    payment.stripe_payout_descriptor = _payout_descriptor(payout) or payment.stripe_payout_descriptor
+    payment.stripe_payout_amount = _payout_amount_decimal(payout)
+    payment.stripe_bank_date = _unix_date(getattr(payout, "arrival_date", None)) or payment.stripe_bank_date
+    if payout_status == "paid":
+        payment.stripe_bank_status = "in_bank"
+    elif payout_status in {"in_transit", "pending"}:
+        payment.stripe_bank_status = "in_transit"
+    return payment
+
+
 def refresh_payment_settlement(payment, payout_map=None):
     """Cache whether Stripe still holds this payment or has paid it out to the bank."""
     from django.utils import timezone
@@ -404,6 +444,11 @@ def refresh_payment_settlement(payment, payout_map=None):
         payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
         return payment
     if not stripe_configured():
+        # Keep a cached payout grouping when Stripe is not configured in this environment.
+        if payment.stripe_payout_id:
+            payment.stripe_settlement_checked_at = timezone.now()
+            payment.save(update_fields=["stripe_settlement_checked_at"])
+            return payment
         payment.stripe_bank_status = "unknown"
         payment.stripe_settlement_checked_at = timezone.now()
         payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
@@ -435,8 +480,9 @@ def refresh_payment_settlement(payment, payout_map=None):
         if intent_id and not payment.stripe_payment_intent_id:
             payment.stripe_payment_intent_id = intent_id
     except Exception:
-        payment.stripe_bank_status = "unknown"
         payment.stripe_settlement_checked_at = timezone.now()
+        if not payment.stripe_bank_status:
+            payment.stripe_bank_status = "unknown"
         payment.save(update_fields=["stripe_bank_status", "stripe_settlement_checked_at"])
         return payment
 
@@ -446,27 +492,20 @@ def refresh_payment_settlement(payment, payout_map=None):
     status = "waiting_for_bank"
     today = timezone.localdate()
     if payout is not None:
-        payout_status = getattr(payout, "status", "") or ""
-        available_on = _unix_date(getattr(payout, "arrival_date", None)) or available_on
-        if payout_status == "paid":
-            status = "in_bank"
-        elif payout_status in {"in_transit", "pending"}:
-            status = "in_transit"
+        _apply_payout_cache(payment, payout)
+        status = payment.stripe_bank_status or status
+        available_on = payment.stripe_bank_date or available_on
+    elif payment.stripe_payout_id:
+        # Older payouts may fall outside the live Stripe page; keep the cached grouping.
+        status = payment.stripe_bank_status or "in_bank"
+        available_on = payment.stripe_bank_date or available_on
     elif available_on and available_on > today:
         status = "received_by_stripe"
     payment.stripe_charge_id = charge_id or payment.stripe_charge_id
     payment.stripe_bank_status = status
     payment.stripe_bank_date = available_on
     payment.stripe_settlement_checked_at = timezone.now()
-    payment.save(
-        update_fields=[
-            "stripe_payment_intent_id",
-            "stripe_charge_id",
-            "stripe_bank_status",
-            "stripe_bank_date",
-            "stripe_settlement_checked_at",
-        ]
-    )
+    payment.save(update_fields=SETTLEMENT_SAVE_FIELDS)
     return payment
 
 

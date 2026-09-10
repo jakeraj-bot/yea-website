@@ -277,6 +277,135 @@ class AdminReportsAndScholarshipTests(TestCase):
         paid.refresh_from_db()
         self.assertEqual(pending.stripe_bank_status, "waiting_for_card")
         self.assertEqual(paid.stripe_bank_status, "not_stripe")
+        pending_families = {row["family"] for row in report["pending_rows"]}
+        self.assertEqual(pending_families, {"Jacobs", "Martinez"})
+        self.assertEqual(report["payout_groups"], [])
+        self.assertEqual(report["layout"], "payout_sections")
+
+    def test_stripe_settlement_groups_member_payments_under_payout(self):
+        today = timezone.now()
+        arrived = timezone.localdate()
+        self.family.primary_contact = "Jakera Jacobs"
+        self.family.save(update_fields=["primary_contact"])
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("30.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_pending_group",
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.no_plan,
+            amount=Decimal("12.00"),
+            method_label="Cash",
+            status=PortalPayment.STATUS_PAID,
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_paid_a",
+            stripe_payout_id="po_aaa",
+            stripe_payout_descriptor="YEA SCHOOL 18",
+            stripe_payout_amount=Decimal("95.00"),
+            stripe_bank_status="in_bank",
+            stripe_bank_date=arrived,
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.four_cs_family,
+            amount=Decimal("55.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_paid_a2",
+            stripe_payout_id="po_aaa",
+            stripe_payout_descriptor="YEA SCHOOL 18",
+            stripe_payout_amount=Decimal("95.00"),
+            stripe_bank_status="in_bank",
+            stripe_bank_date=arrived,
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("20.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_paid_b",
+            stripe_payout_id="po_bbb",
+            stripe_payout_descriptor="YEA MAIN",
+            stripe_payout_amount=Decimal("20.00"),
+            stripe_bank_status="in_bank",
+            stripe_bank_date=arrived,
+            paid_at=today,
+        )
+        report = build_admin_report("stripe-settlement", {})
+        pending_families = {row["family"] for row in report["pending_rows"]}
+        self.assertEqual(pending_families, {"Jacobs", "Rivera"})
+        self.assertTrue(all(row["unit"] == "School 18" for row in report["pending_rows"]))
+        by_id = {group["payout_id"]: group for group in report["payout_groups"]}
+        self.assertEqual(set(by_id), {"po_aaa", "po_bbb"})
+        self.assertEqual({row["family"] for row in by_id["po_aaa"]["rows"]}, {"Jacobs", "Martinez"})
+        self.assertEqual({row["family"] for row in by_id["po_bbb"]["rows"]}, {"Jacobs"})
+        self.assertEqual(by_id["po_aaa"]["descriptor"], "YEA SCHOOL 18")
+        self.assertEqual(by_id["po_aaa"]["amount"], "95.00")
+        self.assertEqual(by_id["po_aaa"]["member_total"], "95.00")
+        self.assertIn("Jakera Jacobs", {row["paid_by"] for row in by_id["po_aaa"]["rows"]})
+        self.assertTrue(all(row["unit"] == "School 18" for row in report["rows"]))
+        self.assertTrue(all(row["child"] for row in report["rows"]))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_stripe_settlement_page_shows_pending_then_payout_sections(self):
+        today = timezone.now()
+        arrived = timezone.localdate()
+        self.family.primary_contact = "Jakera Jacobs"
+        self.family.save(update_fields=["primary_contact"])
+        PortalPayment.objects.create(
+            family=self.no_plan,
+            amount=Decimal("12.00"),
+            method_label="Cash",
+            status=PortalPayment.STATUS_PAID,
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_page_a",
+            stripe_payout_id="po_page_aaa",
+            stripe_payout_descriptor="YEA SCHOOL 18",
+            stripe_payout_amount=Decimal("40.00"),
+            stripe_bank_status="in_bank",
+            stripe_bank_date=arrived,
+            paid_at=today,
+        )
+        self._login_admin()
+        page = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Not yet paid out")
+        self.assertContains(page, "po_page_aaa")
+        self.assertContains(page, "YEA SCHOOL 18")
+        self.assertContains(page, "Rivera")
+        self.assertContains(page, "Jacobs")
+        self.assertContains(page, "Jakera Jacobs")
+        self.assertContains(page, "School 18")
+        self.assertContains(page, "portal-table--freeze-first")
+        self.assertContains(page, "data-table-hscroll")
+        html = page.content.decode()
+        self.assertLess(html.find("Not yet paid out"), html.find("po_page_aaa"))
+        self.assertLess(html.find("Rivera"), html.find("po_page_aaa"))
+        csv_response = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}),
+            {"format": "csv"},
+        )
+        self.assertEqual(csv_response.status_code, 200)
+        csv_text = csv_response.content.decode()
+        self.assertIn("Section", csv_text.splitlines()[0])
+        self.assertIn("Not yet paid out", csv_text)
+        self.assertIn("po_page_aaa", csv_text)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_payment_reports(self):

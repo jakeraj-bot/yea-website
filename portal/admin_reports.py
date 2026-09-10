@@ -320,8 +320,101 @@ def payment_report_rows(filters=None):
     return {"rows": rows, "total_payments": _money(total)}
 
 
+SETTLEMENT_STATUS_CHOICES = [
+    ("waiting_for_card", "Waiting for card payment"),
+    ("received_by_stripe", "Stripe received — waiting to become available"),
+    ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
+    ("in_transit", "On the way to the bank"),
+    ("in_bank", "Paid out to bank"),
+    ("not_stripe", "Not Stripe — recorded in portal"),
+    ("unknown", "Bank status unavailable"),
+]
+
+# Payments already assigned to a Stripe payout (arrived or still in transit).
+PAYOUT_GROUP_STATUSES = {"in_bank", "in_transit"}
+
+
+def _settlement_payment_row(payment):
+    from .stripe_services import bank_status_label
+
+    paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+    children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
+    child = payment.dropin_child or (" · ".join(children) if children else "—")
+    if payment.status == PortalPayment.STATUS_PENDING:
+        card_status = "Waiting for card"
+    elif payment.status == PortalPayment.STATUS_FAILED:
+        card_status = "Failed"
+    else:
+        card_status = "Paid"
+    payout_id = (payment.stripe_payout_id or "").strip()
+    return {
+        "date": paid_on.isoformat(),
+        "child": child,
+        "family": payment.family.name,
+        "family_slug": payment.family.slug,
+        "family_id": payment.family_id,
+        "unit": payment.family.unit.name,
+        "paid_by": payment.family.primary_contact or payment.family.name,
+        "amount": _money(payment.amount),
+        "method": payment.method_label or ("Card" if payment.stripe_session_id else "Recorded"),
+        "status": card_status,
+        "bank_status": bank_status_label(payment.stripe_bank_status),
+        "bank_date": payment.stripe_bank_date.isoformat() if payment.stripe_bank_date else "—",
+        "payout_id": payout_id,
+        "payout_descriptor": (payment.stripe_payout_descriptor or "").strip(),
+        "payout_amount": _money(payment.stripe_payout_amount) if payment.stripe_payout_amount is not None else "",
+        "payout_status": payment.stripe_bank_status or "",
+        "payout_sort_date": payment.stripe_bank_date.isoformat() if payment.stripe_bank_date else "",
+    }
+
+
+def _payment_in_payout_section(row):
+    """True when this payment belongs under a Stripe payout heading."""
+    if row.get("payout_id"):
+        return True
+    return row.get("payout_status") in PAYOUT_GROUP_STATUSES
+
+
+def _payout_group_key(row):
+    if row.get("payout_id"):
+        return ("id", row["payout_id"])
+    date = row.get("payout_sort_date") or row.get("bank_date") or row.get("date") or "unknown"
+    return ("date", date)
+
+
+def _payout_group_header(key, rows):
+    first = rows[0]
+    payout_id = first.get("payout_id") or ""
+    date = first.get("payout_sort_date") or first.get("bank_date") or "—"
+    if date == "—":
+        date = ""
+    descriptor = next((row.get("payout_descriptor") for row in rows if row.get("payout_descriptor")), "")
+    payout_amount = next((row.get("payout_amount") for row in rows if row.get("payout_amount")), "")
+    member_total = _money(sum((Decimal(row["amount"]) for row in rows), Decimal("0")))
+    status = first.get("bank_status") or "Paid out to bank"
+    kind, ident = key
+    if kind == "id":
+        title_bits = ["Stripe payout"]
+        if date:
+            title_bits.append(date)
+        title = " · ".join(title_bits)
+    else:
+        title = f"Bank payout · {ident}" if ident and ident != "unknown" else "Bank payout"
+    return {
+        "key": f"{kind}:{ident}",
+        "title": title,
+        "payout_id": payout_id,
+        "date": date or "—",
+        "amount": payout_amount or member_total,
+        "member_total": member_total,
+        "descriptor": descriptor,
+        "status": status,
+        "rows": rows,
+    }
+
+
 def stripe_settlement_rows(filters=None):
-    from .stripe_services import bank_status_label, refresh_stripe_settlements, stripe_configured, stripe_payout_rows
+    from .stripe_services import refresh_stripe_settlements
 
     filters = filters or {}
     query = (filters.get("q") or "").strip()
@@ -333,7 +426,8 @@ def stripe_settlement_rows(filters=None):
         PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
     )
     refresh_stripe_settlements(payments)
-    rows = []
+    pending_rows = []
+    grouped = {}
     for payment in payments:
         if is_placeholder_unit(payment.family.unit):
             continue
@@ -344,59 +438,50 @@ def stripe_settlement_rows(filters=None):
             continue
         if end and paid_on > end:
             continue
-        children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
-        child = payment.dropin_child or (" · ".join(children) if children else "—")
-        bank_status = bank_status_label(payment.stripe_bank_status)
+        row = _settlement_payment_row(payment)
         if query:
             haystack = " ".join(
                 [
-                    payment.family.name,
-                    payment.family.primary_contact or "",
-                    child,
-                    bank_status,
-                    payment.method_label or "",
+                    row["family"],
+                    row["paid_by"],
+                    row["child"],
+                    row["bank_status"],
+                    row["method"],
+                    row["unit"],
+                    row["payout_id"],
+                    row["payout_descriptor"],
                 ]
             ).lower()
             if query.lower() not in haystack:
                 continue
         if status_filter and payment.stripe_bank_status != status_filter:
             continue
-        if payment.status == PortalPayment.STATUS_PENDING:
-            card_status = "Waiting for card"
-        elif payment.status == PortalPayment.STATUS_FAILED:
-            card_status = "Failed"
+        if _payment_in_payout_section(row):
+            grouped.setdefault(_payout_group_key(row), []).append(row)
         else:
-            card_status = "Paid"
-        rows.append(
-            {
-                "date": paid_on.isoformat(),
-                "child": child,
-                "family": payment.family.name,
-                "family_slug": payment.family.slug,
-                "family_id": payment.family_id,
-                "unit": payment.family.unit.name,
-                "paid_by": payment.family.primary_contact or payment.family.name,
-                "amount": _money(payment.amount),
-                "method": payment.method_label or ("Card" if payment.stripe_session_id else "Recorded"),
-                "status": card_status,
-                "bank_status": bank_status,
-                "bank_date": payment.stripe_bank_date.isoformat() if payment.stripe_bank_date else "—",
-            }
-        )
-    if stripe_configured() and not status_filter:
-        rows.extend(stripe_payout_rows())
-        rows.sort(key=lambda row: row["date"], reverse=True)
+            pending_rows.append(row)
+
+    payout_groups = []
+    for key, rows in grouped.items():
+        rows.sort(key=lambda item: item["date"], reverse=True)
+        payout_groups.append(_payout_group_header(key, rows))
+    payout_groups.sort(key=lambda group: (group["date"] or "", group["payout_id"] or ""), reverse=True)
+
+    rows = []
+    for row in pending_rows:
+        row["section"] = "Not yet paid out"
+        rows.append(row)
+    for group in payout_groups:
+        for row in group["rows"]:
+            row["section"] = group["title"]
+            if group["payout_id"]:
+                row["section"] = f"{group['title']} ({group['payout_id']})"
+            rows.append(row)
     return {
         "rows": rows,
-        "statuses": [
-            ("waiting_for_card", "Waiting for card payment"),
-            ("received_by_stripe", "Stripe received — waiting to become available"),
-            ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
-            ("in_transit", "On the way to the bank"),
-            ("in_bank", "Paid out to bank"),
-            ("not_stripe", "Not Stripe — recorded in portal"),
-            ("unknown", "Bank status unavailable"),
-        ],
+        "pending_rows": pending_rows,
+        "payout_groups": payout_groups,
+        "statuses": SETTLEMENT_STATUS_CHOICES,
     }
 
 
@@ -634,20 +719,22 @@ ADMIN_DATA_REPORTS = {
     },
     "stripe-settlement": {
         "title": "Stripe & bank payouts",
-        "lead": "Whether Stripe has the payment, or it is still waiting to reach the bank.",
+        "lead": "Member payments that have not reached a bank payout yet, then each Stripe payout with the payments inside it.",
         "columns": [
-            ("date", "Date paid"),
-            ("child", "Child"),
             ("family", "Family"),
+            ("child", "Child"),
             ("paid_by", "Paid by"),
             ("amount", "Amount"),
             ("method", "Method"),
+            ("date", "Date paid"),
+            ("unit", "Unit"),
             ("status", "Card / payment"),
             ("bank_status", "Bank / Stripe"),
             ("bank_date", "Expected in bank"),
         ],
         "filename": "stripe-bank-payouts.csv",
         "filters": ("q", "unit", "status", "start", "end"),
+        "layout": "payout_sections",
     },
     "plans": {
         "title": "Billing plans",
@@ -803,9 +890,17 @@ def build_admin_report(slug, filters=None):
     elif slug == "stripe-settlement":
         data = stripe_settlement_rows(filters)
         rows = data["rows"]
-        extra["summary"] = f"{len(rows)} Stripe and bank rows"
+        pending_count = len(data["pending_rows"])
+        payout_count = len(data["payout_groups"])
+        extra["summary"] = (
+            f"{pending_count} not yet paid out · {payout_count} bank payout"
+            f"{'' if payout_count == 1 else 's'} · {len(rows)} payments"
+        )
         extra["statuses"] = [value for value, _label in data["statuses"]]
         extra["status_choices"] = data["statuses"]
+        extra["pending_rows"] = data["pending_rows"]
+        extra["payout_groups"] = data["payout_groups"]
+        extra["layout"] = "payout_sections"
     elif slug == "plans":
         data = billing_plan_rows(filters)
         rows = data["rows"]
@@ -858,8 +953,16 @@ def build_admin_report(slug, filters=None):
     else:
         return None
     extra["units"] = unit_options()
-    for row in rows:
-        row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
+    extra["layout"] = extra.get("layout") or spec.get("layout") or "table"
+
+    def _attach_display(row_list):
+        for row in row_list:
+            row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
+
+    _attach_display(rows)
+    _attach_display(extra.get("pending_rows") or [])
+    for group in extra.get("payout_groups") or []:
+        _attach_display(group.get("rows") or [])
     return {
         "slug": slug,
         "title": spec["title"],

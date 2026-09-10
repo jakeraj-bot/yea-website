@@ -79,6 +79,38 @@ document.addEventListener("DOMContentLoaded", () => {
     if (stickyHeader) new ResizeObserver(syncPortalStickyHeadings).observe(stickyHeader);
   }
 
+  function bindTableTopScroll() {
+    document.querySelectorAll("[data-table-hscroll]").forEach(function (top) {
+      var wrap = top.nextElementSibling;
+      if (!wrap || !wrap.classList.contains("portal-table-wrap")) return;
+      var inner = top.querySelector(".portal-table-hscroll-inner");
+      if (!inner) return;
+      var syncing = false;
+      function syncWidth() {
+        inner.style.width = wrap.scrollWidth + "px";
+        var needsScroll = wrap.scrollWidth > wrap.clientWidth + 1;
+        top.hidden = !needsScroll;
+        if (needsScroll) top.scrollLeft = wrap.scrollLeft;
+      }
+      top.addEventListener("scroll", function () {
+        if (syncing) return;
+        syncing = true;
+        wrap.scrollLeft = top.scrollLeft;
+        syncing = false;
+      });
+      wrap.addEventListener("scroll", function () {
+        if (syncing) return;
+        syncing = true;
+        top.scrollLeft = wrap.scrollLeft;
+        syncing = false;
+      });
+      syncWidth();
+      window.addEventListener("resize", syncWidth);
+      if (window.ResizeObserver) new ResizeObserver(syncWidth).observe(wrap);
+    });
+  }
+  bindTableTopScroll();
+
   var slotRows = document.getElementById("dropoff-slot-rows");
   var addSlotRow = document.getElementById("dropoff-add-slot-row");
   var slotCount = document.getElementById("dropoff-slot-row-count");
