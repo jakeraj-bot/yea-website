@@ -1657,8 +1657,16 @@
   margin-top: 1rem;
 }
 
-.portal-families-table [hidden] {
+.portal-families-table [hidden],
+.portal-families-table th[hidden],
+.portal-families-table td[hidden] {
   display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
 }
 
 .portal-toolbar-note {
@@ -2153,6 +2161,28 @@
   width: 100%;
   min-width: 76rem;
   table-layout: fixed;
+}
+
+.portal-families-table.portal-families-table--packed {
+  table-layout: auto;
+}
+
+@media print {
+  .portal-families-table [hidden],
+  .portal-families-table th[hidden],
+  .portal-families-table td[hidden] {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .portal-families-table.portal-families-table--packed {
+    table-layout: auto !important;
+    min-width: 0 !important;
+  }
 }
 
 .portal-families-table th,

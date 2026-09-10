@@ -183,6 +183,36 @@
     return sorted;
   }
 
+  var COL_MIN_WIDTHS = {
+    unit: 5.5,
+    family: 8,
+    contact: 8,
+    child: 8,
+    school: 12.5,
+    medical: 5,
+    program: 7,
+    billing: 6.5,
+    "child-balance": 7,
+    "family-balance": 7,
+    status: 5.5,
+    actions: 15,
+  };
+
+  function packVisibleColumns() {
+    var hiddenAny = false;
+    var minWidth = 0;
+    table.querySelectorAll("thead th").forEach(function (th) {
+      if (th.hidden) {
+        hiddenAny = true;
+        return;
+      }
+      var col = th.getAttribute("data-col") || "";
+      minWidth += COL_MIN_WIDTHS[col] || 8;
+    });
+    table.classList.toggle("portal-families-table--packed", hiddenAny);
+    table.style.minWidth = hiddenAny ? minWidth + "rem" : "";
+  }
+
   function applyColumnVisibility() {
     Object.keys(state.columns).forEach(function (col) {
       var visible = state.columns[col];
@@ -190,6 +220,7 @@
         cell.hidden = !visible;
       });
     });
+    packVisibleColumns();
   }
 
   function renderPagination(total, pageCount) {
