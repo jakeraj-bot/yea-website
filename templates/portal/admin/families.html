@@ -57,7 +57,13 @@
               {% if family.is_first_child and not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
             </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
-            <td data-col="child"><strong>{{ family.child_name }}</strong></td>
+            <td data-col="child">
+              {% if family.child_name != "—" %}
+              <strong><a href="{% url 'portal_admin_family_detail' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">{{ family.child_name }}</a></strong>
+              {% else %}
+              <strong>{{ family.child_name }}</strong>
+              {% endif %}
+            </td>
             <td data-col="school">
               {% include "portal/staff/includes/school_edit_form.html" with child_id=family.child_id application_id=family.application_id school=family.school %}
             </td>
