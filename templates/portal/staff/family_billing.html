@@ -195,7 +195,7 @@
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
-          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th><th></th></tr>
+          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th><th>Processing fee</th><th></th></tr>
         </thead>
         <tbody>
           {% for row in billing.ledger %}
@@ -232,6 +232,7 @@
             <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %} portal-cell-amount">
               <span class="portal-money">{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}</span>
             </td>
+            <td class="portal-cell-amount">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
             <td class="portal-row-actions">
               {% if row.editable and billing_live %}
               <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="Edit description">Edit</button>
