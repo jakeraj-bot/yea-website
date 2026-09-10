@@ -203,7 +203,7 @@ GUIDES = {
     },
     "families": {
         "title": "How to use the families list",
-        "intro": "Every child at this unit is a row. Family balance sits on the first child in the household.",
+        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household.",
         "steps": [
             {
                 "title": "Search or filter",

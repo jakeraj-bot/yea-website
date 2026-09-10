@@ -34,12 +34,12 @@ def _name_sort_key(value):
 
 
 def sort_family_child_rows(rows):
-    """Family name A–Z, then child name A–Z. First child in each household keeps the action row."""
+    """Child name A–Z (case-insensitive). First child in each household keeps the action row."""
     sorted_rows = sorted(
         rows,
         key=lambda row: (
-            _name_sort_key(row.get("name")),
             _name_sort_key(row.get("child_name")),
+            _name_sort_key(row.get("name")),
             row.get("slug") or "",
             row.get("id") or 0,
         ),

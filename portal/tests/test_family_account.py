@@ -504,8 +504,8 @@ class FamilyNeighborNavTests(TestCase):
     def test_admin_next_preserves_id_and_stays_on_billing(self):
         self._login(self.admin, "admin")
         billing = self.client.get(
-            reverse("portal_admin_family_billing", kwargs={"family_slug": "williams"}),
-            {"id": self.williams.pk},
+            reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}),
+            {"id": self.jacobs.pk},
         )
         self.assertEqual(billing.status_code, 200)
         next_path = reverse("portal_admin_family_billing", kwargs={"family_slug": "lee"})
@@ -518,12 +518,12 @@ class FamilyNeighborNavTests(TestCase):
         )
 
         last = self.client.get(
-            reverse("portal_admin_family_detail", kwargs={"family_slug": "lee"}),
-            {"id": self.lee.pk},
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"}),
+            {"id": self.williams.pk},
         )
         self.assertEqual(last.status_code, 200)
         self.assertContains(last, "portal-family-pager-prev")
-        self.assertContains(last, reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"}))
+        self.assertContains(last, reverse("portal_admin_family_detail", kwargs={"family_slug": "lee"}))
         self.assertNotContains(last, "portal-family-pager-next")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
@@ -531,10 +531,10 @@ class FamilyNeighborNavTests(TestCase):
         twin = PortalFamily.objects.create(unit=self.other_unit, slug="jacobs", name="Jacobs")
         _make_application(twin, location="school_26")
         self._login(self.admin, "admin")
-        # School 18 Chen, Jacobs, Williams then School 26 Jacobs, Lee
+        # Child name A–Z: Ada Chen, Ada Jacobs (18), Ada Jacobs (26), Ada Lee, Ada Williams
         response = self.client.get(
-            reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"}),
-            {"id": self.williams.pk},
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"}),
+            {"id": self.jacobs.pk},
         )
         self.assertEqual(response.status_code, 200)
         next_path = reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"})

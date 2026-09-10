@@ -203,7 +203,7 @@ class FamilyListRowTests(TestCase):
         self.assertEqual(previous["slug"], "chen")
         self.assertIsNone(nxt)
 
-    def test_family_list_defaults_to_name_a_to_z_and_children_a_to_z(self):
+    def test_family_list_defaults_to_child_name_a_to_z(self):
         williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
         adams = PortalFamily.objects.create(unit=self.unit, slug="adams", name="Adams")
         williams.children.create(name="Zoe Williams", is_active=True)
@@ -211,23 +211,20 @@ class FamilyListRowTests(TestCase):
         adams.children.create(name="Mia Adams", is_active=True)
 
         staff_rows = families_for_staff(self.unit)
-        self.assertEqual([row["name"] for row in staff_rows], ["Adams", "Williams", "Williams"])
-        self.assertEqual([row["child_name"] for row in staff_rows], ["Mia Adams", "Aiden Williams", "Zoe Williams"])
+        self.assertEqual([row["name"] for row in staff_rows], ["Williams", "Adams", "Williams"])
+        self.assertEqual([row["child_name"] for row in staff_rows], ["Aiden Williams", "Mia Adams", "Zoe Williams"])
         self.assertTrue(staff_rows[0]["is_first_child"])
         self.assertTrue(staff_rows[1]["is_first_child"])
         self.assertFalse(staff_rows[2]["is_first_child"])
 
         admin_rows = get_admin_families_live()
-        self.assertEqual([row["name"] for row in admin_rows], ["Adams", "Williams", "Williams"])
-        self.assertEqual([row["child_name"] for row in admin_rows], ["Mia Adams", "Aiden Williams", "Zoe Williams"])
+        self.assertEqual([row["name"] for row in admin_rows], ["Williams", "Adams", "Williams"])
+        self.assertEqual([row["child_name"] for row in admin_rows], ["Aiden Williams", "Mia Adams", "Zoe Williams"])
 
         from portal.family_list import demo_family_list_rows
 
-        demo_names = []
-        for row in demo_family_list_rows("admin"):
-            if row["name"] not in demo_names:
-                demo_names.append(row["name"])
-        self.assertEqual(demo_names, sorted(demo_names, key=str.casefold))
+        demo_child_names = [row["child_name"] for row in demo_family_list_rows("admin")]
+        self.assertEqual(demo_child_names, sorted(demo_child_names, key=str.casefold))
 
 
 class SchoolBusRosterTests(TestCase):
@@ -632,6 +629,10 @@ def _family_names_from_table(html):
     return names
 
 
+def _child_names_from_table(html):
+    return re.findall(r'data-child-name="([^"]+)"', html)
+
+
 def _children_by_family(html):
     groups = {}
     for slug, child in re.findall(r'data-slug="([^"]+)"[^>]*data-child-name="([^"]+)"', html):
@@ -684,14 +685,17 @@ class FamiliesListVisitTests(TestCase):
         self.assertNotIn('href="' + url + "?q=", html)
         self.assertIn('href="' + url + '"', html)
         names = _family_names_from_table(html)
-        self.assertEqual(names, ["adams", "nguyen", "williams"])
-        self.assertEqual(names, sorted(names))
+        self.assertEqual(names, ["williams", "nguyen", "adams"])
+        children = _child_names_from_table(html)
+        self.assertEqual(children, ["aiden williams", "an nguyen", "mia adams", "zoe williams"])
+        self.assertEqual(children, sorted(children))
         self.assertContains(response, "Mia Adams")
         self.assertContains(response, "An Nguyen")
         self.assertContains(response, "Aiden Williams")
         self.assertContains(response, "Zoe Williams")
-        children = _children_by_family(html)
-        self.assertEqual(children["williams"], ["aiden williams", "zoe williams"])
+        self.assertContains(response, "Child name A–Z")
+        children_by_family = _children_by_family(html)
+        self.assertEqual(children_by_family["williams"], ["aiden williams", "zoe williams"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_families_nav_url_without_query_shows_all_after_search_param(self):
@@ -709,7 +713,11 @@ class FamiliesListVisitTests(TestCase):
         self.assertContains(returned, "An Nguyen")
         self.assertContains(returned, "Zoe Williams")
         names = _family_names_from_table(returned.content.decode())
-        self.assertEqual(names, ["adams", "nguyen", "williams"])
+        self.assertEqual(names, ["williams", "nguyen", "adams"])
+        self.assertEqual(
+            _child_names_from_table(returned.content.decode()),
+            ["aiden williams", "an nguyen", "mia adams", "zoe williams"],
+        )
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_families_url_has_no_search_and_only_that_unit_a_to_z(self):
@@ -724,16 +732,19 @@ class FamiliesListVisitTests(TestCase):
         self.assertEqual(response.wsgi_request.GET.get("q", ""), "")
         html = response.content.decode()
         names = _family_names_from_table(html)
-        self.assertEqual(names, ["adams", "nguyen"])
+        self.assertEqual(names, ["nguyen", "adams"])
+        self.assertEqual(_child_names_from_table(html), ["an nguyen", "mia adams"])
         self.assertContains(response, "Mia Adams")
         self.assertContains(response, "An Nguyen")
+        self.assertContains(response, "Child name A–Z")
         self.assertNotContains(response, "Zoe Williams")
         searched = self.client.get(url, {"q": "adams"})
         self.assertContains(searched, "Mia Adams")
         self.assertContains(searched, "An Nguyen")
         returned = self.client.get(url)
         self.assertEqual(returned.wsgi_request.GET.get("q", ""), "")
-        self.assertEqual(_family_names_from_table(returned.content.decode()), ["adams", "nguyen"])
+        self.assertEqual(_family_names_from_table(returned.content.decode()), ["nguyen", "adams"])
+        self.assertEqual(_child_names_from_table(returned.content.decode()), ["an nguyen", "mia adams"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_child_names_link_to_family_account(self):
@@ -777,4 +788,4 @@ class FamiliesListVisitTests(TestCase):
         self.assertIn("pageshow", script)
         self.assertIn("delete saved.search", script)
         self.assertNotIn("toSave.search", script)
-        self.assertIn('sort: "name-asc"', script)
+        self.assertIn('sort: "child-asc"', script)
