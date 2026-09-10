@@ -100,6 +100,23 @@ class PortalCollapseCssTests(SimpleTestCase):
         self.assertTrue(member_info, "member-info table cells must be a closed CSS rule")
         self.assertEqual(member_info[0][1], 0)
 
+    def test_print_title_row_is_not_mashed_into_an_unclosed_block(self):
+        css = PORTAL_CSS.read_text()
+        self.assertNotIn(".portal-print-title-row {\n  .portal-print-title-row", css)
+        rules = _css_rule_depths(css)
+        print_title = [rule for rule in rules if ".portal-print-title-row" in rule[0]]
+        self.assertTrue(print_title)
+        self.assertTrue(
+            any(rule[1] >= 1 for rule in print_title),
+            "print title-row display rules belong inside @media print",
+        )
+        screen_tabs = [rule for rule in rules if rule[0] == ".portal-family-tabs"]
+        self.assertEqual(len(screen_tabs), 1)
+        self.assertEqual(screen_tabs[0][1], 0, "family tabs must apply on screen, not only in print")
+        screen_toggle = [rule for rule in rules if rule[0] == ".portal-sidebar-toggle"]
+        self.assertEqual(len(screen_toggle), 1)
+        self.assertEqual(screen_toggle[0][1], 0, "collapse menu button must apply on screen")
+
     def test_collapsed_body_is_hidden_on_screen_not_only_in_print(self):
         css = PORTAL_CSS.read_text()
         rules = _css_rule_depths(css)
@@ -144,6 +161,12 @@ class PortalCollapseScriptTests(SimpleTestCase):
             "Preview &amp; print</a>\n        {% if report.slug == 'emergency-contacts' %}",
             template,
         )
+
+    def test_portal_base_loads_site_and_portal_css_once(self):
+        template = (REPO_ROOT / "templates" / "portal" / "base.html").read_text()
+        self.assertEqual(template.count("static 'css/site.css'"), 1)
+        self.assertEqual(template.count("static 'css/portal.css'"), 1)
+        self.assertIn("report_print_chrome.html", template)
 
 
 class PortalCollapsePageTests(TestCase):
