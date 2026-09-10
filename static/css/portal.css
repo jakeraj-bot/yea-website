@@ -927,6 +927,23 @@
   border: 1px solid var(--border);
 }
 
+.portal-medical-report-sheet .portal-table-wrap,
+.portal-table-wrap--report {
+  max-height: min(70vh, calc(100vh - 12rem));
+}
+
+.portal-table-hscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  height: 14px;
+  margin: 0 0 0.35rem;
+}
+
+.portal-table-hscroll-inner {
+  height: 1px;
+}
+
 .portal-table {
   width: 100%;
   min-width: max-content;
@@ -984,6 +1001,32 @@
 
 .portal-payout-meta span {
   white-space: nowrap;
+}
+
+.portal-table--freeze-first th:first-child,
+.portal-table--freeze-first td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 4px 0 8px -6px rgba(31, 41, 55, 0.35);
+}
+
+.portal-table--freeze-first thead th:first-child {
+  z-index: 6;
+  background: var(--bg-soft);
+}
+
+@media print {
+  .portal-table-hscroll {
+    display: none !important;
+  }
+
+  .portal-table--freeze-first th:first-child,
+  .portal-table--freeze-first td:first-child {
+    position: static;
+    box-shadow: none;
+  }
 }
 
 .portal-table th.portal-row-num,

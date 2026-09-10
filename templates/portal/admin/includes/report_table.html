@@ -1,5 +1,8 @@
-<div class="portal-table-wrap">
-  <table class="portal-table">
+<div class="portal-table-hscroll" data-table-hscroll hidden>
+  <div class="portal-table-hscroll-inner"></div>
+</div>
+<div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}">
+  <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}">
     <thead>
       <tr>
         {% for _key, label in report.columns %}

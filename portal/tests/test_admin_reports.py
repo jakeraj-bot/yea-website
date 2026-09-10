@@ -390,6 +390,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Jacobs", html)
         self.assertIn("po_page_paid", html)
         self.assertIn("YEA SCHOOL 18", html)
+        self.assertIn("portal-table--freeze-first", html)
+        self.assertIn("data-table-hscroll", html)
         self.assertNotIn("Remaining payments", html)
         self.assertLess(html.find("Not yet paid out"), html.find("po_page_paid"))
         self.assertLess(html.find("Rivera"), html.find("po_page_paid"))
@@ -401,6 +403,7 @@ class AdminReportsAndScholarshipTests(TestCase):
         csv_text = csv_response.content.decode()
         self.assertIn("Section", csv_text.splitlines()[0])
         self.assertIn("Not yet paid out", csv_text)
+        self.assertIn("po_page_paid", csv_text)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_payment_reports(self):
