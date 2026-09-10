@@ -32,6 +32,8 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn(".portal-report-print-frame", print_css)
         self.assertIn(".portal-print-title-row", print_css)
         self.assertIn(".portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header", print_css)
+        self.assertIn(".portal-report-print-running-bar", print_css)
+        self.assertIn("position: fixed", print_css)
         self.assertIn("display: none !important", print_css)
 
         screen = css.split("@media print {\n  @page", 1)[0]
@@ -52,6 +54,7 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("portal-print-title-row", js)
         self.assertIn("portal-attendance-print-sheet", js)
         self.assertIn("portalWrapReportSheetsForPrint", js)
+        self.assertIn("portal-report-print-running-bar", js)
         self.assertIn("insertBefore", js)
         self.assertIn("beforeprint", js)
 

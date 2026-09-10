@@ -410,6 +410,8 @@ class ReportsPrintCssTests(TestCase):
         self.assertIn("@page report-print", print_css)
         self.assertIn('content: "Page " counter(page)', print_css)
         self.assertIn(".portal-report-print-frame", print_css)
+        self.assertIn(".portal-report-print-running-bar", print_css)
+        self.assertIn("position: fixed", print_css)
         self.assertIn(".portal-medical-report-sheet:has(.portal-print-title-row)", print_css)
         self.assertIn("page: report-print", print_css)
         self.assertIn("page: attendance-print", print_css)

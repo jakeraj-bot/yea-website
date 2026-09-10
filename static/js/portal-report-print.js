@@ -14,6 +14,7 @@
     var clone = header.cloneNode(true);
     clone.classList.add("portal-print-running-header");
     clone.classList.remove("portal-no-print");
+    clone.removeAttribute("id");
     var logo = clone.querySelector(".portal-medical-report-logo");
     if (logo) logo.classList.add("portal-print-running-logo");
     return clone;
@@ -52,14 +53,22 @@
     sheet.appendChild(frame);
   }
 
+  function pinRunningHeader(header) {
+    if (document.querySelector(".portal-report-print-running-bar")) return;
+    var bar = clonePrintHeader(header);
+    bar.className = "portal-report-print-running-bar portal-print-running-header";
+    document.body.appendChild(bar);
+  }
+
   function wrapReportSheetsForPrint() {
     var sheets = document.querySelectorAll(".portal-medical-report-sheet");
     for (var s = 0; s < sheets.length; s++) {
       var sheet = sheets[s];
       if (sheet.classList.contains("portal-attendance-print-sheet")) continue;
-      if (sheet.querySelector(".portal-print-title-row")) continue;
       var header = sheet.querySelector(".portal-medical-report-header");
       if (!header) continue;
+      pinRunningHeader(header);
+      if (sheet.querySelector(".portal-print-title-row")) continue;
 
       var tables = sheet.querySelectorAll("table");
       var injected = 0;

@@ -1254,6 +1254,10 @@
   display: none;
 }
 
+.portal-report-print-running-bar {
+  display: none;
+}
+
 .portal-table td.portal-attendance-mark {
   text-align: center;
   vertical-align: bottom;
@@ -3004,7 +3008,7 @@
 
   @page report-print {
     size: landscape;
-    margin: 0.45in 0.4in 0.7in 0.4in;
+    margin: 1.2in 0.4in 0.7in 0.4in;
     @bottom-left {
       content: "Printed";
       font-size: 9pt;
@@ -3071,8 +3075,38 @@
     page: attendance-print;
   }
 
-  .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header {
+  .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header,
+  body:has(.portal-report-print-running-bar) .portal-medical-report-sheet:not(.portal-attendance-print-sheet) > .portal-medical-report-header {
     display: none !important;
+  }
+
+  body:has(.portal-report-print-running-bar) .portal-print-title-row {
+    display: none !important;
+  }
+
+  .portal-report-print-running-bar {
+    display: flex;
+    position: fixed;
+    top: 0.28in;
+    left: 0.4in;
+    right: 0.4in;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0 0 0.3rem;
+    border-bottom: 2px solid #222;
+    background: #fff;
+    z-index: 9999;
+  }
+
+  .portal-report-print-running-bar .portal-medical-report-logo {
+    width: 2.6rem;
+    height: auto;
+  }
+
+  .portal-report-print-running-bar h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1.05rem;
   }
 
   .portal-report-print-frame {
