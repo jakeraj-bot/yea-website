@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "yea-staff-families-prefs-v5";
+  var STORAGE_KEY = "yea-staff-families-prefs-v6";
   var table = document.getElementById("families-table");
   if (!table) return;
 
@@ -19,7 +19,7 @@
     search: "",
     filter: "all",
     unit: "all",
-    sort: "name-asc",
+    sort: "child-asc",
     pageSize: "25",
     page: 1,
     columns: {},
@@ -57,7 +57,7 @@
     });
     filterSelect.value = state.filter || "all";
     if (unitFilterSelect) unitFilterSelect.value = state.unit || "all";
-    sortSelect.value = state.sort || "name-asc";
+    sortSelect.value = state.sort || "child-asc";
     pageSizeSelect.value = state.pageSize || "25";
     applyVisitSearch();
   }
@@ -156,24 +156,28 @@
       var childBalA = parseBalance(a.getAttribute("data-child-balance"));
       var childBalB = parseBalance(b.getAttribute("data-child-balance"));
       switch (state.sort) {
+        case "child-desc":
+          return childB.localeCompare(childA) || nameA.localeCompare(nameB);
+        case "name-asc":
+          return nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "name-desc":
           return nameB.localeCompare(nameA) || childA.localeCompare(childB);
         case "unit-asc":
-          return unitA.localeCompare(unitB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return unitA.localeCompare(unitB) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "unit-desc":
-          return unitB.localeCompare(unitA) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return unitB.localeCompare(unitA) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "balance-desc":
-          return familyBalB - familyBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return familyBalB - familyBalA || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "balance-asc":
-          return familyBalA - familyBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return familyBalA - familyBalB || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "child-balance-desc":
-          return childBalB - childBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childBalB - childBalA || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "child-balance-asc":
-          return childBalA - childBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childBalA - childBalB || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "contact-asc":
-          return contactA.localeCompare(contactB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return contactA.localeCompare(contactB) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         default:
-          return nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childA.localeCompare(childB) || nameA.localeCompare(nameB);
       }
     });
     return sorted;
