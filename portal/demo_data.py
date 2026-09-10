@@ -696,7 +696,7 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Stripe & bank payouts",
-        "description": "Payments waiting for a bank payout at the top, then each Stripe payout with the member payments inside it",
+        "description": "Stripe card payments only — money not paid out yet, unfinished card checkouts, then each bank payout",
         "format": "PDF / CSV",
         "slug": "stripe-settlement",
         "report": "stripe-settlement",

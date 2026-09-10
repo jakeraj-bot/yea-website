@@ -108,6 +108,7 @@
             <th>Type</th>
             <th>Description</th>
             <th>Amount</th>
+            <th>Processing fee</th>
           </tr>
         </thead>
         <tbody>
@@ -126,6 +127,7 @@
             <td class="{% if row.type == 'payment' or row.type == 'discount' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
               {% if row.type == 'payment' or row.type == 'discount' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
             </td>
+            <td>{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

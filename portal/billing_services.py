@@ -74,10 +74,14 @@ def prepare_billing_for_staff(family, permissions, unit=None):
             from .unit_visibility import filter_ledger_entries_for_unit
 
             entries = filter_ledger_entries_for_unit(entries, family, unit)
+        from .processing_fees import backfill_stripe_fee_totals, ledger_paid_totals
+
+        backfill_stripe_fee_totals(family.payments.all())
         ledger = []
         for entry in entries:
+            paid, fee, applied = ledger_paid_totals(entry)
             if entry.entry_type in ("payment", "discount", "credit"):
-                amount = f"{abs(entry.amount):.2f}"
+                amount = f"{paid:.2f}" if entry.entry_type == "payment" else f"{applied:.2f}"
             else:
                 amount = f"{entry.amount:.2f}"
             ledger.append(
@@ -88,6 +92,8 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                     "type": entry.entry_type,
                     "description": entry.description,
                     "amount": amount,
+                    "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
+                    "applied": f"{applied:.2f}",
                     "manual": entry.is_manual,
                     "editable": entry.entry_type in ("charge", "payment"),
                 }
@@ -437,12 +443,19 @@ def post_bulk_charges(rows, entry_date):
 
 
 def get_org_ledger_live(limit=150, unit_slug=None):
+    from .processing_fees import backfill_stripe_fee_totals
+
+    backfill_stripe_fee_totals()
     qs = PortalLedgerEntry.objects.select_related("family", "family__unit").order_by("-date", "-created_at")
     if unit_slug:
         qs = qs.filter(family__unit__slug=unit_slug)
     entries = []
     for entry in qs[:limit]:
         credit_types = ("payment", "credit", "discount")
+        from .processing_fees import ledger_paid_totals
+
+        paid, fee, applied = ledger_paid_totals(entry)
+        display_amount = paid if entry.entry_type == "payment" else applied
         entries.append(
             {
                 "id": entry.pk,
@@ -453,7 +466,8 @@ def get_org_ledger_live(limit=150, unit_slug=None):
                 "child": entry.child_name or "—",
                 "type": entry.entry_type,
                 "description": entry.description,
-                "amount": f"{abs(entry.amount):.2f}",
+                "amount": f"{display_amount:.2f}",
+                "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
                 "is_credit": entry.entry_type in credit_types,
                 "manual": entry.is_manual,
             }
