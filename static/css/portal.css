@@ -2825,53 +2825,148 @@
 }
 
 @media print {
+  @page {
+    margin: 0.4in;
+  }
+
+  @page landscape-sheet {
+    size: landscape;
+    margin: 0.4in;
+  }
+
   .portal-no-print,
   .portal-preview-banner,
   .portal-header,
   .portal-sidebar,
-  .rainbow-bar {
+  .rainbow-bar,
+  .portal-howto-bar,
+  .portal-page-guide-modal,
+  .portal-collapse-bar,
+  .portal-list-toolbar,
+  .portal-back-nav,
+  .portal-toolbar,
+  .portal-flash-messages {
     display: none !important;
   }
 
   .portal-shell,
   .portal-main,
-  .portal-body {
+  .portal-body,
+  .page-content {
     display: block !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
   .portal-main {
     padding: 0 !important;
   }
 
-  .portal-medical-report-sheet {
+  .portal-main .container,
+  .portal-medical-report .container,
+  .page-content .container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .portal-medical-report-sheet,
+  .portal-member-info-sheet,
+  .card.portal-medical-report-sheet {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
+    overflow: visible !important;
+    max-width: none !important;
+    page-break-inside: auto;
+    break-inside: auto;
+    page: landscape-sheet;
+  }
+
+  .portal-table-wrap,
+  .portal-families-table-wrap,
+  .page-content .portal-table-wrap {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    border: none;
+    background: transparent;
+  }
+
+  .portal-table,
+  .simple-table,
+  .portal-families-table,
+  .portal-member-info-table,
+  .portal-medical-report-table,
+  .portal-blank-sheet-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: auto;
+    font-size: 0.68rem;
+  }
+
+  .portal-table thead,
+  .simple-table thead,
+  .portal-families-table thead {
+    display: table-header-group;
+  }
+
+  .portal-table tbody,
+  .simple-table tbody,
+  .portal-families-table tbody {
+    display: table-row-group;
+  }
+
+  .portal-table thead th,
+  .simple-table th,
+  .portal-families-table thead th {
+    position: static !important;
+    top: auto !important;
+    box-shadow: none;
+  }
+
+  .portal-table th,
+  .portal-table td,
+  .portal-member-info-table th,
+  .portal-member-info-table td,
+  .portal-families-table th,
+  .portal-families-table td,
+  .portal-medical-report-table th,
+  .portal-medical-report-table td {
+    overflow: visible !important;
+    overflow-wrap: break-word;
+    word-break: keep-all;
+    hyphens: none;
+    white-space: normal !important;
+    max-width: none !important;
+  }
+
+  .portal-table tr,
+  .portal-medical-report-table tr,
+  .portal-member-info-table tr,
+  .portal-blank-sheet-row,
+  .card {
+    page-break-inside: auto;
+    break-inside: auto;
   }
 
   .portal-member-info-table {
-    font-size: 0.65rem;
-  }
-
-  .portal-medical-report .container {
-    max-width: none !important;
-    padding: 0 !important;
+    font-size: 0.58rem;
   }
 
   .portal-med-tooltip {
     display: none !important;
   }
 
-  .portal-medical-report-table {
-    page-break-inside: auto;
-  }
-
-  .portal-medical-report-table tr {
-    page-break-inside: avoid;
-  }
-
   .portal-medical-report-section {
     page-break-after: avoid;
+    break-after: avoid;
   }
 
   .portal-blank-sheet-instructions {
@@ -2889,7 +2984,7 @@
   }
 
   .portal-blank-sheet-table--weekly {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }
 
@@ -3125,6 +3220,11 @@
 @media print {
   .portal-policy-list-print details {
     display: block !important;
+  }
+
+  .portal-policy-item,
+  .portal-policy-list-print {
+    overflow: visible !important;
   }
 
   .portal-policy-list-print .portal-policy-body {

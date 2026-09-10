@@ -230,6 +230,27 @@ class MemberInformationReportTests(TestCase):
         session[PORTAL_AUTH_SESSION_KEY] = "admin"
         session.save()
 
+    def test_rows_are_alphabetical_by_child_name(self):
+        unit_names = [row["child"] for row in member_information_rows(unit=self.school_18)]
+        self.assertEqual(unit_names, sorted(unit_names, key=str.casefold))
+        self.assertEqual(unit_names[0], "An Nguyen")
+        self.assertLess(unit_names.index("An Nguyen"), unit_names.index("Ethan Chen"))
+        self.assertLess(unit_names.index("Ethan Chen"), unit_names.index("Jordan Jacobs"))
+        family_then_child = ["Ethan Chen", "Jordan Jacobs", "Mina Lee", "Sofia Martinez", "An Nguyen"]
+        self.assertNotEqual(unit_names, family_then_child)
+
+        all_names = [row["child"] for row in member_information_rows(unit=None)]
+        self.assertEqual(all_names, sorted(all_names, key=str.casefold))
+        self.assertEqual(all_names[0], "Aiden Williams")
+
+        filtered = filter_member_information_rows(
+            member_information_rows(unit=self.school_18),
+            {"school": "Lincoln Elementary"},
+        )
+        filtered_names = [row["child"] for row in filtered]
+        self.assertEqual(filtered_names, sorted(filtered_names, key=str.casefold))
+        self.assertEqual(filtered_names[0], "Ethan Chen")
+
     def test_rows_include_requested_columns_and_4cs_waiting(self):
         rows = {row["child"]: row for row in member_information_rows(unit=self.school_18)}
         self.assertIn("Jordan Jacobs", rows)
@@ -311,7 +332,13 @@ class MemberInformationReportTests(TestCase):
         self.assertContains(staff, "Program type")
         self.assertContains(staff, "4Cs daily")
         self.assertContains(staff, "How to print member information")
+        self.assertContains(staff, "size: landscape")
         self.assertNotContains(staff, "Aiden Williams")
+        html = staff.content.decode()
+        self.assertLess(html.index("An Nguyen"), html.index("Ethan Chen"))
+        self.assertLess(html.index("Ethan Chen"), html.index("Jordan Jacobs"))
+        self.assertLess(html.index("Jordan Jacobs"), html.index("Mina Lee"))
+        self.assertLess(html.index("Mina Lee"), html.index("Sofia Martinez"))
         hub = self.client.get(reverse("portal_staff_page", kwargs={"page": "reports"}))
         self.assertContains(hub, reverse("portal_staff_member_information_report"))
 

@@ -1,6 +1,7 @@
 {% extends "portal/base.html" %}
 {% load static %}
 {% block portal_content %}
+{% include "portal/includes/print_wide.html" %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Authorized pickup</p>
