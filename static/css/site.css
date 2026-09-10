@@ -47,6 +47,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@media print {
+  html,
+  body {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+}
+
 .container {
   width: min(var(--max-width), calc(100% - 2rem));
   max-width: 100%;
