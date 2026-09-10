@@ -678,7 +678,7 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Stripe & bank payouts",
-        "description": "See if Stripe has processed the payment or it is still waiting to reach the bank",
+        "description": "Payments waiting for a bank payout at the top, then each Stripe payout with the member payments inside it",
         "format": "PDF / CSV",
         "slug": "stripe-settlement",
         "report": "stripe-settlement",

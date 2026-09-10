@@ -1,0 +1,31 @@
+<div class="portal-table-hscroll" data-table-hscroll hidden>
+  <div class="portal-table-hscroll-inner"></div>
+</div>
+<div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}">
+  <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}">
+    <thead>
+      <tr>
+        {% for _key, label in report.columns %}
+        <th>{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for cell in row.display %}
+        <td>
+          {% if cell.key == "family" and row.family_slug %}
+          <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
+          {% else %}
+          {{ cell.value }}
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ report.columns|length }}" class="form-note">{{ empty_message|default:"No rows match this filter." }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

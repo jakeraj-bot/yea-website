@@ -2398,6 +2398,9 @@ def admin_data_report(request, report_slug):
     report = build_admin_report(report_slug, filters) if _portal_data_live() else {
         **ADMIN_DATA_REPORTS[report_slug],
         "rows": [],
+        "pending_rows": [],
+        "remaining_rows": [],
+        "payout_groups": [],
         "summary": "No live data in preview mode.",
         "units": [],
         "schools": [],
@@ -2412,14 +2415,22 @@ def admin_data_report(request, report_slug):
         "status_choices": [],
         "four_cs_choices": [],
         "agency_status_choices": [],
+        "layout": ADMIN_DATA_REPORTS[report_slug].get("layout") or "table",
     }
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
         writer = csv.writer(response)
-        writer.writerow([label for _key, label in report["columns"]])
-        for row in report.get("rows", []):
-            writer.writerow([cell["value"] for cell in row["display"]])
+        sectioned = report.get("layout") == "payout_sections"
+        headers = [label for _key, label in report["columns"]]
+        if sectioned:
+            writer.writerow(["Section"] + headers)
+            for row in report.get("rows", []):
+                writer.writerow([row.get("section") or ""] + [cell["value"] for cell in row["display"]])
+        else:
+            writer.writerow(headers)
+            for row in report.get("rows", []):
+                writer.writerow([cell["value"] for cell in row["display"]])
         return response
     query = {key: value for key, value in filters.items() if value}
     query["format"] = "csv"
