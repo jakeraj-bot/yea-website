@@ -3,7 +3,7 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Attendance</h1>
+    <h1>{{ attendance_heading|default:"Attendance" }}</h1>
     <p class="lead">{{ attendance.unit }} · {{ attendance.program }}</p>
   </div>
 </section>
@@ -20,10 +20,21 @@
     {% endif %}
 
     <div class="portal-attendance-toolbar portal-toolbar">
-      <a class="btn btn-primary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1">+ Check in</a>
-      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1">+ Check out</a>
+      <a class="btn btn-primary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkin=1">+ Check in</a>
+      <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkout=1">+ Check out</a>
       {% if attendance_live %}
-      <form method="get" action="{% url 'portal_staff_page' page='attendance' %}" class="portal-date-form">
+      <form method="get" action="{{ attendance_page_url }}" class="portal-date-form">
+        {% if show_attendance_unit_filter %}
+        <label class="portal-filter-label">
+          Unit
+          <select class="portal-select" name="unit" onchange="this.form.submit()">
+            <option value="">All units</option>
+            {% for slug, name in attendance_units %}
+            <option value="{{ slug }}"{% if attendance_unit_slug == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
         <label class="portal-filter-label">
           Date
           <input type="date" name="date" class="portal-input" value="{{ attendance.date_value }}">
@@ -46,7 +57,9 @@
         Search
         <input type="search" class="portal-input portal-search" placeholder="Child or family name" id="attendance-search">
       </label>
+      {% if show_attendance_medical_link %}
       <a class="btn btn-secondary" href="{% url 'portal_staff_medical_report' %}">Medical report (PDF)</a>
+      {% endif %}
     </div>
 
     {% if show_checkin_panel %}
@@ -54,7 +67,7 @@
       <h2>Check in a child</h2>
       {% if attendance_live %}
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_attendance_checkin' %}">
-        {% csrf_token %}
+        {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
         <input type="hidden" name="date" value="{{ attendance.date_value }}">
         <div class="form-group">
           <label for="checkin-child">Child</label>
@@ -85,15 +98,15 @@
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Check in</button>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1&amp;bulk=1">Bulk / multiples</a>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkin=1&amp;bulk=1">Bulk / multiples</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}">Cancel</a>
         </div>
       </form>
       {% else %}
       <p class="form-note">Preview mode — enable live mode to save check-ins.</p>
       <div class="portal-form-actions portal-form-full">
-        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?checkin=1&amp;bulk=1">Bulk / multiples</a>
-        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Cancel</a>
+        <a class="btn btn-secondary" href="{{ attendance_page_url }}?checkin=1&amp;bulk=1">Bulk / multiples</a>
+        <a class="btn btn-secondary" href="{{ attendance_page_url }}">Cancel</a>
       </div>
       {% endif %}
     </div>
@@ -104,7 +117,7 @@
       <h2>Bulk check in</h2>
       {% if attendance_live %}
       <form method="post" action="{% url 'portal_staff_attendance_bulk_checkin' %}">
-        {% csrf_token %}
+        {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
         <input type="hidden" name="date" value="{{ attendance.date_value }}">
         <input type="hidden" name="program_time" id="bulk-checkin-program-time-hidden" value="{{ attendance.program_start_time }}">
         <div class="portal-bulk-time-bar card">
@@ -155,8 +168,8 @@
         </div>
         <div class="portal-form-actions" style="margin-top: 1rem;">
           <button type="submit" class="btn btn-primary">Check in selected</button>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkin=1">Single check in</a>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkin=1">Single check in</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}">Cancel</a>
         </div>
       </form>
       {% else %}
@@ -170,7 +183,7 @@
       <h2>Check out a child</h2>
       {% if attendance_live %}
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_attendance_checkout' %}">
-        {% csrf_token %}
+        {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
         <input type="hidden" name="date" value="{{ attendance.date_value }}">
         <div class="form-group">
           <label for="checkout-child">Child</label>
@@ -188,14 +201,14 @@
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Check out</button>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1&amp;bulk=1">Bulk / multiples</a>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkout=1&amp;bulk=1">Bulk / multiples</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}">Cancel</a>
         </div>
       </form>
       {% else %}
       <div class="portal-form-actions portal-form-full">
-        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?checkout=1&amp;bulk=1">Bulk / multiples</a>
-        <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}">Cancel</a>
+        <a class="btn btn-secondary" href="{{ attendance_page_url }}?checkout=1&amp;bulk=1">Bulk / multiples</a>
+        <a class="btn btn-secondary" href="{{ attendance_page_url }}">Cancel</a>
       </div>
       {% endif %}
     </div>
@@ -206,7 +219,7 @@
       <h2>Bulk check out</h2>
       {% if attendance_live %}
       <form method="post" action="{% url 'portal_staff_attendance_bulk_checkout' %}">
-        {% csrf_token %}
+        {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
         <input type="hidden" name="date" value="{{ attendance.date_value }}">
         <input type="hidden" name="program_time" id="bulk-checkout-program-time-hidden" value="{{ attendance.program_end_time }}">
         <div class="portal-bulk-time-bar card">
@@ -250,8 +263,8 @@
         </div>
         <div class="portal-form-actions" style="margin-top: 1rem;">
           <button type="submit" class="btn btn-primary">Check out selected</button>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}&amp;checkout=1">Single check out</a>
-          <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='attendance' %}?date={{ attendance.date_value }}">Cancel</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}&amp;checkout=1">Single check out</a>
+          <a class="btn btn-secondary" href="{{ attendance_page_url }}?{{ attendance_qs }}">Cancel</a>
         </div>
       </form>
       {% endif %}
@@ -290,6 +303,7 @@
             <th>Child</th>
             <th>Medical</th>
             <th>Family</th>
+            {% if show_attendance_unit_column %}<th>Unit</th>{% endif %}
             <th>Grade</th>
             <th>Status</th>
             <th>Check in</th>
@@ -304,6 +318,7 @@
             <td><strong>{{ row.child }}</strong>{% if row.note %}<br><span class="form-note">{{ row.note }}</span>{% endif %}</td>
             <td class="portal-medical-cell">{% medical_badges row.child %}</td>
             <td>{{ row.family }}</td>
+            {% if show_attendance_unit_column %}<td>{{ row.unit }}</td>{% endif %}
             <td>{{ row.grade }}</td>
             <td><span class="portal-attendance-status portal-attendance-{{ row.status }}">{{ row.status|title }}</span></td>
             <td class="cell-check-in">
@@ -316,14 +331,14 @@
             <td class="cell-actions portal-attendance-actions">
               {% if attendance_live and not attendance_needs_seed %}
               <form method="post" action="{% url 'portal_staff_attendance_checkin' %}" class="portal-inline-form">
-                {% csrf_token %}
+                {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
                 <input type="hidden" name="date" value="{{ attendance.date_value }}">
                 <input type="hidden" name="child_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-primary btn-sm">{% if row.check_in %}Update check in{% else %}Check in{% endif %}</button>
               </form>
               {% if row.can_check_out %}
               <form method="post" action="{% url 'portal_staff_attendance_checkout' %}" class="portal-inline-form">
-                {% csrf_token %}
+                {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
                 <input type="hidden" name="date" value="{{ attendance.date_value }}">
                 <input type="hidden" name="child_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-secondary btn-sm">Check out</button>
@@ -331,14 +346,14 @@
               {% endif %}
               {% if row.status == 'expected' %}
               <form method="post" action="{% url 'portal_staff_attendance_absent' %}" class="portal-inline-form">
-                {% csrf_token %}
+                {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
                 <input type="hidden" name="date" value="{{ attendance.date_value }}">
                 <input type="hidden" name="child_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-secondary btn-sm">Absent</button>
               </form>
               {% elif row.status == 'absent' %}
               <form method="post" action="{% url 'portal_staff_attendance_undo_absent' %}" class="portal-inline-form">
-                {% csrf_token %}
+                {% csrf_token %}{% include "portal/includes/attendance_unit_field.html" %}
                 <input type="hidden" name="date" value="{{ attendance.date_value }}">
                 <input type="hidden" name="child_id" value="{{ row.id }}">
                 <button type="submit" class="btn btn-secondary btn-sm">Undo absent</button>

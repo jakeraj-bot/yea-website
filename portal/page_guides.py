@@ -99,6 +99,32 @@ GUIDES = {
             },
         ],
     },
+    "admin-attendance": {
+        "title": "How to review attendance",
+        "intro": "This is the live check-in roster for the organization. Pick a unit — or all units — then mark children present or absent the same way staff does.",
+        "steps": [
+            {
+                "title": "Pick a unit",
+                "body": "Use Unit at the top. All units shows every site on one list. Choose one unit to work that site only.",
+            },
+            {
+                "title": "Confirm the date",
+                "body": "Change the date if you are looking at another day. The Monday–Friday sheet with kid totals is under Organization reports.",
+            },
+            {
+                "title": "Check one child in",
+                "body": "Use + Check in. Choose the child, how they arrived, and the time. Add a note if something is unusual.",
+            },
+            {
+                "title": "Check a group in",
+                "body": "Use Bulk / multiples when a bus or whole group arrives together. You can use the program start time if that matches when they walked in.",
+            },
+            {
+                "title": "Check out or mark absent",
+                "body": "+ Check out (or bulk checkout) when they leave. Mark Absent if they will not attend. Undo absent if they show up later.",
+            },
+        ],
+    },
     "drop-off-pickup": {
         "title": "How to run drop-off pickup",
         "intro": "This list is who staff pick up from school for the drop-off program — not the regular after-school attendance roster.",
@@ -388,12 +414,16 @@ GUIDES = {
                 "body": "Choose a date in that school week. Leave grades unchecked to include every grade at that unit. Check 2nd and 4th, for example, to print both grades on one weekly grid. Unit and grades work together on this same Monday–Friday sheet.",
             },
             {
+                "title": "Read the daily kid totals",
+                "body": "The number above Monday is how many children on this filtered sheet were present that day. Tuesday through Friday each have their own count. The numbers follow Unit, grades, and the other filters.",
+            },
+            {
                 "title": "Narrow further if you need to",
                 "body": "Use program, school, present/absent status, and child or family search. Apply filters, then print only what is on the page.",
             },
             {
                 "title": "Preview, then print or download",
-                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Filters stay off the printed page.",
+                "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet. Daily kid totals stay in the weekday headers. Filters stay off the printed page.",
             },
         ],
     },

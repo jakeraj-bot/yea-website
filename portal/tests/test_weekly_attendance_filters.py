@@ -431,3 +431,73 @@ class WeeklyAttendanceGradeFilterTests(TestCase):
         self.assertContains(default_header, "Jordan Jacobs")
         self.assertNotContains(default_header, "Nia Lee")
         self.assertIn('value="school-18" selected', default_header.content.decode())
+
+    def _today_column(self):
+        return min(self.today.weekday(), 4)
+
+    def test_daily_kid_totals_count_present_on_the_filtered_sheet(self):
+        idx = self._today_column()
+        staff = weekly_attendance_report_data(self.school_18, self.program_18, self.today)
+        self.assertEqual(staff["day_present_counts"][idx], 1)
+        self.assertEqual(staff["week_days"][idx]["present_count"], 1)
+        self.assertEqual(sum(staff["day_present_counts"]), 1)
+
+        one_grade = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"grades": ["2nd"]},
+        )
+        self.assertEqual(one_grade["day_present_counts"][idx], 0)
+        self.assertEqual([row["child"] for row in one_grade["weekly_rows"]], ["Maya Jacobs"])
+
+        both_grades = weekly_attendance_report_data(
+            self.school_18,
+            self.program_18,
+            self.today,
+            filters={"unit": "school-18", "grades": ["2nd", "4th"]},
+            allowed_units=[self.school_18, self.school_26],
+        )
+        self.assertEqual(both_grades["day_present_counts"][idx], 1)
+
+        admin_all = weekly_attendance_report_data(None, None, self.today, admin=True)
+        self.assertEqual(admin_all["day_present_counts"][idx], 2)
+
+        admin_26 = weekly_attendance_report_data(
+            None, None, self.today, filters={"unit": "school-26"}, admin=True
+        )
+        self.assertEqual(admin_26["day_present_counts"][idx], 1)
+        self.assertEqual(admin_26["week_days"][idx]["present_count"], 1)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_weekly_pages_and_csv_show_daily_kid_totals(self):
+        self._login(self.staff_user, "staff")
+        page = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(page, "portal-day-kid-total")
+        self.assertContains(page, "present")
+        html = page.content.decode()
+        self.assertIn("portal-day-total-heading", html)
+        csv_page = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat(), "format": "csv"},
+        )
+        body = csv_page.content.decode()
+        self.assertIn("Kids present", body)
+        self.assertIn("present)", body)
+
+        self._login(self.admin_user, "admin")
+        admin = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"date": self.today.isoformat()},
+        )
+        self.assertContains(admin, "portal-day-kid-total")
+        self.assertContains(admin, "How to print weekly attendance")
+        admin_csv = self.client.get(
+            reverse("portal_admin_weekly_attendance_report"),
+            {"unit": "school-26", "format": "csv"},
+        )
+        self.assertIn("Kids present", admin_csv.content.decode())
+        self.assertIn("Nia Lee", admin_csv.content.decode())

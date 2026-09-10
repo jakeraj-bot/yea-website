@@ -481,6 +481,15 @@ def _grade_sort_key(grade):
     return (2, 0, lower)
 
 
+def _day_present_counts(rows, day_count=5):
+    counts = [0] * day_count
+    for row in rows or []:
+        for index, present in enumerate(row.get("days") or []):
+            if index < day_count and present:
+                counts[index] += 1
+    return counts
+
+
 def _weekly_status_label(status_keys):
     if AttendanceRecord.STATUS_PRESENT in status_keys:
         return AttendanceRecord.STATUS_PRESENT, "Present"
@@ -641,6 +650,10 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
             continue
         rows.append(row)
 
+    present_counts = _day_present_counts(rows, len(week_days))
+    for column, count in zip(week_days, present_counts):
+        column["present_count"] = count
+
     filter_options = {
         "grades": sorted(
             {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
@@ -668,5 +681,6 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
         "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
         "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
         "unit_filter_allows_all": admin,
+        "day_present_counts": present_counts,
     }
 

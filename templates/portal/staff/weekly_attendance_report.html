@@ -123,7 +123,11 @@
               {% if show_unit_filter %}<th>Unit</th>{% endif %}
               {% if weekly_rows is not None and week_days %}
                 {% for day in week_days %}
-                <th>{{ day.label }}<br><span class="form-note">{{ day.date_short }}</span></th>
+                <th class="portal-day-total-heading">
+                  <span class="portal-day-kid-total">{{ day.present_count|default:0 }}</span>
+                  <span class="portal-day-kid-total-label">present</span>
+                  {{ day.label }}<br><span class="form-note">{{ day.date_short }}</span>
+                </th>
                 {% endfor %}
               {% else %}
                 <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>

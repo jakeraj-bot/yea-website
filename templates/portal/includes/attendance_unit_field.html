@@ -1,0 +1,5 @@
+{% if attendance_unit_slug %}
+<input type="hidden" name="unit" value="{{ attendance_unit_slug }}">
+{% elif row.unit_slug %}
+<input type="hidden" name="unit" value="{{ row.unit_slug }}">
+{% endif %}
