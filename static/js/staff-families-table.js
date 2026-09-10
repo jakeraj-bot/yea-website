@@ -269,6 +269,49 @@
     table.hidden = matched.length === 0;
     renderPagination(matched.length, pageCount);
     applyColumnVisibility();
+    applyListLinks();
+  }
+
+  function isFamilyAccountLink(href) {
+    if (!href) return false;
+    return /\/(staff|admin)\/family\//.test(href) || /\/admin\/parent-preview\//.test(href);
+  }
+
+  function listParamsForRow(row) {
+    var params = new URLSearchParams();
+    var familyId = row.getAttribute("data-id");
+    var childId = row.getAttribute("data-child-id");
+    var childName = row.getAttribute("data-child-name");
+    if (familyId) params.set("id", familyId);
+    if (childId) params.set("child_id", childId);
+    if (childName && childName !== "—") params.set("child", childName);
+    if ((state.search || "").trim()) params.set("q", state.search.trim());
+    if (state.filter && state.filter !== "all") params.set("ff", state.filter);
+    if (unitFilterSelect && state.unit && state.unit !== "all") params.set("unit", state.unit);
+    if (state.sort && state.sort !== "child-asc") params.set("sort", state.sort);
+    params.set("list", "1");
+    return params;
+  }
+
+  function applyListLinks() {
+    rows.forEach(function (row) {
+      var params = listParamsForRow(row);
+      row.querySelectorAll("a[href]").forEach(function (link) {
+        if (!isFamilyAccountLink(link.getAttribute("href"))) return;
+        try {
+          var url = new URL(link.getAttribute("href"), window.location.origin);
+          ["id", "child_id", "child", "q", "ff", "unit", "sort", "school", "list"].forEach(function (key) {
+            url.searchParams.delete(key);
+          });
+          params.forEach(function (value, key) {
+            url.searchParams.set(key, value);
+          });
+          link.setAttribute("href", url.pathname + url.search);
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    });
   }
 
   searchInput.addEventListener("input", function () {

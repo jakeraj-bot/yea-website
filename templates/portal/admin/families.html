@@ -34,6 +34,8 @@
           <tr
             data-family-row
             data-slug="{{ family.slug }}"
+            data-id="{{ family.id|default:'' }}"
+            data-child-id="{{ family.child_id|default:'' }}"
             data-unit="{{ family.unit|lower }}"
             data-unit-slug="{{ family.unit_slug|default:'' }}"
             data-name="{{ family.name|lower }}"
@@ -162,5 +164,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=10"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=11"></script>
 {% endblock %}
