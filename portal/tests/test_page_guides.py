@@ -32,6 +32,8 @@ class PageGuideCatalogTests(TestCase):
             "daily-attendance",
             "daily-attendance-blank",
             "admin-attendance",
+            "emails-sent",
+            "parent-emails",
         ):
             self.assertIsNotNone(guide_for(key), key)
             self.assertGreaterEqual(GUIDES[key]["steps"].__len__(), 2)
