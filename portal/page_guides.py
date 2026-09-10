@@ -685,11 +685,51 @@ GUIDES = {
     },
     "family-email": {
         "title": "How to email a parent",
-        "intro": "This sends to the primary parent email on the account.",
+        "intro": "This sends to the primary parent email on the account. You can attach files, and every send is saved in Emails sent.",
         "steps": [
             {
-                "title": "Write and send",
-                "body": "The address is filled from the profile. Keep the subject clear. Cancel if you are not ready to send.",
+                "title": "Write the message",
+                "body": "The address is filled from the profile. Keep the subject clear so the parent can find it later.",
+            },
+            {
+                "title": "Upload if needed",
+                "body": "Use Upload to attach PDF, photos, Word, Excel, PowerPoint, TXT, or CSV. Selected file names appear under the button. Remove a file before you send if you added the wrong one.",
+            },
+            {
+                "title": "Find what you already sent",
+                "body": "Emails sent under the compose box lists this family's messages. Click a row to open the full message. Click again or Close to fold it up. Open full email ledger if the list is long.",
+            },
+        ],
+    },
+    "parent-emails": {
+        "title": "How to email parents",
+        "intro": "Send one message to selected parents. Uploaded files go out with the email, and a copy is saved in Emails sent.",
+        "steps": [
+            {
+                "title": "Write and choose parents",
+                "body": "Enter the subject and message. Search the list and check only the parents who should get this email.",
+            },
+            {
+                "title": "Upload documents",
+                "body": "Use Upload for PDF, photos, or common office files. You can attach more than one. Remove a file before send if it should not go out.",
+            },
+            {
+                "title": "Read the ledger",
+                "body": "Emails sent under the form is every parent email from the portal. Click a row to read the full message. Use Emails sent in the menu for filters when the list gets long.",
+            },
+        ],
+    },
+    "emails-sent": {
+        "title": "How to use the email ledger",
+        "intro": "This is a record of parent emails already sent. Staff see their unit. Admin sees the whole organization.",
+        "steps": [
+            {
+                "title": "Filter if you need to",
+                "body": "Search by family, email, subject, or who sent it. Use the date boxes to narrow the week or month.",
+            },
+            {
+                "title": "Open a message",
+                "body": "Click the email row to open a box with the subject, recipients, sent time, attachments, and full message. Click again or Close to fold it up.",
             },
         ],
     },

@@ -1,0 +1,58 @@
+<section class="card portal-email-ledger-card">
+  <h2>Emails sent</h2>
+  {% if email_ledger_full %}
+  <form method="get" class="portal-email-ledger-filters portal-no-print">
+    <div class="portal-toolbar">
+      <label class="visually-hidden" for="email-ledger-q">Search emails</label>
+      <input id="email-ledger-q" class="portal-input" type="search" name="q" value="{{ email_ledger_q }}" placeholder="Family, email, subject, or sender" autocomplete="off">
+      <label class="portal-filter-label" for="email-ledger-from">From
+        <input id="email-ledger-from" class="portal-input" type="date" name="from" value="{{ email_ledger_from }}">
+      </label>
+      <label class="portal-filter-label" for="email-ledger-to">To
+        <input id="email-ledger-to" class="portal-input" type="date" name="to" value="{{ email_ledger_to }}">
+      </label>
+      <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+    </div>
+  </form>
+  {% endif %}
+  {% if email_ledger %}
+  <div class="portal-email-ledger" data-email-ledger>
+    {% for row in email_ledger %}
+    <article class="portal-email-ledger-item" data-email-ledger-item>
+      <button type="button" class="portal-email-ledger-toggle" aria-expanded="false" data-email-ledger-toggle>
+        <span class="portal-email-ledger-main">
+          <strong class="portal-email-ledger-subject">{{ row.subject }}</strong>
+          <span class="portal-email-ledger-to">To {{ row.recipients_display }}</span>
+        </span>
+        <span class="portal-email-ledger-meta">
+          <span class="portal-email-ledger-when">{{ row.sent_at|date:"M j, Y g:i A" }}</span>
+          <span class="portal-email-ledger-sender">{{ row.sender_display }}</span>
+          {% if row.has_attachments %}<span class="portal-email-ledger-clip">Attachment</span>{% endif %}
+        </span>
+      </button>
+      <div class="portal-email-ledger-detail" hidden data-email-ledger-detail>
+        <p class="form-note"><strong>Subject:</strong> {{ row.subject }}</p>
+        <p class="form-note"><strong>To:</strong> {{ row.recipients_display }}</p>
+        <p class="form-note"><strong>Sent:</strong> {{ row.sent_at|date:"M j, Y g:i A" }}{% if row.sender_display %} · {{ row.sender_display }}{% endif %}{% if row.unit %} · {{ row.unit.name }}{% endif %}</p>
+        {% if row.attachment_list %}
+        <p class="form-note"><strong>Attachments:</strong> {{ row.attachment_list|join:", " }}</p>
+        {% endif %}
+        <div class="portal-email-ledger-body">{{ row.body|linebreaksbr }}</div>
+        <button type="button" class="btn btn-secondary btn-sm" data-email-ledger-close>Close</button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% if not email_ledger_full %}
+  <p class="form-note portal-email-ledger-more">
+    {% if email_ledger_limited %}Showing {{ email_ledger|length }} of {{ email_ledger_total }}.{% endif %}
+    <a href="{{ email_ledger_url }}">Open full email ledger</a>
+  </p>
+  {% endif %}
+  {% else %}
+  <p class="form-note">No parent emails have been sent yet{% if not email_ledger_full and family_id %} for this family{% endif %}.</p>
+  {% if not email_ledger_full %}
+  <p class="form-note"><a href="{{ email_ledger_url }}">Open full email ledger</a></p>
+  {% endif %}
+  {% endif %}
+</section>

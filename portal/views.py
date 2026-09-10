@@ -364,6 +364,24 @@ def _family_neighbor_nav(request, area, family_slug, family_tab, family_id=None,
     }
 
 
+def _attach_email_ledger(extra, request, *, area, family_slug=None, family_id=None, unit=None, full=False):
+    from .member_admin import resolve_family
+    from .parent_email_log import email_ledger_context
+
+    family = None
+    if family_slug or family_id:
+        family = resolve_family(family_slug=family_slug, family_id=family_id, unit=unit)
+    extra.update(
+        email_ledger_context(
+            request,
+            area=area,
+            family=family,
+            unit=unit,
+            full=full,
+        )
+    )
+
+
 def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
     if unit is None and request is not None:
         unit = _staff_unit(request)
@@ -414,6 +432,15 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
         extra.setdefault(
             "parent_password_reset",
             consume_parent_password_reset_flash(request, family_slug),
+        )
+    if request is not None and family_tab in {"email", "profile"}:
+        _attach_email_ledger(
+            extra,
+            request,
+            area="staff",
+            family_slug=family_slug,
+            family_id=extra.get("family_id"),
+            unit=unit,
         )
     return _staff_context(
         page_title,
@@ -480,6 +507,15 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
         extra.setdefault(
             "parent_password_reset",
             consume_parent_password_reset_flash(request, family_slug),
+        )
+    if family_tab in {"email", "profile"}:
+        _attach_email_ledger(
+            extra,
+            request,
+            area=area,
+            family_slug=family_slug,
+            family_id=extra.get("family_id"),
+            unit=unit,
         )
     if area == "admin":
         if _portal_families_live():
@@ -1654,6 +1690,7 @@ def staff_page(request, page):
         "messages": "portal/messages/messages.html",
         "incidents": "portal/staff/incidents.html",
         "support": "portal/support/support.html",
+        "emails-sent": "portal/staff/emails_sent.html",
     }
     template = templates.get(page)
     if not template:
@@ -1691,6 +1728,16 @@ def staff_page(request, page):
         else:
             context["families"] = demo_family_list_rows("staff")
         context["family_count"] = len({row["slug"] for row in context["families"]})
+    if page == "emails-sent":
+        context["page_title"] = "Emails sent"
+        _attach_email_ledger(
+            context,
+            request,
+            area="staff",
+            family_id=request.GET.get("family_id") or None,
+            unit=_staff_unit(request),
+            full=True,
+        )
     if page == "member-policies":
         unit = _staff_unit(request)
         if unit and context.get("portal_live"):
@@ -3587,6 +3634,7 @@ def admin_page(request, page):
         "messages": "portal/messages/messages.html",
         "communications": "portal/admin/communications.html",
         "parent-emails": "portal/admin/parent_emails.html",
+        "emails-sent": "portal/staff/emails_sent.html",
         "lesson-planner": "portal/admin/lesson_planner.html",
         "staff-compliance": "portal/admin/staff_compliance.html",
         "licensing": "portal/admin/licensing.html",
@@ -4063,6 +4111,16 @@ def admin_page(request, page):
             context["parent_recipients"] = []
             context["first_day_template"] = None
         context["preselect_family_id"] = request.GET.get("family_id", "")
+        _attach_email_ledger(context, request, area="admin", full=False)
+    if page == "emails-sent":
+        context["page_title"] = "Emails sent"
+        _attach_email_ledger(
+            context,
+            request,
+            area="admin",
+            family_id=request.GET.get("family_id") or None,
+            full=True,
+        )
     if page == "discounts":
         if context.get("portal_live"):
             from .admin_services import get_member_families_live

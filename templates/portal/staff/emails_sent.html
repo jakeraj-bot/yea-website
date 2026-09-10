@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Emails sent</h1>
+    <p class="lead">
+      {% if portal_area == 'admin' %}
+      Every parent email sent from the portal. Click a row to read the full message.
+      {% else %}
+      Parent emails sent for {{ staff_unit|default:"your unit" }}. Click a row to read the full message.
+      {% endif %}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/parent_email_ledger.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -4945,3 +4945,118 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     flex: 1 1 auto;
   }
 }
+
+.portal-email-upload-input {
+  padding: 0.45rem;
+}
+
+.portal-email-attachment-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.portal-email-attachment-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface, #fff);
+}
+
+.portal-email-ledger {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.portal-email-ledger-filters {
+  margin: 0 0 1rem;
+}
+
+.portal-email-ledger-item {
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--surface, #fff);
+}
+
+.portal-email-ledger-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.portal-email-ledger-main {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.portal-email-ledger-subject {
+  font-weight: 700;
+}
+
+.portal-email-ledger-to,
+.portal-email-ledger-when,
+.portal-email-ledger-sender {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.portal-email-ledger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+
+.portal-email-ledger-clip {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #fff3bf;
+  color: #5c4d00;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.portal-email-ledger-detail {
+  padding: 0 0.85rem 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.portal-email-ledger-body {
+  margin: 0.75rem 0;
+  white-space: pre-wrap;
+}
+
+.portal-email-ledger-more {
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .portal-email-ledger-toggle {
+    flex-direction: column;
+  }
+
+  .portal-email-attachment-item,
+  .portal-email-ledger-filters .portal-toolbar {
+    width: 100%;
+  }
+}
