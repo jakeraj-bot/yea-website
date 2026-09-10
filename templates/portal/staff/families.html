@@ -33,6 +33,8 @@
           <tr
             data-family-row
             data-slug="{{ family.slug }}"
+            data-id="{{ family.id|default:'' }}"
+            data-child-id="{{ family.child_id|default:'' }}"
             data-name="{{ family.name|lower }}"
             data-contact="{{ family.primary_contact|lower }}"
             data-child-name="{{ family.child_name|lower }}"
@@ -52,7 +54,13 @@
               {% if family.is_first_child and not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
             </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
-            <td data-col="child"><strong>{{ family.child_name }}</strong></td>
+            <td data-col="child">
+              {% if family.child_name != "—" %}
+              <strong><a href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">{{ family.child_name }}</a></strong>
+              {% else %}
+              <strong>{{ family.child_name }}</strong>
+              {% endif %}
+            </td>
             <td data-col="school">
               {% include "portal/staff/includes/school_edit_form.html" with child_id=family.child_id application_id=family.application_id school=family.school %}
             </td>
@@ -86,5 +94,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=8"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=11"></script>
 {% endblock %}

@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>All families</h1>
-    <p class="lead">Every unit — {{ family_count }} families · {{ families|length }} children listed · sort by unit or name, then open billing or policies.</p>
+    <p class="lead">Every unit — {{ family_count }} families · {{ families|length }} children listed · listed A–Z by child name, then open billing or policies.</p>
   </div>
 </section>
 <section class="page-content">
@@ -34,6 +34,8 @@
           <tr
             data-family-row
             data-slug="{{ family.slug }}"
+            data-id="{{ family.id|default:'' }}"
+            data-child-id="{{ family.child_id|default:'' }}"
             data-unit="{{ family.unit|lower }}"
             data-unit-slug="{{ family.unit_slug|default:'' }}"
             data-name="{{ family.name|lower }}"
@@ -57,7 +59,13 @@
               {% if family.is_first_child and not family.has_application %}<span class="portal-family-sub">No application on file</span>{% endif %}
             </td>
             <td data-col="contact">{{ family.primary_contact }}</td>
-            <td data-col="child"><strong>{{ family.child_name }}</strong></td>
+            <td data-col="child">
+              {% if family.child_name != "—" %}
+              <strong><a href="{% url 'portal_admin_family_detail' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">{{ family.child_name }}</a></strong>
+              {% else %}
+              <strong>{{ family.child_name }}</strong>
+              {% endif %}
+            </td>
             <td data-col="school">
               {% include "portal/staff/includes/school_edit_form.html" with child_id=family.child_id application_id=family.application_id school=family.school %}
             </td>
@@ -156,5 +164,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=8"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=11"></script>
 {% endblock %}

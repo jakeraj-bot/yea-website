@@ -11,9 +11,17 @@ from .models import (
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
+    PortalPayment,
     PortalScholarshipAssignment,
     PortalScholarshipFund,
 )
+
+STAFF_PAYMENT_METHOD_LABELS = {
+    "card": "Card (staff entry)",
+    "cash": "Cash",
+    "check": "Check",
+    "money_order": "Money order",
+}
 
 
 def agency_profile_for(child):
@@ -198,10 +206,37 @@ def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, st
     return assignment
 
 
+def staff_payment_method_label(method):
+    key = (method or "").strip()
+    if key in STAFF_PAYMENT_METHOD_LABELS:
+        return STAFF_PAYMENT_METHOD_LABELS[key]
+    return key or "Cash"
+
+
+def staff_payment_note(method, note="", check_number="", money_order_number=""):
+    """Build the ledger/receipt note and stored reference for an in-person payment."""
+    note = (note or "").strip()
+    key = (method or "").strip().lower().replace(" ", "_")
+    if key == "check":
+        number = (check_number or money_order_number or "").strip()
+        if number:
+            prefix = f"Check #{number}"
+            return (f"{prefix} — {note}" if note else prefix), number
+        return note, ""
+    if key == "money_order":
+        number = (money_order_number or check_number or "").strip()
+        if not number:
+            raise ValueError("Enter the money order number.")
+        prefix = f"Money order #{number}"
+        return (f"{prefix} — {note}" if note else prefix), number
+    return note, ""
+
+
 @transaction.atomic
-def post_payment(family, child_name, amount, entry_date, method_label, note=""):
+def post_payment(family, child_name, amount, entry_date, method_label, note="", reference_number=""):
     amount = _parse_amount(amount)
     description = note.strip() or f"In-person payment — {method_label}"
+    reference = (reference_number or "").strip()
     PortalLedgerEntry.objects.create(
         family=family,
         child_name=child_name,
@@ -210,9 +245,47 @@ def post_payment(family, child_name, amount, entry_date, method_label, note=""):
         description=description,
         amount=-amount,
         is_manual=True,
+        reference_number=reference,
     )
     family.balance = family.balance - amount
     family.save(update_fields=["balance"])
+    _record_in_person_receipt(
+        family,
+        amount,
+        method_label,
+        description,
+        reference_number=reference,
+        child_name=child_name,
+    )
+
+
+def _next_in_person_receipt_no():
+    today = timezone.localdate().strftime("%y%m%d")
+    prefix = f"RCPT-{today}"
+    count = PortalPayment.objects.filter(receipt_no__startswith=prefix).count() + 1
+    return f"{prefix}-{count:03d}"
+
+
+def _record_in_person_receipt(family, amount, method_label, description, reference_number="", child_name=""):
+    reference = (reference_number or "").strip()
+    receipt_method = method_label
+    if reference and "#" not in (method_label or ""):
+        receipt_method = f"{method_label} #{reference}"
+    elif not receipt_method and description:
+        receipt_method = description
+    PortalPayment.objects.create(
+        family=family,
+        receipt_no=_next_in_person_receipt_no(),
+        amount=amount,
+        total_charged=amount,
+        method_label=receipt_method,
+        reference_number=reference,
+        payment_kind="balance",
+        dropin_child=child_name or "",
+        status=PortalPayment.STATUS_PAID,
+        paid_at=timezone.now(),
+        stripe_bank_status="not_stripe",
+    )
 
 
 @transaction.atomic

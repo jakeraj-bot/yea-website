@@ -219,12 +219,12 @@ def _family_status(family):
 
 
 def member_information_rows(*, unit=None):
-    """One row per active child. Pass unit to scope to that site (staff)."""
+    """One row per active child, A–Z by child name. Pass unit to scope to that site (staff)."""
     if unit:
         children = children_for_unit(unit, active_only=True)
     else:
         children = PortalChild.objects.filter(is_active=True).select_related("family", "family__unit", "unit")
-    children = children.order_by("family__name", "name")
+    children = children.order_by("name", "family__name")
     child_list = list(children)
     if not child_list:
         return []
@@ -281,6 +281,13 @@ def member_information_rows(*, unit=None):
                 **snapshot,
             }
         )
+    rows.sort(
+        key=lambda row: (
+            (row.get("child") or "").casefold(),
+            (row.get("family") or "").casefold(),
+            row.get("child_id") or 0,
+        )
+    )
     return rows
 
 

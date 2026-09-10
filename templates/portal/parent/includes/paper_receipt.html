@@ -45,6 +45,7 @@
         <ul>
           <li><span class="portal-paper-check {% if receipt.paid_through == 'Cash' %}is-checked{% endif %}"></span> Cash</li>
           <li><span class="portal-paper-check {% if receipt.paid_through == 'Check' %}is-checked{% endif %}"></span> Check</li>
+          <li><span class="portal-paper-check {% if receipt.paid_through == 'Money order' %}is-checked{% endif %}"></span> Money order</li>
           <li><span class="portal-paper-check {% if receipt.paid_through == 'Card' or receipt.paid_through == 'Other' %}is-checked{% endif %}"></span> Card</li>
         </ul>
       </div>

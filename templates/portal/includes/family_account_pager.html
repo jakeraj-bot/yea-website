@@ -1,4 +1,4 @@
-{% if family_next or family_prev %}
+{% if family_nav_index and family_nav_count %}
 <nav class="portal-family-pager" aria-label="Member accounts">
   {% if family_prev %}
   <a class="btn btn-secondary btn-sm portal-family-pager-prev" href="{{ family_prev.url }}">Previous</a>

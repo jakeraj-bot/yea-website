@@ -1,7 +1,7 @@
 {% extends "portal/base.html" %}
 {% load portal_tags %}
 {% block portal_content %}
-<section class="page-hero portal-hero portal-hero-compact">
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='programs' %}">Programs</a> / {{ program.name }}</p>
     <h1>{{ program.name }}</h1>

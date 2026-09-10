@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "yea-staff-families-prefs-v5";
+  var STORAGE_KEY = "yea-staff-families-prefs-v6";
   var table = document.getElementById("families-table");
   if (!table) return;
 
@@ -19,15 +19,30 @@
     search: "",
     filter: "all",
     unit: "all",
-    sort: "name-asc",
+    sort: "child-asc",
     pageSize: "25",
     page: 1,
     columns: {},
   };
 
+  function visitSearchQuery() {
+    try {
+      return new URLSearchParams(window.location.search).get("q") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function applyVisitSearch() {
+    state.search = visitSearchQuery();
+    searchInput.value = state.search;
+    state.page = 1;
+  }
+
   function loadPrefs() {
     try {
       var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      delete saved.search;
       Object.assign(state, saved);
     } catch (e) {
       /* ignore */
@@ -40,15 +55,23 @@
         state.columns[col] = input.checked;
       }
     });
-    searchInput.value = state.search || "";
     filterSelect.value = state.filter || "all";
     if (unitFilterSelect) unitFilterSelect.value = state.unit || "all";
-    sortSelect.value = state.sort || "name-asc";
+    sortSelect.value = state.sort || "child-asc";
     pageSizeSelect.value = state.pageSize || "25";
+    applyVisitSearch();
   }
 
   function savePrefs() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    var toSave = {
+      filter: state.filter,
+      unit: state.unit,
+      sort: state.sort,
+      pageSize: state.pageSize,
+      page: state.page,
+      columns: state.columns,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   }
 
   function parseBalance(value) {
@@ -133,24 +156,28 @@
       var childBalA = parseBalance(a.getAttribute("data-child-balance"));
       var childBalB = parseBalance(b.getAttribute("data-child-balance"));
       switch (state.sort) {
+        case "child-desc":
+          return childB.localeCompare(childA) || nameA.localeCompare(nameB);
+        case "name-asc":
+          return nameA.localeCompare(nameB) || childA.localeCompare(childB);
         case "name-desc":
           return nameB.localeCompare(nameA) || childA.localeCompare(childB);
         case "unit-asc":
-          return unitA.localeCompare(unitB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return unitA.localeCompare(unitB) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "unit-desc":
-          return unitB.localeCompare(unitA) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return unitB.localeCompare(unitA) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "balance-desc":
-          return familyBalB - familyBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return familyBalB - familyBalA || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "balance-asc":
-          return familyBalA - familyBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return familyBalA - familyBalB || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "child-balance-desc":
-          return childBalB - childBalA || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childBalB - childBalA || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "child-balance-asc":
-          return childBalA - childBalB || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childBalA - childBalB || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         case "contact-asc":
-          return contactA.localeCompare(contactB) || nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return contactA.localeCompare(contactB) || childA.localeCompare(childB) || nameA.localeCompare(nameB);
         default:
-          return nameA.localeCompare(nameB) || childA.localeCompare(childB);
+          return childA.localeCompare(childB) || nameA.localeCompare(nameB);
       }
     });
     return sorted;
@@ -242,6 +269,49 @@
     table.hidden = matched.length === 0;
     renderPagination(matched.length, pageCount);
     applyColumnVisibility();
+    applyListLinks();
+  }
+
+  function isFamilyAccountLink(href) {
+    if (!href) return false;
+    return /\/(staff|admin)\/family\//.test(href) || /\/admin\/parent-preview\//.test(href);
+  }
+
+  function listParamsForRow(row) {
+    var params = new URLSearchParams();
+    var familyId = row.getAttribute("data-id");
+    var childId = row.getAttribute("data-child-id");
+    var childName = row.getAttribute("data-child-name");
+    if (familyId) params.set("id", familyId);
+    if (childId) params.set("child_id", childId);
+    if (childName && childName !== "—") params.set("child", childName);
+    if ((state.search || "").trim()) params.set("q", state.search.trim());
+    if (state.filter && state.filter !== "all") params.set("ff", state.filter);
+    if (unitFilterSelect && state.unit && state.unit !== "all") params.set("unit", state.unit);
+    if (state.sort && state.sort !== "child-asc") params.set("sort", state.sort);
+    params.set("list", "1");
+    return params;
+  }
+
+  function applyListLinks() {
+    rows.forEach(function (row) {
+      var params = listParamsForRow(row);
+      row.querySelectorAll("a[href]").forEach(function (link) {
+        if (!isFamilyAccountLink(link.getAttribute("href"))) return;
+        try {
+          var url = new URL(link.getAttribute("href"), window.location.origin);
+          ["id", "child_id", "child", "q", "ff", "unit", "sort", "school", "list"].forEach(function (key) {
+            url.searchParams.delete(key);
+          });
+          params.forEach(function (value, key) {
+            url.searchParams.set(key, value);
+          });
+          link.setAttribute("href", url.pathname + url.search);
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    });
   }
 
   searchInput.addEventListener("input", function () {
@@ -291,4 +361,9 @@
 
   loadPrefs();
   render();
+
+  window.addEventListener("pageshow", function () {
+    applyVisitSearch();
+    render();
+  });
 })();

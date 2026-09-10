@@ -1,3 +1,4 @@
+import re
 from datetime import date, time
 
 from decimal import Decimal
@@ -201,6 +202,48 @@ class FamilyListRowTests(TestCase):
         previous, nxt = adjacent_households(households, slug="jacobs", family_id=family_b.pk)
         self.assertEqual(previous["slug"], "chen")
         self.assertIsNone(nxt)
+
+    def test_filtered_child_rows_keep_table_order_and_position(self):
+        from portal.family_list import adjacent_child_rows, apply_family_list_nav
+
+        rows = [
+            {"id": 1, "slug": "ava", "name": "Brooks", "child_name": "Ava Brooks", "child_id": 11, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 2, "slug": "ben", "name": "Carter", "child_name": "Ben Carter", "child_id": 12, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 3, "slug": "cara", "name": "Diaz", "child_name": "Cara Diaz", "child_id": 13, "unit": "School 18", "unit_slug": "school-18", "school": "Paterson School 18", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+            {"id": 4, "slug": "zoe", "name": "Foster", "child_name": "Zoe Foster", "child_id": 14, "unit": "School 26", "unit_slug": "school-26", "school": "Paterson School 26", "status": "Active", "billing_type": "Private pay", "family_balance": "0.00", "child_balance": "0.00", "primary_contact": "Pat", "program": "After-School", "has_application": True},
+        ]
+        filtered = apply_family_list_nav(rows, {"unit": "school-18", "sort": "child-asc"})
+        self.assertEqual([row["child_name"] for row in filtered], ["Ava Brooks", "Ben Carter", "Cara Diaz"])
+        previous, nxt, index, count = adjacent_child_rows(
+            filtered, slug="cara", family_id=3, child_id=13, child_name="Cara Diaz"
+        )
+        self.assertEqual(index, 3)
+        self.assertEqual(count, 3)
+        self.assertEqual(previous["child_name"], "Ben Carter")
+        self.assertIsNone(nxt)
+
+    def test_family_list_defaults_to_child_name_a_to_z(self):
+        williams = PortalFamily.objects.create(unit=self.unit, slug="williams", name="Williams")
+        adams = PortalFamily.objects.create(unit=self.unit, slug="adams", name="Adams")
+        williams.children.create(name="Zoe Williams", is_active=True)
+        williams.children.create(name="Aiden Williams", is_active=True)
+        adams.children.create(name="Mia Adams", is_active=True)
+
+        staff_rows = families_for_staff(self.unit)
+        self.assertEqual([row["name"] for row in staff_rows], ["Williams", "Adams", "Williams"])
+        self.assertEqual([row["child_name"] for row in staff_rows], ["Aiden Williams", "Mia Adams", "Zoe Williams"])
+        self.assertTrue(staff_rows[0]["is_first_child"])
+        self.assertTrue(staff_rows[1]["is_first_child"])
+        self.assertFalse(staff_rows[2]["is_first_child"])
+
+        admin_rows = get_admin_families_live()
+        self.assertEqual([row["name"] for row in admin_rows], ["Williams", "Adams", "Williams"])
+        self.assertEqual([row["child_name"] for row in admin_rows], ["Aiden Williams", "Mia Adams", "Zoe Williams"])
+
+        from portal.family_list import demo_family_list_rows
+
+        demo_child_names = [row["child_name"] for row in demo_family_list_rows("admin")]
+        self.assertEqual(demo_child_names, sorted(demo_child_names, key=str.casefold))
 
 
 class SchoolBusRosterTests(TestCase):
@@ -595,3 +638,177 @@ class MultiUnitFamilyVisibilityTests(TestCase):
         self.assertEqual(parent_profile.status_code, 200)
         self.assertContains(parent_profile, "Child A Rivera")
         self.assertContains(parent_profile, "Child B Rivera")
+
+
+def _family_names_from_table(html):
+    names = []
+    for name in re.findall(r'data-name="([^"]+)"', html):
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def _child_names_from_table(html):
+    return re.findall(r'data-child-name="([^"]+)"', html)
+
+
+def _children_by_family(html):
+    groups = {}
+    for slug, child in re.findall(r'data-slug="([^"]+)"[^>]*data-child-name="([^"]+)"', html):
+        groups.setdefault(slug, []).append(child)
+    return groups
+
+
+class FamiliesListVisitTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.school_18 = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.school_26 = PortalUnit.objects.create(slug="school-26", name="School 26", is_active=True)
+        self.williams = PortalFamily.objects.create(unit=self.school_26, slug="williams", name="Williams")
+        self.adams = PortalFamily.objects.create(unit=self.school_18, slug="adams", name="Adams")
+        self.nguyen = PortalFamily.objects.create(unit=self.school_18, slug="nguyen", name="Nguyen")
+        self.williams.children.create(name="Zoe Williams", is_active=True)
+        self.williams.children.create(name="Aiden Williams", is_active=True)
+        self.adams.children.create(name="Mia Adams", is_active=True)
+        self.nguyen.children.create(name="An Nguyen", is_active=True)
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.school_18,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff = User.objects.create_user(username="staff:unit18", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff,
+            unit=self.school_18,
+            display_name="School 18 Staff",
+            role="Unit director",
+            is_active=True,
+        )
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_families_url_has_no_search_and_lists_everyone_a_to_z(self):
+        _staff_login(self.client, self.admin, "admin")
+        url = reverse("portal_admin_page", kwargs={"page": "families"})
+        self.assertNotIn("q=", url)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.wsgi_request.GET.get("q", ""), "")
+        html = response.content.decode()
+        self.assertRegex(html, r'id="families-search"[^>]*autocomplete="off"')
+        self.assertNotRegex(html, r'id="families-search"[^>]*value="[^"]+')
+        self.assertIn("All families", html)
+        self.assertNotIn('href="' + url + "?q=", html)
+        self.assertIn('href="' + url + '"', html)
+        names = _family_names_from_table(html)
+        self.assertEqual(names, ["williams", "nguyen", "adams"])
+        children = _child_names_from_table(html)
+        self.assertEqual(children, ["aiden williams", "an nguyen", "mia adams", "zoe williams"])
+        self.assertEqual(children, sorted(children))
+        self.assertContains(response, "Mia Adams")
+        self.assertContains(response, "An Nguyen")
+        self.assertContains(response, "Aiden Williams")
+        self.assertContains(response, "Zoe Williams")
+        self.assertContains(response, "Child name A–Z")
+        children_by_family = _children_by_family(html)
+        self.assertEqual(children_by_family["williams"], ["aiden williams", "zoe williams"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_families_nav_url_without_query_shows_all_after_search_param(self):
+        _staff_login(self.client, self.admin, "admin")
+        url = reverse("portal_admin_page", kwargs={"page": "families"})
+        searched = self.client.get(url, {"q": "adams"})
+        self.assertEqual(searched.status_code, 200)
+        self.assertContains(searched, "Mia Adams")
+        self.assertContains(searched, "An Nguyen")
+        self.assertContains(searched, "Zoe Williams")
+        returned = self.client.get(url)
+        self.assertEqual(returned.status_code, 200)
+        self.assertEqual(returned.wsgi_request.GET.get("q", ""), "")
+        self.assertContains(returned, "Mia Adams")
+        self.assertContains(returned, "An Nguyen")
+        self.assertContains(returned, "Zoe Williams")
+        names = _family_names_from_table(returned.content.decode())
+        self.assertEqual(names, ["williams", "nguyen", "adams"])
+        self.assertEqual(
+            _child_names_from_table(returned.content.decode()),
+            ["aiden williams", "an nguyen", "mia adams", "zoe williams"],
+        )
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_families_url_has_no_search_and_only_that_unit_a_to_z(self):
+        _staff_login(self.client, self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        url = reverse("portal_staff_page", kwargs={"page": "families"})
+        self.assertNotIn("q=", url)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.wsgi_request.GET.get("q", ""), "")
+        html = response.content.decode()
+        names = _family_names_from_table(html)
+        self.assertEqual(names, ["nguyen", "adams"])
+        self.assertEqual(_child_names_from_table(html), ["an nguyen", "mia adams"])
+        self.assertContains(response, "Mia Adams")
+        self.assertContains(response, "An Nguyen")
+        self.assertContains(response, "Child name A–Z")
+        self.assertNotContains(response, "Zoe Williams")
+        searched = self.client.get(url, {"q": "adams"})
+        self.assertContains(searched, "Mia Adams")
+        self.assertContains(searched, "An Nguyen")
+        returned = self.client.get(url)
+        self.assertEqual(returned.wsgi_request.GET.get("q", ""), "")
+        self.assertEqual(_family_names_from_table(returned.content.decode()), ["nguyen", "adams"])
+        self.assertEqual(_child_names_from_table(returned.content.decode()), ["an nguyen", "mia adams"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_child_names_link_to_family_account(self):
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        adams_url = reverse("portal_admin_family_detail", kwargs={"family_slug": "adams"})
+        williams_url = reverse("portal_admin_family_detail", kwargs={"family_slug": "williams"})
+        self.assertIn(f'<a href="{adams_url}?id={self.adams.pk}">Mia Adams</a>', html)
+        self.assertIn(f'<a href="{williams_url}?id={self.williams.pk}">Aiden Williams</a>', html)
+        self.assertIn(f'<a href="{williams_url}?id={self.williams.pk}">Zoe Williams</a>', html)
+        self.assertContains(response, ">Account</a>")
+        self.assertContains(response, ">Parent view</a>")
+        self.assertContains(response, ">Delete</button>")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_child_names_link_to_family_account(self):
+        _staff_login(self.client, self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        response = self.client.get(reverse("portal_staff_page", kwargs={"page": "families"}))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        adams_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "adams"})
+        nguyen_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "nguyen"})
+        williams_url = reverse("portal_staff_family_detail", kwargs={"family_slug": "williams"})
+        self.assertIn(f'<a href="{adams_url}">Mia Adams</a>', html)
+        self.assertIn(f'<a href="{nguyen_url}">An Nguyen</a>', html)
+        self.assertNotIn("Zoe Williams", html)
+        self.assertNotIn("Aiden Williams", html)
+        self.assertNotIn(williams_url, html)
+        self.assertContains(response, ">Profile</a>")
+
+    def test_families_table_script_does_not_persist_search(self):
+        from pathlib import Path
+
+        script = Path(__file__).resolve().parents[2].joinpath("static/js/staff-families-table.js").read_text()
+        self.assertIn("applyVisitSearch", script)
+        self.assertIn("pageshow", script)
+        self.assertIn("delete saved.search", script)
+        self.assertNotIn("toSave.search", script)
+        self.assertIn('sort: "child-asc"', script)
+        self.assertIn("applyListLinks", script)
+        self.assertIn('params.set("list", "1")', script)
+        self.assertIn('params.set("unit", state.unit)', script)
+        self.assertIn("child_id", script)

@@ -207,7 +207,7 @@ GUIDES = {
     },
     "families": {
         "title": "How to use the families list",
-        "intro": "Every child at this unit is a row. Family balance sits on the first child in the household.",
+        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household.",
         "steps": [
             {
                 "title": "Search or filter",
@@ -501,7 +501,7 @@ GUIDES = {
             },
             {
                 "title": "Add a charge or record a payment",
-                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or a card you enter for them.",
+                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, money order, or a card you enter for them.",
             },
             {
                 "title": "Credits and deletes",

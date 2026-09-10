@@ -2,8 +2,12 @@
 
 from collections import defaultdict
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from .demo_data import FAMILIES_BILLING
+
+DEFAULT_LIST_SORT = "child-asc"
+LIST_NAV_SESSION_KEY = "yea_family_list_nav"
 
 DEMO_CHILD_SCHOOLS = {
     "Jordan Jacobs": "Paterson School 18",
@@ -29,6 +33,33 @@ def child_balance_map(family):
     return balances
 
 
+def _name_sort_key(value):
+    return (value or "").casefold()
+
+
+def sort_family_child_rows(rows):
+    """Child name A–Z (case-insensitive). First child in each household keeps the action row."""
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: (
+            _name_sort_key(row.get("child_name")),
+            _name_sort_key(row.get("name")),
+            row.get("slug") or "",
+            row.get("id") or 0,
+        ),
+    )
+    seen = set()
+    for row in sorted_rows:
+        family_id = row.get("id")
+        if family_id is not None:
+            key = ("id", family_id)
+        else:
+            key = ("slug", row.get("unit"), row.get("slug"))
+        row["is_first_child"] = key not in seen
+        seen.add(key)
+    return sorted_rows
+
+
 def expand_family_record(base_row, children_specs, family_balance):
     """Turn one family dict into one table row per child."""
     family_balance = format(Decimal(str(family_balance)), ".2f")
@@ -47,8 +78,9 @@ def expand_family_record(base_row, children_specs, family_balance):
             }
         ]
 
+    ordered_children = sorted(children_specs, key=lambda child: _name_sort_key(child.get("name")))
     rows = []
-    for index, child in enumerate(children_specs):
+    for index, child in enumerate(ordered_children):
         child_balance = child.get("balance", "0.00")
         if not isinstance(child_balance, str):
             child_balance = format(Decimal(str(child_balance)), ".2f")
@@ -73,7 +105,7 @@ def expand_family_record(base_row, children_specs, family_balance):
 
 def expand_demo_families(families):
     rows = []
-    for family in families:
+    for family in sorted(families, key=lambda item: _name_sort_key(item.get("name"))):
         slug = family["slug"]
         billing = FAMILIES_BILLING.get(slug, {})
         child_balance_lookup = {child["name"]: child["balance"] for child in billing.get("children", [])}
@@ -87,7 +119,7 @@ def expand_demo_families(families):
         ]
         base = {key: value for key, value in family.items() if key != "children"}
         rows.extend(expand_family_record(base, children_specs, family["balance"]))
-    return rows
+    return sort_family_child_rows(rows)
 
 
 def demo_family_list_rows(area):
@@ -199,3 +231,283 @@ def adjacent_households(households, *, slug, family_id=None):
     previous = households[index - 1] if index > 0 else None
     nxt = households[index + 1] if index < len(households) - 1 else None
     return previous, nxt
+
+
+def _row_text(*values):
+    return " ".join(str(value or "") for value in values).casefold()
+
+
+def _row_balance(row, *keys):
+    for key in keys:
+        raw = row.get(key)
+        if raw in (None, ""):
+            continue
+        try:
+            return float(str(raw).replace("$", "").replace(",", ""))
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def parse_family_list_nav(query):
+    """Read Families-table filters from a QueryDict or mapping."""
+    get = query.get
+    return {
+        "q": (get("q") or "").strip(),
+        "unit": (get("unit") or "all").strip() or "all",
+        "ff": (get("ff") or get("filter") or "all").strip() or "all",
+        "sort": (get("sort") or DEFAULT_LIST_SORT).strip() or DEFAULT_LIST_SORT,
+        "school": (get("school") or "").strip(),
+        "child_id": (get("child_id") or "").strip(),
+        "child": (get("child") or "").strip(),
+        "from_list": get("list") == "1",
+    }
+
+
+def family_list_nav_filters(nav):
+    return {
+        "q": (nav.get("q") or "").strip(),
+        "unit": (nav.get("unit") or "all") or "all",
+        "ff": (nav.get("ff") or "all") or "all",
+        "sort": (nav.get("sort") or DEFAULT_LIST_SORT) or DEFAULT_LIST_SORT,
+        "school": (nav.get("school") or "").strip(),
+    }
+
+
+def has_active_list_filters(nav):
+    return bool(
+        (nav.get("q") or "").strip()
+        or (nav.get("school") or "").strip()
+        or (nav.get("unit") or "all") not in ("", "all")
+        or (nav.get("ff") or "all") not in ("", "all")
+        or (nav.get("sort") or DEFAULT_LIST_SORT) not in ("", DEFAULT_LIST_SORT)
+    )
+
+
+def resolve_family_list_nav(request, area):
+    """Query-string list context, with session backup while moving between account pages."""
+    nav = parse_family_list_nav(request.GET)
+    session_key = f"{LIST_NAV_SESSION_KEY}_{area}"
+    referer = request.META.get("HTTP_REFERER") or ""
+    from_family_page = "/family/" in referer or "parent-preview" in referer
+
+    if nav["from_list"] or has_active_list_filters(nav):
+        request.session[session_key] = family_list_nav_filters(nav)
+        return nav
+
+    saved = request.session.get(session_key)
+    if saved and from_family_page:
+        return {
+            **parse_family_list_nav({}),
+            **saved,
+            "child_id": nav["child_id"],
+            "child": nav["child"],
+            "from_list": True,
+        }
+
+    if session_key in request.session and not from_family_page:
+        del request.session[session_key]
+    return nav
+
+
+def row_matches_list_nav(row, nav):
+    """Same matching rules as static/js/staff-families-table.js."""
+    nav = nav or {}
+    unit = nav.get("unit") or "all"
+    if unit and unit != "all":
+        unit_slug = str(row.get("unit_slug") or "")
+        unit_name = str(row.get("unit") or "").casefold()
+        if unit_slug != unit and unit.casefold() not in unit_name:
+            return False
+
+    school = (nav.get("school") or "").strip()
+    if school:
+        if school.casefold() not in str(row.get("school") or "").casefold():
+            return False
+
+    query = (nav.get("q") or "").strip().casefold()
+    if query:
+        haystack = _row_text(
+            row.get("unit"),
+            row.get("name"),
+            row.get("primary_contact"),
+            row.get("child_name"),
+            row.get("school"),
+            row.get("program"),
+            row.get("billing_type"),
+            row.get("status"),
+        )
+        if query not in haystack:
+            return False
+
+    status = str(row.get("status") or "").casefold()
+    billing = str(row.get("billing_type") or "").casefold()
+    balance = _row_balance(row, "family_balance", "balance")
+    ff = nav.get("ff") or "all"
+    if ff == "active":
+        return "active" in status and "pending" not in status
+    if ff == "pending-enrollment":
+        return "pending enrollment" in status
+    if ff == "past-due":
+        return balance > 0
+    if ff == "4cs":
+        return "4cs" in billing
+    if ff == "private-pay":
+        return "private" in billing
+    if ff == "pending-membership":
+        return "pending membership" in status
+    if ff == "no-application":
+        return not row.get("has_application")
+    if ff == "no-login":
+        return not row.get("has_parent_login")
+    if ff == "suspended":
+        return "suspended" in status
+    return True
+
+
+def sort_family_list_rows(rows, sort=None):
+    """Match the Families table sort control. Default is child name A–Z."""
+    rows = list(rows)
+    sort = sort or DEFAULT_LIST_SORT
+
+    def name_key(value):
+        return (value or "").casefold()
+
+    if sort == "child-desc":
+        rows.sort(key=lambda row: name_key(row.get("name")))
+        rows.sort(key=lambda row: name_key(row.get("child_name")), reverse=True)
+    elif sort == "name-asc":
+        rows.sort(key=lambda row: name_key(row.get("child_name")))
+        rows.sort(key=lambda row: name_key(row.get("name")))
+    elif sort == "name-desc":
+        rows.sort(key=lambda row: name_key(row.get("child_name")))
+        rows.sort(key=lambda row: name_key(row.get("name")), reverse=True)
+    elif sort == "unit-asc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: name_key(row.get("unit")))
+    elif sort == "unit-desc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: name_key(row.get("unit")), reverse=True)
+    elif sort == "balance-desc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: _row_balance(row, "family_balance", "balance"), reverse=True)
+    elif sort == "balance-asc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: _row_balance(row, "family_balance", "balance"))
+    elif sort == "child-balance-desc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: _row_balance(row, "child_balance"), reverse=True)
+    elif sort == "child-balance-asc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: _row_balance(row, "child_balance"))
+    elif sort == "contact-asc":
+        rows.sort(key=lambda row: (name_key(row.get("child_name")), name_key(row.get("name"))))
+        rows.sort(key=lambda row: name_key(row.get("primary_contact")))
+    else:
+        rows.sort(
+            key=lambda row: (
+                name_key(row.get("child_name")),
+                name_key(row.get("name")),
+                row.get("slug") or "",
+                row.get("id") or 0,
+            )
+        )
+    return rows
+
+
+def apply_family_list_nav(rows, nav):
+    """Filter and sort child rows the same way the Families table does."""
+    nav = nav or {}
+    matched = [row for row in rows if row_matches_list_nav(row, nav)]
+    return sort_family_list_rows(matched, nav.get("sort") or DEFAULT_LIST_SORT)
+
+
+def _family_row_match(row, *, slug, family_id=None):
+    family_id_text = str(family_id) if family_id not in (None, "") else ""
+    if family_id_text and row.get("id") is not None and str(row.get("id")) == family_id_text:
+        return True
+    if family_id_text:
+        return False
+    return row.get("slug") == slug
+
+
+def find_child_row_index(rows, *, slug, family_id=None, child_id=None, child_name=None):
+    """Position of the opened child row in the (already filtered) list."""
+    child_id_text = str(child_id) if child_id not in (None, "") else ""
+    child_name_folded = (child_name or "").strip().casefold()
+
+    if child_id_text:
+        for index, row in enumerate(rows):
+            if row.get("child_id") is not None and str(row.get("child_id")) == child_id_text:
+                return index
+    if child_name_folded:
+        for index, row in enumerate(rows):
+            if _family_row_match(row, slug=slug, family_id=family_id) and (
+                row.get("child_name") or ""
+            ).strip().casefold() == child_name_folded:
+                return index
+        for index, row in enumerate(rows):
+            if (row.get("child_name") or "").strip().casefold() == child_name_folded:
+                return index
+    for index, row in enumerate(rows):
+        if _family_row_match(row, slug=slug, family_id=family_id):
+            return index
+    if slug:
+        for index, row in enumerate(rows):
+            if row.get("slug") == slug:
+                return index
+    return None
+
+
+def adjacent_child_rows(rows, *, slug, family_id=None, child_id=None, child_name=None):
+    """Return (previous row, next row, 1-based index, count) for a child row."""
+    index = find_child_row_index(
+        rows,
+        slug=slug,
+        family_id=family_id,
+        child_id=child_id,
+        child_name=child_name,
+    )
+    if index is None:
+        return None, None, 0, len(rows)
+    previous = rows[index - 1] if index > 0 else None
+    nxt = rows[index + 1] if index < len(rows) - 1 else None
+    return previous, nxt, index + 1, len(rows)
+
+
+def child_row_nav_name(row):
+    child = (row.get("child_name") or "").strip()
+    if child and child != "—":
+        return child
+    return row.get("name") or row.get("family_name") or row.get("slug")
+
+
+def family_list_querystring(nav, *, family_id=None, child_id=None, child_name=None, include_list_flag=True):
+    """Query string that keeps Families-table filters on the account pager."""
+    items = []
+    if family_id not in (None, ""):
+        items.append(("id", str(family_id)))
+    if child_id not in (None, ""):
+        items.append(("child_id", str(child_id)))
+    child_label = (child_name or "").strip()
+    if child_label and child_label != "—":
+        items.append(("child", child_label))
+    if nav:
+        query = (nav.get("q") or "").strip()
+        if query:
+            items.append(("q", query))
+        school = (nav.get("school") or "").strip()
+        if school:
+            items.append(("school", school))
+        unit = nav.get("unit") or "all"
+        if unit not in ("", "all"):
+            items.append(("unit", unit))
+        ff = nav.get("ff") or "all"
+        if ff not in ("", "all"):
+            items.append(("ff", ff))
+        sort = nav.get("sort") or DEFAULT_LIST_SORT
+        if sort not in ("", DEFAULT_LIST_SORT):
+            items.append(("sort", sort))
+        if include_list_flag and (nav.get("from_list") or has_active_list_filters(nav)):
+            items.append(("list", "1"))
+    return urlencode(items)

@@ -296,6 +296,7 @@ class StaffEmergencyContactReportTests(TestCase):
         self.assertContains(response, "Rosa Jacobs")
         self.assertContains(response, "Print / Save PDF")
         self.assertContains(response, "How to print emergency contacts")
+        self.assertContains(response, "size: landscape")
         self.assertNotContains(response, "Ada Rivera")
         self.assertNotContains(response, "Luis Rivera")
 
@@ -383,3 +384,27 @@ class ReportsHubGridCssTests(TestCase):
         self.assertIn("padding: 0.35rem 0.45rem;", member_table)
         self.assertIn("}", member_table)
         self.assertNotIn("padding: 0.35rem 0.45rem;\n.portal-report-filters", member_table)
+
+
+class ReportsPrintCssTests(TestCase):
+    def test_print_rules_keep_wide_and_long_tables_on_the_page(self):
+        css = Path("static/css/portal.css").read_text()
+        site = Path("static/css/site.css").read_text()
+        print_start = css.find("@media print {\n  @page")
+        self.assertGreaterEqual(print_start, 0)
+        print_css = css[print_start:]
+        self.assertIn("display: table-header-group", print_css)
+        self.assertIn(".portal-table-wrap", print_css)
+        self.assertIn("overflow: visible !important", print_css)
+        self.assertIn("min-width: 0 !important", print_css)
+        self.assertIn("white-space: normal !important", print_css)
+        self.assertIn("overflow-wrap: break-word", print_css)
+        self.assertNotIn("overflow-wrap: anywhere", print_css)
+        self.assertIn("page-break-inside: auto", print_css)
+        self.assertIn("position: static !important", print_css)
+        self.assertIn(".portal-toolbar", print_css)
+        self.assertIn(".portal-howto-bar", print_css)
+        wrap_rule = css[css.index(".portal-table-wrap {"): css.index(".portal-table-wrap {") + 160]
+        self.assertIn("overflow: auto", wrap_rule)
+        self.assertIn("@media print", site)
+        self.assertIn("overflow: visible !important", site)
