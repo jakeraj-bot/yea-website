@@ -965,6 +965,27 @@
   box-shadow: 0 1px 0 var(--border);
 }
 
+.portal-payout-section {
+  margin-top: 1.5rem;
+}
+
+.portal-payout-section:first-of-type {
+  margin-top: 0;
+}
+
+.portal-payout-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.portal-payout-meta span {
+  white-space: nowrap;
+}
+
 .portal-table th.portal-row-num,
 .portal-table td.portal-row-num {
   width: 2.4rem;

@@ -277,6 +277,55 @@ class AdminReportsAndScholarshipTests(TestCase):
         paid.refresh_from_db()
         self.assertEqual(pending.stripe_bank_status, "waiting_for_card")
         self.assertEqual(paid.stripe_bank_status, "not_stripe")
+        pending_families = {row["family"] for row in report["pending_rows"]}
+        self.assertEqual(pending_families, {"Jacobs", "Martinez"})
+        self.assertEqual(report["payout_groups"], [])
+        self.assertEqual(report["layout"], "payout_sections")
+        self.assertEqual(report["rows"][0]["section"], "Not yet paid out")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_stripe_settlement_page_puts_unpaid_payments_first(self):
+        today = timezone.now()
+        arrived = timezone.localdate()
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_page_paid",
+            stripe_payout_id="po_page_paid",
+            stripe_payout_descriptor="YEA SCHOOL 18",
+            stripe_payout_amount=Decimal("40.00"),
+            stripe_bank_status="in_bank",
+            stripe_bank_date=arrived,
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.no_plan,
+            amount=Decimal("12.00"),
+            method_label="Cash",
+            status=PortalPayment.STATUS_PAID,
+            paid_at=today,
+        )
+        self._login_admin()
+        page = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}))
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("Not yet paid out", html)
+        self.assertIn("Rivera", html)
+        self.assertIn("Jacobs", html)
+        self.assertIn("Remaining payments", html)
+        self.assertLess(html.find("Not yet paid out"), html.find("Remaining payments"))
+        self.assertLess(html.find("Rivera"), html.find("Remaining payments"))
+        self.assertLess(html.find("Remaining payments"), html.find("Jacobs"))
+        csv_response = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}),
+            {"format": "csv"},
+        )
+        self.assertEqual(csv_response.status_code, 200)
+        csv_text = csv_response.content.decode()
+        self.assertIn("Section", csv_text.splitlines()[0])
+        self.assertIn("Not yet paid out", csv_text)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_payment_reports(self):

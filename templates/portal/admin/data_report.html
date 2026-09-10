@@ -181,34 +181,39 @@
           <p class="portal-medical-report-meta">{{ report.summary }}</p>
         </div>
       </header>
-      <div class="portal-table-wrap">
-        <table class="portal-table">
-          <thead>
-            <tr>
-              {% for _key, label in report.columns %}
-              <th>{{ label }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in report.rows %}
-            <tr>
-              {% for cell in row.display %}
-              <td>
-                {% if cell.key == "family" and row.family_slug %}
-                <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
-                {% else %}
-                {{ cell.value }}
-                {% endif %}
-              </td>
-              {% endfor %}
-            </tr>
-            {% empty %}
-            <tr><td colspan="{{ report.columns|length }}" class="form-note">No rows match this filter.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      {% if report.layout == "payout_sections" %}
+      <section class="portal-payout-section" id="not-yet-paid-out">
+        <h3 class="portal-medical-report-section">Not yet paid out</h3>
+        <p class="form-note">These member payments are not in a Stripe bank payout yet.</p>
+        {% include "portal/admin/includes/report_table.html" with rows=report.pending_rows empty_message="No payments are waiting for a bank payout." %}
+      </section>
+      {% if report.payout_groups %}
+      {% for group in report.payout_groups %}
+      <section class="portal-payout-section">
+        <h3 class="portal-medical-report-section">{{ group.title }}</h3>
+        <p class="portal-payout-meta">
+          <span>Amount ${{ group.amount }}</span>
+          {% if group.date and group.date != "—" %}<span>Arrival {{ group.date }}</span>{% endif %}
+          {% if group.payout_id %}<span>Payout ID {{ group.payout_id }}</span>{% endif %}
+          {% if group.descriptor %}<span>{{ group.descriptor }}</span>{% endif %}
+          {% if group.status %}<span>{{ group.status }}</span>{% endif %}
+          <span>Member payments ${{ group.member_total }}</span>
+        </p>
+        {% include "portal/admin/includes/report_table.html" with rows=group.rows empty_message="No member payments are listed for this payout." %}
+      </section>
+      {% endfor %}
+      {% elif report.remaining_rows %}
+      <section class="portal-payout-section" id="remaining-payments">
+        <h3 class="portal-medical-report-section">Remaining payments</h3>
+        <p class="form-note">These payments already have a bank payout, or are on the way to the bank.</p>
+        {% include "portal/admin/includes/report_table.html" with rows=report.remaining_rows empty_message="No remaining payments." %}
+      </section>
+      {% else %}
+      <p class="form-note">No Stripe bank payouts are grouped yet.</p>
+      {% endif %}
+      {% else %}
+      {% include "portal/admin/includes/report_table.html" with rows=report.rows %}
+      {% endif %}
     </div>
   </div>
 </section>
