@@ -935,6 +935,91 @@ class PortalSupportViewSession(models.Model):
         return f"{self.family.name} · support view"
 
 
+class PortalParentEmail(models.Model):
+    """A parent email that staff or admin sent from the portal."""
+
+    SOURCE_FAMILY = "family"
+    SOURCE_BULK = "bulk"
+    SOURCE_REMINDER = "reminder"
+    SOURCE_CHOICES = (
+        (SOURCE_FAMILY, "Family email"),
+        (SOURCE_BULK, "Email parents"),
+        (SOURCE_REMINDER, "Reminder"),
+    )
+
+    family = models.ForeignKey(
+        PortalFamily,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="parent_emails",
+    )
+    unit = models.ForeignKey(
+        PortalUnit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="parent_emails",
+    )
+    sent_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_parent_emails",
+    )
+    sender_name = models.CharField(max_length=160, blank=True)
+    recipients = models.JSONField(default=list)
+    subject = models.CharField(max_length=200)
+    body = models.TextField()
+    attachment_names = models.JSONField(default=list, blank=True)
+    source = models.CharField(max_length=32, choices=SOURCE_CHOICES, default=SOURCE_FAMILY)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-sent_at"]
+
+    def __str__(self):
+        return f"{self.subject} · {self.sent_at}"
+
+    @property
+    def recipients_display(self):
+        names = [str(item).strip() for item in (self.recipients or []) if str(item).strip()]
+        return ", ".join(names) or "—"
+
+    @property
+    def sender_display(self):
+        if self.sender_name:
+            return self.sender_name
+        if self.sent_by_id:
+            user = self.sent_by
+            return (user.get_full_name() or user.username or "").strip() or "Staff"
+        return "Staff"
+
+    @property
+    def has_attachments(self):
+        return bool(self.attachment_names)
+
+    @property
+    def attachment_list(self):
+        return [str(name) for name in (self.attachment_names or []) if str(name).strip()]
+
+
+class PortalParentEmailAttachment(models.Model):
+    email = models.ForeignKey(
+        PortalParentEmail,
+        on_delete=models.CASCADE,
+        related_name="files",
+    )
+    file = models.FileField(upload_to="portal/parent-emails/%Y/%m/")
+    original_name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=120, blank=True)
+    size = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.original_name
+
+
 class PortalEmailTemplate(models.Model):
     KEY_STAFF_WELCOME = "staff_welcome"
     KEY_CHARGE_NOTICE = "charge_notice"
