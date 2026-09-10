@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
-  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=23">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=75">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}?v=34">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=76">
   <script>
     try {
       if (localStorage.getItem("yea-portal-sidebar-collapsed") === "1") {
@@ -128,7 +128,7 @@
   <script src="{% static 'js/portal.js' %}?v=6"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=3"></script>{% endif %}
   <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
-  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=1"></script>{% endif %}
+  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=2"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
   {% if page_guide %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
   {% block extra_js %}{% endblock %}
