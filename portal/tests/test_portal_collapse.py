@@ -113,6 +113,9 @@ class PortalCollapseCssTests(SimpleTestCase):
         screen_tabs = [rule for rule in rules if rule[0] == ".portal-family-tabs"]
         self.assertEqual(len(screen_tabs), 1)
         self.assertEqual(screen_tabs[0][1], 0, "family tabs must apply on screen, not only in print")
+        screen_pager = [rule for rule in rules if rule[0] == ".portal-family-pager"]
+        self.assertEqual(len(screen_pager), 1)
+        self.assertEqual(screen_pager[0][1], 0, "family Previous/Next pager must apply on screen")
         screen_toggle = [rule for rule in rules if rule[0] == ".portal-sidebar-toggle"]
         self.assertEqual(len(screen_toggle), 1)
         self.assertEqual(screen_toggle[0][1], 0, "collapse menu button must apply on screen")
