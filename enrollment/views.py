@@ -513,16 +513,34 @@ def apply_wizard(request, step="family"):
             applications = _create_applications(session_data.copy())
             family_group = applications[0].family_group
             linked_existing = bool(portal_account) and not editing
+            created_new_login = False
             if linked_existing:
                 link_applications_to_family(applications, portal_account.family)
             else:
-                family, user = create_portal_account_from_enrollment(
+                family, user, created_new_login = create_portal_account_from_enrollment(
                     session_data,
                     portal_form.cleaned_data["username"],
                     portal_form.cleaned_data["password1"],
                 )
                 link_applications_to_family(applications, family)
-                login(request, user)
+                if created_new_login:
+                    login(request, user)
+                else:
+                    child_names = ", ".join(
+                        f"{app.student_first_name} {app.student_last_name}".strip() for app in applications
+                    )
+                    if SESSION_KEY in request.session:
+                        del request.session[SESSION_KEY]
+                    if LINK_EXISTING_KEY in request.session:
+                        del request.session[LINK_EXISTING_KEY]
+                    for app in applications:
+                        send_application_submitted_emails(app)
+                    messages.success(
+                        request,
+                        f"Application submitted for {child_names} on your existing family account. "
+                        "Sign in with your current parent login — a second account was not created.",
+                    )
+                    return redirect("portal_parent_login")
             if SESSION_KEY in request.session:
                 del request.session[SESSION_KEY]
             if LINK_EXISTING_KEY in request.session:
