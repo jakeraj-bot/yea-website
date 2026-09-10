@@ -135,11 +135,20 @@
         </div>
         <div class="form-group">
           <label for="copay-method">Payment method</label>
-          <select id="copay-method" name="method_label" class="portal-select">
-            <option value="Card (staff entry)">Card (staff entry)</option>
-            <option value="Cash">Cash</option>
-            <option value="Check">Check</option>
+          <select id="copay-method" name="method" class="portal-select">
+            <option value="card">Card (staff entry)</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="money_order">Money order</option>
           </select>
+        </div>
+        <div class="form-group portal-form-full" id="copay-check-fields" hidden>
+          <label for="copay-check">Check number</label>
+          <input id="copay-check" name="check_number" type="text" class="portal-input" placeholder="Check #">
+        </div>
+        <div class="form-group portal-form-full" id="copay-money-order-fields" hidden>
+          <label for="copay-money-order">Money order number <span class="form-note">(required)</span></label>
+          <input id="copay-money-order" name="money_order_number" type="text" class="portal-input" placeholder="Money order #">
         </div>
         <div class="form-group portal-form-full">
           <label for="copay-note">Note (optional)</label>
@@ -324,6 +333,18 @@
       copayChildName.value = opt.getAttribute("data-child") || "";
     });
   }
+  var copayMethod = document.getElementById("copay-method");
+  var copayCheckFields = document.getElementById("copay-check-fields");
+  var copayMoneyOrderFields = document.getElementById("copay-money-order-fields");
+  var copayMoneyOrderInput = document.getElementById("copay-money-order");
+  function syncCopayMethodFields() {
+    if (!copayMethod) return;
+    if (copayCheckFields) copayCheckFields.hidden = copayMethod.value !== "check";
+    if (copayMoneyOrderFields) copayMoneyOrderFields.hidden = copayMethod.value !== "money_order";
+    if (copayMoneyOrderInput) copayMoneyOrderInput.required = copayMethod.value === "money_order";
+  }
+  if (copayMethod) copayMethod.addEventListener("change", syncCopayMethodFields);
+  syncCopayMethodFields();
 })();
 </script>
 {% endblock %}

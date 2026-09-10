@@ -2092,6 +2092,8 @@ def enrich_receipt_for_print(receipt, preview_key, family=None):
     method = receipt.get("method", "")
     if "Visa" in method or "card" in method.lower() or "Autopay" in method or "Card" in method:
         paid_through = "Card"
+    elif "Money order" in method:
+        paid_through = "Money order"
     elif "Check" in method:
         paid_through = "Check"
     elif "Cash" in method:
