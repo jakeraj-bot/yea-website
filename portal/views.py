@@ -412,15 +412,6 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
     from .family_list import account_child_context
 
     extra.update(account_child_context(profile, family_meta, extra.get("billing")))
-    extra.update(
-        _family_nav_context(
-            "staff",
-            family_slug,
-            family_tab,
-            extra.get("family_id"),
-            unit=unit,
-        )
-    )
     if request is not None:
         extra.update(
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
@@ -488,15 +479,6 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     extra.update(account_child_context(profile, family_meta, extra.get("billing")))
     extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
     extra.setdefault("family_incident_count", len(family_incidents))
-    extra.update(
-        _family_nav_context(
-            area,
-            family_slug,
-            family_tab,
-            extra.get("family_id"),
-            unit=unit,
-        )
-    )
     extra.update(
         _family_neighbor_nav(request, area, family_slug, family_tab, extra.get("family_id"))
     )
@@ -2647,7 +2629,6 @@ def admin_family_policies(request, family_slug):
                 family_slug=family_slug,
                 family_id=family_meta.get("id"),
                 family_tab="policies",
-                **_family_nav_context("admin", family_slug, "policies", family_meta.get("id")),
                 **_family_neighbor_nav(request, "admin", family_slug, "policies", family_meta.get("id")),
             ),
         ),

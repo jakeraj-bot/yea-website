@@ -24,13 +24,168 @@ DEMO_CHILD_SCHOOLS = {
 
 
 def child_balance_map(family):
+    maps = child_balance_maps([family.pk] if family and family.pk else [])
+    return maps.get(getattr(family, "pk", None), defaultdict(lambda: Decimal("0")))
+
+
+def child_balance_maps(family_ids):
+    """One aggregated ledger query → {family_id: {child_name: Decimal}}."""
+    from django.db.models import Sum
+
     from .models import PortalLedgerEntry
 
-    balances = defaultdict(lambda: Decimal("0"))
-    for entry in PortalLedgerEntry.objects.filter(family=family):
-        name = (entry.child_name or "").strip()
-        balances[name] += entry.amount
-    return balances
+    maps = defaultdict(lambda: defaultdict(lambda: Decimal("0")))
+    ids = [pk for pk in family_ids if pk]
+    if not ids:
+        return maps
+    for row in (
+        PortalLedgerEntry.objects.filter(family_id__in=ids)
+        .values("family_id", "child_name")
+        .annotate(total=Sum("amount"))
+    ):
+        maps[row["family_id"]][(row["child_name"] or "").strip()] = row["total"] or Decimal("0")
+    return maps
+
+
+def prefetch_family_table_queryset(qs):
+    """Load children, applications, and login/application flags in a few queries."""
+    from django.db.models import Exists, OuterRef, Prefetch
+
+    from enrollment.models import EnrollmentApplication
+
+    from .models import PortalChild, PortalParentAccount
+
+    return (
+        qs.select_related("unit", "parent_account__user")
+        .prefetch_related(
+            Prefetch(
+                "children",
+                queryset=PortalChild.objects.select_related("unit", "family", "family__unit").order_by("name"),
+            ),
+            Prefetch(
+                "enrollment_applications",
+                queryset=EnrollmentApplication.objects.order_by("-submitted_at"),
+            ),
+        )
+        .annotate(
+            list_has_application=Exists(EnrollmentApplication.objects.filter(portal_family_id=OuterRef("pk"))),
+            list_has_parent_login=Exists(PortalParentAccount.objects.filter(family_id=OuterRef("pk"))),
+        )
+    )
+
+
+def _active_prefetched_children(family):
+    return [child for child in family.children.all() if child.is_active]
+
+
+def _units_by_slug():
+    from .models import PortalUnit
+
+    return {unit.slug: unit for unit in PortalUnit.objects.filter(is_active=True)}
+
+
+def _unit_for_enrollment_key(key, units_by_slug):
+    from enrollment.locations import LEGACY_LOCATION_TO_UNIT_SLUG
+
+    if not key:
+        return None
+    slug = key.replace("_", "-")
+    if slug in units_by_slug:
+        return units_by_slug[slug]
+    legacy = LEGACY_LOCATION_TO_UNIT_SLUG.get(key)
+    return units_by_slug.get(legacy) if legacy else None
+
+
+def _location_label(key, units_by_slug):
+    unit = _unit_for_enrollment_key(key, units_by_slug)
+    if unit:
+        return f"{unit.name} — {unit.city}" if unit.city else unit.name
+    return (key or "").replace("_", " ").title() if key else ""
+
+
+def live_family_child_rows(families, *, staff_unit=None, include_parent_login=False):
+    """Build Families-table child rows without N+1 queries or per-request data repair."""
+    from enrollment.portal_integration import family_display_label, family_name_duplicate_keys
+
+    from .unit_visibility import application_belongs_to_unit, child_belongs_to_unit, unit_label_for_child
+
+    families = list(families)
+    family_ids = [family.pk for family in families]
+    balances = child_balance_maps(family_ids)
+    duplicate_keys = family_name_duplicate_keys()
+    units_by_slug = _units_by_slug()
+    rows = []
+    for family in families:
+        family_balances = balances.get(family.pk, {})
+        active_children = [
+            child
+            for child in _active_prefetched_children(family)
+            if not staff_unit or child_belongs_to_unit(child, staff_unit)
+        ]
+        enrolled_lower = {child.name.lower() for child in active_children}
+        children_specs = []
+        for child in active_children:
+            unit_name, unit_slug = unit_label_for_child(child)
+            children_specs.append(
+                {
+                    "name": child.name,
+                    "child_id": child.pk,
+                    "school": child.school or "—",
+                    "balance": family_balances.get(child.name, Decimal("0")),
+                    "unit": unit_name or (family.unit.name if family.unit_id else ""),
+                    "unit_slug": unit_slug or (family.unit.slug if family.unit_id else ""),
+                }
+            )
+        for app in family.enrollment_applications.all():
+            child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+            if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
+                continue
+            if staff_unit and not application_belongs_to_unit(app, staff_unit):
+                continue
+            app_unit = _unit_for_enrollment_key(app.program_location, units_by_slug)
+            children_specs.append(
+                {
+                    "name": child_name,
+                    "application_id": app.pk,
+                    "school": app.student_school or "—",
+                    "balance": family_balances.get(child_name, Decimal("0")),
+                    "unit": (app_unit.name if app_unit else "")
+                    or _location_label(app.program_location, units_by_slug)
+                    or (family.unit.name if family.unit_id else ""),
+                    "unit_slug": (app_unit.slug if app_unit else "") or (family.unit.slug if family.unit_id else ""),
+                }
+            )
+        if staff_unit and not children_specs:
+            continue
+        has_application = getattr(family, "list_has_application", None)
+        if has_application is None:
+            has_application = bool(family.enrollment_applications.all())
+        base_row = {
+            "id": family.pk,
+            "slug": family.slug,
+            "name": family_display_label(family, duplicate_keys=duplicate_keys),
+            "primary_contact": family.primary_contact or "—",
+            "program": family.program_label or "—",
+            "billing_type": family.billing_type or "Private pay",
+            "status": "Suspended" if family.is_suspended else family.status,
+            "has_application": bool(has_application),
+        }
+        if family.unit_id:
+            base_row["unit"] = family.unit.name
+            base_row["unit_slug"] = family.unit.slug
+        if include_parent_login:
+            has_login = getattr(family, "list_has_parent_login", None)
+            if has_login is None:
+                from .models import PortalParentAccount
+
+                try:
+                    has_login = bool(family.parent_account)
+                except PortalParentAccount.DoesNotExist:
+                    has_login = False
+            base_row["has_parent_login"] = bool(has_login)
+            base_row["is_suspended"] = family.is_suspended
+        rows.extend(expand_family_record(base_row, children_specs, family.balance))
+    return sort_family_child_rows(rows)
 
 
 def _name_sort_key(value):

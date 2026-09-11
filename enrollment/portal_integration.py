@@ -419,13 +419,34 @@ def parent_application_list_items(family):
     return items
 
 
-def family_display_label(family):
+def family_name_duplicate_keys():
+    """Set of (unit_id, name.casefold()) for last names used by more than one family."""
+    from django.db.models import Count
+
+    return {
+        (row["unit_id"], (row["name"] or "").casefold())
+        for row in PortalFamily.objects.values("unit_id", "name").annotate(n=Count("id")).filter(n__gt=1)
+    }
+
+
+def family_display_label(family, *, duplicate_keys=None):
     """Disambiguate families that share the same last name."""
-    dupes = PortalFamily.objects.filter(unit=family.unit, name__iexact=family.name).count()
-    if dupes <= 1:
-        return family.name
-    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
-    if account and account.user.email:
+    if not family:
+        return ""
+    name = family.name
+    key = (family.unit_id, (name or "").casefold())
+    if duplicate_keys is None:
+        is_duplicate = PortalFamily.objects.filter(unit_id=family.unit_id, name__iexact=name).count() > 1
+    else:
+        is_duplicate = key in duplicate_keys
+    if not is_duplicate:
+        return name
+    account = None
+    try:
+        account = family.parent_account
+    except PortalParentAccount.DoesNotExist:
+        account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if account and getattr(account, "user", None) and account.user.email:
         return f"{family.name} ({account.user.email})"
     if family.primary_contact:
         return f"{family.name} ({family.primary_contact})"
@@ -438,30 +459,73 @@ def _application_family_label(app):
     return app.family_name
 
 
-def staff_application_row(app):
-    from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
-    from .locations import get_unit_for_enrollment_key
+def _application_can_add_program(app, program, family_apps=None):
+    from .add_program import can_add_program_for_application
 
+    if family_apps is None:
+        return can_add_program_for_application(app, program)
+    if not app or not app.portal_family_id or app.program == program:
+        return False
+    first = (app.student_first_name or "").strip().lower()
+    last = (app.student_last_name or "").strip().lower()
+    return not any(
+        (other.student_first_name or "").strip().lower() == first
+        and (other.student_last_name or "").strip().lower() == last
+        and other.program == program
+        and other.status != "declined"
+        for other in family_apps
+    )
+
+
+def _unit_from_location(key, units_by_slug=None):
+    from .locations import LEGACY_LOCATION_TO_UNIT_SLUG, get_unit_for_enrollment_key
+
+    if units_by_slug is None:
+        return get_unit_for_enrollment_key(key)
+    if not key:
+        return None
+    slug = key.replace("_", "-")
+    if slug in units_by_slug:
+        return units_by_slug[slug]
+    legacy = LEGACY_LOCATION_TO_UNIT_SLUG.get(key)
+    return units_by_slug.get(legacy) if legacy else None
+
+
+def staff_application_row(
+    app,
+    *,
+    has_parent_login=None,
+    family_apps=None,
+    duplicate_keys=None,
+    units_by_slug=None,
+):
     unit_name = ""
     unit_slug = ""
     if app.portal_family_id and getattr(app.portal_family, "unit_id", None):
         unit_name = app.portal_family.unit.name
         unit_slug = app.portal_family.unit.slug
     elif app.program_location:
-        unit = get_unit_for_enrollment_key(app.program_location)
+        unit = _unit_from_location(app.program_location, units_by_slug)
         if unit:
             unit_name = unit.name
             unit_slug = unit.slug
+    if has_parent_login is None:
+        has_parent_login = bool(
+            app.portal_family_id
+            and PortalParentAccount.objects.filter(family_id=app.portal_family_id).exists()
+        )
+    family_label = (
+        family_display_label(app.portal_family, duplicate_keys=duplicate_keys)
+        if app.portal_family_id
+        else app.family_name
+    )
     return {
         "slug": str(app.reference),
         "child": f"{app.student_first_name} {app.student_last_name}".strip(),
-        "family": _application_family_label(app),
+        "family": family_label,
         "family_slug": app.portal_family.slug if app.portal_family_id else "",
         "family_id": app.portal_family_id or "",
-        "has_parent_login": bool(
-            app.portal_family_id
-            and PortalParentAccount.objects.filter(family_id=app.portal_family_id).exists()
-        ),
+        "has_parent_login": bool(has_parent_login),
         "unit": unit_name or "—",
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
@@ -471,9 +535,40 @@ def staff_application_row(app):
         "status": STATUS_LABELS.get(app.status, "Under review"),
         "status_slug": (app.status or "under_review").replace("_", "-"),
         "returning": False,
-        "can_add_after_school": can_add_after_school_for_application(app),
-        "can_add_before_care": can_add_before_care_for_application(app),
+        "can_add_after_school": _application_can_add_program(app, "after_school", family_apps),
+        "can_add_before_care": _application_can_add_program(app, "before_care", family_apps),
     }
+
+
+def staff_application_rows(apps):
+    """Build application table rows with batched login / sibling / name lookups."""
+    from collections import defaultdict
+
+    from portal.models import PortalUnit
+
+    apps = list(apps)
+    family_ids = [app.portal_family_id for app in apps if app.portal_family_id]
+    login_ids = set(
+        PortalParentAccount.objects.filter(family_id__in=family_ids).values_list("family_id", flat=True)
+    )
+    siblings_by_family = defaultdict(list)
+    if family_ids:
+        for other in EnrollmentApplication.objects.filter(portal_family_id__in=family_ids).exclude(
+            status="declined"
+        ):
+            siblings_by_family[other.portal_family_id].append(other)
+    duplicate_keys = family_name_duplicate_keys()
+    units_by_slug = {unit.slug: unit for unit in PortalUnit.objects.filter(is_active=True)}
+    return [
+        staff_application_row(
+            app,
+            has_parent_login=app.portal_family_id in login_ids if app.portal_family_id else False,
+            family_apps=siblings_by_family.get(app.portal_family_id, []),
+            duplicate_keys=duplicate_keys,
+            units_by_slug=units_by_slug,
+        )
+        for app in apps
+    ]
 
 
 def staff_application_detail(app, unit=None):
@@ -590,37 +685,33 @@ def applications_for_staff(unit=None, include_closed=False):
     if not unit:
         return []
     qs = _review_queue_queryset(unit=unit, open_only=not include_closed)
-    return [
-        staff_application_row(app)
-        for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
-            *REVIEW_QUEUE_ORDER
-        )
-    ]
+    return staff_application_rows(
+        qs.select_related("portal_family", "portal_family__unit", "portal_family__parent_account__user")
+        .prefetch_related("emergency_contacts")
+        .order_by(*REVIEW_QUEUE_ORDER)
+    )
 
 
 def applications_for_admin(unit_slug=None, include_closed=False):
     qs = _review_queue_queryset(unit_slug=unit_slug, open_only=not include_closed)
-    return [
-        staff_application_row(app)
-        for app in qs.select_related("portal_family", "portal_family__unit").prefetch_related("emergency_contacts").order_by(
-            *REVIEW_QUEUE_ORDER
-        )
-    ]
+    return staff_application_rows(
+        qs.select_related("portal_family", "portal_family__unit", "portal_family__parent_account__user")
+        .prefetch_related("emergency_contacts")
+        .order_by(*REVIEW_QUEUE_ORDER)
+    )
 
 
 def _waitlist_rows(qs):
-    rows = []
-    ordered = (
+    ordered = list(
         qs.filter(status="waitlist")
-        .select_related("portal_family", "portal_family__unit")
+        .select_related("portal_family", "portal_family__unit", "portal_family__parent_account__user")
         .prefetch_related("emergency_contacts")
         .order_by("submitted_at", "id")
     )
-    for index, app in enumerate(ordered, start=1):
-        row = staff_application_row(app)
+    rows = staff_application_rows(ordered)
+    for index, (row, app) in enumerate(zip(rows, ordered), start=1):
         row["waitlist_position"] = index
         row["submitted"] = timezone.localtime(app.submitted_at).strftime("%b %d, %Y %-I:%M %p")
-        rows.append(row)
     return rows
 
 
