@@ -529,14 +529,32 @@ def refresh_payment_settlement(payment, payout_map=None):
     return payment
 
 
+SETTLEMENT_CACHE_SECONDS = 15 * 60
+
+
+def _settlement_is_fresh(payment):
+    from django.utils import timezone
+
+    checked = getattr(payment, "stripe_settlement_checked_at", None)
+    if not checked:
+        return False
+    return (timezone.now() - checked).total_seconds() < SETTLEMENT_CACHE_SECONDS
+
+
 def refresh_stripe_settlements(payments):
+    payments = list(payments)
+    stale = [payment for payment in payments if not _settlement_is_fresh(payment)]
     payout_map = {}
-    if stripe_configured() and any(p.stripe_session_id or p.stripe_payment_intent_id for p in payments):
+    if stripe_configured() and any(
+        payment.stripe_session_id or payment.stripe_payment_intent_id for payment in stale
+    ):
         try:
             payout_map = _payout_charge_map(_stripe())
         except Exception:
             payout_map = {}
     for payment in payments:
+        if _settlement_is_fresh(payment):
+            continue
         try:
             refresh_payment_settlement(payment, payout_map=payout_map)
         except Exception:

@@ -28,20 +28,22 @@ def _money(value):
 def _child_school(child):
     if child.school:
         return child.school
-    first = (child.name or "").split()[0]
-    app = (
-        EnrollmentApplication.objects.filter(portal_family=child.family, student_first_name__iexact=first)
-        .order_by("-submitted_at")
-        .first()
-    )
-    return (app.student_school if app else "") or ""
+    first = (child.name or "").split()[0].casefold()
+    family = getattr(child, "family", None)
+    if not family:
+        return ""
+    apps = list(family.enrollment_applications.all())
+    for app in apps:
+        if (app.student_first_name or "").casefold() == first:
+            return (app.student_school or "") or ""
+    return ""
 
 
 def _active_children():
     return (
         PortalChild.objects.filter(is_active=True)
         .select_related("family", "family__unit", "unit")
-        .prefetch_related("scholarships__fund")
+        .prefetch_related("scholarships__fund", "family__enrollment_applications")
         .order_by("family__name", "name")
     )
 
@@ -251,10 +253,13 @@ def payment_report_rows(filters=None):
     end = parse_date(filters.get("end") or "")
     rows = []
     seen_keys = set()
+    from django.db.models import Prefetch
+
     from .processing_fees import backfill_stripe_fee_totals, payment_charged_totals
 
-    payments = PortalPayment.objects.select_related("family", "family__unit").order_by("-paid_at", "-created_at")
-    backfill_stripe_fee_totals(payments)
+    payments = PortalPayment.objects.select_related("family", "family__unit").prefetch_related(
+        Prefetch("family__children", queryset=PortalChild.objects.filter(is_active=True))
+    ).order_by("-paid_at", "-created_at")
     if unit:
         payments = payments.filter(family__unit__slug=unit)
     if query:
@@ -264,15 +269,17 @@ def payment_report_rows(filters=None):
             | Q(dropin_child__icontains=query)
             | Q(method_label__icontains=query)
         )
+    if start:
+        payments = payments.filter(Q(paid_at__date__gte=start) | Q(paid_at__isnull=True, created_at__date__gte=start))
+    if end:
+        payments = payments.filter(Q(paid_at__date__lte=end) | Q(paid_at__isnull=True, created_at__date__lte=end))
+    payments = list(payments)
+    backfill_stripe_fee_totals(payments)
     for payment in payments:
         if is_placeholder_unit(payment.family.unit):
             continue
         paid_on = (payment.paid_at.date() if payment.paid_at else payment.created_at.date()) if payment.paid_at or payment.created_at else None
-        if start and paid_on and paid_on < start:
-            continue
-        if end and paid_on and paid_on > end:
-            continue
-        children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
+        children = [child.name for child in payment.family.children.all() if child.is_active]
         child = payment.dropin_child or (" · ".join(children) if children else "—")
         _tuition, fee, charged = payment_charged_totals(payment)
         key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
@@ -391,7 +398,7 @@ def _settlement_payment_row(payment):
     from .stripe_services import bank_status_label
 
     paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
-    children = list(payment.family.children.filter(is_active=True).values_list("name", flat=True))
+    children = [child.name for child in payment.family.children.all() if child.is_active]
     child = payment.dropin_child or (" · ".join(children) if children else "—")
     _tuition, fee, charged = payment_charged_totals(payment)
     if _payment_already_paid_out(payment):
@@ -483,11 +490,13 @@ def stripe_settlement_rows(filters=None):
     start = parse_date(filters.get("start") or "")
     end = parse_date(filters.get("end") or "")
     status_filter = (filters.get("status") or "").strip()
+    from django.db.models import Prefetch
+
     payments = [
         payment
-        for payment in PortalPayment.objects.select_related("family", "family__unit").order_by(
-            "-paid_at", "-created_at"
-        )
+        for payment in PortalPayment.objects.select_related("family", "family__unit")
+        .prefetch_related(Prefetch("family__children", queryset=PortalChild.objects.filter(is_active=True)))
+        .order_by("-paid_at", "-created_at")
         if not is_placeholder_unit(payment.family.unit)
     ]
     stripe_payments = [payment for payment in payments if _is_stripe_card_payment(payment)]

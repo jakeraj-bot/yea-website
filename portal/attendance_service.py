@@ -1,15 +1,12 @@
 from datetime import date, datetime, time
-from decimal import Decimal
 
 from django.utils.dateparse import parse_date, parse_time
 
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram, PortalUnit
 from .unit_visibility import (
-    application_belongs_to_unit,
     child_belongs_to_unit,
     children_for_unit,
     families_qs_for_unit,
-    unit_label_for_child,
 )
 
 
@@ -229,64 +226,10 @@ def undo_absent(child_id, program, attendance_date):
 
 
 def families_for_staff(unit):
-    from enrollment.application_review import repair_family_units_from_applications
-    from enrollment.models import EnrollmentApplication
-    from enrollment.portal_integration import family_display_label
+    from .family_list import live_family_child_rows, prefetch_family_table_queryset
 
-    from .family_list import child_balance_map, expand_family_record, sort_family_child_rows
-
-    repair_family_units_from_applications()
-    families = families_qs_for_unit(unit).prefetch_related("children", "children__unit").order_by("name")
-    rows = []
-    for family in families:
-        balances = child_balance_map(family)
-        active_children = [
-            child
-            for child in family.children.filter(is_active=True).order_by("name")
-            if not unit or child_belongs_to_unit(child, unit)
-        ]
-        enrolled_lower = {child.name.lower() for child in active_children}
-        children_specs = []
-        for child in active_children:
-            unit_name, unit_slug = unit_label_for_child(child)
-            children_specs.append(
-                {
-                    "name": child.name,
-                    "child_id": child.pk,
-                    "school": child.school or "—",
-                    "balance": balances.get(child.name, Decimal("0")),
-                    "unit": unit_name,
-                    "unit_slug": unit_slug,
-                }
-            )
-        for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
-            child_name = f"{app.student_first_name} {app.student_last_name}".strip()
-            if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
-                continue
-            if unit and not application_belongs_to_unit(app, unit):
-                continue
-            children_specs.append(
-                {
-                    "name": child_name,
-                    "application_id": app.pk,
-                    "school": app.student_school or "—",
-                    "balance": balances.get(child_name, Decimal("0")),
-                }
-            )
-        if not children_specs:
-            continue
-        base_row = {
-            "id": family.pk,
-            "slug": family.slug,
-            "name": family_display_label(family),
-            "primary_contact": family.primary_contact,
-            "program": family.program_label,
-            "billing_type": family.billing_type,
-            "status": "Suspended" if family.is_suspended else family.status,
-            "has_application": family.enrollment_applications.exists(),
-        }
-        rows.extend(expand_family_record(base_row, children_specs, family.balance))
-    return sort_family_child_rows(rows)
+    families = prefetch_family_table_queryset(families_qs_for_unit(unit).order_by("name"))
+    return live_family_child_rows(families, staff_unit=unit)
 
 
 def attendance_redirect(request, attendance_date, extra_query=""):

@@ -70,11 +70,15 @@ def portal_switch_flags(user):
 def get_staff_account(user):
     if not user.is_authenticated:
         return None
-    return (
+    if hasattr(user, "_yea_staff_account"):
+        return user._yea_staff_account
+    account = (
         PortalStaffAccount.objects.filter(user=user, is_active=True)
         .select_related("unit", "user")
         .first()
     )
+    user._yea_staff_account = account
+    return account
 
 
 def is_portal_admin(user):
