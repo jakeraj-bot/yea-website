@@ -148,8 +148,15 @@ def preview_weeks(start, end, weekly_agency=None, weekly_parent=None):
     return rows
 
 
-def parent_charge_periods(profile, plan):
+def parent_charge_periods(profile, plan, start_from=None):
+    """Group parent copay weeks. start_from skips unposted weeks that ended earlier.
+
+    Used so bi-weekly can begin on the date staff typed instead of the
+    contract start when the child or program starts later.
+    """
     weeks = list(profile.contract_weeks.order_by("week_start"))
+    if start_from:
+        weeks = [week for week in weeks if week.parent_posted or week.week_end >= start_from]
     periods = []
     for group in group_weeks_for_cadence(weeks, plan):
         start = group[0].week_start
@@ -210,6 +217,28 @@ def next_thursday_after(on_date):
     return nxt
 
 
+def parent_period_for_biweekly_from_date(profile, plan, start_from):
+    """Next unposted bi-weekly copay window starting from start_from.
+
+    Ignores contract weeks that ended before the entered start/post date so a
+    late-starting child is not billed from the authorization range.
+    """
+    weeks = [
+        week
+        for week in profile.contract_weeks.order_by("week_start")
+        if not week.parent_posted and week.week_end >= start_from
+    ]
+    if not weeks:
+        return None
+    return _period_from_remaining_weeks(weeks[:2])
+
+
+def next_biweekly_charge_date(current):
+    if not current:
+        return None
+    return current + timedelta(days=14)
+
+
 def parent_period_for_weekly_thursday_post(profile, plan, post_date):
     """Next unposted weekly period that Thursday-for-next-week would charge.
 
@@ -227,8 +256,8 @@ def parent_period_for_weekly_thursday_post(profile, plan, post_date):
     return None
 
 
-def typical_parent_period_amount(profile, plan):
-    periods = parent_charge_periods(profile, plan)
+def typical_parent_period_amount(profile, plan, start_from=None):
+    periods = parent_charge_periods(profile, plan, start_from=start_from)
     if not periods:
         return profile.weekly_copay or ZERO
     for period in periods:

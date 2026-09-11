@@ -104,10 +104,14 @@
               <option value="Monthly" {% if 'onth' in child.plan %}selected{% endif %}>Monthly</option>
             </select>
           </div>
-          <p class="form-note">Weekly copay posts every Thursday for the next school week. Check Post today to put a charge on the family ledger right now.</p>
+          <div class="form-group portal-form-full">
+            <label for="fourcs-start-{{ child.child_id }}">First charge date</label>
+            <input id="fourcs-start-{{ child.child_id }}" name="next_charge_date" type="date" class="portal-input" value="{{ child.next_charge_date|default:'' }}">
+          </div>
+          <p class="form-note">Weekly copay posts every Thursday for the next school week. Bi-weekly starts on the first charge date you type, then every two weeks — not the contract start. Check Post today to put a charge on the family ledger right now.</p>
           <div class="form-group portal-form-full">
             <label class="portal-check-label">
-              <input type="checkbox" name="post_today" value="on">
+              <input type="checkbox" name="post_today" value="on" data-fourcs-post-today>
               Post today
             </label>
           </div>
@@ -126,7 +130,7 @@
     {% if portal_area == 'admin' %}
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2>Edit billing plan</h2>
-      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week.</p>
+      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="admin">
@@ -381,6 +385,17 @@
   document.getElementById("plan-next-charge")?.addEventListener("change", syncRepeatFromDate);
   document.getElementById("plan-name")?.addEventListener("change", togglePlanRepeat);
   document.getElementById("plan-type")?.addEventListener("change", toggleScholarshipFields);
+  document.querySelectorAll("[data-fourcs-post-today]").forEach(function (box) {
+    box.addEventListener("change", function () {
+      if (!box.checked || !box.form) return;
+      var dateInput = box.form.querySelector("[name=next_charge_date]");
+      if (!dateInput) return;
+      var today = new Date();
+      var month = String(today.getMonth() + 1).padStart(2, "0");
+      var day = String(today.getDate()).padStart(2, "0");
+      dateInput.value = today.getFullYear() + "-" + month + "-" + day;
+    });
+  });
   togglePlanRepeat();
   toggleScholarshipFields();
 })();

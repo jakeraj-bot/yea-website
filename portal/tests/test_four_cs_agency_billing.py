@@ -13,7 +13,9 @@ from portal.agency_weeks import (
     most_recent_thursday,
     next_thursday_after,
     next_thursday_on_or_after,
+    next_biweekly_charge_date,
     parent_charge_periods,
+    parent_period_for_biweekly_from_date,
     parent_period_for_weekly_thursday_post,
     period_parent_total,
     school_weeks_in_range,
@@ -333,6 +335,138 @@ class WeeklyFourCsThursdayPostTests(TestCase):
         self.assertEqual(billing.status_code, 200)
         self.assertContains(billing, "26.50")
         self.assertContains(billing, "9/14/26")
+
+
+class BiweeklyFourCsStartDateTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="rivera", name="Rivera", billing_type="4Cs", status="Active"
+        )
+        self.child = PortalChild.objects.create(
+            family=self.family, name="Ada Rivera", is_active=True, billing_plan="Bi-weekly"
+        )
+        self.profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 25),
+            daily_copay="5.30",
+            daily_agency_rate="22.00",
+        )
+        User = get_user_model()
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+
+    def _login_admin(self):
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "admin"
+        session.save()
+
+    def test_biweekly_window_starts_on_entered_date_not_contract(self):
+        self.assertEqual(next_biweekly_charge_date(date(2026, 9, 14)), date(2026, 9, 28))
+        period = parent_period_for_biweekly_from_date(self.profile, "Bi-weekly", date(2026, 9, 14))
+        self.assertEqual(period["start"], date(2026, 9, 14))
+        self.assertEqual(period["end"], date(2026, 9, 25))
+        self.assertEqual(period["amount"], Decimal("53.00"))
+        self.assertNotEqual(period["start"], date(2026, 9, 1))
+
+    def test_entered_start_skips_earlier_contract_weeks(self):
+        start = date(2026, 9, 14)
+        with patch("portal.billing_services.timezone.localdate", return_value=start):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Bi-weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=start,
+            )
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, start)
+        self.assertEqual(entry.amount, Decimal("53.00"))
+        self.assertIn("9/14/26", entry.description)
+        self.assertNotIn("9/1/26", entry.description)
+        self.assertFalse(
+            PortalLedgerEntry.objects.filter(family=self.family, amount=Decimal("110.00")).exists()
+        )
+        child.refresh_from_db()
+        self.assertEqual(child.next_charge_date, date(2026, 9, 28))
+        first_week = self.profile.contract_weeks.get(week_start=date(2026, 9, 1))
+        first_week.refresh_from_db()
+        self.assertFalse(first_week.parent_posted)
+
+    def test_future_entered_date_does_not_post(self):
+        today = date(2026, 9, 11)
+        start = date(2026, 9, 21)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Bi-weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=start,
+            )
+        self.assertEqual(posted, [])
+        self.assertFalse(PortalLedgerEntry.objects.filter(family=self.family).exists())
+        child.refresh_from_db()
+        self.assertEqual(child.next_charge_date, start)
+
+    def test_biweekly_repeats_every_two_weeks_from_entered_date(self):
+        start = date(2026, 9, 14)
+        self.child.auto_charge = True
+        self.child.billing_plan = "Bi-weekly"
+        self.child.next_charge_date = start
+        self.child.billing_amount = Decimal("53.00")
+        self.child.save()
+        posted = run_due_plan_charges(today=start, child=self.child)
+        self.assertTrue(posted)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.next_charge_date, date(2026, 9, 28))
+        later = run_due_plan_charges(today=date(2026, 9, 21), child=self.child)
+        self.assertEqual(later, [])
+        self.assertEqual(PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").count(), 1)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_form_uses_typed_biweekly_start_date(self):
+        self._login_admin()
+        today = date(2026, 9, 11)
+        start = date(2026, 9, 14)
+        with patch("portal.billing_services.timezone.localdate", return_value=today), patch(
+            "portal.views_actions.timezone.localdate", return_value=today
+        ):
+            plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}))
+            self.assertContains(plans, "First charge date")
+            self.assertContains(plans, "every two weeks")
+            response = self.client.post(
+                reverse("portal_staff_billing_action", kwargs={"family_slug": "rivera"}),
+                {
+                    "portal_area": "admin",
+                    "action": "update_4cs_plan",
+                    "child_name": "Ada Rivera",
+                    "billing_plan": "Bi-weekly",
+                    "auto_charge": "on",
+                    "next_charge_date": start.isoformat(),
+                    "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}),
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(PortalLedgerEntry.objects.filter(family=self.family).exists())
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.next_charge_date, start)
+        self.assertEqual(self.child.billing_plan, "Bi-weekly")
 
 
 class AgencyReceivedCheckboxTests(TestCase):
