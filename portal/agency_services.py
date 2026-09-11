@@ -296,20 +296,38 @@ def posted_weeks_from_form(data):
     ends = data.getlist("week_end") if hasattr(data, "getlist") else data.get("week_end") or []
     agency_amounts = data.getlist("week_agency") if hasattr(data, "getlist") else data.get("week_agency") or []
     parent_amounts = data.getlist("week_parent") if hasattr(data, "getlist") else data.get("week_parent") or []
+    includes_posted = False
+    if hasattr(data, "get"):
+        includes_posted = data.get("week_includes_posted") == "1"
+    agency_included = set()
+    parent_included = set()
+    if includes_posted:
+        agency_raw = data.getlist("week_agency_included") if hasattr(data, "getlist") else data.get("week_agency_included") or []
+        parent_raw = data.getlist("week_parent_included") if hasattr(data, "getlist") else data.get("week_parent_included") or []
+        for raw in agency_raw:
+            parsed = parse_date(str(raw or "").strip())
+            if parsed:
+                agency_included.add(parsed)
+        for raw in parent_raw:
+            parsed = parse_date(str(raw or "").strip())
+            if parsed:
+                parent_included.add(parsed)
     rows = []
     for index, start_raw in enumerate(starts):
         week_start = parse_date(str(start_raw or "").strip())
         week_end = parse_date(str(ends[index] if index < len(ends) else "").strip()) if ends else None
         if not week_start:
             continue
-        rows.append(
-            {
-                "week_start": week_start,
-                "week_end": week_end,
-                "agency_amount": parse_money(agency_amounts[index] if index < len(agency_amounts) else "0"),
-                "parent_amount": parse_money(parent_amounts[index] if index < len(parent_amounts) else "0"),
-            }
-        )
+        row = {
+            "week_start": week_start,
+            "week_end": week_end,
+            "agency_amount": parse_money(agency_amounts[index] if index < len(agency_amounts) else "0"),
+            "parent_amount": parse_money(parent_amounts[index] if index < len(parent_amounts) else "0"),
+        }
+        if includes_posted:
+            row["agency_included"] = week_start in agency_included
+            row["parent_included"] = week_start in parent_included
+        rows.append(row)
     return rows
 
 

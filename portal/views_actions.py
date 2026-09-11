@@ -858,6 +858,21 @@ def admin_checkin_save(request):
 
 @admin_login_required_post
 @require_POST
+def admin_program_calendar_save(request):
+    from .agency_weeks import save_program_calendar
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="program-calendar")
+    try:
+        save_program_calendar(request.POST)
+        messages.success(request, "Program calendar saved.")
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_admin_page", page="program-calendar")
+
+
+@admin_login_required_post
+@require_POST
 def admin_policy_create(request):
     from .admin_config import create_org_policy
 
@@ -1351,6 +1366,15 @@ def staff_billing_action(request, family_slug):
             )
             messages.success(request, "Refund sent and the family balance was updated.")
         elif action == "update_4cs_plan":
+            from .agency_weeks import apply_week_includes_from_form
+            from .billing_services import agency_profile_for
+
+            named = request.POST.get("child_name", "").strip()
+            plan_child = family.children.filter(name=named).first() if named else None
+            if plan_child:
+                profile = agency_profile_for(plan_child)
+                if profile:
+                    apply_week_includes_from_form(profile, request.POST)
             next_charge_date = parse_date(request.POST.get("next_charge_date") or "") or None
             if request.POST.get("post_today") == "on":
                 next_charge_date = timezone.localdate()

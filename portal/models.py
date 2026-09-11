@@ -478,6 +478,10 @@ class PortalAgencyContractWeek(models.Model):
     received_at = models.DateTimeField(null=True, blank=True)
     parent_posted = models.BooleanField(default=False)
     parent_posted_on = models.DateField(null=True, blank=True)
+    parent_included = models.BooleanField(default=True)
+    agency_included = models.BooleanField(default=True)
+    parent_included_overridden = models.BooleanField(default=False)
+    agency_included_overridden = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["week_start"]
@@ -823,6 +827,28 @@ class PortalFieldTripSignup(models.Model):
 
     def __str__(self):
         return f"{self.child.name} · {self.trip.title}"
+
+
+class PortalProgramCalendar(models.Model):
+    """Organization program calendar. One row is used.
+
+    4Cs contracts still start on each child's authorization dates. Parent
+    copay weeks follow program_start and skip full days off.
+    """
+
+    program_start = models.DateField(null=True, blank=True)
+    days_off = models.JSONField(default=list, blank=True)
+    half_days = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Program calendar"
+        verbose_name_plural = "Program calendar"
+
+    def __str__(self):
+        if self.program_start:
+            return f"Program calendar · starts {self.program_start.isoformat()}"
+        return "Program calendar"
 
 
 class PortalDropOffSettings(models.Model):

@@ -69,6 +69,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("cannot look up the current password", bodies)
         self.assertIn("copy the new temporary password once", bodies)
 
+    def test_program_calendar_guide_explains_two_calendars(self):
+        guide = guide_for("program-calendar")
+        self.assertIsNotNone(guide)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("9/8/2026", bodies)
+        self.assertIn("4Cs", bodies)
+        self.assertIn("half days", bodies.lower())
+
     def test_member_accounts_guide_explains_password_reset(self):
         guide = guide_for("billing-settings")
         self.assertIsNotNone(guide)

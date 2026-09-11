@@ -11,7 +11,7 @@
       {% if editing %}Edit agency{% else %}Add agency{% endif %}
     </p>
     <h1>{% if editing %}Edit agency{% else %}Add agency{% endif %}{% if form.child_name %} — {{ form.child_name }}{% endif %}</h1>
-    <p class="lead">Set the contract, what the agency pays YEA, and what the parent pays (copay). Parent weeks feed the billing plan. Agency weeks stay on the 4Cs tab.</p>
+    <p class="lead">Set the contract, what the agency pays YEA, and what the parent pays (copay). 4Cs still pays from these contract dates. Parent weeks follow the program start in Settings → Program calendar. Uncheck a week to keep it off the post list.</p>
   </div>
 </section>
 <section class="page-content">
@@ -86,23 +86,31 @@
           </div>
         </div>
         <h3>Weeks in this contract</h3>
+        <p class="form-note">Check the weeks 4Cs should pay. Uncheck a week to leave it off the agency post list.</p>
+        <input type="hidden" name="week_includes_posted" value="1">
         <div class="portal-table-wrap">
           <table class="portal-table" id="agency-week-table">
             <thead>
-              <tr><th>Week</th><th>Agency amount</th></tr>
+              <tr><th>Post</th><th>Week</th><th>Agency amount</th></tr>
             </thead>
             <tbody id="agency-week-body">
               {% for week in form.weeks %}
               <tr>
+                <td>
+                  <label class="portal-check-label">
+                    <input type="checkbox" name="week_agency_included" value="{{ week.week_start }}" class="week-agency-include" data-start="{{ week.week_start }}"{% if week.agency_included != False %} checked{% endif %}>
+                    Include
+                  </label>
+                </td>
                 <td>{{ week.label }}</td>
                 <td>
                   <input type="hidden" name="week_start" value="{{ week.week_start }}">
                   <input type="hidden" name="week_end" value="{{ week.week_end }}">
-                  <input type="text" name="week_agency" class="portal-input portal-input-sm week-agency-amount" value="{{ week.agency_amount }}" aria-label="Agency amount for {{ week.label }}">
+                  <input type="text" name="week_agency" class="portal-input portal-input-sm week-agency-amount" data-start="{{ week.week_start }}" value="{{ week.agency_amount }}" aria-label="Agency amount for {{ week.label }}">
                 </td>
               </tr>
               {% empty %}
-              <tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
+              <tr class="week-empty"><td colspan="3">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -111,7 +119,7 @@
 
       <section class="card portal-rate-section">
         <h2>What the parent pays YEA (copay)</h2>
-        <p class="form-note">Same weeks. The billing plan uses only these copay amounts — never the agency section.</p>
+        <p class="form-note">Same contract weeks, but parent charges follow program start (Settings → Program calendar). Uncheck a week to skip it on the family bill. Weekly copay amount does not change for half days.</p>
         <div class="portal-form-grid">
           <div class="form-group">
             <label for="daily-copay">Daily copay</label>
@@ -126,18 +134,24 @@
         <div class="portal-table-wrap">
           <table class="portal-table" id="parent-week-table">
             <thead>
-              <tr><th>Week</th><th>Parent copay</th></tr>
+              <tr><th>Charge</th><th>Week</th><th>Parent copay</th></tr>
             </thead>
             <tbody id="parent-week-body">
               {% for week in form.weeks %}
               <tr>
-                <td>{{ week.label }}</td>
                 <td>
-                  <input type="text" name="week_parent" class="portal-input portal-input-sm week-parent-amount" value="{{ week.parent_amount }}" aria-label="Parent copay for {{ week.label }}">
+                  <label class="portal-check-label">
+                    <input type="checkbox" name="week_parent_included" value="{{ week.week_start }}" class="week-parent-include" data-start="{{ week.week_start }}"{% if week.parent_included != False %} checked{% endif %}>
+                    Include
+                  </label>
+                </td>
+                <td>{{ week.parent_label|default:week.label }}</td>
+                <td>
+                  <input type="text" name="week_parent" class="portal-input portal-input-sm week-parent-amount" data-start="{{ week.week_start }}" value="{{ week.parent_amount }}" aria-label="Parent copay for {{ week.parent_label|default:week.label }}">
                 </td>
               </tr>
               {% empty %}
-              <tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
+              <tr class="week-empty"><td colspan="3">Pick contract dates to list school weeks (Monday–Friday).</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -181,6 +195,8 @@
   var parentWeeklyTouched = document.getElementById("weekly-parent-overridden").value === "on";
   var agencyWeekTouched = {};
   var parentWeekTouched = {};
+  var agencyIncludeTouched = {};
+  var parentIncludeTouched = {};
   var previewSeq = 0;
   document.querySelectorAll(".week-agency-amount").forEach(function (input) {
     var start = input.closest("tr").querySelector('input[name="week_start"]');
@@ -200,8 +216,8 @@
     var parentBody = document.getElementById("parent-week-body");
     if (!agencyBody || !parentBody) return;
     if (!weeks.length) {
-      agencyBody.innerHTML = '<tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
-      parentBody.innerHTML = '<tr class="week-empty"><td colspan="2">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
+      agencyBody.innerHTML = '<tr class="week-empty"><td colspan="3">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
+      parentBody.innerHTML = '<tr class="week-empty"><td colspan="3">Pick contract dates to list school weeks (Monday–Friday).</td></tr>';
       return;
     }
     agencyBody.innerHTML = "";
@@ -211,14 +227,21 @@
       var parentAmt = parentWeekTouched[week.week_start] ? week.parent_amount : week.parent_amount;
       if (!agencyWeekTouched[week.week_start]) agencyAmt = weeklyAgency;
       if (!parentWeekTouched[week.week_start]) parentAmt = weeklyParent;
+      var agencyOn = Object.prototype.hasOwnProperty.call(agencyIncludeTouched, week.week_start)
+        ? agencyIncludeTouched[week.week_start]
+        : week.agency_included !== false;
+      var parentOn = Object.prototype.hasOwnProperty.call(parentIncludeTouched, week.week_start)
+        ? parentIncludeTouched[week.week_start]
+        : week.parent_included !== false;
+      var parentLabel = week.parent_label || label(week.week_start, week.week_end);
       var aRow = document.createElement("tr");
-      aRow.innerHTML = '<td>' + label(week.week_start, week.week_end) + '</td><td>' +
+      aRow.innerHTML = '<td><label class="portal-check-label"><input type="checkbox" name="week_agency_included" value="' + week.week_start + '" class="week-agency-include" data-start="' + week.week_start + '"' + (agencyOn ? ' checked' : '') + '> Include</label></td><td>' + label(week.week_start, week.week_end) + '</td><td>' +
         '<input type="hidden" name="week_start" value="' + week.week_start + '">' +
         '<input type="hidden" name="week_end" value="' + week.week_end + '">' +
         '<input type="text" name="week_agency" class="portal-input portal-input-sm week-agency-amount" data-start="' + week.week_start + '" value="' + fmt(agencyAmt) + '"></td>';
       agencyBody.appendChild(aRow);
       var pRow = document.createElement("tr");
-      pRow.innerHTML = '<td>' + label(week.week_start, week.week_end) + '</td><td>' +
+      pRow.innerHTML = '<td><label class="portal-check-label"><input type="checkbox" name="week_parent_included" value="' + week.week_start + '" class="week-parent-include" data-start="' + week.week_start + '"' + (parentOn ? ' checked' : '') + '> Include</label></td><td>' + parentLabel + '</td><td>' +
         '<input type="text" name="week_parent" class="portal-input portal-input-sm week-parent-amount" data-start="' + week.week_start + '" value="' + fmt(parentAmt) + '"></td>';
       parentBody.appendChild(pRow);
     });
@@ -233,6 +256,16 @@
     document.querySelectorAll(".week-parent-amount").forEach(function (input) {
       input.addEventListener("input", function () {
         parentWeekTouched[input.getAttribute("data-start") || ""] = true;
+      });
+    });
+    document.querySelectorAll(".week-agency-include").forEach(function (input) {
+      input.addEventListener("change", function () {
+        agencyIncludeTouched[input.getAttribute("data-start") || ""] = input.checked;
+      });
+    });
+    document.querySelectorAll(".week-parent-include").forEach(function (input) {
+      input.addEventListener("change", function () {
+        parentIncludeTouched[input.getAttribute("data-start") || ""] = input.checked;
       });
     });
   }

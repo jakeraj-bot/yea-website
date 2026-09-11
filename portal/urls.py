@@ -366,6 +366,11 @@ urlpatterns = [
     path("admin/processing-fee/delete/", views_actions.admin_processing_fee_delete, name="portal_admin_processing_fee_delete"),
     path("admin/tax-settings/save/", views_actions.admin_tax_settings_save, name="portal_admin_tax_settings_save"),
     path("admin/checkin/save/", views_actions.admin_checkin_save, name="portal_admin_checkin_save"),
+    path(
+        "admin/program-calendar/save/",
+        views_actions.admin_program_calendar_save,
+        name="portal_admin_program_calendar_save",
+    ),
     path("admin/staff/edit/", views_actions.admin_staff_edit, name="portal_admin_staff_edit"),
     path("admin/staff/delete/", views_actions.admin_staff_delete, name="portal_admin_staff_delete"),
     path("admin/parent/delete/", views_actions.admin_parent_delete, name="portal_admin_parent_delete"),

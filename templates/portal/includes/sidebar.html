@@ -139,12 +139,13 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-settings"{% if admin_page_slug == 'billing-settings' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'drop-off' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-settings"{% if admin_page_slug == 'billing-settings' or admin_page_slug == 'billing-permissions' or admin_page_slug == 'drop-off' or admin_page_slug == 'program-calendar' %} open{% endif %}>
       <summary class="portal-nav-group-label">Settings</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-accounts{% if admin_page_slug == 'billing-settings' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-settings' %}" title="Member accounts">Member accounts</a></li>
         <li><a class="portal-nav-link portal-nav-admin-permissions{% if admin_page_slug == 'billing-permissions' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='billing-permissions' %}" title="Billing permissions">Billing permissions</a></li>
         <li><a class="portal-nav-link portal-nav-admin-dropoff{% if admin_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='drop-off' %}" title="Drop-off">Drop-off</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-calendar{% if admin_page_slug == 'program-calendar' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='program-calendar' %}" title="Program calendar">Program calendar</a></li>
       </ul>
     </details>
 
