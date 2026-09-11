@@ -645,6 +645,55 @@ class FamilyListPagerFilterTests(TestCase):
         self.assertNotIn("zoe", (next_page.context["family_prev"] or {}).get("slug", ""))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_search_filter_opens_third_child_as_three_of_n(self):
+        self._login(self.admin, "admin")
+        cara = self.families_18[2]
+        cara_child = cara.children.get()
+        response = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "cara"}),
+            {
+                "id": cara.pk,
+                "child_id": cara_child.pk,
+                "child": "Cara Diaz",
+                "q": "Diaz",
+                "list": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["family_nav_index"], 1)
+        self.assertEqual(response.context["family_nav_count"], 1)
+        self.assertContains(response, "1 of 1")
+        self.assertContains(response, "portal-family-pager")
+        self.assertIsNone(response.context["family_next"])
+        self.assertIsNone(response.context["family_prev"])
+
+        quill_rows = []
+        for slug, child_name in (("quin-a", "Ada Quill"), ("quin-b", "Bea Quill"), ("quin-c", "Cy Quill")):
+            family = PortalFamily.objects.create(
+                unit=self.school_18, slug=slug, name="Quill", status="Active"
+            )
+            child = family.children.create(name=child_name, school="Paterson School 18", is_active=True)
+            quill_rows.append((family, child))
+        _middle_family, middle_child = quill_rows[1]
+        searched = self.client.get(
+            reverse("portal_admin_family_detail", kwargs={"family_slug": "quin-b"}),
+            {
+                "id": middle_child.family_id,
+                "child_id": middle_child.pk,
+                "child": "Bea Quill",
+                "q": "Quill",
+                "list": "1",
+            },
+        )
+        self.assertEqual(searched.status_code, 200)
+        self.assertEqual(searched.context["family_nav_count"], 3)
+        self.assertEqual(searched.context["family_nav_index"], 2)
+        self.assertContains(searched, "2 of 3")
+        self.assertEqual(searched.context["family_prev"]["name"], "Ada Quill")
+        self.assertEqual(searched.context["family_next"]["name"], "Cy Quill")
+        self.assertIn("q=Quill", searched.context["family_next"]["url"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_unfiltered_pager_includes_every_visible_child(self):
         self._login(self.admin, "admin")
         cara = self.families_18[2]
