@@ -1,0 +1,39 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Program calendar</h1>
+    <p class="lead">When YEA is open for parents, plus days off and half days. This is separate from 4Cs contract dates.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card portal-collapse-skip">
+      <p><strong>Two calendars.</strong> 4Cs still pays from each child’s contract start (for example 9/1/2026) on the agency form. Parents are billed from the program start date below. Example: program starts 9/8/2026 — a bi-weekly parent copay covers 9/8/2026–9/18/2026, not 9/1–9/11. 4Cs still includes the week of 9/1.</p>
+    </div>
+
+    <section class="card portal-collapse-skip" style="margin-top:1.25rem;">
+      <h2>Program dates</h2>
+      <p class="form-note">One date per line for days off and half days. Use 9/8/2026 or 2026-09-08. Half days are stored here; they do not change the weekly copay amount.</p>
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_calendar_save' %}{% else %}#{% endif %}" class="portal-form-grid">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <div class="form-group">
+          <label for="program-start">Program start date</label>
+          <input id="program-start" type="date" name="program_start" class="portal-input" value="{{ calendar.program_start }}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="days-off">Days off (full closures)</label>
+          <textarea id="days-off" name="days_off" class="portal-input" rows="6" placeholder="11/26/2026">{{ calendar.days_off }}</textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="half-days">Half days</label>
+          <textarea id="half-days" name="half_days" class="portal-input" rows="4" placeholder="11/25/2026">{{ calendar.half_days }}</textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save program calendar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</section>
+{% endblock %}

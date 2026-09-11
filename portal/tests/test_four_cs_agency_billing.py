@@ -9,6 +9,8 @@ from django.urls import reverse
 from portal.agency_services import save_agency_member
 from portal.agency_weeks import (
     FOUR_CS_WEEKLY_POST_WEEKDAY,
+    apply_week_includes,
+    get_program_calendar,
     mark_agency_week_received,
     most_recent_thursday,
     next_thursday_after,
@@ -23,15 +25,16 @@ from portal.agency_weeks import (
     week_monday_covered_by_thursday,
     weekly_from_daily,
 )
-from portal.billing_services import run_due_plan_charges, update_child_billing_plan
 from portal.models import (
     PortalAgencyProfile,
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
+    PortalProgramCalendar,
     PortalStaffAccount,
     PortalUnit,
 )
+from portal.billing_services import run_due_plan_charges, update_child_billing_plan
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 
 
@@ -659,3 +662,166 @@ class WaitingAuthorizationAddAgencyTests(TestCase):
             Decimal("10.00"),
         )
         self.assertEqual(profile.contract_weeks.count(), 5)
+
+
+class ProgramCalendarFourCsTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="rivera", name="Rivera", billing_type="4Cs", status="Active"
+        )
+        self.child = PortalChild.objects.create(
+            family=self.family, name="Ada Rivera", is_active=True, billing_plan="Bi-weekly"
+        )
+        calendar = get_program_calendar()
+        calendar.program_start = date(2026, 9, 8)
+        calendar.days_off = ["2026-11-26"]
+        calendar.half_days = ["2026-11-25"]
+        calendar.save()
+        self.profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 25),
+            daily_copay="5.30",
+            daily_agency_rate="22.00",
+        )
+        User = get_user_model()
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+
+    def _login_admin(self):
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "admin"
+        session.save()
+
+    def test_parent_biweekly_is_sept_8_to_18_agency_keeps_sept_1(self):
+        first = self.profile.contract_weeks.get(week_start=date(2026, 9, 1))
+        self.assertTrue(first.agency_included)
+        self.assertFalse(first.parent_included)
+        period = parent_period_for_biweekly_from_date(self.profile, "Bi-weekly", date(2026, 9, 1))
+        self.assertEqual(period["start"], date(2026, 9, 8))
+        self.assertEqual(period["end"], date(2026, 9, 18))
+        self.assertEqual(period["amount"], Decimal("53.00"))
+        self.assertEqual(period["label"], "9/8/26–9/18/26")
+        periods = parent_charge_periods(self.profile, "Bi-weekly")
+        self.assertEqual(periods[0]["start"], date(2026, 9, 8))
+        self.assertEqual(periods[0]["end"], date(2026, 9, 18))
+        starts = [week.week_start for week in self.profile.contract_weeks.order_by("week_start")]
+        self.assertIn(date(2026, 9, 1), starts)
+
+    def test_full_days_off_skip_parent_week(self):
+        calendar = get_program_calendar()
+        calendar.days_off = [
+            "2026-09-08",
+            "2026-09-09",
+            "2026-09-10",
+            "2026-09-11",
+        ]
+        calendar.save()
+        sync_contract_weeks(self.profile)
+        week = self.profile.contract_weeks.get(week_start=date(2026, 9, 7))
+        self.assertFalse(week.parent_included)
+        self.assertTrue(week.agency_included)
+        period = parent_period_for_biweekly_from_date(self.profile, "Bi-weekly", date(2026, 9, 1))
+        self.assertEqual(period["start"], date(2026, 9, 14))
+
+    def test_unchecking_parent_week_controls_what_posts(self):
+        apply_week_includes(
+            self.profile,
+            parent_starts=[date(2026, 9, 14), date(2026, 9, 21)],
+            agency_starts=[week.week_start for week in self.profile.contract_weeks.all()],
+        )
+        period = parent_period_for_biweekly_from_date(self.profile, "Bi-weekly", date(2026, 9, 1))
+        self.assertEqual(period["start"], date(2026, 9, 14))
+        self.assertEqual(period["end"], date(2026, 9, 25))
+        self.child.auto_charge = True
+        self.child.billing_plan = "Bi-weekly"
+        self.child.next_charge_date = date(2026, 9, 1)
+        self.child.save()
+        posted = run_due_plan_charges(today=date(2026, 9, 9), child=self.child)
+        self.assertTrue(posted)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertIn("9/14/26", entry.description)
+        self.assertNotIn("9/8/26", entry.description)
+        skipped = self.profile.contract_weeks.get(week_start=date(2026, 9, 7))
+        skipped.refresh_from_db()
+        self.assertFalse(skipped.parent_posted)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_settings_page_persists_program_start_and_days(self):
+        self._login_admin()
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "program-calendar"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Program start date")
+        self.assertContains(page, "Days off")
+        self.assertContains(page, "Half days")
+        self.assertContains(page, "4Cs still pays")
+        response = self.client.post(
+            reverse("portal_admin_program_calendar_save"),
+            {
+                "program_start": "2026-09-08",
+                "days_off": "11/26/2026\n12/24/2026",
+                "half_days": "11/25/2026",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        calendar = PortalProgramCalendar.objects.order_by("pk").first()
+        self.assertEqual(calendar.program_start, date(2026, 9, 8))
+        self.assertEqual(calendar.days_off, ["2026-11-26", "2026-12-24"])
+        self.assertEqual(calendar.half_days, ["2026-11-25"])
+        again = self.client.get(reverse("portal_admin_page", kwargs={"page": "program-calendar"}))
+        self.assertContains(again, "2026-09-08")
+        self.assertContains(again, "11/26/2026")
+        self.assertContains(again, "11/25/2026")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_form_can_change_which_weeks_post(self):
+        self._login_admin()
+        plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(plans.status_code, 200)
+        self.assertContains(plans, "Weeks to post")
+        self.assertContains(plans, "Charge parent")
+        self.assertContains(plans, "Agency pays")
+        today = date(2026, 9, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today), patch(
+            "portal.views_actions.timezone.localdate", return_value=today
+        ):
+            response = self.client.post(
+                reverse("portal_staff_billing_action", kwargs={"family_slug": "rivera"}),
+                {
+                    "portal_area": "admin",
+                    "action": "update_4cs_plan",
+                    "child_name": "Ada Rivera",
+                    "billing_plan": "Bi-weekly",
+                    "auto_charge": "on",
+                    "post_today": "on",
+                    "four_cs_weeks_posted": "1",
+                    "parent_week_include": ["2026-09-14", "2026-09-21"],
+                    "agency_week_include": [
+                        "2026-09-01",
+                        "2026-09-07",
+                        "2026-09-14",
+                        "2026-09-21",
+                    ],
+                    "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}),
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        week_sept_8 = self.profile.contract_weeks.get(week_start=date(2026, 9, 7))
+        week_sept_8.refresh_from_db()
+        self.assertFalse(week_sept_8.parent_included)
+        self.assertFalse(week_sept_8.parent_posted)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertIn("9/14/26", entry.description)
+        self.assertNotIn("9/8/26", entry.description)

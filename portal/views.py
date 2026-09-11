@@ -3624,6 +3624,7 @@ def admin_page(request, page):
         "drop-off-pickup": "portal/staff/drop_off_pickup.html",
         "attendance": "portal/staff/attendance.html",
         "checkin-settings": "portal/admin/checkin_settings.html",
+        "program-calendar": "portal/admin/program_calendar.html",
         "reports": "portal/admin/reports.html",
         "messages": "portal/messages/messages.html",
         "communications": "portal/admin/communications.html",
@@ -3887,6 +3888,10 @@ def admin_page(request, page):
         else:
             context["checkin_modes"] = CHECKIN_MODES
             context["checkin_units"] = UNITS
+    if page == "program-calendar":
+        from .agency_weeks import program_calendar_form
+
+        context["calendar"] = program_calendar_form()
     if page == "member-billing":
         unit_slug = request.GET.get("unit", "")
         charge_mode = request.GET.get("mode", "weekly_tuition")

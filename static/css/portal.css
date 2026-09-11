@@ -5304,3 +5304,23 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     width: 100%;
   }
 }
+
+.portal-week-pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.portal-week-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.portal-week-pick-label {
+  min-width: 9rem;
+  font-weight: 600;
+}

@@ -108,7 +108,28 @@
             <label for="fourcs-start-{{ child.child_id }}">First charge date</label>
             <input id="fourcs-start-{{ child.child_id }}" name="next_charge_date" type="date" class="portal-input" value="{{ child.next_charge_date|default:'' }}">
           </div>
-          <p class="form-note">Weekly copay posts every Thursday for the next school week. Bi-weekly starts on the first charge date you type, then every two weeks — not the contract start. Check Post today to put a charge on the family ledger right now.</p>
+          <p class="form-note">4Cs still pays from the contract date on the agency form. Parents bill from the program start in Settings → Program calendar. Example: program start 9/8 and a 9/1 contract — bi-weekly parent copay is 9/8/2026–9/18/2026, not 9/1–9/11, then every two weeks. Weekly copay still posts every Thursday for the next school week. Check Post today to put a charge on the family ledger right now.</p>
+          {% if child.four_cs_weeks %}
+          <div class="form-group portal-form-full">
+            <input type="hidden" name="four_cs_weeks_posted" value="1">
+            <p class="form-note"><strong>Weeks to post.</strong> Check parent to charge the family. Check agency to keep that week on the 4Cs bill. Uncheck a week to leave it off.</p>
+            <ul class="portal-week-pick-list">
+              {% for week in child.four_cs_weeks %}
+              <li class="portal-week-pick">
+                <span class="portal-week-pick-label">{{ week.parent_label }}{% if week.parent_label != week.label %} <span class="form-note">(agency {{ week.label }})</span>{% endif %}</span>
+                <label class="portal-check-label">
+                  <input type="checkbox" name="parent_week_include" value="{{ week.week_start }}"{% if week.parent_included %} checked{% endif %}>
+                  Charge parent
+                </label>
+                <label class="portal-check-label">
+                  <input type="checkbox" name="agency_week_include" value="{{ week.week_start }}"{% if week.agency_included %} checked{% endif %}>
+                  Agency pays
+                </label>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
           <div class="form-group portal-form-full">
             <label class="portal-check-label">
               <input type="checkbox" name="post_today" value="on" data-fourcs-post-today>

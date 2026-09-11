@@ -631,7 +631,7 @@ GUIDES = {
             },
             {
                 "title": "When bi-weekly starts",
-                "body": "Type the first charge date — the day this child or program actually starts. Bi-weekly charges begin then and repeat every two weeks. They do not start from an earlier contract week.",
+                "body": "Parents bill from the program start in Settings → Program calendar (for example 9/8/2026–9/18/2026), even when the 4Cs contract starts 9/1. You can also check or uncheck weeks on this plan so only the weeks you pick get posted.",
             },
         ],
     },
@@ -678,6 +678,24 @@ GUIDES = {
             {
                 "title": "Print the packet",
                 "body": "Use Print / Save PDF for files or an audit.",
+            },
+        ],
+    },
+    "program-calendar": {
+        "title": "How to use the program calendar",
+        "intro": "This is when YEA is open for parents. It is not the 4Cs contract date.",
+        "steps": [
+            {
+                "title": "Set the program start",
+                "body": "Parents are billed from this date. Example: program starts 9/8/2026 — they are not charged for 9/1–9/4 even when 4Cs pays from 9/1.",
+            },
+            {
+                "title": "Add days off and half days",
+                "body": "Full closures skip parent weeks that have no remaining school days. Half days are stored on this calendar and do not change the weekly copay amount.",
+            },
+            {
+                "title": "4Cs still follows the contract",
+                "body": "Each child’s agency form still uses the 4Cs authorization dates. Agency money stays on the 4Cs tab. Parent copay stays on family billing.",
             },
         ],
     },
