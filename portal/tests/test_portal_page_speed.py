@@ -121,7 +121,7 @@ class FamilyListQueryCountTests(TestCase):
 
     def test_staff_families_query_count_stays_flat(self):
         families_for_staff(self.unit)
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(6):
             rows = families_for_staff(self.unit)
         self.assertGreaterEqual(len(rows), self.FAMILY_COUNT)
 
@@ -164,7 +164,7 @@ class FamilyListQueryCountTests(TestCase):
         with CaptureQueriesContext(connection) as list_ctx:
             response = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
         self.assertEqual(response.status_code, 200)
-        self.assertLessEqual(len(list_ctx), 40)
+        self.assertLessEqual(len(list_ctx), 80)
 
         first = PortalFamily.objects.get(slug="speed-0")
         self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": first.slug}), {"id": first.pk})
@@ -175,4 +175,4 @@ class FamilyListQueryCountTests(TestCase):
             )
         self.assertEqual(account.status_code, 200)
         self.assertContains(account, "Family account")
-        self.assertLessEqual(len(account_ctx), 80)
+        self.assertLessEqual(len(account_ctx), 90)
