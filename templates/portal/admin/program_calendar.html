@@ -8,11 +8,11 @@
 </section>
 <section class="page-content">
   <div class="container">
-    <div class="portal-callout card">
+    <div class="portal-callout card portal-collapse-skip">
       <p><strong>Two calendars.</strong> 4Cs still pays from each child’s contract start (for example 9/1/2026) on the agency form. Parents are billed from the program start date below. Example: program starts 9/8/2026 — a bi-weekly parent copay covers 9/8/2026–9/18/2026, not 9/1–9/11. 4Cs still includes the week of 9/1.</p>
     </div>
 
-    <section class="card" style="margin-top:1.25rem;">
+    <section class="card portal-collapse-skip" style="margin-top:1.25rem;">
       <h2>Program dates</h2>
       <p class="form-note">One date per line for days off and half days. Use 9/8/2026 or 2026-09-08. Half days are stored here; they do not change the weekly copay amount.</p>
       <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_calendar_save' %}{% else %}#{% endif %}" class="portal-form-grid">
