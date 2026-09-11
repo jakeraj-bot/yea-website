@@ -604,13 +604,25 @@ def update_child_billing_plan(
         child.billing_amount = _parse_amount(amount)
     four_cs_profile = agency_profile_for(child) if billing_label.lower() == "4cs" or "4cs" in billing_label.lower() else None
     if four_cs_profile:
-        from .agency_weeks import next_unposted_parent_period, typical_parent_period_amount
+        from .agency_weeks import (
+            FOUR_CS_WEEKLY_POST_WEEKDAY,
+            cadence_key,
+            next_thursday_on_or_after,
+            next_unposted_parent_period,
+            typical_parent_period_amount,
+        )
 
         child.billing_amount = typical_parent_period_amount(four_cs_profile, child.billing_plan)
+        four_cs_weekly = cadence_key(child.billing_plan) == "weekly"
+        if four_cs_weekly and charge_weekday in (None, ""):
+            charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
         if not next_charge_date:
-            upcoming = next_unposted_parent_period(four_cs_profile, child.billing_plan)
-            if upcoming:
-                next_charge_date = upcoming["start"]
+            if four_cs_weekly:
+                next_charge_date = next_thursday_on_or_after(timezone.localdate())
+            else:
+                upcoming = next_unposted_parent_period(four_cs_profile, child.billing_plan)
+                if upcoming:
+                    next_charge_date = upcoming["start"]
     if auto_charge is not None:
         child.auto_charge = bool(auto_charge)
         if child.auto_charge and not child.billing_amount and not four_cs_profile:
@@ -668,25 +680,43 @@ def update_child_billing_plan(
     return child, posted
 
 
+def _next_4cs_charge_date(plan, today, profile):
+    from .agency_weeks import cadence_key, next_thursday_after, next_unposted_parent_period
+
+    if cadence_key(plan) == "weekly":
+        return next_thursday_after(today)
+    nxt = next_unposted_parent_period(profile, plan)
+    return nxt["start"] if nxt else None
+
+
 def _post_4cs_copay_period(locked, today):
-    """Post the next parent-copay period. Returns True if a family charge was posted."""
-    from .agency_weeks import mark_parent_period_posted, next_unposted_parent_period
+    """Post a parent-copay period dated today. Returns True if a family charge was posted.
+
+    Weekly 4Cs copay covers the school week after the most recent Thursday
+    (Thursday posts the following week). The ledger date is the post day so
+    "post today" appears immediately instead of waiting for the week Monday.
+    """
+    from .agency_weeks import (
+        cadence_key,
+        mark_parent_period_posted,
+        next_unposted_parent_period,
+        parent_period_for_weekly_thursday_post,
+    )
 
     profile = agency_profile_for(locked)
     if not profile:
         return False
-    period = next_unposted_parent_period(profile, locked.billing_plan)
+    weekly = cadence_key(locked.billing_plan) == "weekly"
+    if weekly:
+        period = parent_period_for_weekly_thursday_post(profile, locked.billing_plan, today)
+    else:
+        period = next_unposted_parent_period(profile, locked.billing_plan)
     if not period:
         locked.next_charge_date = None
         return False
-    if period["start"] > today:
-        locked.next_charge_date = period["start"]
-        return False
-    charge_date = period["start"]
+    charge_date = today
     if locked.last_auto_charge_date == charge_date:
-        mark_parent_period_posted(period["weeks"], charge_date)
-        nxt = next_unposted_parent_period(profile, locked.billing_plan)
-        locked.next_charge_date = nxt["start"] if nxt else None
+        locked.next_charge_date = _next_4cs_charge_date(locked.billing_plan, today, profile)
         return False
     amount = period["amount"]
     if amount > 0:
@@ -701,8 +731,7 @@ def _post_4cs_copay_period(locked, today):
         )
     mark_parent_period_posted(period["weeks"], charge_date)
     locked.last_auto_charge_date = charge_date
-    nxt = next_unposted_parent_period(profile, locked.billing_plan)
-    locked.next_charge_date = nxt["start"] if nxt else None
+    locked.next_charge_date = _next_4cs_charge_date(locked.billing_plan, today, profile)
     return amount > 0
 
 

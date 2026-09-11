@@ -104,6 +104,13 @@
               <option value="Monthly" {% if 'onth' in child.plan %}selected{% endif %}>Monthly</option>
             </select>
           </div>
+          <p class="form-note">Weekly copay posts every Thursday for the next school week. Check Post today to put a charge on the family ledger right now.</p>
+          <div class="form-group portal-form-full">
+            <label class="portal-check-label">
+              <input type="checkbox" name="post_today" value="on">
+              Post today
+            </label>
+          </div>
           <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save 4Cs copay plan</button>
         </form>
         {% endif %}
@@ -119,7 +126,7 @@
     {% if portal_area == 'admin' %}
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2>Edit billing plan</h2>
-      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save.</p>
+      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="admin">

@@ -10,6 +10,8 @@ from django.utils import timezone
 ZERO = Decimal("0.00")
 MONEY = Decimal("0.01")
 SCHOOL_DAYS = 5
+# Weekly parent copay posts on Thursday for the following school week.
+FOUR_CS_WEEKLY_POST_WEEKDAY = 3
 
 
 def parse_money(value, allow_blank=True):
@@ -165,22 +167,63 @@ def parent_charge_periods(profile, plan):
     return periods
 
 
+def _period_from_remaining_weeks(remaining):
+    amount = ZERO
+    for week in remaining:
+        amount += week.parent_amount or ZERO
+    return {
+        "start": remaining[0].week_start,
+        "end": remaining[-1].week_end,
+        "label": format_week_label(remaining[0].week_start, remaining[-1].week_end),
+        "amount": amount.quantize(MONEY),
+        "weeks": remaining,
+        "posted": False,
+    }
+
+
 def next_unposted_parent_period(profile, plan):
+    for period in parent_charge_periods(profile, plan):
+        remaining = [week for week in period["weeks"] if not week.parent_posted]
+        if remaining:
+            return _period_from_remaining_weeks(remaining)
+    return None
+
+
+def most_recent_thursday(on_date):
+    """Thursday on or before on_date."""
+    return on_date - timedelta(days=(on_date.weekday() - FOUR_CS_WEEKLY_POST_WEEKDAY) % 7)
+
+
+def week_monday_covered_by_thursday(thursday):
+    """Monday of the school week a Thursday copay post covers (the next week)."""
+    return thursday + timedelta(days=4)
+
+
+def next_thursday_on_or_after(on_date):
+    return on_date + timedelta(days=(FOUR_CS_WEEKLY_POST_WEEKDAY - on_date.weekday()) % 7)
+
+
+def next_thursday_after(on_date):
+    nxt = next_thursday_on_or_after(on_date)
+    if nxt == on_date:
+        return on_date + timedelta(days=7)
+    return nxt
+
+
+def parent_period_for_weekly_thursday_post(profile, plan, post_date):
+    """Next unposted weekly period that Thursday-for-next-week would charge.
+
+    Does not back-bill older unposted weeks. If the target week is already
+    posted or missing, returns the next later unposted week.
+    """
+    target_monday = week_monday_covered_by_thursday(most_recent_thursday(post_date))
     for period in parent_charge_periods(profile, plan):
         remaining = [week for week in period["weeks"] if not week.parent_posted]
         if not remaining:
             continue
-        amount = ZERO
-        for week in remaining:
-            amount += week.parent_amount or ZERO
-        return {
-            "start": remaining[0].week_start,
-            "end": remaining[-1].week_end,
-            "label": format_week_label(remaining[0].week_start, remaining[-1].week_end),
-            "amount": amount.quantize(MONEY),
-            "weeks": remaining,
-            "posted": False,
-        }
+        week_monday = remaining[0].week_start - timedelta(days=remaining[0].week_start.weekday())
+        if week_monday >= target_monday:
+            return _period_from_remaining_weeks(remaining)
     return None
 
 
