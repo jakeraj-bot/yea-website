@@ -53,7 +53,7 @@ def _child_balances_from_ledger(family):
 
     portal_children = list(family.children.filter(is_active=True))
     if portal_children:
-        from .agency_weeks import parent_charge_periods
+        from .agency_weeks import cadence_key, parent_charge_periods
         from .billing_services import active_scholarship_for_child, agency_profile_for, plan_repeat_label
 
         balances = child_balance_map(family)
@@ -93,13 +93,18 @@ def _child_balances_from_ledger(family):
                 row["agency_profile_id"] = profile.pk
                 row["agency_name"] = profile.agency.name if profile.agency_id else ""
                 row["four_cs"] = True
+                plan_start = None
+                if cadence_key(child.billing_plan) == "biweekly":
+                    plan_start = child.last_auto_charge_date or child.next_charge_date
                 row["four_cs_periods"] = [
                     {
                         "label": period["label"],
                         "amount": f"{period['amount']:.2f}",
                         "posted": period["posted"],
                     }
-                    for period in parent_charge_periods(profile, child.billing_plan)
+                    for period in parent_charge_periods(
+                        profile, child.billing_plan, start_from=plan_start
+                    )
                 ]
             rows.append(row)
         return rows

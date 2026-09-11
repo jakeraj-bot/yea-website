@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from portal.billing_services import (
     first_plan_charge_date,
+    next_plan_charge_date,
     post_credit,
     post_payment,
     staff_payment_note,
@@ -175,6 +176,29 @@ class BillingPlanChargeTests(TestCase):
             first_plan_charge_date(today, "Weekly", weekday=other_weekday),
             today,
         )
+
+    def test_biweekly_repeats_fourteen_days_from_entered_date(self):
+        start = timezone.localdate()
+        other_weekday = (start.weekday() + 1) % 7
+        self.assertEqual(
+            next_plan_charge_date(start, "Bi-weekly", weekday=other_weekday),
+            start + timedelta(days=14),
+        )
+        child, posted = update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Bi-weekly",
+            "50.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=start,
+            charge_weekday=other_weekday,
+        )
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, start)
+        child.refresh_from_db()
+        self.assertEqual(child.next_charge_date, start + timedelta(days=14))
 
     def test_saving_plan_for_today_posts_charge_even_if_weekday_differs(self):
         today = timezone.localdate()

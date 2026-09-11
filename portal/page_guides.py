@@ -629,6 +629,10 @@ GUIDES = {
                 "title": "When weekly 4Cs posts",
                 "body": "Weekly parent copay posts every Thursday for the next school week. Check Post today (or set the first charge date to today) to put that charge on the family ledger immediately.",
             },
+            {
+                "title": "When bi-weekly starts",
+                "body": "Type the first charge date — the day this child or program actually starts. Bi-weekly charges begin then and repeat every two weeks. They do not start from an earlier contract week.",
+            },
         ],
     },
     "family-agency": {
