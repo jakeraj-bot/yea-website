@@ -1351,6 +1351,9 @@ def staff_billing_action(request, family_slug):
             )
             messages.success(request, "Refund sent and the family balance was updated.")
         elif action == "update_4cs_plan":
+            next_charge_date = parse_date(request.POST.get("next_charge_date") or "") or None
+            if request.POST.get("post_today") == "on":
+                next_charge_date = timezone.localdate()
             _child, posted = update_child_billing_plan(
                 family,
                 request.POST.get("child_name", "").strip(),
@@ -1358,7 +1361,7 @@ def staff_billing_action(request, family_slug):
                 request.POST.get("billing_amount"),
                 "4Cs",
                 auto_charge=request.POST.get("auto_charge") == "on",
-                next_charge_date=parse_date(request.POST.get("next_charge_date") or "") or None,
+                next_charge_date=next_charge_date,
                 charge_weekday=request.POST.get("charge_weekday"),
                 charge_month_day=request.POST.get("charge_month_day"),
             )

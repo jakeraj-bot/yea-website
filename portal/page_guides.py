@@ -625,6 +625,10 @@ GUIDES = {
                 "title": "4Cs vs private pay",
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
             },
+            {
+                "title": "When weekly 4Cs posts",
+                "body": "Weekly parent copay posts every Thursday for the next school week. Check Post today (or set the first charge date to today) to put that charge on the family ledger immediately.",
+            },
         ],
     },
     "family-agency": {

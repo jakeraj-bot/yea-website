@@ -2357,7 +2357,7 @@ PARENT_ANNOUNCEMENTS = {
     "4cs": {
         "active": True,
         "title": "Copay reminder",
-        "body": "Your weekly 4Cs copay posts every Monday. Agency tuition is billed separately — you only pay membership and copay here.",
+        "body": "Your weekly 4Cs copay posts every Thursday for the next week. Agency tuition is billed separately — you only pay membership and copay here.",
         "style": "info",
         "posted": "Sep 8, 2026",
         "unit": "School 18",
