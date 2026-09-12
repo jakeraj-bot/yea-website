@@ -1,0 +1,40 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Find a child</h1>
+    <p class="lead">Same name search as All families. Open a result to go to that child’s family account.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form class="portal-family-account-search portal-family-account-search-page" method="get" action="{{ family_search_url }}" autocomplete="off">
+      <label class="visually-hidden" for="family-account-search-page">Find a child or family</label>
+      <div class="portal-family-account-search-row">
+        <input id="family-account-search-page" class="portal-input portal-search" type="search" name="q" placeholder="Find a child or family" value="{{ family_search_q }}" autocomplete="off">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+      </div>
+    </form>
+
+    {% if family_search_q %}
+      {% if family_search_results %}
+      <ul class="portal-family-search-list">
+        {% for row in family_search_results %}
+        <li>
+          <a class="portal-family-search-hit" href="{{ row.url }}">
+            <strong>{% if row.child_name %}{{ row.child_name }}{% else %}{{ row.family_name }}{% endif %}</strong>
+            {% if row.child_name and row.family_name %}<span>{{ row.family_name }}</span>{% endif %}
+            {% if row.unit %}<span>{{ row.unit }}</span>{% endif %}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="form-note">No children or families match “{{ family_search_q }}”.</p>
+      {% endif %}
+    {% else %}
+    <p class="form-note">Type a child or family name.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

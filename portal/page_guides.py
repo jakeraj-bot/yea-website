@@ -543,7 +543,11 @@ GUIDES = {
         "steps": [
             {
                 "title": "Move between tabs",
-                "body": "Pickup, Incidents, Billing, Plans, 4Cs, Applications, Policies, and Email parent are along the top of the account.",
+                "body": "Pickup, Attendance, Incidents, Billing, Plans, 4Cs, Applications, Policies, and Email parent are along the top of the account.",
+            },
+            {
+                "title": "Find another child without leaving",
+                "body": "Use Find a child or family next to Previous / Next. It uses the same name search as All families. Choosing a result opens that child’s account.",
             },
             {
                 "title": "Read medical cards",
@@ -578,6 +582,24 @@ GUIDES = {
             {
                 "title": "If nobody is listed",
                 "body": "Do not release the child until you have a person on file. Ask a director or the parent to update the account.",
+            },
+        ],
+    },
+    "family-attendance": {
+        "title": "How to read this child’s attendance",
+        "intro": "This month calendar is only for the child on this account. It shows saved present, absent, and not-marked days.",
+        "steps": [
+            {
+                "title": "Read the colors",
+                "body": "Green is present. Red is absent. Gray is not marked. Days stay not marked unless staff already saved attendance.",
+            },
+            {
+                "title": "Open a day",
+                "body": "Click a date to see the same check-in, check-out, method, and note that Review attendance has when a record exists.",
+            },
+            {
+                "title": "Change month",
+                "body": "Use Previous month and Next month. Staff only see the child at their unit.",
             },
         ],
     },

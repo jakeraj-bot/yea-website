@@ -1,11 +1,23 @@
-{% if family_nav_index and family_nav_count %}
-<nav class="portal-family-pager" aria-label="Member accounts">
-  {% if family_prev %}
-  <a class="btn btn-secondary btn-sm portal-family-pager-prev" href="{{ family_prev.url }}">Previous</a>
+<div class="portal-family-account-tools">
+  {% if family_search_url %}
+  <form class="portal-family-account-search" method="get" action="{{ family_search_url }}" data-family-search autocomplete="off">
+    <label class="visually-hidden" for="family-account-search">Find a child or family</label>
+    <div class="portal-family-account-search-row">
+      <input id="family-account-search" class="portal-input portal-search" type="search" name="q" placeholder="Find a child or family" value="" autocomplete="off">
+      <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    </div>
+    <div class="portal-family-account-search-results" hidden role="listbox" aria-label="Matching children"></div>
+  </form>
   {% endif %}
-  <span class="portal-family-pager-status">{{ family_nav_index }} of {{ family_nav_count }}</span>
-  {% if family_next %}
-  <a class="btn btn-primary btn-sm portal-family-pager-next" href="{{ family_next.url }}">Next{% if family_next.name %} · {{ family_next.name }}{% endif %}</a>
+  {% if family_nav_index and family_nav_count %}
+  <nav class="portal-family-pager" aria-label="Member accounts">
+    {% if family_prev %}
+    <a class="btn btn-secondary btn-sm portal-family-pager-prev" href="{{ family_prev.url }}">Previous</a>
+    {% endif %}
+    <span class="portal-family-pager-status">{{ family_nav_index }} of {{ family_nav_count }}</span>
+    {% if family_next %}
+    <a class="btn btn-primary btn-sm portal-family-pager-next" href="{{ family_next.url }}">Next{% if family_next.name %} · {{ family_next.name }}{% endif %}</a>
+    {% endif %}
+  </nav>
   {% endif %}
-</nav>
-{% endif %}
+</div>

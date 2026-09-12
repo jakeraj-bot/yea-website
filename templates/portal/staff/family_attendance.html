@@ -1,0 +1,107 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
+    <div class="portal-family-hero-top">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% elif family_id %}?id={{ family_id }}{% endif %}">{{ profile.family_name }}</a>
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> / {{ profile.family_name }}
+      {% endif %}
+    </p>
+    </div>
+    <h1>{% if attendance_child %}{{ attendance_child.name }} — Attendance{% else %}{{ account_heading_name|default:profile.family_name }} — Attendance{% endif %}</h1>
+    <p class="lead">Month calendar for this child only. Present, absent, and not marked come from saved attendance.</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/family_account_tabs.html" %}
+
+    {% if not attendance_child %}
+    <section class="card portal-collapse-skip">
+      <h2>No enrolled child</h2>
+      <p class="form-note">There is no enrolled child on this account{% if portal_area == 'staff' %} at your unit{% endif %} to show attendance for.</p>
+    </section>
+    {% else %}
+    <section class="card portal-collapse-skip portal-child-calendar-card">
+      <div class="portal-child-calendar-nav">
+        <a class="btn btn-secondary btn-sm" href="?{{ attendance_calendar.prev_query }}">Previous month</a>
+        <h2 class="portal-child-calendar-month">{{ attendance_calendar.month_label }}</h2>
+        <a class="btn btn-secondary btn-sm" href="?{{ attendance_calendar.next_query }}">Next month</a>
+      </div>
+      <p class="form-note">{{ attendance_child.name }} · Days with no saved record stay <strong>Not marked</strong>.</p>
+      <div class="portal-child-calendar-legend" aria-label="Attendance key">
+        <span class="portal-child-calendar-key is-present">Present</span>
+        <span class="portal-child-calendar-key is-absent">Absent</span>
+        <span class="portal-child-calendar-key is-unmarked">Not marked</span>
+      </div>
+      <div class="portal-table-wrap">
+        <table class="portal-child-calendar" aria-label="Attendance calendar for {{ attendance_child.name }}">
+          <thead>
+            <tr>
+              {% for weekday in attendance_calendar.weekdays %}
+              <th>{{ weekday }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in attendance_calendar.weeks %}
+            <tr>
+              {% for day in week %}
+              {% if day.in_month %}
+              <td class="portal-child-calendar-day is-{{ day.mark }}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-selected{% endif %}">
+                <a href="?{{ attendance_calendar.month_query }}{% if attendance_calendar.month_query %}&amp;{% endif %}day={{ day.iso }}" class="portal-child-calendar-link">
+                  <span class="portal-child-calendar-num">{{ day.day }}</span>
+                  <span class="portal-child-calendar-mark">{{ day.mark_label }}</span>
+                </a>
+              </td>
+              {% else %}
+              <td class="portal-child-calendar-day is-outside"><span class="portal-child-calendar-num">{{ day.day }}</span></td>
+              {% endif %}
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {% if attendance_calendar.selected %}
+    <section class="card portal-child-calendar-detail portal-collapse-skip" id="attendance-day-detail">
+      <h2>{{ attendance_calendar.selected.date|date:"l, F j, Y" }}</h2>
+      {% if attendance_calendar.selected.has_record %}
+        {% for record in attendance_calendar.selected.records %}
+        <dl class="portal-dl">
+          <dt>Status</dt>
+          <dd><span class="portal-attendance-status portal-attendance-{{ record.status }}">{{ record.status_label }}</span></dd>
+          <dt>Check in</dt>
+          <dd>{% if record.check_in %}{{ record.check_in }}{% else %}—{% endif %}</dd>
+          <dt>Check out</dt>
+          <dd>{% if record.check_out %}{{ record.check_out }}{% else %}—{% endif %}</dd>
+          <dt>Method</dt>
+          <dd>{% if record.method %}{{ record.method }}{% else %}—{% endif %}</dd>
+          <dt>Note</dt>
+          <dd>{% if record.note %}{{ record.note }}{% else %}—{% endif %}</dd>
+          {% if record.program %}
+          <dt>Program</dt>
+          <dd>{{ record.program }}</dd>
+          {% endif %}
+        </dl>
+        {% endfor %}
+      {% else %}
+      <p class="form-note">Not marked — no attendance is saved for this day.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

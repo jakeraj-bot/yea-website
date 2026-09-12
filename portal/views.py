@@ -229,6 +229,7 @@ def _staff_family_profile(family_slug, unit=None, family_id=None):
 FAMILY_TAB_URL_KEYS = {
     "profile": "family_detail",
     "pickup": "family_pickup",
+    "attendance": "family_attendance",
     "incidents": "family_incidents",
     "billing": "family_billing",
     "plans": "family_plans",
@@ -412,6 +413,7 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
     from .family_list import account_child_context
 
     extra.update(account_child_context(profile, family_meta, extra.get("billing")))
+    extra.setdefault("family_search_url", reverse("portal_staff_family_search"))
     if request is not None:
         extra.update(
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
@@ -477,6 +479,10 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     from .family_list import account_child_context
 
     extra.update(account_child_context(profile, family_meta, extra.get("billing")))
+    extra.setdefault(
+        "family_search_url",
+        reverse("portal_admin_family_search" if area == "admin" else "portal_staff_family_search"),
+    )
     extra.setdefault("medical_alert_types", MEDICAL_ALERT_TYPES)
     extra.setdefault("family_incident_count", len(family_incidents))
     extra.update(
@@ -2801,6 +2807,129 @@ def staff_family_pickup(request, family_slug):
         pickup_data=pickup_data,
     )
     return render(request, "portal/staff/family_pickup.html", context)
+
+
+def _family_search_result_payload(area, row):
+    child_name = row.get("child_name")
+    return {
+        "child_name": child_name if child_name and child_name != "—" else "",
+        "family_name": row.get("name") or "",
+        "unit": row.get("unit") or "",
+        "url": _family_hub_url(
+            area,
+            "profile",
+            row["slug"],
+            row.get("id") if area == "admin" else None,
+            child_id=row.get("child_id"),
+            child_name=child_name if child_name and child_name != "—" else None,
+        ),
+    }
+
+
+def _family_account_search_results(request, area):
+    from .family_list import family_account_search_rows
+
+    query = (request.GET.get("q") or "").strip()
+    unit = None if area == "admin" else _staff_unit(request)
+    rows = family_account_search_rows(_family_list_rows_for_neighbors(area, unit), query)
+    return query, [_family_search_result_payload(area, row) for row in rows]
+
+
+def _render_family_account_search(request, area):
+    query, results = _family_account_search_results(request, area)
+    wants_json = request.GET.get("format") == "json" or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    if wants_json:
+        return JsonResponse({"q": query, "results": results})
+    if query and len(results) == 1:
+        return redirect(results[0]["url"])
+    page_title = "Find a child"
+    extra = {
+        "family_search_q": query,
+        "family_search_results": results,
+        "family_search_url": reverse(
+            "portal_admin_family_search" if area == "admin" else "portal_staff_family_search"
+        ),
+        "staff_page_slug": "families",
+        "admin_page_slug": "families",
+    }
+    if area == "admin":
+        context = _finalize_admin_context(request, _portal_context("admin", page_title, **extra))
+    else:
+        context = _staff_context(page_title, request=request, **extra)
+    return render(request, "portal/staff/family_search_results.html", context)
+
+
+@staff_login_required
+@require_GET
+def staff_family_search(request):
+    return _render_family_account_search(request, "staff")
+
+
+@admin_login_required
+@require_GET
+def admin_family_search(request):
+    return _render_family_account_search(request, "admin")
+
+
+def _family_attendance_context(request, area, family_slug):
+    from django.utils.dateparse import parse_date
+
+    from .attendance_calendar import (
+        child_attendance_month,
+        merge_attendance_query,
+        parse_calendar_month,
+        visible_child_for_attendance,
+    )
+    from .member_admin import resolve_family
+
+    context = _family_hub_context(request, area, family_slug, "Attendance", "attendance")
+    if not context:
+        return None
+    unit = None if area == "admin" else _staff_unit(request)
+    family = None
+    if _portal_families_live():
+        family = resolve_family(
+            family_slug=family_slug,
+            family_id=context.get("family_id") or _family_id_from_request(request),
+            unit=unit,
+        )
+    requested_child = bool((request.GET.get("child_id") or "").strip() or (request.GET.get("child") or "").strip())
+    child = visible_child_for_attendance(family, request, unit=unit) if family else None
+    if family and requested_child and child is None:
+        return None
+    month_start = parse_calendar_month(request.GET.get("month"))
+    selected_day = parse_date((request.GET.get("day") or "").strip() or "")
+    if selected_day and selected_day.month != month_start.month:
+        month_start = date(selected_day.year, selected_day.month, 1)
+    calendar = child_attendance_month(child, month_start, selected_day=selected_day)
+    base_query = context.get("family_account_query") or ""
+    calendar["prev_query"] = merge_attendance_query(base_query, month=calendar["prev_month"], day=None)
+    calendar["next_query"] = merge_attendance_query(base_query, month=calendar["next_month"], day=None)
+    calendar["month_query"] = merge_attendance_query(base_query, month=calendar["month_value"], day=None)
+    context["attendance_calendar"] = calendar
+    context["attendance_child"] = child
+    context["page_title"] = (
+        f"{child.name} — Attendance" if child else f"{context['profile']['family_name']} — Attendance"
+    )
+    return context
+
+
+@staff_login_required
+@require_GET
+def staff_family_attendance(request, family_slug):
+    context = _family_attendance_context(request, "staff", family_slug)
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_attendance.html", context)
+
+
+@admin_login_required
+@require_GET
+def admin_family_attendance(request, family_slug):
+    context = _family_attendance_context(request, "admin", family_slug)
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_attendance.html", context)
 
 
 @staff_login_required

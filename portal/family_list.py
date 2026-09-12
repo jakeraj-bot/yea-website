@@ -637,6 +637,15 @@ def child_row_nav_name(row):
     return row.get("name") or row.get("family_name") or row.get("slug")
 
 
+def family_account_search_rows(rows, query, *, limit=25):
+    """Children matching All families search (`q`), already unit-scoped in `rows`."""
+    query = (query or "").strip()
+    if not query:
+        return []
+    matched = apply_family_list_nav(rows, {"q": query})
+    return matched[:limit]
+
+
 def family_list_querystring(nav, *, family_id=None, child_id=None, child_name=None, include_list_flag=True):
     """Query string that keeps Families-table filters on the account pager."""
     items = []
