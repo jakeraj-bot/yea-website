@@ -191,3 +191,30 @@ class DeleteReasonActivityTests(TestCase):
         )
         self.assertContains(page, "Today save")
         self.assertNotContains(page, "Old sign-in")
+
+    def test_recording_a_payment_appears_on_that_users_log(self):
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "family_id": str(self.family.pk),
+                "action": "payment",
+                "child_name": "Jordan Jacobs",
+                "amount": "20.00",
+                "method": "cash",
+                "note": "Desk payment",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        event = PortalActivityEvent.objects.get(action=PortalActivityEvent.ACTION_PAYMENT, actor=self.admin)
+        self.assertEqual(event.action_label, "Recorded a payment")
+        self.assertEqual(event.object_type, "family")
+        self.assertEqual(event.object_label, "Jacobs")
+        self.assertNotIn("4242", event.details)
+        page = self.client.get(
+            reverse("portal_admin_page", kwargs={"page": "activity"}),
+            {"user": str(self.admin.pk)},
+        )
+        self.assertContains(page, "Recorded a payment")
+        self.assertContains(page, "Jacobs")

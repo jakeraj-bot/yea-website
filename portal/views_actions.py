@@ -1441,7 +1441,14 @@ def staff_billing_action(request, family_slug):
             )
             messages.success(request, "Credit posted to the family ledger.")
         elif action == "payment":
+            from .payment_refs import reject_raw_card_fields
+
+            reject_raw_card_fields(request.POST)
             method = request.POST.get("method", "cash")
+            if (method or "").strip().lower() in {"card", "card_number", "credit_card"}:
+                raise ValueError(
+                    "Do not type card numbers into the portal. Use Take a card payment so Stripe collects the card."
+                )
             note, reference = staff_payment_note(
                 method,
                 request.POST.get("note", ""),
@@ -1465,6 +1472,62 @@ def staff_billing_action(request, family_slug):
                 object_type="family",
                 object_label=family.name,
             )
+        elif action == "card_checkout":
+            from .payment_refs import reject_raw_card_fields
+            from .stripe_services import create_staff_balance_checkout_session, stripe_configured
+
+            reject_raw_card_fields(request.POST)
+            if not stripe_configured():
+                raise ValueError(
+                    "Stripe is not set up yet. Card payments have to go through Stripe — staff cannot type a card number here."
+                )
+            child_name = request.POST.get("child_name", "").strip()
+            if unit:
+                from .unit_visibility import child_name_allowed_for_unit
+
+                if child_name and not child_name_allowed_for_unit(family, child_name, unit):
+                    raise ValueError("That child is not enrolled at this program site.")
+            from .billing_services import _parse_amount
+            from .models import PortalPayment
+
+            amount = _parse_amount(request.POST.get("amount", ""))
+            note = request.POST.get("note", "").strip()
+            payment = PortalPayment.objects.create(
+                family=family,
+                amount=amount,
+                payment_kind="balance",
+                dropin_child=child_name,
+                method_label="Card",
+                status=PortalPayment.STATUS_PENDING,
+            )
+            path = redirect_url
+            sep = "&" if "?" in path else "?"
+            success_url = request.build_absolute_uri(path) + sep + "session_id={CHECKOUT_SESSION_ID}"
+            cancel_url = request.build_absolute_uri(path)
+            try:
+                session = create_staff_balance_checkout_session(
+                    request,
+                    payment,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    note=note,
+                    child_name=child_name,
+                )
+            except Exception as exc:
+                payment.delete()
+                raise ValueError(str(exc)) from exc
+            _log_activity(
+                request,
+                "payment",
+                action_label="Started a card payment",
+                object_type="family",
+                object_label=family.name,
+            )
+            from django.http import HttpResponseRedirect
+
+            checkout_redirect = HttpResponseRedirect(session.url)
+            checkout_redirect.status_code = 303
+            return checkout_redirect
         elif action == "edit_description":
             update_ledger_description(
                 family,
@@ -1846,6 +1909,8 @@ def family_parent_password_reset(request, family_slug):
     from .member_admin import (
         reset_parent_portal_password,
         resolve_family,
+        send_parent_password_reset_link,
+        staff_flash_from_password_reset,
         store_parent_password_reset_flash,
     )
     from .parent_auth import portal_preview_mode
@@ -1887,9 +1952,33 @@ def family_parent_password_reset(request, family_slug):
     actor = ""
     if request.user.is_authenticated:
         actor = (request.user.get_full_name() or request.user.username or "").strip()
+    sender = request.user if request.user.is_authenticated else None
+    action = (request.POST.get("action") or "").strip()
     password = request.POST.get("password", "")
     confirm = request.POST.get("confirm_password", "")
     generate = request.POST.get("generate") == "1"
+    send_link = action == "send_link" or (not action and not password and not generate)
+
+    if send_link:
+        try:
+            reset = send_parent_password_reset_link(
+                family,
+                actor=actor,
+                request=request,
+                sender=sender,
+            )
+            store_parent_password_reset_flash(request, staff_flash_from_password_reset(reset))
+            messages.success(
+                request,
+                f"We emailed {reset['email']} a link to create a new password. "
+                f"The link expires in {reset['expires_hours']} hours and can be used once. "
+                "You cannot see the old password.",
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
+        return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#parent-password-once"))
+
     if not generate and password != confirm:
         messages.error(request, "The new password and confirmation do not match.")
         return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
@@ -1901,7 +1990,7 @@ def family_parent_password_reset(request, family_slug):
             actor=actor,
             generate=generate,
         )
-        store_parent_password_reset_flash(request, reset)
+        store_parent_password_reset_flash(request, staff_flash_from_password_reset(reset))
         messages.success(
             request,
             "Temporary parent password set. Copy it now — it will not be shown again. "
@@ -2066,7 +2155,9 @@ def staff_agency_action(request):
             if not family:
                 raise ValueError("Family not found.")
             from .billing_services import staff_payment_method_label, staff_payment_note
+            from .payment_refs import reject_raw_card_fields
 
+            reject_raw_card_fields(request.POST)
             method = request.POST.get("method") or request.POST.get("method_label", "cash")
             note, reference = staff_payment_note(
                 method,

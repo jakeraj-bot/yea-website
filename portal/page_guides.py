@@ -559,7 +559,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the current password. Use Reset parent password, copy the new temporary password once, and give it to the parent by text or email. If they forget again, reset again.",
+                "body": "You cannot look up the current password. Use Reset parent password to email the parent a one-time link to create a new password. The link expires in 72 hours. If they forget again, send another link.",
             },
             {
                 "title": "Email the parent",
@@ -627,7 +627,7 @@ GUIDES = {
             },
             {
                 "title": "Add a charge or record a payment",
-                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, money order, or a card you enter for them.",
+                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or money order. Take a card payment opens Stripe Checkout so the card is entered on Stripe, not in this portal.",
             },
             {
                 "title": "Credits and deletes",
@@ -763,7 +763,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the old password. Use Reset password to open the family profile, set a new temporary password, copy it once, and give it to the parent.",
+                "body": "You cannot look up the old password. Use Reset password to open the family profile and email the parent a one-time link to create a new password.",
             },
         ],
     },

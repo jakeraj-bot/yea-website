@@ -844,14 +844,22 @@ def prepare_billing_preview(billing, permissions):
     ledger = []
     for index, row in enumerate(billing.get("ledger", [])):
         is_manual = row.get("manual") or row.get("type") in ("charge", "credit")
-        ledger.append(
-            {
-                **row,
-                "id": row.get("id", index + 1),
-                "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
-                "editable": row.get("type") in ("charge", "payment"),
-            }
-        )
+        item = {
+            **row,
+            "id": row.get("id", index + 1),
+            "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
+            "editable": row.get("type") in ("charge", "payment"),
+        }
+        if row.get("type") == "payment" and not item.get("reference_display"):
+            from .payment_refs import attach_ledger_reference
+
+            attach_ledger_reference(
+                item,
+                row.get("description", ""),
+                row.get("reference_number", ""),
+                row.get("method") or row.get("method_label") or row.get("reference_label", ""),
+            )
+        ledger.append(item)
     enriched["ledger"] = ledger
     return enriched
 

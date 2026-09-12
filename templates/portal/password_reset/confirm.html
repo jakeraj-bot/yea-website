@@ -2,13 +2,19 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container portal-auth-heading">
-    <h1>Choose a new password</h1>
+    {% if validlink %}
+    <h1>Create a new password</h1>
     <p class="lead">Enter a new password for your {{ portal_label }} account.</p>
+    {% else %}
+    <h1>This link is not valid</h1>
+    <p class="lead">This create-password link has expired or was already used.</p>
+    {% endif %}
   </div>
 </section>
 <section class="page-content">
   <div class="container portal-auth-card">
     <section class="card">
+      {% if validlink %}
       <form method="post" class="portal-form-grid">
         {% csrf_token %}
         {% if form.non_field_errors %}
@@ -27,9 +33,15 @@
           {% if form.new_password2.errors %}<p class="form-note" style="color:var(--danger);">{{ form.new_password2.errors.0 }}</p>{% endif %}
         </div>
         <div class="portal-form-actions portal-form-full">
-          <button type="submit" class="btn btn-primary">Update password</button>
+          <button type="submit" class="btn btn-primary">Create password</button>
         </div>
       </form>
+      {% else %}
+      <p>Ask Youth Education Academy staff to email a new create-password link, or use Forgot password on the sign-in page.</p>
+      <div class="portal-form-actions" style="margin-top:1rem;">
+        <a class="btn btn-primary" href="{% url login_url_name %}">Back to sign in</a>
+      </div>
+      {% endif %}
     </section>
   </div>
 </section>

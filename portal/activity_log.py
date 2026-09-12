@@ -182,11 +182,13 @@ def _infer_action(request):
         return PortalActivityEvent.ACTION_PASSWORD_RESET, "Reset password"
     if "attendance" in path or "check-in" in path or "check-out" in path or "absent" in path:
         return PortalActivityEvent.ACTION_ATTENDANCE, "Attendance"
-    if "billing" in path or action in {"charge", "payment", "credit"}:
+    if "billing" in path or action in {"charge", "payment", "credit", "card_checkout"}:
         if action == "charge":
             return PortalActivityEvent.ACTION_CHARGE, "Posted a charge"
         if action == "payment":
             return PortalActivityEvent.ACTION_PAYMENT, "Recorded a payment"
+        if action == "card_checkout":
+            return PortalActivityEvent.ACTION_PAYMENT, "Started a card payment"
         return PortalActivityEvent.ACTION_SAVE, "Saved billing"
     if "agency" in path or "4cs" in path:
         return PortalActivityEvent.ACTION_AGENCY, "Saved 4Cs"

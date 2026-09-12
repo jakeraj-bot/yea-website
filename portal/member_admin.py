@@ -18,6 +18,7 @@ from enrollment.portal_integration import (
     family_display_label,
 )
 
+from .enrollment_counts import COUNTED_ENROLLED_STATUSES
 from .models import (
     PortalChild,
     PortalDiscountAssignment,
@@ -37,10 +38,10 @@ SUSPEND_REASONS = [
 ]
 
 OPEN_APPLICATION_STATUSES = ("under_review", "pending_documents", "waitlist")
-COUNTED_ENROLLED_STATUSES = ("approved", "enrolled")
 PLACEHOLDER_UNIT_SLUGS = {"main-location", "main_location"}
 PLACEHOLDER_UNIT_NAMES = {"main location", "main"}
 PARENT_PASSWORD_RESET_FLASH_KEY = "portal_parent_password_reset_once"
+PARENT_PASSWORD_RESET_HOURS = 72
 
 
 def is_placeholder_unit(unit):
@@ -211,6 +212,133 @@ def consume_parent_password_reset_flash(request, family_slug=None):
     return data
 
 
+def parent_password_reset_timeout_hours():
+    from django.conf import settings
+
+    seconds = int(getattr(settings, "PASSWORD_RESET_TIMEOUT", PARENT_PASSWORD_RESET_HOURS * 3600))
+    return max(1, seconds // 3600)
+
+
+def build_parent_password_reset_url(user, request=None):
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.urls import reverse
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    path = reverse(
+        "portal_parent_password_reset_confirm",
+        kwargs={"uidb64": uid, "token": token},
+    )
+    if request is not None:
+        return request.build_absolute_uri(path)
+    return settings.SITE_URL.rstrip("/") + path
+
+
+def parent_password_reset_email_copy(user, reset_url):
+    from django.conf import settings
+    from django.urls import reverse
+
+    hours = parent_password_reset_timeout_hours()
+    login_url = settings.SITE_URL.rstrip("/") + reverse("portal_parent_login")
+    username = display_username(user.username)
+    subject = "Create a new parent portal password"
+    body = (
+        "Hello,\n\n"
+        "Youth Education Academy staff sent you a link to create a new password "
+        "for the parent portal.\n\n"
+        f"Create your password here (this link expires in {hours} hours and can be used once):\n"
+        f"{reset_url}\n\n"
+        "After you create a password, sign in here:\n"
+        f"{login_url}\n\n"
+        f"Username: {username}\n\n"
+        "If you did not expect this email, contact Youth Education Academy at "
+        "info@yeanj.org / 609-357-8608.\n\n"
+        "Youth Education Academy\n"
+    )
+    return subject, body, hours
+
+
+def staff_flash_from_password_reset(result):
+    """Session banner for staff. Never includes the stored current password or a live reset token."""
+    return {
+        "family_slug": result.get("family_slug", ""),
+        "family_name": result.get("family_name", ""),
+        "username": result.get("username", ""),
+        "email": result.get("email", ""),
+        "mode": result.get("mode") or ("temporary" if result.get("password") else "email_link"),
+        "expires_hours": result.get("expires_hours"),
+        "password": result.get("password") if result.get("mode") != "email_link" else "",
+    }
+
+
+def _redact_parent_password_reset_body(body):
+    import re
+
+    return re.sub(
+        r"https?://[^\s]+/portal/login/password-reset/confirm/[^\s]+",
+        "(create-password link sent to parent)",
+        body or "",
+    )
+
+
+def send_parent_password_reset_link(family, *, actor="", request=None, sender=None):
+    """Email a one-time create-password link. Does not change or reveal the stored password."""
+    from .models import PortalParentEmail
+    from .parent_email_log import record_sent_parent_email
+
+    if not family:
+        raise ValueError("Family not found.")
+    account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
+    if not account:
+        raise ValueError("This family does not have a parent portal login yet.")
+    user = account.user
+    email = (user.email or parent_email_for_family(family) or "").strip()
+    if not email:
+        raise ValueError("This family does not have a parent email on file.")
+
+    reset_url = build_parent_password_reset_url(user, request=request)
+    subject, body, hours = parent_password_reset_email_copy(user, reset_url)
+    stored_secret = (user.password or "").strip()
+    if stored_secret and stored_secret in body:
+        raise ValueError("Refusing to send an email that includes a stored password.")
+    if "pbkdf2_" in body or "argon2" in body:
+        raise ValueError("Refusing to send an email that includes a stored password.")
+
+    sent = send_site_email(subject=subject, message=body, recipient_list=[email])
+    if not sent:
+        raise ValueError(
+            "The create-password email could not be sent. Confirm the parent email and try again."
+        )
+    record_sent_parent_email(
+        subject=subject,
+        body=_redact_parent_password_reset_body(body),
+        recipients=[email],
+        family=family,
+        unit=getattr(family, "unit", None),
+        sender=sender,
+        source=PortalParentEmail.SOURCE_FAMILY,
+    )
+    _record_member_info_change(
+        family,
+        {"parent_password_reset": True, "reset_email_sent": True},
+        actor=actor,
+    )
+    return {
+        "family_slug": family.slug,
+        "family_name": family.name,
+        "username": display_username(user.username),
+        "email": email,
+        "mode": "email_link",
+        "expires_hours": hours,
+        "reset_url": reset_url,
+        "subject": subject,
+        "body": body,
+    }
+
+
 @transaction.atomic
 def reset_parent_portal_password(family, password="", *, actor="", generate=False):
     """Set a new parent portal password. The previous hash cannot be recovered."""
@@ -238,6 +366,7 @@ def reset_parent_portal_password(family, password="", *, actor="", generate=Fals
         "username": display_username(user.username),
         "email": user.email or "",
         "password": new_password,
+        "mode": "temporary",
     }
 
 

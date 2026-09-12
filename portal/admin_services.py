@@ -27,9 +27,10 @@ def _demo_unit(slug):
 
 
 def get_admin_dashboard_live():
-    enrolled = PortalChild.objects.filter(is_active=True).exclude(
-        family__unit__slug__in=("main-location", "main_location")
-    ).count()
+    from .enrollment_counts import dashboard_enrollment_totals
+
+    enrollment = dashboard_enrollment_totals()
+    enrolled = enrollment["total_enrolled"]
     families = PortalFamily.objects.exclude(unit__slug__in=("main-location", "main_location")).count()
     open_apps = EnrollmentApplication.objects.filter(
         status__in=("under_review", "pending_documents", "waitlist")
@@ -75,35 +76,30 @@ def get_admin_dashboard_live():
 
 
 def get_enrollment_by_unit_live():
-    from .member_admin import is_placeholder_unit
+    from enrollment.locations import enrollment_keys_for_unit
+
+    from .enrollment_counts import COUNTED_ENROLLED_STATUSES, dashboard_enrollment_totals
+    from .member_admin import OPEN_APPLICATION_STATUSES
 
     rows = []
-    for unit in PortalUnit.objects.order_by("name"):
-        if is_placeholder_unit(unit):
+    for row in dashboard_enrollment_totals()["by_unit"]:
+        unit = PortalUnit.objects.filter(pk=row["pk"]).first()
+        if not unit:
             continue
-        from .unit_visibility import children_for_unit
-        from enrollment.locations import enrollment_keys_for_unit
-
-        enrolled = children_for_unit(unit, active_only=True).count()
-        capacity = unit.capacity or enrolled
-        programs = PortalProgram.objects.filter(unit=unit, is_active=True).count()
         location_keys = enrollment_keys_for_unit(unit)
         open_apps = EnrollmentApplication.objects.filter(
             program_location__in=location_keys,
-            status__in=("under_review", "pending_documents", "waitlist"),
+            status__in=OPEN_APPLICATION_STATUSES,
         ).count()
         approved = EnrollmentApplication.objects.filter(
             program_location__in=location_keys,
-            status__in=("approved", "enrolled"),
+            status__in=COUNTED_ENROLLED_STATUSES,
         ).count()
         rows.append(
             {
-                "unit": unit.name,
-                "slug": unit.slug,
-                "enrolled": enrolled,
+                **row,
                 "approved_applications": approved,
-                "capacity": capacity,
-                "programs": programs,
+                "programs": PortalProgram.objects.filter(unit=unit, is_active=True).count(),
                 "open_apps": open_apps,
             }
         )
@@ -111,11 +107,10 @@ def get_enrollment_by_unit_live():
 
 
 def get_units_live():
-    from .unit_visibility import children_for_unit
+    from .enrollment_counts import unit_capacity, unit_enrollment_count
 
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
-        enrolled = children_for_unit(unit, active_only=True).count()
         rows.append(
             {
                 "slug": unit.slug,
@@ -124,8 +119,8 @@ def get_units_live():
                 "program_type": unit.program_type or "after_school",
                 "address": unit.address or "",
                 "city": unit.city or "",
-                "capacity": unit.capacity or enrolled,
-                "enrolled": enrolled,
+                "capacity": unit_capacity(unit),
+                "enrolled": unit_enrollment_count(unit),
                 "manager": unit.manager_name or "",
                 "phone": unit.phone or "",
                 "pk": unit.pk,
@@ -135,7 +130,7 @@ def get_units_live():
 
 
 def get_programs_live():
-    from .unit_visibility import children_for_unit
+    from .enrollment_counts import unit_enrollment_count
 
     rows = []
     for program in PortalProgram.objects.select_related("unit").order_by("unit__name", "name"):
@@ -147,7 +142,7 @@ def get_programs_live():
                 "season": program.season or "",
                 "schedule": f"{program.start_time:%I:%M %p} – {program.end_time:%I:%M %p}",
                 "capacity": program.capacity if program.capacity else "—",
-                "enrolled": children_for_unit(program.unit, active_only=True).count(),
+                "enrolled": unit_enrollment_count(program.unit),
                 "active": program.is_active,
                 "pk": program.pk,
             }

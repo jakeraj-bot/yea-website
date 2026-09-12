@@ -70,7 +70,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Reset parent password", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("cannot look up the current password", bodies)
-        self.assertIn("copy the new temporary password once", bodies)
+        self.assertIn("one-time link to create a new password", bodies)
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")
@@ -85,7 +85,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIsNotNone(guide)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("cannot look up the old password", bodies)
-        self.assertIn("copy it once", bodies)
+        self.assertIn("one-time link to create a new password", bodies)
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")

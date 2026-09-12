@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .demo_data import prepare_billing_preview
+from .payment_refs import attach_ledger_reference, method_label_for_reference
 from .models import (
     PortalAgencyProfile,
     PortalChild,
@@ -76,7 +77,8 @@ def prepare_billing_for_staff(family, permissions, unit=None):
             entries = filter_ledger_entries_for_unit(entries, family, unit)
         from .processing_fees import backfill_stripe_fee_totals, ledger_paid_totals
 
-        backfill_stripe_fee_totals(family.payments.all())
+        payments = list(family.payments.all())
+        backfill_stripe_fee_totals(payments)
         ledger = []
         for entry in entries:
             paid, fee, applied = ledger_paid_totals(entry)
@@ -84,20 +86,26 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 amount = f"{paid:.2f}" if entry.entry_type == "payment" else f"{applied:.2f}"
             else:
                 amount = f"{entry.amount:.2f}"
-            ledger.append(
-                {
-                    "id": entry.pk,
-                    "date": entry.date.isoformat(),
-                    "child": entry.child_name,
-                    "type": entry.entry_type,
-                    "description": entry.description,
-                    "amount": amount,
-                    "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
-                    "applied": f"{applied:.2f}",
-                    "manual": entry.is_manual,
-                    "editable": entry.entry_type in ("charge", "payment"),
-                }
-            )
+            row = {
+                "id": entry.pk,
+                "date": entry.date.isoformat(),
+                "child": entry.child_name,
+                "type": entry.entry_type,
+                "description": entry.description,
+                "amount": amount,
+                "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
+                "applied": f"{applied:.2f}",
+                "manual": entry.is_manual,
+                "editable": entry.entry_type in ("charge", "payment"),
+            }
+            if entry.entry_type == "payment":
+                attach_ledger_reference(
+                    row,
+                    entry.description,
+                    entry.reference_number,
+                    method_label_for_reference(payments, entry.reference_number),
+                )
+            ledger.append(row)
         billing["ledger"] = ledger
     if unit:
         from .unit_visibility import filter_billing_dict_for_unit
@@ -220,21 +228,20 @@ def staff_payment_method_label(method):
 
 
 def staff_payment_note(method, note="", check_number="", money_order_number=""):
-    """Build the ledger/receipt note and stored reference for an in-person payment."""
+    """Return the human ledger note and the Check / money order number.
+
+    The number is stored on ``reference_number`` and shown beside the payment.
+    It is not written into the description.
+    """
     note = (note or "").strip()
     key = (method or "").strip().lower().replace(" ", "_")
     if key == "check":
-        number = (check_number or money_order_number or "").strip()
-        if number:
-            prefix = f"Check #{number}"
-            return (f"{prefix} — {note}" if note else prefix), number
-        return note, ""
+        return note, (check_number or money_order_number or "").strip()
     if key == "money_order":
         number = (money_order_number or check_number or "").strip()
         if not number:
             raise ValueError("Enter the money order number.")
-        prefix = f"Money order #{number}"
-        return (f"{prefix} — {note}" if note else prefix), number
+        return note, number
     return note, ""
 
 
@@ -273,11 +280,11 @@ def _next_in_person_receipt_no():
 
 
 def _record_in_person_receipt(family, amount, method_label, description, reference_number="", child_name=""):
+    from .payment_refs import clean_in_person_method_label
+
     reference = (reference_number or "").strip()
-    receipt_method = method_label
-    if reference and "#" not in (method_label or ""):
-        receipt_method = f"{method_label} #{reference}"
-    elif not receipt_method and description:
+    receipt_method = clean_in_person_method_label(method_label) or method_label
+    if not receipt_method and description:
         receipt_method = description
     PortalPayment.objects.create(
         family=family,
@@ -456,22 +463,23 @@ def get_org_ledger_live(limit=150, unit_slug=None):
 
         paid, fee, applied = ledger_paid_totals(entry)
         display_amount = paid if entry.entry_type == "payment" else applied
-        entries.append(
-            {
-                "id": entry.pk,
-                "date": entry.date.isoformat(),
-                "family_slug": entry.family.slug,
-                "family_name": entry.family.name,
-                "unit": entry.family.unit.name,
-                "child": entry.child_name or "—",
-                "type": entry.entry_type,
-                "description": entry.description,
-                "amount": f"{display_amount:.2f}",
-                "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
-                "is_credit": entry.entry_type in credit_types,
-                "manual": entry.is_manual,
-            }
-        )
+        row = {
+            "id": entry.pk,
+            "date": entry.date.isoformat(),
+            "family_slug": entry.family.slug,
+            "family_name": entry.family.name,
+            "unit": entry.family.unit.name,
+            "child": entry.child_name or "—",
+            "type": entry.entry_type,
+            "description": entry.description,
+            "amount": f"{display_amount:.2f}",
+            "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
+            "is_credit": entry.entry_type in credit_types,
+            "manual": entry.is_manual,
+        }
+        if entry.entry_type == "payment":
+            attach_ledger_reference(row, entry.description, entry.reference_number)
+        entries.append(row)
     return entries
 
 

@@ -160,6 +160,44 @@ def create_drop_off_checkout_session(request, payment, booking):
     return session
 
 
+def _family_parent_account(family):
+    try:
+        return family.parent_account
+    except Exception:
+        return None
+
+
+def create_staff_balance_checkout_session(request, payment, *, success_url, cancel_url, note="", child_name=""):
+    """Start Stripe Checkout for a staff/admin card payment. Card is entered on Stripe."""
+    stripe = _stripe()
+    line_items = checkout_line_items(
+        payment,
+        f"YEA family balance — {payment.family.name}",
+        (note or "").strip() or f"Program balance payment (${payment.amount})",
+    )
+    create_kwargs = {
+        "mode": "payment",
+        "line_items": line_items,
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "metadata": {
+            "portal_payment_id": str(payment.pk),
+            "family_slug": payment.family.slug,
+            "payment_kind": payment.payment_kind,
+            "initiated_by": "staff",
+            "staff_note": (note or "")[:200],
+            "child_name": (child_name or "")[:120],
+        },
+    }
+    account = _family_parent_account(payment.family)
+    if account:
+        create_kwargs["customer"] = get_or_create_customer(account).id
+    session = stripe.checkout.Session.create(**create_kwargs)
+    payment.stripe_session_id = session.id
+    payment.save(update_fields=["stripe_session_id"])
+    return session
+
+
 def create_setup_checkout_session(request, account):
     stripe = _stripe()
     customer = get_or_create_customer(account)
@@ -220,8 +258,15 @@ def confirm_checkout_payment(session_id):
                 method_label = f"{(pm.card.brand or 'Card').title()} ending {pm.card.last4}"
         except Exception:
             pass
+    staff_note = metadata.get("staff_note") if hasattr(metadata, "get") else ""
+    child_name = metadata.get("child_name") if hasattr(metadata, "get") else ""
     try:
-        return record_successful_payment(payment, method_label=method_label)
+        return record_successful_payment(
+            payment,
+            method_label=method_label,
+            ledger_note=staff_note or "",
+            child_name=child_name or "",
+        )
     except Exception:
         return None
 

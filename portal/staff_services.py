@@ -31,6 +31,7 @@ from .demo_data import (
 from .live_services import count_messages_unread_live
 from .medical import alerts_from_medical_dict, application_for_child, medical_from_application
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram
+from .enrollment_counts import unit_enrollment_count
 from .unit_visibility import children_for_unit, families_qs_for_unit
 from .parent_services import get_parent_policy_data_live
 from .pickup_services import pickup_report_data, pickup_report_programs
@@ -42,7 +43,7 @@ def get_programs_for_unit(unit):
         return []
     rows = []
     for program in programs:
-        enrolled = children_for_unit(unit, active_only=True).count()
+        enrolled = unit_enrollment_count(unit)
         rows.append(
             {
                 "name": program.name,
