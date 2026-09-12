@@ -18,6 +18,7 @@ from enrollment.portal_integration import (
     family_display_label,
 )
 
+from .enrollment_counts import COUNTED_ENROLLED_STATUSES
 from .models import (
     PortalChild,
     PortalDiscountAssignment,
@@ -37,7 +38,6 @@ SUSPEND_REASONS = [
 ]
 
 OPEN_APPLICATION_STATUSES = ("under_review", "pending_documents", "waitlist")
-COUNTED_ENROLLED_STATUSES = ("approved", "enrolled")
 PLACEHOLDER_UNIT_SLUGS = {"main-location", "main_location"}
 PLACEHOLDER_UNIT_NAMES = {"main location", "main"}
 PARENT_PASSWORD_RESET_FLASH_KEY = "portal_parent_password_reset_once"
