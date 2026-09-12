@@ -479,6 +479,16 @@ urlpatterns = [
         name="portal_staff_create_application",
     ),
     path(
+        "staff/families/search/",
+        views.staff_family_search,
+        name="portal_staff_family_search",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/attendance/",
+        views.staff_family_attendance,
+        name="portal_staff_family_attendance",
+    ),
+    path(
         "staff/family/<slug:family_slug>/pickup/",
         views.staff_family_pickup,
         name="portal_staff_family_pickup",
@@ -539,6 +549,16 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/agency/",
         views.admin_family_agency,
         name="portal_admin_family_agency",
+    ),
+    path(
+        "admin/families/search/",
+        views.admin_family_search,
+        name="portal_admin_family_search",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/attendance/",
+        views.admin_family_attendance,
+        name="portal_admin_family_attendance",
     ),
     path(
         "admin/family/<slug:family_slug>/pickup/",

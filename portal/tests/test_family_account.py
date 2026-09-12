@@ -72,8 +72,11 @@ class FamilyAccountHubTests(TestCase):
         self.assertContains(response, "Jordan Jacobs")
         self.assertContains(response, "portal-account-children")
         self.assertContains(response, "portal-family-tabs-colorful")
-        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup", "Parent view"):
+        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup", "Attendance", "Parent view"):
             self.assertContains(response, label)
+        self.assertContains(response, reverse("portal_admin_family_attendance", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(response, "Find a child or family")
+        self.assertContains(response, reverse("portal_admin_family_search"))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_member_account_has_next_button_to_next_family(self):
@@ -138,6 +141,10 @@ class FamilyAccountHubTests(TestCase):
         self.assertContains(response, "Plans")
         self.assertContains(response, "4Cs")
         self.assertContains(response, "Applications")
+        self.assertContains(response, "Attendance")
+        self.assertContains(response, "Find a child or family")
+        self.assertContains(response, reverse("portal_staff_family_search"))
+        self.assertContains(response, reverse("portal_staff_family_attendance", kwargs={"family_slug": "jacobs"}))
         self.assertContains(response, "portal-collapse.js")
         self.assertContains(response, reverse("portal_staff_family_plans", kwargs={"family_slug": "jacobs"}))
 

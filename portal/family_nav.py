@@ -7,6 +7,7 @@ from .models import PortalFamily
 FAMILY_TAB_URL_KEYS = {
     "profile": "family_detail",
     "pickup": "family_pickup",
+    "attendance": "family_attendance",
     "incidents": "family_incidents",
     "billing": "family_billing",
     "plans": "family_plans",

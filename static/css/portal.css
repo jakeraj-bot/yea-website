@@ -4264,9 +4264,14 @@
   color: var(--text-muted);
 }
 
-.portal-family-hero-head .portal-family-pager {
+.portal-family-hero-head .portal-family-account-tools {
   margin: 0.15rem 0 0 auto;
-  flex: 0 0 auto;
+  flex: 0 1 22rem;
+  min-width: 14rem;
+}
+
+.portal-family-hero-head .portal-family-pager {
+  margin: 0;
 }
 
 .portal-family-pager {
@@ -4284,6 +4289,191 @@
 
 .portal-family-pager-next {
   min-width: 7.5rem;
+}
+
+.portal-family-account-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.portal-family-account-search {
+  position: relative;
+}
+
+.portal-family-account-search-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.portal-family-account-search-row .portal-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.portal-family-account-search-results {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 20px rgba(20, 20, 40, 0.08);
+}
+
+.portal-family-account-search-results[hidden] {
+  display: none;
+}
+
+.portal-family-search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  text-decoration: none;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+}
+
+.portal-family-search-hit:hover,
+.portal-family-search-hit:focus {
+  background: var(--tab-accent-soft, #f4f1fb);
+}
+
+.portal-family-search-hit span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.portal-family-search-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.portal-family-search-list .portal-family-search-hit {
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.portal-family-account-search-page {
+  max-width: 28rem;
+}
+
+.portal-child-calendar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.portal-child-calendar-month {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.portal-child-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.85rem;
+}
+
+.portal-child-calendar-key {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.portal-child-calendar-key.is-present,
+.portal-child-calendar-day.is-present {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.portal-child-calendar-key.is-absent,
+.portal-child-calendar-day.is-absent {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.portal-child-calendar-key.is-unmarked,
+.portal-child-calendar-day.is-unmarked {
+  background: #eceff1;
+  color: #455a64;
+}
+
+.portal-child-calendar {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.portal-child-calendar th {
+  padding: 0.4rem 0.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.portal-child-calendar-day {
+  vertical-align: top;
+  height: 5.25rem;
+  padding: 0;
+  border: 1px solid var(--border);
+}
+
+.portal-child-calendar-day.is-outside {
+  background: #fafafa;
+  color: #b0b6bd;
+}
+
+.portal-child-calendar-day.is-today {
+  outline: 2px solid var(--yea-blue, #2196f3);
+  outline-offset: -2px;
+}
+
+.portal-child-calendar-day.is-selected {
+  box-shadow: inset 0 0 0 2px #1b5e20;
+}
+
+.portal-child-calendar-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 5.25rem;
+  padding: 0.35rem 0.4rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.portal-child-calendar-num {
+  font-weight: 700;
+}
+
+.portal-child-calendar-mark {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.portal-child-calendar-detail {
+  margin-top: 1rem;
 }
 
 .portal-family-tabs {
@@ -4342,6 +4532,7 @@
 .portal-family-tab--agency { --tab-accent: #7e57c2; --tab-accent-soft: rgba(126, 87, 194, 0.12); }
 .portal-family-tab--applications { --tab-accent: #5c6bc0; --tab-accent-soft: rgba(92, 107, 192, 0.12); }
 .portal-family-tab--parentview { --tab-accent: #00838f; --tab-accent-soft: rgba(0, 131, 143, 0.12); }
+.portal-family-tab--attendance { --tab-accent: #43a047; --tab-accent-soft: rgba(67, 160, 71, 0.12); }
 
 .portal-family-email-card {
   max-width: 42rem;

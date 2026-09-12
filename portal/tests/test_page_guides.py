@@ -42,6 +42,7 @@ class PageGuideCatalogTests(TestCase):
         for tab in (
             "profile",
             "pickup",
+            "attendance",
             "incidents",
             "billing",
             "plans",

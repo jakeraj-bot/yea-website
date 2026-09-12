@@ -116,6 +116,12 @@ class PortalCollapseCssTests(SimpleTestCase):
         screen_pager = [rule for rule in rules if rule[0] == ".portal-family-pager"]
         self.assertEqual(len(screen_pager), 1)
         self.assertEqual(screen_pager[0][1], 0, "family Previous/Next pager must apply on screen")
+        screen_search = [rule for rule in rules if rule[0] == ".portal-family-account-tools"]
+        self.assertEqual(len(screen_search), 1)
+        self.assertEqual(screen_search[0][1], 0, "family account search must apply on screen")
+        screen_calendar = [rule for rule in rules if rule[0] == ".portal-child-calendar"]
+        self.assertEqual(len(screen_calendar), 1)
+        self.assertEqual(screen_calendar[0][1], 0, "child attendance calendar must apply on screen")
         screen_toggle = [rule for rule in rules if rule[0] == ".portal-sidebar-toggle"]
         self.assertEqual(len(screen_toggle), 1)
         self.assertEqual(screen_toggle[0][1], 0, "collapse menu button must apply on screen")

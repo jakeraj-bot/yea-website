@@ -9,6 +9,7 @@
   {% if portal_area == 'admin' %}
   <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_admin_family_detail' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% elif tab_family_id %}?id={{ tab_family_id }}{% endif %}">Profile</a>
   <a class="portal-family-tab portal-family-tab--pickup {% if family_tab == 'pickup' %}is-active{% endif %}" href="{% url 'portal_admin_family_pickup' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% elif tab_family_id %}?id={{ tab_family_id }}{% endif %}">Pickup</a>
+  <a class="portal-family-tab portal-family-tab--attendance {% if family_tab == 'attendance' %}is-active{% endif %}" href="{% url 'portal_admin_family_attendance' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% elif tab_family_id %}?id={{ tab_family_id }}{% endif %}">Attendance</a>
   <a class="portal-family-tab portal-family-tab--incidents {% if family_tab == 'incidents' %}is-active{% endif %}" href="{% url 'portal_admin_family_incidents' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% elif tab_family_id %}?id={{ tab_family_id }}{% endif %}">
     Incidents{% if family_incident_count %} ({{ family_incident_count }}){% endif %}
   </a>
@@ -22,6 +23,7 @@
   {% else %}
   <a class="portal-family-tab portal-family-tab--profile {% if family_tab == 'profile' %}is-active{% endif %}" href="{% url 'portal_staff_family_detail' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% endif %}">Profile</a>
   <a class="portal-family-tab portal-family-tab--pickup {% if family_tab == 'pickup' %}is-active{% endif %}" href="{% url 'portal_staff_family_pickup' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% endif %}">Pickup</a>
+  <a class="portal-family-tab portal-family-tab--attendance {% if family_tab == 'attendance' %}is-active{% endif %}" href="{% url 'portal_staff_family_attendance' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% endif %}">Attendance</a>
   <a class="portal-family-tab portal-family-tab--incidents {% if family_tab == 'incidents' %}is-active{% endif %}" href="{% url 'portal_staff_family_incidents' family_slug=family_slug %}{% if family_account_query %}?{{ family_account_query }}{% endif %}">
     Incidents{% if family_incident_count %} ({{ family_incident_count }}){% endif %}
   </a>
