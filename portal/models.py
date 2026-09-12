@@ -1070,3 +1070,69 @@ class PortalEmailTemplate(models.Model):
     def __str__(self):
         return self.name
 
+
+class PortalActivityEvent(models.Model):
+    ACTION_LOGIN = "login"
+    ACTION_SAVE = "save"
+    ACTION_DELETE = "delete"
+    ACTION_CHARGE = "charge"
+    ACTION_PAYMENT = "payment"
+    ACTION_EMAIL = "email"
+    ACTION_PASSWORD_RESET = "password_reset"
+    ACTION_ATTENDANCE = "attendance"
+    ACTION_APPLICATION = "application"
+    ACTION_PLAN = "plan"
+    ACTION_AGENCY = "agency"
+    ACTION_OTHER = "other"
+    ACTION_CHOICES = [
+        (ACTION_LOGIN, "Signed in"),
+        (ACTION_SAVE, "Saved"),
+        (ACTION_DELETE, "Deleted"),
+        (ACTION_CHARGE, "Posted a charge"),
+        (ACTION_PAYMENT, "Recorded a payment"),
+        (ACTION_EMAIL, "Sent email"),
+        (ACTION_PASSWORD_RESET, "Reset password"),
+        (ACTION_ATTENDANCE, "Attendance"),
+        (ACTION_APPLICATION, "Application review"),
+        (ACTION_PLAN, "Saved a plan"),
+        (ACTION_AGENCY, "Saved 4Cs"),
+        (ACTION_OTHER, "Other"),
+    ]
+
+    actor = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="portal_activity_events",
+    )
+    actor_username = models.CharField(max_length=150)
+    actor_name = models.CharField(max_length=200, blank=True)
+    actor_role = models.CharField(max_length=32, blank=True)
+    unit = models.ForeignKey(
+        PortalUnit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activity_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    action = models.CharField(max_length=32, choices=ACTION_CHOICES, default=ACTION_OTHER)
+    action_label = models.CharField(max_length=120)
+    object_type = models.CharField(max_length=64, blank=True)
+    object_label = models.CharField(max_length=255, blank=True)
+    page_path = models.CharField(max_length=255, blank=True)
+    details = models.TextField(blank=True)
+    delete_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["actor", "-created_at"]),
+            models.Index(fields=["action", "-created_at"]),
+        ]
+
+    def __str__(self):
+        who = self.actor_name or self.actor_username or "Someone"
+        return f"{who} · {self.action_label} · {self.created_at}"
+

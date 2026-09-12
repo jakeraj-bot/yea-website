@@ -96,11 +96,11 @@
             <button type="submit" class="btn btn-secondary btn-sm{% if unit.active %} portal-btn-danger{% endif %}">{% if unit.active %}Deactivate{% else %}Reactivate{% endif %}</button>
           </form>
           {% if unit.can_delete %}
-          <form method="post" action="{% url 'portal_admin_unit_action' %}" style="display:inline;">
+          <form method="post" action="{% url 'portal_admin_unit_action' %}" class="js-need-delete-reason" data-delete-message="Permanently delete {{ unit.name }}? This cannot be undone." style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="unit_id" value="{{ unit.pk }}">
             <input type="hidden" name="action" value="delete">
-            <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Permanently delete {{ unit.name }}? This cannot be undone.');">Delete</button>
+            <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
           </form>
           {% elif unit.delete_blockers %}
           <span class="form-note" title="Remove {{ unit.delete_blockers|join:', ' }} first">Delete unavailable</span>

@@ -115,7 +115,7 @@
         <ul class="portal-link-list">
           {% for plan in payment_plans %}
           <li>{{ plan.name }} {% if not plan.is_active %}(inactive){% endif %}
-            <form method="post" action="{% url 'portal_admin_payment_plan_delete' %}" style="display:inline;">
+            <form method="post" action="{% url 'portal_admin_payment_plan_delete' %}" class="js-need-delete-reason" data-delete-message="Delete this payment plan?" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="plan_id" value="{{ plan.pk }}">
               <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
             </form>

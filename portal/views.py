@@ -572,6 +572,18 @@ def _family_billing_bundle(request, area, family_slug):
                 confirmed = confirm_checkout_payment(session_id)
                 if confirmed:
                     messages.success(request, "Card payment posted to the family ledger.")
+                    try:
+                        from .activity_log import log_activity
+
+                        log_activity(
+                            request,
+                            action="payment",
+                            action_label="Recorded a card payment",
+                            object_type="family",
+                            object_label=family.name,
+                        )
+                    except Exception:
+                        pass
                 else:
                     messages.info(
                         request,
@@ -1708,6 +1720,7 @@ def staff_page(request, page):
         "incidents": "portal/staff/incidents.html",
         "support": "portal/support/support.html",
         "emails-sent": "portal/staff/emails_sent.html",
+        "activity": "portal/admin/activity.html",
     }
     template = templates.get(page)
     if not template:
@@ -1880,6 +1893,15 @@ def staff_page(request, page):
         program = get_active_program(unit) if unit else None
         context["active_program"] = program.name if program else ATTENDANCE_SESSION["program"]
         context["today"] = date.today().isoformat()
+    if page == "activity":
+        from .activity_log import activity_page_context
+
+        context.update(activity_page_context(request, area="staff"))
+        context["page_title"] = "My activity"
+        context["page_guide_key"] = "my-activity"
+        from .page_guides import page_guide_from_context
+
+        context["page_guide"] = page_guide_from_context(context)
     return render(request, template, context)
 
 
@@ -3779,6 +3801,7 @@ def admin_page(request, page):
         "staff-compliance": "portal/admin/staff_compliance.html",
         "licensing": "portal/admin/licensing.html",
         "support": "portal/support/support.html",
+        "activity": "portal/admin/activity.html",
     }
     template = templates.get(page)
     if not template:
@@ -4308,6 +4331,12 @@ def admin_page(request, page):
         from .page_guides import page_guide_from_context
 
         context["page_guide"] = page_guide_from_context(context)
+    if page == "activity":
+        from .activity_log import activity_page_context
+
+        context.update(activity_page_context(request, area="admin"))
+        context["page_title"] = "Activity"
+        context["page_guide_key"] = "activity"
     return render(request, template, _finalize_admin_context(request, context))
 
 
@@ -4809,6 +4838,16 @@ def staff_attendance_checkin(request):
             request,
             f"Checked in {record.child.name} at {_format_time_display(record.check_in_time)}.",
         )
+        from .activity_log import log_activity
+
+        log_activity(
+            request,
+            action="attendance",
+            action_label="Marked present",
+            object_type="child",
+            object_label=record.child.name,
+            details=str(attendance_date),
+        )
     except Exception as exc:
         messages.error(request, str(exc))
     return attendance_redirect(request, attendance_date)
@@ -4828,6 +4867,16 @@ def staff_attendance_checkout(request):
     try:
         record = check_out_child(child_id, program, attendance_date, check_out_time)
         messages.success(request, f"Checked out {record.child.name}.")
+        from .activity_log import log_activity
+
+        log_activity(
+            request,
+            action="attendance",
+            action_label="Checked out",
+            object_type="child",
+            object_label=record.child.name,
+            details=str(attendance_date),
+        )
     except Exception as exc:
         messages.error(request, str(exc))
     return attendance_redirect(request, attendance_date)
@@ -4847,6 +4896,16 @@ def staff_attendance_absent(request):
     try:
         record = mark_absent(child_id, program, attendance_date, note)
         messages.success(request, f"Marked {record.child.name} absent.")
+        from .activity_log import log_activity
+
+        log_activity(
+            request,
+            action="attendance",
+            action_label="Marked absent",
+            object_type="child",
+            object_label=record.child.name,
+            details=str(attendance_date),
+        )
     except Exception as exc:
         messages.error(request, str(exc))
     return attendance_redirect(request, attendance_date)

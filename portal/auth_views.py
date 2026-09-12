@@ -69,6 +69,15 @@ def parent_login(request):
                 from .staff_auth import set_portal_auth
 
                 set_portal_auth(request, "parent")
+                from .activity_log import log_activity
+
+                log_activity(
+                    request,
+                    action="login",
+                    action_label="Signed in",
+                    object_type="portal",
+                    object_label="Parent portal",
+                )
                 messages.success(request, f"Welcome back, {family_display_label(account.family)} family.")
                 return redirect(_login_redirect(request))
         else:
@@ -232,6 +241,16 @@ def staff_login(request):
             else:
                 login(request, user)
                 set_portal_auth(request, "staff")
+                from .activity_log import log_activity
+
+                log_activity(
+                    request,
+                    action="login",
+                    action_label="Signed in",
+                    object_type="portal",
+                    object_label="Staff portal",
+                    unit=account.unit,
+                )
                 messages.success(request, f"Welcome back, {account.display_name}.")
                 return redirect(_staff_login_redirect(request))
         else:
@@ -287,6 +306,16 @@ def admin_login(request):
             else:
                 login(request, user)
                 set_portal_auth(request, "admin")
+                from .activity_log import log_activity
+
+                log_activity(
+                    request,
+                    action="login",
+                    action_label="Signed in",
+                    object_type="portal",
+                    object_label="Admin portal",
+                    unit=account.unit,
+                )
                 messages.success(request, f"Welcome back, {account.display_name}.")
                 return redirect(_admin_login_redirect(request))
         else:

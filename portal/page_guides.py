@@ -721,6 +721,38 @@ GUIDES = {
             },
         ],
     },
+    "activity": {
+        "title": "How to read activity",
+        "intro": "This is not one giant list. Choose a person first, then read only what that person did.",
+        "steps": [
+            {
+                "title": "Pick a person",
+                "body": "Search by name or username, then click Open activity. You will only see that person’s events — including your own.",
+            },
+            {
+                "title": "Read the list",
+                "body": "Each row is a date and time, the action, and the page or family they touched. Optional details sit in the last column.",
+            },
+            {
+                "title": "See why something was deleted",
+                "body": "Deletes ask for a required reason before they go through. That reason is saved here so you can see why it was removed. Cancel stays available on the delete prompt.",
+            },
+        ],
+    },
+    "my-activity": {
+        "title": "How to read your activity",
+        "intro": "This list is only what you have done in the portal — not everyone else’s work.",
+        "steps": [
+            {
+                "title": "Read your own list",
+                "body": "Each row is a date and time, the action, and the page or family you touched.",
+            },
+            {
+                "title": "See why you deleted something",
+                "body": "Deletes ask for a required reason. That reason is saved here. Admins can also open your list from Organization → Activity.",
+            },
+        ],
+    },
     "billing-settings": {
         "title": "How to use member accounts",
         "intro": "This list is every enrolled family ledger, plus parent portal logins.",

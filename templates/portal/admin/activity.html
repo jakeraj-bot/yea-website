@@ -1,0 +1,124 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>{% if activity_own_only %}My activity{% else %}Activity{% endif %}</h1>
+    <p class="lead">
+      {% if activity_own_only %}
+      What you have done in the portal — sign-ins, saves, charges, emails, and deletes. Delete reasons show here.
+      {% else %}
+      Choose a person first, then read only that person’s activity. Dates, actions, and delete reasons stay on their list.
+      {% endif %}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% if not activity_own_only %}
+    <section class="card portal-collapse-skip">
+      <h2>Choose a person</h2>
+      <form method="get" class="portal-activity-picker-form" action="{% url 'portal_admin_page' page='activity' %}">
+        <div class="form-group">
+          <label for="activity-search">Search name, username, or role</label>
+          <input id="activity-search" type="search" name="q" class="portal-input portal-search" value="{{ activity_search }}" placeholder="Jakera, staff, parent">
+        </div>
+        <div class="portal-form-actions">
+          <button type="submit" class="btn btn-primary">Find people</button>
+          {% if activity_search %}<a class="btn btn-secondary" href="{% url 'portal_admin_page' page='activity' %}">Clear search</a>{% endif %}
+        </div>
+      </form>
+      {% if activity_people %}
+      <div class="portal-table-wrap" style="margin-top:1rem;">
+        <table class="portal-table portal-activity-people">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Unit</th>
+              <th>Username</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for person in activity_people %}
+            <tr{% if activity_selected and person.id == activity_selected.id %} class="is-selected"{% endif %}>
+              <td><strong>{{ person.name }}</strong></td>
+              <td>{{ person.role }}</td>
+              <td>{{ person.unit|default:"—" }}</td>
+              <td>{{ person.username }}</td>
+              <td>
+                <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='activity' %}?user={{ person.id }}{% if activity_date_from %}&amp;date_from={{ activity_date_from }}{% endif %}{% if activity_date_to %}&amp;date_to={{ activity_date_to }}{% endif %}">Open activity</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="form-note">No matching people. Try a shorter name, or wait until someone has signed in.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if activity_selected %}
+    <section class="card portal-collapse-skip" style="margin-top:1.25rem;">
+      <h2>{{ activity_selected.name }}</h2>
+      <p class="form-note">{{ activity_selected.role }}{% if activity_selected.unit %} · {{ activity_selected.unit }}{% endif %} · {{ activity_selected.username }}</p>
+      <form method="get" class="portal-activity-filters" action="{% if activity_own_only %}{% url 'portal_staff_page' page='activity' %}{% else %}{% url 'portal_admin_page' page='activity' %}{% endif %}">
+        {% if not activity_own_only %}<input type="hidden" name="user" value="{{ activity_selected.id }}">{% endif %}
+        <div class="form-group">
+          <label for="activity-from">From</label>
+          <input id="activity-from" type="date" name="date_from" class="portal-input" value="{{ activity_date_from }}">
+        </div>
+        <div class="form-group">
+          <label for="activity-to">To</label>
+          <input id="activity-to" type="date" name="date_to" class="portal-input" value="{{ activity_date_to }}">
+        </div>
+        <div class="portal-form-actions">
+          <button type="submit" class="btn btn-primary">Apply dates</button>
+          {% if not activity_own_only %}
+          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='activity' %}">Choose someone else</a>
+          {% endif %}
+        </div>
+      </form>
+
+      {% if activity_events %}
+      <div class="portal-table-wrap" style="margin-top:1rem;">
+        <table class="portal-table portal-activity-events">
+          <thead>
+            <tr>
+              <th>Date / time</th>
+              <th>Action</th>
+              <th>Page / object</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in activity_events %}
+            <tr>
+              <td>{{ event.created_at|date:"M j, Y g:i A" }}</td>
+              <td><strong>{{ event.action_label }}</strong></td>
+              <td>
+                {% if event.object_label %}{{ event.object_label }}{% elif event.page_path %}{{ event.page_path }}{% else %}—{% endif %}
+                {% if event.object_type %}<span class="form-note">{{ event.object_type }}</span>{% endif %}
+              </td>
+              <td>
+                {% if event.delete_reason %}<p class="portal-activity-reason"><strong>Why deleted:</strong> {{ event.delete_reason }}</p>{% endif %}
+                {% if event.details %}<p class="form-note">{{ event.details }}</p>{% endif %}
+                {% if not event.delete_reason and not event.details %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="form-note" style="margin-top:1rem;">No activity for this person in that date range.</p>
+      {% endif %}
+    </section>
+    {% elif not activity_own_only %}
+    <p class="form-note" style="margin-top:1rem;">Open a person above to see only their activity. The full organization is not dumped on one page.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

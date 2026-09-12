@@ -89,12 +89,12 @@
             <td class="portal-table-actions">
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='programs' %}?add=1&name={{ program.name|urlencode }}">Edit</a>
               {% if portal_live and program.program_ids %}
-              <form method="post" action="{% url 'portal_admin_program_delete' %}" style="display:inline;">
+              <form method="post" action="{% url 'portal_admin_program_delete' %}" class="js-need-delete-reason" data-delete-message="Delete this program from all units?" style="display:inline;">
                 {% csrf_token %}
                 {% for pid in program.program_ids %}
                 <input type="hidden" name="program_ids" value="{{ pid }}">
                 {% endfor %}
-                <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this program from all units?');">Delete</button>
+                <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
               </form>
               {% else %}
               <button type="button" class="btn btn-secondary btn-sm portal-btn-danger" disabled>Delete</button>

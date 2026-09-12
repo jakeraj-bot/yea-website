@@ -10,6 +10,7 @@ from django.utils import timezone
 from portal.admin_reports import build_admin_report
 from portal.billing_services import post_payment, prepare_billing_for_staff
 from portal.models import (
+    PortalActivityEvent,
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
@@ -220,6 +221,11 @@ class StaffCardCheckoutTests(TestCase):
         self.assertEqual(kwargs["metadata"]["initiated_by"], "staff")
         self.assertEqual(kwargs["metadata"]["staff_note"], "Weekly tuition")
         self.assertNotIn("card_number", kwargs)
+        event = PortalActivityEvent.objects.get(action=PortalActivityEvent.ACTION_PAYMENT, actor=self.staff)
+        self.assertEqual(event.action_label, "Started a card payment")
+        self.assertEqual(event.object_label, "Jacobs")
+        self.assertNotIn("4242", event.details)
+        self.assertNotIn("card_number", event.details)
 
     @override_settings(
         PORTAL_PREVIEW_MODE=False,
@@ -261,3 +267,49 @@ class StaffCardCheckoutTests(TestCase):
         self.assertEqual(entry.amount, Decimal("-40.00"))
         self.assertTrue((entry.fee_amount or Decimal("0")) > 0)
         self.assertTrue(entry.reference_number.startswith("RCPT-"))
+
+    @override_settings(
+        PORTAL_PREVIEW_MODE=False,
+        MEMBER_STRIPE_SECRET_KEY="sk_test_123",
+        MEMBER_STRIPE_PUBLIC_KEY="pk_test_123",
+    )
+    @patch("portal.stripe_services.member_stripe")
+    def test_returning_from_checkout_logs_recorded_card_payment(self, member_stripe):
+        from portal.processing_fees import apply_fee_to_payment
+
+        payment = PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            payment_kind="balance",
+            dropin_child="Jordan Jacobs",
+            method_label="Card",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_staff_return",
+        )
+        apply_fee_to_payment(payment)
+        stripe = MagicMock()
+        stripe.checkout.Session.retrieve.return_value = SimpleNamespace(
+            id="cs_staff_return",
+            payment_status="paid",
+            amount_total=None,
+            payment_intent="pi_staff_return",
+            metadata={
+                "portal_payment_id": str(payment.pk),
+                "staff_note": "Weekly tuition",
+                "child_name": "Jordan Jacobs",
+            },
+        )
+        member_stripe.return_value = stripe
+        self._login(self.admin, "admin")
+        response = self.client.get(
+            reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}),
+            {"session_id": "cs_staff_return"},
+        )
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, PortalPayment.STATUS_PAID)
+        event = PortalActivityEvent.objects.get(action=PortalActivityEvent.ACTION_PAYMENT, actor=self.admin)
+        self.assertEqual(event.action_label, "Recorded a card payment")
+        self.assertEqual(event.object_label, "Jacobs")
+        self.assertNotIn("4242", event.details)
+        self.assertNotIn("card_number", event.details)

@@ -62,7 +62,7 @@
                 </select>
                 <button type="submit" class="btn btn-primary btn-sm">Link &amp; post</button>
               </form>
-              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form" onsubmit="return confirm('Delete this collection record?');">
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Delete this collection record?">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_prior_balance">
                 <input type="hidden" name="balance_id" value="{{ row.pk }}">
