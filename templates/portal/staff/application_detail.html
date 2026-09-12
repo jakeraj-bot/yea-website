@@ -68,7 +68,7 @@
       {% if not application.has_parent_login %}
       <a class="btn btn-secondary" href="#create-login-panel">Create parent login</a>
       {% endif %}
-      <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form" onsubmit="return confirm('Delete this application from the portal?');">
+      <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Delete this application from the portal?">
         {% csrf_token %}
         <input type="hidden" name="action" value="delete_application">
         <input type="hidden" name="app_slug" value="{{ app_slug }}">

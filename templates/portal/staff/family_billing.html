@@ -239,13 +239,13 @@
               {% endif %}
               {% if billing_permissions.can_delete_charge %}
               {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form">
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Remove this ledger entry?">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge" onclick="return confirm('Remove this ledger entry?')">Delete</button>
+                <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge">Delete</button>
               </form>
               {% elif row.deletable %}
               <button type="button" class="btn btn-secondary btn-sm" disabled title="Remove this charge">Delete</button>

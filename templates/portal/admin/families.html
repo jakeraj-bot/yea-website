@@ -84,7 +84,7 @@
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Account</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_parent_preview' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Parent view</a>
               {% if portal_live and family.id %}
-              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form" onsubmit="return confirm('Delete {{ family.name }} and their parent login? Applications will be unlinked, not deleted.');">
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Delete {{ family.name }} and their parent login? Applications will be unlinked, not deleted.">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_family">
                 <input type="hidden" name="family_id" value="{{ family.id }}">
@@ -146,7 +146,7 @@
             <td>{{ family.unit.name }}</td>
             <td>{{ family.primary_contact }}</td>
             <td>
-              <form method="post" action="{% url 'portal_admin_member_ops' %}" onsubmit="return confirm('Delete {{ family.name }}?');">
+              <form method="post" action="{% url 'portal_admin_member_ops' %}" class="js-need-delete-reason" data-delete-message="Delete {{ family.name }}?">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_family">
                 <input type="hidden" name="family_id" value="{{ family.pk }}">

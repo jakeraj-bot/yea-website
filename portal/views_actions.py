@@ -59,6 +59,21 @@ def _portal_next_url(request, fallback):
     return fallback
 
 
+def _log_activity(request, action, **kwargs):
+    from .activity_log import log_activity
+
+    try:
+        log_activity(request, action=action, **kwargs)
+    except Exception:
+        pass
+
+
+def _require_delete_reason(request):
+    from .activity_log import require_delete_reason
+
+    return require_delete_reason(request)
+
+
 def _add_after_school_from_review(request, app, area):
     from enrollment.add_program import can_add_after_school_for_application, create_after_school_from_application
 
@@ -323,8 +338,17 @@ def admin_announcement_delete(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id")
     try:
+        reason = _require_delete_reason(request)
         deleted, _ = PortalAnnouncement.objects.filter(legacy_id=legacy_id).delete()
         if deleted:
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted announcement",
+                object_type="announcement",
+                object_label=legacy_id or "announcement",
+                delete_reason=reason,
+            )
             messages.success(request, "Announcement deleted.")
         else:
             messages.error(request, "Announcement not found.")
@@ -471,7 +495,16 @@ def admin_staff_delete(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="staff")
     try:
+        reason = _require_delete_reason(request)
         label = delete_staff_login(request.POST.get("staff_id"), current_user_id=request.user.pk)
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted staff login",
+            object_type="staff",
+            object_label=label,
+            delete_reason=reason,
+        )
         messages.success(request, f"Deleted portal login for {label}.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -486,7 +519,16 @@ def admin_parent_delete(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="billing-settings")
     try:
+        reason = _require_delete_reason(request)
         label = delete_parent_login(request.POST.get("parent_account_id"))
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted parent login",
+            object_type="parent login",
+            object_label=label,
+            delete_reason=reason,
+        )
         messages.success(request, f"Deleted parent login for {label}.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -635,7 +677,16 @@ def admin_unit_action(request):
     unit_id = request.POST.get("unit_id")
     try:
         if action == "delete":
+            reason = _require_delete_reason(request)
             delete_unit(unit_id)
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted unit",
+                object_type="unit",
+                object_label=str(unit_id or ""),
+                delete_reason=reason,
+            )
             messages.success(request, "Unit deleted permanently.")
         else:
             set_unit_active(unit_id, action == "activate")
@@ -670,8 +721,17 @@ def admin_program_delete(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="programs")
     try:
+        reason = _require_delete_reason(request)
         ids = [int(x) for x in request.POST.getlist("program_ids") if str(x).isdigit()]
         delete_program(ids)
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted program",
+            object_type="program",
+            object_label=", ".join(str(pk) for pk in ids) or "program",
+            delete_reason=reason,
+        )
         messages.success(request, "Program removed.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -788,7 +848,17 @@ def admin_payment_plan_delete(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
-        delete_payment_plan(int(request.POST.get("plan_id")))
+        reason = _require_delete_reason(request)
+        plan_id = request.POST.get("plan_id")
+        delete_payment_plan(int(plan_id))
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted payment plan",
+            object_type="payment plan",
+            object_label=str(plan_id or ""),
+            delete_reason=reason,
+        )
         messages.success(request, "Payment plan deleted.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -819,7 +889,17 @@ def admin_processing_fee_delete(request):
     if not _admin_needs_live(request):
         return redirect("portal_admin_page", page="fees")
     try:
-        delete_processing_fee(int(request.POST.get("fee_id")))
+        reason = _require_delete_reason(request)
+        fee_id = request.POST.get("fee_id")
+        delete_processing_fee(int(fee_id))
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted processing fee",
+            object_type="processing fee",
+            object_label=str(fee_id or ""),
+            delete_reason=reason,
+        )
         messages.success(request, "Processing fee deleted.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -866,6 +946,7 @@ def admin_program_calendar_save(request):
     try:
         save_program_calendar(request.POST)
         messages.success(request, "Program calendar saved.")
+        _log_activity(request, "save", action_label="Saved program calendar", object_type="calendar", object_label="Program calendar")
     except Exception as exc:
         messages.error(request, str(exc))
     return redirect("portal_admin_page", page="program-calendar")
@@ -927,9 +1008,19 @@ def admin_newsletter_delete(request):
         return redirect("portal_admin_page", page="communications")
     legacy_id = request.POST.get("legacy_id")
     try:
+        reason = _require_delete_reason(request)
         nl = PortalNewsletter.objects.filter(legacy_id=legacy_id).first()
         if nl:
+            title = nl.title
             nl.delete()
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted newsletter",
+                object_type="newsletter",
+                object_label=title,
+                delete_reason=reason,
+            )
             messages.success(request, "Newsletter deleted.")
         else:
             messages.error(request, "Newsletter not found.")
@@ -1174,6 +1265,15 @@ def staff_application_review(request, app_slug):
 
     from .staff_auth import resolve_staff_unit
 
+    child = f"{app.student_first_name} {app.student_last_name}".strip()
+    _log_activity(
+        request,
+        "application",
+        action_label="Application review",
+        object_type="application",
+        object_label=child or app_slug,
+        details=action,
+    )
     return redirect(_portal_next_url(request, _application_after_review_url("staff", app, action, unit=resolve_staff_unit(request))))
 
 
@@ -1228,6 +1328,15 @@ def admin_application_review(request, app_slug):
         messages.error(request, str(exc))
         return redirect(redirect_url)
 
+    child = f"{app.student_first_name} {app.student_last_name}".strip()
+    _log_activity(
+        request,
+        "application",
+        action_label="Application review",
+        object_type="application",
+        object_label=child or app_slug,
+        details=action,
+    )
     return redirect(_portal_next_url(request, _application_after_review_url("admin", app, action)))
 
 
@@ -1312,6 +1421,14 @@ def staff_billing_action(request, family_slug):
                 request.POST.get("description", ""),
             )
             messages.success(request, "Charge posted to the family ledger.")
+            _log_activity(
+                request,
+                "charge",
+                action_label="Posted a charge",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("description", ""),
+            )
         elif action == "credit":
             if not permissions.get("can_add_credit"):
                 raise ValueError("Your role cannot post credits.")
@@ -1341,6 +1458,13 @@ def staff_billing_action(request, family_slug):
                 reference_number=reference,
             )
             messages.success(request, "Payment recorded.")
+            _log_activity(
+                request,
+                "payment",
+                action_label="Recorded a payment",
+                object_type="family",
+                object_label=family.name,
+            )
         elif action == "edit_description":
             update_ledger_description(
                 family,
@@ -1351,7 +1475,17 @@ def staff_billing_action(request, family_slug):
         elif action == "delete":
             if not permissions.get("can_delete_charge"):
                 raise ValueError("Your role cannot delete ledger entries.")
-            delete_ledger_entry(family, request.POST.get("entry_id"))
+            reason = _require_delete_reason(request)
+            entry_id = request.POST.get("entry_id")
+            delete_ledger_entry(family, entry_id)
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted charge",
+                object_type="charge",
+                object_label=f"{family.name} ledger #{entry_id}",
+                delete_reason=reason,
+            )
             messages.success(request, "Ledger entry removed.")
         elif action == "refund":
             if area != "admin":
@@ -1398,6 +1532,14 @@ def staff_billing_action(request, family_slug):
                 )
             else:
                 messages.success(request, "4Cs copay plan saved. Amounts come from the parent copay weeks.")
+            _log_activity(
+                request,
+                "agency",
+                action_label="Saved 4Cs plan",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("child_name", ""),
+            )
         elif action == "update_plan":
             if area != "admin":
                 raise ValueError("Only portal admin can edit billing plans.")
@@ -1424,6 +1566,14 @@ def staff_billing_action(request, family_slug):
                 )
                 return redirect(redirect_url)
             messages.success(request, "Billing plan updated.")
+            _log_activity(
+                request,
+                "plan",
+                action_label="Saved billing plan",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("child_name", ""),
+            )
         elif action == "update_program":
             if area != "admin":
                 raise ValueError("Only portal admin can change a member program.")
@@ -1591,6 +1741,14 @@ def family_email_send(request, family_slug):
         )
         if sent:
             messages.success(request, f"Email sent to {parent_email_for_family(family)}.")
+            _log_activity(
+                request,
+                "email",
+                action_label="Sent email",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("subject", ""),
+            )
         else:
             messages.error(
                 request,
@@ -1667,6 +1825,14 @@ def family_member_info_save(request, family_slug):
             messages.success(request, "Member information saved. Parent login email is up to date.")
         else:
             messages.success(request, "Member information is already up to date.")
+        _log_activity(
+            request,
+            "save",
+            action_label="Saved family",
+            object_type="family",
+            object_label=family.name,
+            details="; ".join(changes) if changes else "",
+        )
     except ValueError as exc:
         messages.error(request, str(exc))
 
@@ -1740,6 +1906,13 @@ def family_parent_password_reset(request, family_slug):
             request,
             "Temporary parent password set. Copy it now — it will not be shown again. "
             "You cannot look up the old password.",
+        )
+        _log_activity(
+            request,
+            "password_reset",
+            action_label="Reset parent password",
+            object_type="family",
+            object_label=family.name,
         )
     except ValueError as exc:
         messages.error(request, str(exc))
@@ -1864,6 +2037,14 @@ def staff_agency_action(request):
                 auth_end=parse_date(request.POST.get("auth_end") or "") if request.POST.get("auth_end") else None,
             )
             messages.success(request, "4Cs child saved and linked to agency billing.")
+            _log_activity(
+                request,
+                "agency",
+                action_label="Saved 4Cs",
+                object_type="child",
+                object_label=request.POST.get("child_name", ""),
+                unit=unit,
+            )
         elif action == "remittance":
             allocations = []
             for key, value in request.POST.items():
@@ -1992,6 +2173,13 @@ def parent_profile_save(request):
     try:
         submit_profile_change_request(account, changes)
         messages.success(request, "Profile changes submitted for staff review.")
+        _log_activity(
+            request,
+            "save",
+            action_label="Saved family",
+            object_type="family",
+            object_label=account.family.name,
+        )
     except ValueError as exc:
         messages.error(request, str(exc))
     return redirect("portal_parent_page", page="profile")
@@ -2253,10 +2441,20 @@ def admin_member_ops(request):
                 family,
             )
         elif action == "delete_prior_balance":
+            reason = _require_delete_reason(request)
             row = PortalPriorBalance.objects.filter(pk=request.POST.get("balance_id"), linked_family__isnull=True).first()
             if not row:
                 raise ValueError("Unlinked collection record not found.")
+            label = row.name
             row.delete()
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted collection record",
+                object_type="collection",
+                object_label=label,
+                delete_reason=reason,
+            )
             messages.success(request, "Collection record deleted.")
             next_url = reverse("portal_admin_page", kwargs={"page": "collections"})
         elif action == "suspend":
@@ -2326,14 +2524,32 @@ def admin_member_ops(request):
         elif action == "delete_family":
             if not family:
                 raise ValueError("Family not found.")
+            reason = _require_delete_reason(request)
             label = delete_family_record(family)
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted family",
+                object_type="family",
+                object_label=label,
+                delete_reason=reason,
+            )
             messages.success(request, f"Deleted family {label}.")
             next_url = reverse("portal_admin_page", kwargs={"page": "families"})
         elif action == "delete_application":
+            reason = _require_delete_reason(request)
             app = get_application_by_reference(request.POST.get("app_slug", ""))
             if not app:
                 raise ValueError("Application not found.")
             label = delete_application_record(app)
+            _log_activity(
+                request,
+                "delete",
+                action_label="Deleted application",
+                object_type="application",
+                object_label=label,
+                delete_reason=reason,
+            )
             messages.success(request, f"Deleted application for {label}.")
             next_url = reverse("portal_admin_page", kwargs={"page": "applications"})
         elif action == "update_application":

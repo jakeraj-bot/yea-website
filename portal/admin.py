@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     AttendanceRecord,
+    PortalActivityEvent,
     PortalBillingDefaultRule,
     PortalChild,
     PortalEmailTemplate,
@@ -132,3 +133,25 @@ class PortalParentEmailAdmin(admin.ModelAdmin):
         "sent_at",
     )
     inlines = [PortalParentEmailAttachmentInline]
+
+
+@admin.register(PortalActivityEvent)
+class PortalActivityEventAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "actor_name", "action_label", "object_label")
+    list_filter = ("action", "actor_role")
+    search_fields = ("actor_name", "actor_username", "object_label", "delete_reason")
+    readonly_fields = (
+        "actor",
+        "actor_username",
+        "actor_name",
+        "actor_role",
+        "unit",
+        "created_at",
+        "action",
+        "action_label",
+        "object_type",
+        "object_label",
+        "page_path",
+        "details",
+        "delete_reason",
+    )

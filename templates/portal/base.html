@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=35">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=85">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=86">
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
     try {
@@ -124,6 +124,9 @@
     </main>
   </div>
   {% endwith %}
+  {% if portal_area == 'staff' or portal_area == 'admin' %}
+  {% include "portal/includes/delete_reason_modal.html" %}
+  {% endif %}
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=7"></script>
@@ -133,6 +136,7 @@
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-parent-email.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-family-search.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
+  {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-delete-reason.js' %}?v=1"></script>{% endif %}
   {% if page_guide %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
   {% block extra_js %}{% endblock %}
 </body>

@@ -96,6 +96,7 @@
     <li><a class="portal-nav-link portal-nav-staff-incidents{% if staff_page_slug == 'incidents' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='incidents' %}" title="Incidents">Incidents</a></li>
     <li><a class="portal-nav-link portal-nav-staff-support{% if staff_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='support' %}" title="Support">Support</a></li>
     <li><a class="portal-nav-link portal-nav-staff-reports{% if staff_page_slug == 'reports' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='reports' %}" title="Reports &amp; PDFs">Reports &amp; PDFs</a></li>
+    <li><a class="portal-nav-link portal-nav-staff-activity{% if staff_page_slug == 'activity' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='activity' %}" title="My activity">My activity</a></li>
   </ul>
   {% if can_open_admin_portal %}
   <div class="portal-sidebar-footer">
@@ -115,12 +116,13 @@
       </ul>
     </details>
 
-    <details class="portal-nav-group portal-nav-group-organization"{% if admin_page_slug == 'units' or admin_page_slug == 'programs' or admin_page_slug == 'staff' %} open{% endif %}>
+    <details class="portal-nav-group portal-nav-group-organization"{% if admin_page_slug == 'units' or admin_page_slug == 'programs' or admin_page_slug == 'staff' or admin_page_slug == 'activity' %} open{% endif %}>
       <summary class="portal-nav-group-label">Organization</summary>
       <ul class="portal-nav portal-nav-admin">
         <li><a class="portal-nav-link portal-nav-admin-units{% if admin_page_slug == 'units' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='units' %}" title="Units &amp; locations">Units &amp; locations</a></li>
         <li><a class="portal-nav-link portal-nav-admin-programs{% if admin_page_slug == 'programs' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='programs' %}" title="Programs &amp; seasons">Programs &amp; seasons</a></li>
         <li><a class="portal-nav-link portal-nav-admin-staff{% if admin_page_slug == 'staff' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='staff' %}" title="Staff access">Staff access</a></li>
+        <li><a class="portal-nav-link portal-nav-admin-activity{% if admin_page_slug == 'activity' %} is-active{% endif %}" href="{% url 'portal_admin_page' page='activity' %}" title="Activity">Activity</a></li>
       </ul>
     </details>
 

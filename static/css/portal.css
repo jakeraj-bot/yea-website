@@ -5515,3 +5515,55 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   min-width: 9rem;
   font-weight: 600;
 }
+
+.portal-activity-picker-form,
+.portal-activity-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.85rem 1rem;
+  align-items: end;
+}
+
+.portal-activity-people tr.is-selected td {
+  background: rgba(47, 111, 168, 0.08);
+}
+
+.portal-activity-reason {
+  margin: 0 0 0.35rem;
+}
+
+.portal-delete-reason-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(20, 28, 40, 0.45);
+}
+
+.portal-delete-reason-modal[hidden] {
+  display: none;
+}
+
+.portal-delete-reason-dialog {
+  width: min(32rem, 100%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 12px 40px rgba(20, 28, 40, 0.22);
+}
+
+.portal-delete-reason-dialog h2 {
+  margin-top: 0;
+}
+
+.portal-delete-reason-dialog textarea {
+  width: 100%;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.portal-delete-reason-error {
+  color: #9b1c1c;
+}

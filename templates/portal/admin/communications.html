@@ -256,10 +256,10 @@
                 <td class="portal-table-actions">
                   <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='communications' %}?edit={{ item.id }}">Edit</a>
                   {% if portal_live %}
-                  <form method="post" action="{% url 'portal_admin_announcement_delete' %}" style="display:inline;">
+                  <form method="post" action="{% url 'portal_admin_announcement_delete' %}" class="js-need-delete-reason" data-delete-message="Delete this announcement?" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="legacy_id" value="{{ item.id }}">
-                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this announcement?');">Delete</button>
+                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
                   </form>
                   {% endif %}
                 </td>
@@ -300,10 +300,10 @@
                   <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_page' page='communications' %}?send={{ newsletter.id }}">Send</a>
                   {% endif %}
                   {% if portal_live %}
-                  <form method="post" action="{% url 'portal_admin_newsletter_delete' %}" style="display:inline;">
+                  <form method="post" action="{% url 'portal_admin_newsletter_delete' %}" class="js-need-delete-reason" data-delete-message="Delete this newsletter?" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="legacy_id" value="{{ newsletter.id }}">
-                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger" onclick="return confirm('Delete this newsletter?');">Delete</button>
+                    <button type="submit" class="btn btn-secondary btn-sm portal-btn-danger">Delete</button>
                   </form>
                   {% endif %}
                 </td>

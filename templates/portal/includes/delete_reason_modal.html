@@ -1,0 +1,13 @@
+<div id="portal-delete-reason-modal" class="portal-delete-reason-modal" hidden>
+  <div class="portal-delete-reason-dialog" role="dialog" aria-modal="true" aria-labelledby="portal-delete-reason-title">
+    <h2 id="portal-delete-reason-title">Why are you deleting this?</h2>
+    <p class="form-note" id="portal-delete-reason-prompt">This reason is saved on that person’s activity log.</p>
+    <label for="portal-delete-reason-input">Reason (required)</label>
+    <textarea id="portal-delete-reason-input" class="portal-input" rows="3" maxlength="2000" placeholder="Example: Duplicate charge posted by mistake"></textarea>
+    <p class="form-note portal-delete-reason-error" id="portal-delete-reason-error" hidden>Enter a reason before deleting. Cancel if you do not want to delete.</p>
+    <div class="portal-form-actions">
+      <button type="button" class="btn btn-secondary" id="portal-delete-reason-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary portal-btn-danger" id="portal-delete-reason-confirm">Delete</button>
+    </div>
+  </div>
+</div>
