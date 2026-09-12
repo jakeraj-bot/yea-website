@@ -194,10 +194,11 @@ def delete_unit(unit_pk):
 
 
 def get_units_admin():
+    from .enrollment_counts import unit_capacity, unit_enrollment_count
+
     ensure_admin_config_seeded()
     rows = []
     for unit in PortalUnit.objects.order_by("name"):
-        enrolled = unit.families.filter(children__is_active=True).distinct().count()
         blockers = unit_delete_blockers(unit)
         rows.append(
             {
@@ -208,8 +209,8 @@ def get_units_admin():
                 "active": unit.is_active,
                 "address": unit.address,
                 "city": unit.city,
-                "capacity": unit.capacity or max(enrolled, 1),
-                "enrolled": enrolled,
+                "capacity": unit_capacity(unit),
+                "enrolled": unit_enrollment_count(unit),
                 "manager": unit.manager_name,
                 "phone": unit.phone,
                 "can_delete": not blockers,
@@ -255,6 +256,8 @@ def set_unit_active(unit_pk, active):
 
 
 def get_programs_admin():
+    from .enrollment_counts import unit_enrollment_count
+
     ensure_admin_config_seeded()
     grouped = {}
     for program in PortalProgram.objects.select_related("unit").order_by("name", "unit__name"):
@@ -271,12 +274,19 @@ def get_programs_admin():
                 "enrolled_count": 0,
                 "status": program.status_label or "Active",
                 "program_ids": [],
+                "_counted_units": set(),
             }
         grouped[key]["units"].append(program.unit.name)
         grouped[key]["unit_pks"].append(program.unit.pk)
         grouped[key]["program_ids"].append(program.pk)
-        grouped[key]["enrolled_count"] += program.unit.families.filter(children__is_active=True).count()
-    return list(grouped.values())
+        if program.unit_id not in grouped[key]["_counted_units"]:
+            grouped[key]["enrolled_count"] += unit_enrollment_count(program.unit)
+            grouped[key]["_counted_units"].add(program.unit_id)
+    rows = []
+    for row in grouped.values():
+        row.pop("_counted_units", None)
+        rows.append(row)
+    return rows
 
 
 def save_program(data, program_name=None):
