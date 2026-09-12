@@ -125,6 +125,10 @@ def attach_ledger_reference(row, description="", reference_number="", method_lab
     row["reference_number"] = display["reference_number"]
     row["reference_label"] = display["reference_label"]
     row["reference_display"] = display["reference_display"]
+    if display["reference_label"].startswith("Money order"):
+        row["method"] = "Money order"
+    elif display["reference_label"].startswith("Check #"):
+        row["method"] = "Check"
     return row
 
 

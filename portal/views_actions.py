@@ -1392,7 +1392,11 @@ def staff_billing_action(request, family_slug):
             except Exception as exc:
                 payment.delete()
                 raise ValueError(str(exc)) from exc
-            return redirect(session.url, code=303)
+            from django.http import HttpResponseRedirect
+
+            checkout_redirect = HttpResponseRedirect(session.url)
+            checkout_redirect.status_code = 303
+            return checkout_redirect
         elif action == "edit_description":
             update_ledger_description(
                 family,

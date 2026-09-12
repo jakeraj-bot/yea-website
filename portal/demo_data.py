@@ -850,14 +850,14 @@ def prepare_billing_preview(billing, permissions):
             "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
             "editable": row.get("type") in ("charge", "payment"),
         }
-        if row.get("type") == "payment":
+        if row.get("type") == "payment" and not item.get("reference_display"):
             from .payment_refs import attach_ledger_reference
 
             attach_ledger_reference(
                 item,
                 row.get("description", ""),
                 row.get("reference_number", ""),
-                row.get("method", ""),
+                row.get("method") or row.get("method_label") or row.get("reference_label", ""),
             )
         ledger.append(item)
     enriched["ledger"] = ledger
