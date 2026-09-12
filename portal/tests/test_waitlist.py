@@ -13,9 +13,12 @@ from enrollment.portal_integration import (
     parent_application_list_items,
     waitlist_for_admin,
 )
+from portal.admin_services import get_admin_families_live
+from portal.attendance_service import families_for_staff
+from portal.member_admin import families_without_parent_login
 from portal.models import PortalChild, PortalFamily, PortalParentAccount, PortalStaffAccount, PortalUnit
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
-from portal.tests.test_family_units import _make_application
+from portal.tests.test_family_units import _make_application, _staff_login
 
 
 class WaitlistWorkflowTests(TestCase):
@@ -252,3 +255,124 @@ class WaitlistAddAfterCareViewTests(TestCase):
         self.assertContains(waitlist, "Ada Rivera")
         self.assertContains(waitlist, "Before care")
         self.assertNotContains(waitlist, 'value="add_after_school"')
+
+
+def _named_application(family, *, first, last=None, status="waitlist", location="school_18"):
+    app = _make_application(family, location=location, status=status)
+    app.student_first_name = first
+    app.student_last_name = last or family.name
+    app.save(update_fields=["student_first_name", "student_last_name"])
+    return app
+
+
+def _child_names(rows, slug):
+    return [row["child_name"] for row in rows if row["slug"] == slug]
+
+
+class WaitlistHiddenFromFamiliesTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(
+            slug="school-18",
+            name="School 18",
+            program_type="after_school",
+            is_active=True,
+        )
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff = User.objects.create_user(username="staff:unit18", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff,
+            unit=self.unit,
+            display_name="School 18 Staff",
+            role="Unit director",
+            is_active=True,
+        )
+
+    def test_waitlist_only_child_is_hidden_from_all_families(self):
+        family = PortalFamily.objects.create(unit=self.unit, slug="wait-only", name="Waitonly")
+        _named_application(family, first="Ada", status="waitlist")
+
+        admin_rows = get_admin_families_live()
+        staff_rows = families_for_staff(self.unit)
+        self.assertEqual(_child_names(admin_rows, "wait-only"), [])
+        self.assertEqual(_child_names(staff_rows, "wait-only"), [])
+        self.assertNotIn("wait-only", {row["slug"] for row in admin_rows})
+        self.assertNotIn("wait-only", {row["slug"] for row in staff_rows})
+        self.assertEqual(waitlist_for_admin()[0]["child"], "Ada Waitonly")
+
+    def test_approved_sibling_keeps_household_on_all_families(self):
+        family = PortalFamily.objects.create(unit=self.unit, slug="siblings", name="Siblings")
+        approved = _named_application(family, first="Ada", status="approved")
+        _named_application(family, first="Ben", status="waitlist")
+        family.children.create(name="Ada Siblings", school="School 18", is_active=True)
+
+        rows = get_admin_families_live()
+        names = _child_names(rows, "siblings")
+        self.assertIn("Ada Siblings", names)
+        self.assertIn("Ben Siblings", names)
+        self.assertEqual(len([row for row in rows if row["slug"] == "siblings"]), 2)
+        ada = next(row for row in rows if row["child_name"] == "Ada Siblings")
+        self.assertEqual(ada.get("child_id"), family.children.get(name="Ada Siblings").pk)
+        self.assertIsNone(ada.get("application_id"))
+        ben = next(row for row in rows if row["child_name"] == "Ben Siblings")
+        self.assertEqual(ben.get("application_id"), EnrollmentApplication.objects.get(student_first_name="Ben").pk)
+        self.assertTrue(any(item["child"] == "Ben Siblings" for item in waitlist_for_admin()))
+        self.assertEqual(approved.status, "approved")
+
+    def test_two_waitlist_apps_without_approval_stay_hidden(self):
+        family = PortalFamily.objects.create(unit=self.unit, slug="two-wait", name="Twowait")
+        _named_application(family, first="Ada", status="waitlist")
+        _named_application(family, first="Ben", status="waitlist")
+        family.children.create(name="Ada Twowait", is_active=True)
+
+        rows = get_admin_families_live()
+        self.assertNotIn("two-wait", {row["slug"] for row in rows})
+        self.assertEqual(_child_names(rows, "two-wait"), [])
+        waitlist_names = {item["child"] for item in waitlist_for_admin()}
+        self.assertEqual(waitlist_names, {"Ada Twowait", "Ben Twowait"})
+        self.assertEqual(list(families_without_parent_login()), [])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_and_staff_all_families_pages_hide_waitlist_only(self):
+        wait_family = PortalFamily.objects.create(unit=self.unit, slug="hidden-wait", name="Hiddenwait")
+        _named_application(wait_family, first="Nia", status="waitlist")
+        listed = PortalFamily.objects.create(unit=self.unit, slug="listed", name="Listed")
+        _named_application(listed, first="Mia", status="approved")
+        listed.children.create(name="Mia Listed", is_active=True)
+        sibling_family = PortalFamily.objects.create(unit=self.unit, slug="mixed", name="Mixed")
+        _named_application(sibling_family, first="Owen", status="approved")
+        _named_application(sibling_family, first="Pia", status="waitlist")
+        sibling_family.children.create(name="Owen Mixed", is_active=True)
+
+        _staff_login(self.client, self.admin, "admin")
+        admin_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertEqual(admin_page.status_code, 200)
+        self.assertContains(admin_page, "All families")
+        self.assertContains(admin_page, "Mia Listed")
+        self.assertContains(admin_page, "Owen Mixed")
+        self.assertNotContains(admin_page, "Nia Hiddenwait")
+        self.assertNotContains(admin_page, "hidden-wait")
+
+        waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self.assertContains(waitlist_page, "Nia Hiddenwait")
+        self.assertContains(waitlist_page, "Pia Mixed")
+
+        _staff_login(self.client, self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = "school-18"
+        session.save()
+        staff_page = self.client.get(reverse("portal_staff_page", kwargs={"page": "families"}))
+        self.assertEqual(staff_page.status_code, 200)
+        self.assertContains(staff_page, "Mia Listed")
+        self.assertContains(staff_page, "Owen Mixed")
+        self.assertNotContains(staff_page, "Nia Hiddenwait")
+        staff_waitlist = self.client.get(reverse("portal_staff_page", kwargs={"page": "waitlist"}))
+        self.assertContains(staff_waitlist, "Nia Hiddenwait")
