@@ -27,6 +27,16 @@
 
     {% if parent_password_reset %}
     <section class="card portal-password-once portal-profile-full portal-collapse-skip" id="parent-password-once">
+      {% if parent_password_reset.mode == "email_link" %}
+      <h2>Create-password email sent</h2>
+      <p class="form-note">The parent received an email with a one-time link to create a new password. The link expires in {{ parent_password_reset.expires_hours|default:72 }} hours. You cannot see the old password.</p>
+      <dl class="portal-dl">
+        <dt>Username</dt>
+        <dd><code>{{ parent_password_reset.username }}</code></dd>
+        <dt>Sent to</dt>
+        <dd>{{ parent_password_reset.email|default:"—" }}</dd>
+      </dl>
+      {% else %}
       <h2>New temporary password — copy it now</h2>
       <p class="form-note">You cannot look up the old password. This new password is shown once. Text or email it to the parent yourself. Ask them to change it after they sign in if they want.</p>
       <dl class="portal-dl">
@@ -40,6 +50,7 @@
           <button type="button" class="btn btn-secondary btn-sm" data-copy-password>Copy password</button>
         </dd>
       </dl>
+      {% endif %}
     </section>
     {% endif %}
 
@@ -112,21 +123,39 @@
           {% csrf_token %}
           {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="action" value="send_link">
           <div class="form-group portal-form-full">
             <h3>Reset parent password</h3>
-            <p class="form-note">You cannot see the current password. Set a new temporary password, copy it on the next screen, and give it to the parent. If they forget again, reset again.</p>
-          </div>
-          <div class="form-group">
-            <label for="reset-parent-pass">New temporary password</label>
-            <input id="reset-parent-pass" name="password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
-          </div>
-          <div class="form-group">
-            <label for="reset-parent-pass-confirm">Confirm password</label>
-            <input id="reset-parent-pass-confirm" name="confirm_password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
+            <p class="form-note">You cannot see the current password. Email the parent a one-time link to create a new password for the parent portal. The link expires in 72 hours. Staff never sees the old password.</p>
           </div>
           <div class="form-group portal-form-full portal-member-info-actions">
-            <button type="submit" class="btn btn-primary">Set temporary password</button>
-            <button type="submit" class="btn btn-secondary" name="generate" value="1">Generate password</button>
+            <button type="submit" class="btn btn-primary">Email create-password link</button>
+          </div>
+        </form>
+        <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_parent_password' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_parent_password' family_slug=family_slug %}{% endif %}" class="portal-form-grid portal-reset-parent-password" id="reset-parent-password-temporary">
+          {% csrf_token %}
+          {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <input type="hidden" name="action" value="set_password">
+          <div class="form-group portal-form-full">
+            <details>
+              <summary>Set a temporary password instead</summary>
+              <p class="form-note">Optional. Use this only if you need to read a temporary password to the parent. It is shown once. You still cannot see the old password.</p>
+              <div class="portal-form-grid">
+                <div class="form-group">
+                  <label for="reset-parent-pass">New temporary password</label>
+                  <input id="reset-parent-pass" name="password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
+                </div>
+                <div class="form-group">
+                  <label for="reset-parent-pass-confirm">Confirm password</label>
+                  <input id="reset-parent-pass-confirm" name="confirm_password" type="text" class="portal-input" autocomplete="new-password" maxlength="128">
+                </div>
+                <div class="form-group portal-form-full portal-member-info-actions">
+                  <button type="submit" class="btn btn-secondary">Set temporary password</button>
+                  <button type="submit" class="btn btn-secondary" name="generate" value="1">Generate password</button>
+                </div>
+              </div>
+            </details>
           </div>
         </form>
         {% endif %}

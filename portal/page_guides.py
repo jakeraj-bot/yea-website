@@ -559,7 +559,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the current password. Use Reset parent password, copy the new temporary password once, and give it to the parent by text or email. If they forget again, reset again.",
+                "body": "You cannot look up the current password. Use Reset parent password to email the parent a one-time link to create a new password. The link expires in 72 hours. If they forget again, send another link.",
             },
             {
                 "title": "Email the parent",
@@ -731,7 +731,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the old password. Use Reset password to open the family profile, set a new temporary password, copy it once, and give it to the parent.",
+                "body": "You cannot look up the old password. Use Reset password to open the family profile and email the parent a one-time link to create a new password.",
             },
         ],
     },

@@ -1680,6 +1680,8 @@ def family_parent_password_reset(request, family_slug):
     from .member_admin import (
         reset_parent_portal_password,
         resolve_family,
+        send_parent_password_reset_link,
+        staff_flash_from_password_reset,
         store_parent_password_reset_flash,
     )
     from .parent_auth import portal_preview_mode
@@ -1721,9 +1723,33 @@ def family_parent_password_reset(request, family_slug):
     actor = ""
     if request.user.is_authenticated:
         actor = (request.user.get_full_name() or request.user.username or "").strip()
+    sender = request.user if request.user.is_authenticated else None
+    action = (request.POST.get("action") or "").strip()
     password = request.POST.get("password", "")
     confirm = request.POST.get("confirm_password", "")
     generate = request.POST.get("generate") == "1"
+    send_link = action == "send_link" or (not action and not password and not generate)
+
+    if send_link:
+        try:
+            reset = send_parent_password_reset_link(
+                family,
+                actor=actor,
+                request=request,
+                sender=sender,
+            )
+            store_parent_password_reset_flash(request, staff_flash_from_password_reset(reset))
+            messages.success(
+                request,
+                f"We emailed {reset['email']} a link to create a new password. "
+                f"The link expires in {reset['expires_hours']} hours and can be used once. "
+                "You cannot see the old password.",
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
+        return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#parent-password-once"))
+
     if not generate and password != confirm:
         messages.error(request, "The new password and confirmation do not match.")
         return redirect(_portal_next_url(request, f"{_with_family_id(fallback, family)}#reset-parent-password"))
@@ -1735,7 +1761,7 @@ def family_parent_password_reset(request, family_slug):
             actor=actor,
             generate=generate,
         )
-        store_parent_password_reset_flash(request, reset)
+        store_parent_password_reset_flash(request, staff_flash_from_password_reset(reset))
         messages.success(
             request,
             "Temporary parent password set. Copy it now — it will not be shown again. "
