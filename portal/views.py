@@ -1870,7 +1870,10 @@ def staff_page(request, page):
 
         context.update(activity_page_context(request, area="staff"))
         context["page_title"] = "My activity"
-        context["page_guide_key"] = "activity"
+        context["page_guide_key"] = "my-activity"
+        from .page_guides import page_guide_from_context
+
+        context["page_guide"] = page_guide_from_context(context)
     return render(request, template, context)
 
 

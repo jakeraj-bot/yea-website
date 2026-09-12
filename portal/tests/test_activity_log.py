@@ -89,7 +89,8 @@ class ActivityLogUserFilterTests(TestCase):
         self.assertContains(response, "My activity")
         self.assertContains(response, "Saved family")
         self.assertNotContains(response, "Signed in")
-        self.assertNotContains(response, "Choose a person")
+        self.assertNotContains(response, "Open activity")
+        self.assertNotContains(response, "Find people")
 
 
 @override_settings(PORTAL_PREVIEW_MODE=False)

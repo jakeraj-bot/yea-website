@@ -65,6 +65,7 @@ def delete_reason_from_post(request):
 def require_delete_reason(request):
     reason = delete_reason_from_post(request)
     if not reason:
+        mark_logged(request)
         raise ValueError("Enter a reason before deleting. Cancel if you do not want to delete.")
     return reason
 
