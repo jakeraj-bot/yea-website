@@ -163,6 +163,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False") == "True"
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
+EMAIL_FILE_PATH = os.environ.get("EMAIL_FILE_PATH", str(BASE_DIR / "var" / "mail"))
 
 # Staff alerts for new applications, contact form, etc.
 ENROLLMENT_NOTIFICATION_EMAIL = os.environ.get("ENROLLMENT_NOTIFICATION_EMAIL", CONTACT_EMAIL)
