@@ -627,7 +627,7 @@ GUIDES = {
             },
             {
                 "title": "Add a charge or record a payment",
-                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, money order, or a card you enter for them.",
+                "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or money order. Take a card payment opens Stripe Checkout so the card is entered on Stripe, not in this portal.",
             },
             {
                 "title": "Credits and deletes",

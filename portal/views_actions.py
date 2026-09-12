@@ -1324,7 +1324,14 @@ def staff_billing_action(request, family_slug):
             )
             messages.success(request, "Credit posted to the family ledger.")
         elif action == "payment":
+            from .payment_refs import reject_raw_card_fields
+
+            reject_raw_card_fields(request.POST)
             method = request.POST.get("method", "cash")
+            if (method or "").strip().lower() in {"card", "card_number", "credit_card"}:
+                raise ValueError(
+                    "Do not type card numbers into the portal. Use Take a card payment so Stripe collects the card."
+                )
             note, reference = staff_payment_note(
                 method,
                 request.POST.get("note", ""),
@@ -1341,6 +1348,51 @@ def staff_billing_action(request, family_slug):
                 reference_number=reference,
             )
             messages.success(request, "Payment recorded.")
+        elif action == "card_checkout":
+            from .payment_refs import reject_raw_card_fields
+            from .stripe_services import create_staff_balance_checkout_session, stripe_configured
+
+            reject_raw_card_fields(request.POST)
+            if not stripe_configured():
+                raise ValueError(
+                    "Stripe is not set up yet. Card payments have to go through Stripe — staff cannot type a card number here."
+                )
+            child_name = request.POST.get("child_name", "").strip()
+            if unit:
+                from .unit_visibility import child_name_allowed_for_unit
+
+                if child_name and not child_name_allowed_for_unit(family, child_name, unit):
+                    raise ValueError("That child is not enrolled at this program site.")
+            from .billing_services import _parse_amount
+            from .models import PortalPayment
+
+            amount = _parse_amount(request.POST.get("amount", ""))
+            note = request.POST.get("note", "").strip()
+            payment = PortalPayment.objects.create(
+                family=family,
+                amount=amount,
+                payment_kind="balance",
+                dropin_child=child_name,
+                method_label="Card",
+                status=PortalPayment.STATUS_PENDING,
+            )
+            path = redirect_url
+            sep = "&" if "?" in path else "?"
+            success_url = request.build_absolute_uri(path) + sep + "session_id={CHECKOUT_SESSION_ID}"
+            cancel_url = request.build_absolute_uri(path)
+            try:
+                session = create_staff_balance_checkout_session(
+                    request,
+                    payment,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    note=note,
+                    child_name=child_name,
+                )
+            except Exception as exc:
+                payment.delete()
+                raise ValueError(str(exc)) from exc
+            return redirect(session.url, code=303)
         elif action == "edit_description":
             update_ledger_description(
                 family,
@@ -1885,7 +1937,9 @@ def staff_agency_action(request):
             if not family:
                 raise ValueError("Family not found.")
             from .billing_services import staff_payment_method_label, staff_payment_note
+            from .payment_refs import reject_raw_card_fields
 
+            reject_raw_card_fields(request.POST)
             method = request.POST.get("method") or request.POST.get("method_label", "cash")
             note, reference = staff_payment_note(
                 method,

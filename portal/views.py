@@ -556,6 +556,7 @@ def _family_billing_bundle(request, area, family_slug):
     )
     unit = None if area == "admin" else _staff_unit(request)
     refundable_payments = []
+    staff_stripe_enabled = stripe_configured()
     if _portal_families_live() and (area == "admin" or unit):
         posted = run_due_plan_charges()
         if posted:
@@ -563,6 +564,20 @@ def _family_billing_bundle(request, area, family_slug):
         family = get_family_for_billing(family_slug, unit, family_id=_family_id_from_request(request))
         if not family:
             return None
+        if staff_stripe_enabled:
+            from .stripe_services import confirm_checkout_payment, reconcile_pending_stripe_payments_for_family
+
+            session_id = (request.GET.get("session_id") or "").strip()
+            if session_id:
+                confirmed = confirm_checkout_payment(session_id)
+                if confirmed:
+                    messages.success(request, "Card payment posted to the family ledger.")
+                else:
+                    messages.info(
+                        request,
+                        "If the card payment is still processing, refresh this page in a moment.",
+                    )
+            reconcile_pending_stripe_payments_for_family(family)
         billing = prepare_billing_for_staff(family, permissions, unit=unit)
         if area == "admin":
             from .admin_services import get_member_families_live
@@ -587,6 +602,7 @@ def _family_billing_bundle(request, area, family_slug):
         "plan_weekdays": WEEKDAYS,
         "plan_month_days": MONTH_DAYS,
         "refundable_payments": refundable_payments,
+        "staff_stripe_enabled": staff_stripe_enabled,
     }
 
 
