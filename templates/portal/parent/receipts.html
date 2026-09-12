@@ -42,7 +42,12 @@
             <td>{{ receipt.child }}</td>
             <td>{{ receipt.description }}</td>
             <td>${{ receipt.amount }}</td>
-            <td>{{ receipt.method }}</td>
+            <td>
+              {{ receipt.method }}
+              {% if receipt.payment_reference_display %}
+              <div class="form-note">{{ receipt.payment_reference_display }}</div>
+              {% endif %}
+            </td>
             <td><code class="portal-ref-code">{{ receipt.reference }}</code></td>
             <td>
               {% if "RCPT" in receipt.reference %}
