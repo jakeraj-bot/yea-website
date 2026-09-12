@@ -110,7 +110,10 @@ class ParentPasswordResetEmailTests(TestCase):
         self.assertTrue(self.parent_user.check_password("ParentPass123"))
         ledger = PortalParentEmail.objects.get(family=self.family)
         self.assertEqual(ledger.subject, sent["subject"])
-        self.assertIn("/login/password-reset/confirm/", ledger.body)
+        self.assertIn("create-password link sent to parent", ledger.body)
+        self.assertNotIn("/login/password-reset/confirm/", ledger.body)
+        token = result["reset_url"].rstrip("/").rsplit("/", 1)[-1]
+        self.assertNotIn(token, ledger.body)
         audit = PortalProfileChangeRequest.objects.get(account__family=self.family)
         self.assertEqual(audit.changes, {"parent_password_reset": True, "reset_email_sent": True})
         flash = staff_flash_from_password_reset(result)

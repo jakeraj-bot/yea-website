@@ -274,8 +274,21 @@ def staff_flash_from_password_reset(result):
     }
 
 
+def _redact_parent_password_reset_body(body):
+    import re
+
+    return re.sub(
+        r"https?://[^\s]+/portal/login/password-reset/confirm/[^\s]+",
+        "(create-password link sent to parent)",
+        body or "",
+    )
+
+
 def send_parent_password_reset_link(family, *, actor="", request=None, sender=None):
     """Email a one-time create-password link. Does not change or reveal the stored password."""
+    from .models import PortalParentEmail
+    from .parent_email_log import record_sent_parent_email
+
     if not family:
         raise ValueError("Family not found.")
     account = PortalParentAccount.objects.filter(family=family).select_related("user").first()
@@ -294,11 +307,20 @@ def send_parent_password_reset_link(family, *, actor="", request=None, sender=No
     if "pbkdf2_" in body or "argon2" in body:
         raise ValueError("Refusing to send an email that includes a stored password.")
 
-    sent, _total = send_family_parent_email(family, subject, body, sender=sender)
+    sent = send_site_email(subject=subject, message=body, recipient_list=[email])
     if not sent:
         raise ValueError(
             "The create-password email could not be sent. Confirm the parent email and try again."
         )
+    record_sent_parent_email(
+        subject=subject,
+        body=_redact_parent_password_reset_body(body),
+        recipients=[email],
+        family=family,
+        unit=getattr(family, "unit", None),
+        sender=sender,
+        source=PortalParentEmail.SOURCE_FAMILY,
+    )
     _record_member_info_change(
         family,
         {"parent_password_reset": True, "reset_email_sent": True},
