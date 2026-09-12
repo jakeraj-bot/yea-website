@@ -107,6 +107,7 @@
             <th>Child</th>
             <th>Type</th>
             <th>Description</th>
+            <th>Check # / Money order #</th>
             <th>Amount</th>
             <th>Processing fee</th>
           </tr>
@@ -124,6 +125,7 @@
               {% endif %}
             </td>
             <td>{{ row.description }}</td>
+            <td>{% if row.reference_display %}{{ row.reference_display }}{% else %}—{% endif %}</td>
             <td class="{% if row.type == 'payment' or row.type == 'discount' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
               {% if row.type == 'payment' or row.type == 'discount' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}
             </td>

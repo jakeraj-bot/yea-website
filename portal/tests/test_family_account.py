@@ -361,15 +361,15 @@ class MoneyOrderPaymentTests(TestCase):
         with self.assertRaises(ValueError):
             staff_payment_note("money_order", "Weekly tuition")
         note, number = staff_payment_note("money_order", "Weekly tuition", money_order_number="1234567")
-        self.assertEqual(note, "Money order #1234567 — Weekly tuition")
+        self.assertEqual(note, "Weekly tuition")
         self.assertEqual(number, "1234567")
         note, number = staff_payment_note("money_order", "", money_order_number="1234567")
-        self.assertEqual(note, "Money order #1234567")
+        self.assertEqual(note, "")
         self.assertEqual(number, "1234567")
 
     def test_check_and_cash_notes_still_work(self):
         note, number = staff_payment_note("check", "Weekly tuition", check_number="2201")
-        self.assertEqual(note, "Check #2201 — Weekly tuition")
+        self.assertEqual(note, "Weekly tuition")
         self.assertEqual(number, "2201")
         note, number = staff_payment_note("cash", "Weekly tuition")
         self.assertEqual(note, "Weekly tuition")
@@ -393,22 +393,26 @@ class MoneyOrderPaymentTests(TestCase):
         self.assertEqual(response.status_code, 302)
         entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="payment")
         self.assertEqual(entry.reference_number, "1234567")
-        self.assertEqual(entry.description, "Money order #1234567 — Weekly tuition")
+        self.assertEqual(entry.description, "Weekly tuition")
         self.assertEqual(entry.amount, Decimal("-45.00"))
         payment = PortalPayment.objects.get(family=self.family)
-        self.assertEqual(payment.method_label, "Money order #1234567")
+        self.assertEqual(payment.method_label, "Money order")
         self.assertEqual(payment.reference_number, "1234567")
         self.assertEqual(payment.status, PortalPayment.STATUS_PAID)
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(billing, "Money order")
         self.assertContains(billing, "money_order_number")
-        self.assertContains(billing, "Money order #1234567 — Weekly tuition")
+        self.assertContains(billing, "Weekly tuition")
+        self.assertContains(billing, "Money order #1234567")
+        self.assertNotContains(billing, "Money order #1234567 — Weekly tuition")
         receipts = get_receipts_live(self.family)
-        self.assertEqual(receipts[0]["method"], "Money order #1234567")
-        self.assertEqual(receipts[0]["description"], "Money order #1234567")
+        self.assertEqual(receipts[0]["method"], "Money order")
+        self.assertEqual(receipts[0]["payment_reference"], "1234567")
+        self.assertNotIn("1234567", receipts[0]["description"])
         printed = payment_to_receipt_dict(payment, "private-pay")
         self.assertEqual(printed["paid_through"], "Money order")
-        self.assertIn("Money order #1234567", printed["description"])
+        self.assertEqual(printed["payment_reference"], "1234567")
+        self.assertNotIn("1234567", printed["description"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_money_order_without_number_is_rejected(self):
@@ -465,12 +469,14 @@ class MoneyOrderPaymentTests(TestCase):
             descriptions,
             [
                 ("Cash at desk", ""),
-                ("Check #2201 — Weekly tuition", "2201"),
+                ("Weekly tuition", "2201"),
             ],
         )
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(billing, "Cash at desk")
-        self.assertContains(billing, "Check #2201 — Weekly tuition")
+        self.assertContains(billing, "Weekly tuition")
+        self.assertContains(billing, "Check #2201")
+        self.assertNotContains(billing, "Check #2201 — Weekly tuition")
 
 
 class FamilyNeighborNavTests(TestCase):

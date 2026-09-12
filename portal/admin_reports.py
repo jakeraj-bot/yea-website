@@ -191,7 +191,10 @@ def ledger_report_rows(filters=None):
         entries = entries.filter(date__lte=end)
     if query:
         entries = entries.filter(
-            Q(family__name__icontains=query) | Q(child_name__icontains=query) | Q(description__icontains=query)
+            Q(family__name__icontains=query)
+            | Q(child_name__icontains=query)
+            | Q(description__icontains=query)
+            | Q(reference_number__icontains=query)
         )
     rows = []
     charges = Decimal("0")
@@ -221,20 +224,24 @@ def ledger_report_rows(filters=None):
             display_amount = _money(-paid) if amount < 0 else _money(paid)
         else:
             display_amount = _money(amount)
-        rows.append(
-            {
-                "date": entry.date.isoformat(),
-                "family": entry.family.name,
-                "family_slug": entry.family.slug,
-                "family_id": entry.family_id,
-                "unit": entry.family.unit.name,
-                "child": entry.child_name or "—",
-                "type": entry.entry_type,
-                "description": entry.description,
-                "amount": display_amount,
-                "fee": _money(fee) if entry.entry_type == "payment" and fee else "",
-            }
-        )
+        row = {
+            "date": entry.date.isoformat(),
+            "family": entry.family.name,
+            "family_slug": entry.family.slug,
+            "family_id": entry.family_id,
+            "unit": entry.family.unit.name,
+            "child": entry.child_name or "—",
+            "type": entry.entry_type,
+            "description": entry.description,
+            "amount": display_amount,
+            "fee": _money(fee) if entry.entry_type == "payment" and fee else "",
+            "reference_display": "",
+        }
+        if entry.entry_type == "payment":
+            from .payment_refs import attach_ledger_reference
+
+            attach_ledger_reference(row, entry.description, entry.reference_number)
+        rows.append(row)
     return {
         "rows": rows,
         "total_charges": _money(charges),
@@ -268,6 +275,7 @@ def payment_report_rows(filters=None):
             | Q(family__primary_contact__icontains=query)
             | Q(dropin_child__icontains=query)
             | Q(method_label__icontains=query)
+            | Q(reference_number__icontains=query)
         )
     if start:
         payments = payments.filter(Q(paid_at__date__gte=start) | Q(paid_at__isnull=True, created_at__date__gte=start))
@@ -284,7 +292,13 @@ def payment_report_rows(filters=None):
         _tuition, fee, charged = payment_charged_totals(payment)
         key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
         seen_keys.add(key)
-        method = payment.method_label or ("Card" if payment.stripe_session_id or payment.stripe_payment_intent_id else "Recorded")
+        from .payment_refs import clean_in_person_method_label, display_payment_reference
+
+        raw_method = payment.method_label or (
+            "Card" if payment.stripe_session_id or payment.stripe_payment_intent_id else "Recorded"
+        )
+        method = clean_in_person_method_label(raw_method) or raw_method
+        ref = display_payment_reference(raw_method, payment.reference_number, raw_method)
         if payment.status == PortalPayment.STATUS_PENDING:
             status = "Waiting for card payment"
         elif payment.status == PortalPayment.STATUS_FAILED:
@@ -303,6 +317,7 @@ def payment_report_rows(filters=None):
                 "amount": _money(charged),
                 "fee": _money(fee) if fee else "",
                 "method": method,
+                "reference_display": ref["reference_display"],
                 "status": status,
             }
         )
@@ -319,6 +334,7 @@ def payment_report_rows(filters=None):
             Q(family__name__icontains=query)
             | Q(child_name__icontains=query)
             | Q(description__icontains=query)
+            | Q(reference_number__icontains=query)
             | Q(family__primary_contact__icontains=query)
         )
     for entry in ledger:
@@ -330,6 +346,15 @@ def payment_report_rows(filters=None):
         key = (entry.family_id, entry.date.isoformat(), _money(applied))
         if key in seen_keys:
             continue
+        from .payment_refs import display_payment_reference
+
+        ref = display_payment_reference(entry.description, entry.reference_number)
+        if ref["reference_number"]:
+            method = "Money order" if ref["reference_label"].startswith("Money order") else "Check"
+            if ref["reference_label"].startswith("Check/MO"):
+                method = "Check / money order"
+        else:
+            method = entry.description or "In-person / ledger"
         rows.append(
             {
                 "date": entry.date.isoformat(),
@@ -341,7 +366,8 @@ def payment_report_rows(filters=None):
                 "paid_by": entry.family.primary_contact or entry.family.name,
                 "amount": _money(paid),
                 "fee": _money(fee) if fee else "",
-                "method": entry.description or "In-person / ledger",
+                "method": method,
+                "reference_display": ref["reference_display"],
                 "status": "Paid",
             }
         )
@@ -786,6 +812,7 @@ ADMIN_DATA_REPORTS = {
             ("child", "Child"),
             ("type", "Type"),
             ("description", "Description"),
+            ("reference_display", "Check # / Money order #"),
             ("amount", "Amount"),
             ("fee", "Processing fee"),
         ],
@@ -817,6 +844,7 @@ ADMIN_DATA_REPORTS = {
             ("amount", "Amount"),
             ("fee", "Processing fee"),
             ("method", "Method"),
+            ("reference_display", "Check # / Money order #"),
             ("status", "Status"),
         ],
         "filename": "payments-who-paid.csv",

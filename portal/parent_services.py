@@ -143,7 +143,10 @@ def get_billing_live(family):
     if ledger_qs.exists():
         from .processing_fees import backfill_stripe_fee_totals, ledger_paid_totals
 
-        backfill_stripe_fee_totals(family.payments.all())
+        payments = list(family.payments.all())
+        backfill_stripe_fee_totals(payments)
+        from .payment_refs import attach_ledger_reference, method_label_for_reference
+
         ledger = []
         for entry in ledger_qs:
             paid, fee, applied = ledger_paid_totals(entry)
@@ -151,20 +154,38 @@ def get_billing_live(family):
                 amount = f"{paid:.2f}" if entry.entry_type == "payment" else f"{applied:.2f}"
             else:
                 amount = f"{entry.amount:.2f}"
-            ledger.append(
-                {
-                    "date": entry.date.isoformat(),
-                    "child": entry.child_name,
-                    "type": entry.entry_type,
-                    "description": entry.description,
-                    "amount": amount,
-                    "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
-                    "applied": f"{applied:.2f}",
-                    "manual": entry.is_manual,
-                }
-            )
+            row = {
+                "date": entry.date.isoformat(),
+                "child": entry.child_name,
+                "type": entry.entry_type,
+                "description": entry.description,
+                "amount": amount,
+                "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
+                "applied": f"{applied:.2f}",
+                "manual": entry.is_manual,
+            }
+            if entry.entry_type == "payment":
+                attach_ledger_reference(
+                    row,
+                    entry.description,
+                    entry.reference_number,
+                    method_label_for_reference(payments, entry.reference_number),
+                )
+            ledger.append(row)
     else:
-        ledger = demo.get("ledger", [])
+        from .payment_refs import attach_ledger_reference
+
+        ledger = []
+        for row in demo.get("ledger", []):
+            item = dict(row)
+            if item.get("type") == "payment":
+                attach_ledger_reference(
+                    item,
+                    item.get("description", ""),
+                    item.get("reference_number", ""),
+                    item.get("method", ""),
+                )
+            ledger.append(item)
 
     children = _child_balances_from_ledger(family)
     payment_type = demo.get("payment_type") or family.billing_type or "Private pay"
@@ -227,19 +248,29 @@ def get_receipts_live(family):
     payments = PortalPayment.objects.filter(family=family, status=PortalPayment.STATUS_PAID).order_by("-paid_at")
     if payments.exists():
         receipts = []
+        from .payment_refs import display_payment_reference
+
         for payment in payments:
             unit = family.unit if getattr(family, "unit_id", None) else None
+            ref = display_payment_reference(
+                payment.method_label,
+                payment.reference_number,
+                payment.method_label,
+            )
             receipts.append(
                 {
                     "date": timezone.localtime(payment.paid_at).strftime("%b %d, %Y") if payment.paid_at else "",
                     "reference": payment.receipt_no,
                     "amount": f"{payment.total_charged:.2f}",
-                    "method": payment.method_label,
+                    "method": _receipt_method_label(payment),
                     "description": _payment_description(payment),
                     "status": "Paid",
                     "location": payment.dropin_location or (unit.name if unit else ""),
                     "child": payment.dropin_child if payment.payment_kind == "dropin" else "",
                     "program": payment.dropin_program,
+                    "payment_reference": ref["reference_number"],
+                    "payment_reference_label": ref["reference_label"],
+                    "payment_reference_display": ref["reference_display"],
                 }
             )
         return receipts
@@ -351,9 +382,9 @@ def _profile_from_application(family, account):
 
 
 def _receipt_method_label(payment):
-    label = payment.method_label or "Card"
-    if payment.reference_number and "#" not in label:
-        return f"{label} #{payment.reference_number}"
+    from .payment_refs import clean_in_person_method_label
+
+    label = clean_in_person_method_label(payment.method_label) or payment.method_label or "Card"
     if payment.stripe_session_id or payment.stripe_payment_intent_id:
         if "Card" in label or "ending" in label or label in {"Visa", "Mastercard", "Amex"}:
             return label
@@ -362,19 +393,20 @@ def _receipt_method_label(payment):
 
 
 def _payment_description(payment):
+    from .payment_refs import clean_in_person_method_label, display_payment_reference
+
     if payment.payment_kind == "dropin":
         return f"Drop-in — {payment.dropin_child} · {payment.dropin_program}"
     if payment.payment_kind == "field_trip":
         return f"Field trip — {payment.dropin_child} · {payment.dropin_program}"
     if payment.payment_kind == "drop_off":
         return f"Drop-off — {payment.dropin_child} · {payment.dropin_program}"
-    if payment.reference_number:
-        label = payment.method_label or "Payment"
-        if "#" in label:
-            return label
-        return f"{label} #{payment.reference_number}"
+    mashed = display_payment_reference(payment.method_label, payment.reference_number, payment.method_label)
+    if mashed["reference_number"] and mashed["description"]:
+        return mashed["description"]
     if payment.method_label and not (payment.stripe_session_id or payment.stripe_payment_intent_id):
-        return payment.method_label if "payment" in payment.method_label.lower() else f"In-person payment — {payment.method_label}"
+        label = clean_in_person_method_label(payment.method_label) or payment.method_label
+        return label if "payment" in label.lower() else f"In-person payment — {label}"
     return "Family balance payment"
 
 
@@ -503,7 +535,7 @@ def get_parent_policy_data_live(family):
     }
 
 
-def record_successful_payment(payment, method_label="Card"):
+def record_successful_payment(payment, method_label="Card", ledger_note="", child_name=""):
     from django.db import transaction
 
     with transaction.atomic():
@@ -521,12 +553,13 @@ def record_successful_payment(payment, method_label="Card"):
             tuition, fee, _charged = payment_charged_totals(payment)
             family.balance = family.balance - tuition
             family.save(update_fields=["balance"])
+            note = (ledger_note or "").strip()
             PortalLedgerEntry.objects.create(
                 family=family,
-                child_name="",
+                child_name=(child_name or payment.dropin_child or "").strip(),
                 date=timezone.localdate(),
                 entry_type="payment",
-                description=f"Online payment — {method_label}",
+                description=note or f"Online payment — {method_label}",
                 amount=-tuition,
                 fee_amount=fee,
                 reference_number=payment.receipt_no or "",
@@ -559,8 +592,11 @@ def _next_receipt_no():
 
 
 def payment_to_receipt_dict(payment, preview_key):
+    from .payment_refs import display_payment_reference
+
     family = payment.family
     unit = family.unit if getattr(family, "unit_id", None) else None
+    ref = display_payment_reference(payment.method_label, payment.reference_number, payment.method_label)
     receipt = {
         "reference": payment.receipt_no,
         "date": timezone.localtime(payment.paid_at).date().isoformat() if payment.paid_at else "",
@@ -570,6 +606,9 @@ def payment_to_receipt_dict(payment, preview_key):
         "child": payment.dropin_child if payment.payment_kind == "dropin" else "",
         "program": payment.dropin_program,
         "location": payment.dropin_location or (unit.name if unit else ""),
+        "payment_reference": ref["reference_number"],
+        "payment_reference_label": ref["reference_label"],
+        "payment_reference_display": ref["reference_display"],
     }
     return enrich_receipt_for_print(receipt, preview_key, family=family)
 

@@ -51,6 +51,7 @@
       <button type="button" class="btn btn-secondary" id="toggle-add-credit">Add credit</button>
       {% endif %}
       <button type="button" class="btn btn-secondary" id="toggle-record-payment">Record payment</button>
+      <button type="button" class="btn btn-secondary" id="toggle-card-payment">Take a card payment</button>
       {% if portal_area == 'admin' %}
       <a class="btn btn-secondary" href="{% url 'portal_admin_family_refund' family_slug=billing.slug %}{% if billing.id %}?id={{ billing.id }}{% endif %}">Refund</a>
       {% endif %}
@@ -141,7 +142,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="record-payment-panel" hidden>
       <h2>Record payment</h2>
-      <p class="form-note">Card (staff entry), cash, check, or money order — when parents pay in person.</p>
+      <p class="form-note">Cash, check, or money order received in person. Check # and money order # stay in their own field — not in the description. For a card, use Take a card payment (Stripe collects the card).</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -162,7 +163,6 @@
         <div class="form-group">
           <label for="pay-method">Payment method</label>
           <select id="pay-method" name="method" class="portal-select">
-            <option value="card">Card (staff entry)</option>
             <option value="cash">Cash</option>
             <option value="check">Check</option>
             <option value="money_order">Money order</option>
@@ -187,6 +187,38 @@
       </form>
     </div>
 
+    <div class="portal-panel card portal-account-narrow" id="card-payment-panel" hidden>
+      <h2>Take a card payment</h2>
+      <p class="form-note">Pick the child, amount, and an optional note. Stripe Checkout opens next so the parent (or staff holding the phone) types the card on Stripe — never into this portal. The family ledger gets the same full Stripe amount and processing fee as a parent portal payment. A physical tap/chip reader is Stripe Terminal later, if you want hardware.</p>
+      <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+        <input type="hidden" name="action" value="card_checkout">
+        <div class="form-group">
+          <label for="card-pay-child">Child</label>
+          <select id="card-pay-child" name="child_name" class="portal-select">
+            <option value="">Family-wide</option>
+            {% for child in billing.children %}
+            <option>{{ child.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="card-pay-amount">Amount</label>
+          <input id="card-pay-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="card-pay-note">Description (optional)</label>
+          <input id="card-pay-note" name="note" type="text" class="portal-input" placeholder="e.g. Weekly tuition">
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary"{% if not billing_live or not staff_stripe_enabled %} disabled title="{% if not staff_stripe_enabled %}Stripe is not set up yet{% elif show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Open Stripe Checkout</button>
+          <button type="button" class="btn btn-secondary" id="cancel-card-payment">Cancel</button>
+        </div>
+      </form>
+    </div>
+
     {% if not billing_permissions.can_delete_charge and not billing_permissions.can_add_credit %}
     <p class="form-note">Your role can add charges and record payments. Delete charges and credits require permission — set in Portal admin → Billing permissions.</p>
     {% endif %}
@@ -195,7 +227,7 @@
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
-          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Amount</th><th>Processing fee</th><th></th></tr>
+          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Check # / Money order #</th><th>Amount</th><th>Processing fee</th><th></th></tr>
         </thead>
         <tbody>
           {% for row in billing.ledger %}
@@ -229,6 +261,7 @@
               </form>
               {% endif %}
             </td>
+            <td>{% if row.reference_display %}<span class="portal-payment-ref">{{ row.reference_display }}</span>{% else %}—{% endif %}</td>
             <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %} portal-cell-amount">
               <span class="portal-money">{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}</span>
             </td>
@@ -293,6 +326,7 @@
   bindPanel("toggle-add-charge", "add-charge-panel", "cancel-add-charge");
   bindPanel("toggle-add-credit", "add-credit-panel", "cancel-add-credit");
   bindPanel("toggle-record-payment", "record-payment-panel", "cancel-record-payment");
+  bindPanel("toggle-card-payment", "card-payment-panel", "cancel-card-payment");
   var method = document.getElementById("pay-method");
   var checkFields = document.getElementById("check-fields");
   var moneyOrderFields = document.getElementById("money-order-fields");
