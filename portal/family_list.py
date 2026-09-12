@@ -9,6 +9,10 @@ from .demo_data import FAMILIES_BILLING
 DEFAULT_LIST_SORT = "child-asc"
 LIST_NAV_SESSION_KEY = "yea_family_list_nav"
 
+APPROVED_APPLICATION_STATUSES = frozenset({"approved", "enrolled"})
+PENDING_REVIEW_STATUSES = frozenset({"under_review", "pending_documents"})
+WAITLIST_APPLICATION_STATUS = "waitlist"
+
 DEMO_CHILD_SCHOOLS = {
     "Jordan Jacobs": "Paterson School 18",
     "Maya Jacobs": "Paterson School 18",
@@ -78,6 +82,32 @@ def _active_prefetched_children(family):
     return [child for child in family.children.all() if child.is_active]
 
 
+def application_child_name(app):
+    return f"{app.student_first_name} {app.student_last_name}".strip()
+
+
+def is_waitlist_only_household(apps, active_children=None):
+    """True when this household is waitlist-only and should stay off All families.
+
+    A household stays listed when any application is approved/enrolled, a sibling
+    is still in review, or an enrolled child is not only on the waitlist.
+    """
+    apps = list(apps or [])
+    if any(app.status in APPROVED_APPLICATION_STATUSES for app in apps):
+        return False
+    if any(app.status in PENDING_REVIEW_STATUSES for app in apps):
+        return False
+    waitlist_apps = [app for app in apps if app.status == WAITLIST_APPLICATION_STATUS]
+    if not waitlist_apps:
+        return False
+    waitlist_names = {application_child_name(app).lower() for app in waitlist_apps}
+    for child in active_children or []:
+        name = (getattr(child, "name", None) or "").strip().lower()
+        if name and name not in waitlist_names:
+            return False
+    return True
+
+
 def _units_by_slug():
     from .models import PortalUnit
 
@@ -117,9 +147,13 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     rows = []
     for family in families:
         family_balances = balances.get(family.pk, {})
+        household_children = _active_prefetched_children(family)
+        apps = list(family.enrollment_applications.all())
+        if is_waitlist_only_household(apps, household_children):
+            continue
         active_children = [
             child
-            for child in _active_prefetched_children(family)
+            for child in household_children
             if not staff_unit or child_belongs_to_unit(child, staff_unit)
         ]
         enrolled_lower = {child.name.lower() for child in active_children}
@@ -136,8 +170,8 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     "unit_slug": unit_slug or (family.unit.slug if family.unit_id else ""),
                 }
             )
-        for app in family.enrollment_applications.all():
-            child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+        for app in apps:
+            child_name = application_child_name(app)
             if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
                 continue
             if staff_unit and not application_belongs_to_unit(app, staff_unit):
