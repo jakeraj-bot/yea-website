@@ -2,6 +2,8 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from django.utils import timezone
+
 from .models import PortalProcessingFee
 
 DEFAULT_PERCENT = Decimal("2.90")
@@ -153,7 +155,7 @@ def sync_ledger_fee_from_payment(payment):
         amount=-tuition,
         description__istartswith="Online payment",
     )
-    paid_on = payment.paid_at.date() if payment.paid_at else None
+    paid_on = timezone.localtime(payment.paid_at).date() if payment.paid_at else None
     if paid_on:
         entries = entries.filter(date=paid_on)
     if payment.receipt_no:

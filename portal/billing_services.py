@@ -133,8 +133,9 @@ def post_charge(family, child_name, charge_type, amount, entry_date, description
         amount=amount,
         is_manual=is_manual,
     )
-    family.balance += amount
-    family.save(update_fields=["balance"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
     if notify:
         from .email_templates import notify_charge_posted
 
@@ -154,8 +155,9 @@ def post_credit(family, child_name, amount, entry_date, reason):
         amount=-amount,
         is_manual=True,
     )
-    family.balance = family.balance - amount
-    family.save(update_fields=["balance"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
 
 
 @transaction.atomic
@@ -170,8 +172,9 @@ def post_discount(family, child_name, amount, entry_date, description, is_manual
         amount=-amount,
         is_manual=is_manual,
     )
-    family.balance = family.balance - amount
-    family.save(update_fields=["balance"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
 
 
 def active_scholarship_for_child(child, on_date=None):
@@ -260,8 +263,9 @@ def post_payment(family, child_name, amount, entry_date, method_label, note="", 
         is_manual=True,
         reference_number=reference,
     )
-    family.balance = family.balance - amount
-    family.save(update_fields=["balance"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
     _record_in_person_receipt(
         family,
         amount,
@@ -323,16 +327,12 @@ def delete_ledger_entry(family, entry_id):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type == "payment":
-        family.balance += abs(entry.amount)
-    elif entry.entry_type in ("credit", "discount"):
-        family.balance += abs(entry.amount)
-    elif entry.entry_type == "charge":
-        family.balance = max(Decimal("0"), family.balance - entry.amount)
-    else:
+    if entry.entry_type not in ("payment", "credit", "discount", "charge"):
         raise ValueError("This entry cannot be deleted.")
     entry.delete()
-    family.save(update_fields=["balance"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
 
 
 def default_entry_date():
@@ -930,8 +930,6 @@ def refund_family_payment(family, payment_id, amount, reason=""):
         refund_stripe_payment(payment, amount)
     payment.refunded_amount = (payment.refunded_amount or Decimal("0")) + amount
     payment.save(update_fields=["refunded_amount"])
-    family.balance = family.balance + amount
-    family.save(update_fields=["balance"])
     note = reason.strip() or f"Refund of {payment.receipt_no or 'card payment'}"
     PortalLedgerEntry.objects.create(
         family=family,
@@ -942,4 +940,7 @@ def refund_family_payment(family, payment_id, amount, reason=""):
         amount=amount,
         is_manual=False,
     )
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
     return payment

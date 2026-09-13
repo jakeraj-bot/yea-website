@@ -271,8 +271,6 @@ def merge_families(keep, drop):
     if keep.pk == drop.pk:
         raise ValueError("Those are the same family account.")
 
-    keep_balance = keep.balance or 0
-    drop_balance = drop.balance or 0
     drop_slug = drop.slug
     drop_name = drop.name
 
@@ -307,7 +305,9 @@ def merge_families(keep, drop):
 
     _merge_parent_accounts(keep, drop)
 
-    keep.balance = keep_balance + drop_balance
+    from .family_list import household_balance
+
+    keep.balance = household_balance(keep)
     updates = ["balance"]
     if keep.status == "Pending enrollment" and drop.status == "Active":
         keep.status = "Active"

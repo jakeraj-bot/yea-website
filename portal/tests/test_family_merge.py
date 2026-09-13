@@ -331,7 +331,7 @@ class FamilyMergeTests(TestCase):
         self.assertEqual(keep.ledger_entries.count(), 2)
         self.assertEqual(keep.payments.count(), 1)
         self.assertEqual(keep.enrollment_applications.count(), 2)
-        self.assertEqual(keep.balance, Decimal("105.00"))
+        self.assertEqual(keep.balance, Decimal("25.00"))
         self.assertEqual(PortalParentAccount.objects.filter(family=keep).count(), 1)
         self.assertFalse(get_user_model().objects.filter(username=portal_username("parent", "jakera2")).exists())
         self.assertTrue(AttendanceRecord.objects.filter(child__family=keep).exists())

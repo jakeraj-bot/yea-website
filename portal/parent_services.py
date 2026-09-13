@@ -41,7 +41,12 @@ def _format_last_login(user):
 def _child_balances_from_ledger(family):
     from .family_list import child_balance_map
 
-    if _parent_demo_fallbacks_enabled() and family.slug in SEED_FAMILY_SLUGS:
+    has_live_ledger = PortalLedgerEntry.objects.filter(family=family).exists()
+    if (
+        _parent_demo_fallbacks_enabled()
+        and family.slug in SEED_FAMILY_SLUGS
+        and not has_live_ledger
+    ):
         billing_demo = FAMILIES_BILLING.get(family.slug, {})
         children = [dict(child) for child in billing_demo.get("children", [])]
         if children:
@@ -55,6 +60,7 @@ def _child_balances_from_ledger(family):
     if portal_children:
         from .agency_weeks import cadence_key, get_program_calendar, parent_charge_periods, serialize_week
         from .billing_services import active_scholarship_for_child, agency_profile_for, plan_repeat_label
+        from .family_list import child_balance_from_map
 
         balances = child_balance_map(family)
 
@@ -63,7 +69,7 @@ def _child_balances_from_ledger(family):
             assignment = active_scholarship_for_child(child)
             row = {
                 "name": child.name,
-                "balance": f"{balances.get(child.name, Decimal('0')):.2f}",
+                "balance": f"{child_balance_from_map(balances, child.name):.2f}",
                 "plan": child.billing_plan or family.program_label or "Weekly",
                 "amount": f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—",
                 "type": family.billing_type or "Private pay",
@@ -189,13 +195,21 @@ def get_billing_live(family):
 
     children = _child_balances_from_ledger(family)
     payment_type = demo.get("payment_type") or family.billing_type or "Private pay"
-    has_credit = family.balance < 0
+    from .family_list import household_balance
+
+    if ledger_qs.exists():
+        ledger_total = household_balance(family)
+    elif demo.get("running_balance") is not None:
+        ledger_total = Decimal(str(demo["running_balance"]))
+    else:
+        ledger_total = family.balance or Decimal("0")
+    has_credit = ledger_total < 0
     return {
         "family_name": family.name,
         "slug": family.slug,
-        "running_balance": f"{family.balance:.2f}",
-        "balance_due": f"{max(family.balance, Decimal('0')):.2f}",
-        "account_credit": f"{abs(family.balance):.2f}" if has_credit else "0.00",
+        "running_balance": f"{ledger_total:.2f}",
+        "balance_due": f"{max(ledger_total, Decimal('0')):.2f}",
+        "account_credit": f"{abs(ledger_total):.2f}" if has_credit else "0.00",
         "has_credit": has_credit,
         "payment_type": payment_type,
         "payment_type_note": demo.get("account_note", demo.get("payment_type_note", "")),
@@ -548,11 +562,10 @@ def record_successful_payment(payment, method_label="Card", ledger_note="", chil
 
         family = payment.family
         if payment.payment_kind == "balance":
+            from .family_list import sync_family_balance_from_ledger
             from .processing_fees import payment_charged_totals
 
             tuition, fee, _charged = payment_charged_totals(payment)
-            family.balance = family.balance - tuition
-            family.save(update_fields=["balance"])
             note = (ledger_note or "").strip()
             PortalLedgerEntry.objects.create(
                 family=family,
@@ -564,6 +577,7 @@ def record_successful_payment(payment, method_label="Card", ledger_note="", chil
                 fee_amount=fee,
                 reference_number=payment.receipt_no or "",
             )
+            sync_family_balance_from_ledger(family)
         elif payment.payment_kind == "field_trip":
             from .field_trip_services import mark_field_trip_paid
 

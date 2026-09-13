@@ -27,13 +27,52 @@ DEMO_CHILD_SCHOOLS = {
 }
 
 
+def _normalize_child_name(name):
+    return (name or "").strip()
+
+
+def household_balance_from_child_map(family_balances):
+    """Household total from a per-child ledger map (includes unassigned rows)."""
+    if not family_balances:
+        return Decimal("0")
+    return sum(family_balances.values(), Decimal("0"))
+
+
+def child_balance_from_map(family_balances, child_name):
+    if not family_balances:
+        return Decimal("0")
+    return family_balances.get(_normalize_child_name(child_name), Decimal("0"))
+
+
 def child_balance_map(family):
     maps = child_balance_maps([family.pk] if family and family.pk else [])
     return maps.get(getattr(family, "pk", None), defaultdict(lambda: Decimal("0")))
 
 
+def household_balance(family):
+    """Ledger total for one household. Processing fees are not included."""
+    if not family or not getattr(family, "pk", None):
+        return Decimal("0")
+    return household_balance_from_child_map(child_balance_map(family))
+
+
+def sync_family_balance_from_ledger(family):
+    """Keep PortalFamily.balance equal to the household ledger (tuition only)."""
+    if not family or not getattr(family, "pk", None):
+        return Decimal("0")
+    total = household_balance(family)
+    if family.balance != total:
+        family.balance = total
+        family.save(update_fields=["balance"])
+    return total
+
+
 def child_balance_maps(family_ids):
-    """One aggregated ledger query → {family_id: {child_name: Decimal}}."""
+    """One aggregated ledger query → {family_id: {child_name: Decimal}}.
+
+    Amounts are the ledger ``amount`` (tuition / applied). Stripe processing
+    fees live in ``fee_amount`` and are left out of the balance.
+    """
     from django.db.models import Sum
 
     from .models import PortalLedgerEntry
@@ -47,7 +86,8 @@ def child_balance_maps(family_ids):
         .values("family_id", "child_name")
         .annotate(total=Sum("amount"))
     ):
-        maps[row["family_id"]][(row["child_name"] or "").strip()] = row["total"] or Decimal("0")
+        name = _normalize_child_name(row["child_name"])
+        maps[row["family_id"]][name] += row["total"] or Decimal("0")
     return maps
 
 
@@ -147,6 +187,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     rows = []
     for family in families:
         family_balances = balances.get(family.pk, {})
+        household_total = household_balance_from_child_map(family_balances)
         household_children = _active_prefetched_children(family)
         apps = list(family.enrollment_applications.all())
         if is_waitlist_only_household(apps, household_children):
@@ -165,7 +206,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     "name": child.name,
                     "child_id": child.pk,
                     "school": child.school or "—",
-                    "balance": family_balances.get(child.name, Decimal("0")),
+                    "balance": child_balance_from_map(family_balances, child.name),
                     "unit": unit_name or (family.unit.name if family.unit_id else ""),
                     "unit_slug": unit_slug or (family.unit.slug if family.unit_id else ""),
                 }
@@ -182,7 +223,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     "name": child_name,
                     "application_id": app.pk,
                     "school": app.student_school or "—",
-                    "balance": family_balances.get(child_name, Decimal("0")),
+                    "balance": child_balance_from_map(family_balances, child_name),
                     "unit": (app_unit.name if app_unit else "")
                     or _location_label(app.program_location, units_by_slug)
                     or (family.unit.name if family.unit_id else ""),
@@ -218,7 +259,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     has_login = False
             base_row["has_parent_login"] = bool(has_login)
             base_row["is_suspended"] = family.is_suspended
-        rows.extend(expand_family_record(base_row, children_specs, family.balance))
+        rows.extend(expand_family_record(base_row, children_specs, household_total))
     return sort_family_child_rows(rows)
 
 
