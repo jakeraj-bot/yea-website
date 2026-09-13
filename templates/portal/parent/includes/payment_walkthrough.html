@@ -129,8 +129,12 @@
     border-color: var(--yea-orange, #ff9800);
     font-weight: 700;
   }
-  .portal-pay-howto h2 {
-    margin: 0 0 0.5rem;
+  .portal-pay-howto [data-lang-panel] > h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
   }
   .portal-pay-howto [data-lang-panel] > p {
     margin: 0 0 0.85rem;
