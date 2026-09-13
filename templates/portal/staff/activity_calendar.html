@@ -16,7 +16,7 @@
   <div class="container">
     <div class="card portal-program-form portal-collapse-skip">
       <h2>Create activity</h2>
-      <p class="form-note">One day, a school week (Monday–Friday), or every weekday in the month. Lesson plans are uploaded per day after you create the week or month.</p>
+      <p class="form-note">One day, a school week, or weekdays in the month. For a week or month, check which days to create. Lesson plans are uploaded per day after you create more than one day.</p>
       <form class="portal-form-grid" method="post" action="{{ create_url }}" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="form-group">
@@ -43,6 +43,19 @@
             <option value="month">This month (weekdays)</option>
           </select>
         </div>
+        <fieldset class="form-group portal-form-full portal-weekday-picks" id="act-weekdays" hidden>
+          <input type="hidden" name="weekday_picks" value="1">
+          <legend>Which weekdays</legend>
+          <p class="form-note">Leave all checked for every Monday–Friday. Uncheck a day to skip it.</p>
+          <div class="portal-weekday-checks">
+            {% for value, label in weekday_choices %}
+            <label class="portal-weekday-check">
+              <input type="checkbox" name="weekday" value="{{ value }}" checked>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
         {% if show_unit_filter %}
         <div class="form-group">
           <label for="act-unit">Unit</label>
@@ -157,4 +170,17 @@
     </section>
   </div>
 </section>
+<script>
+(function () {
+  var repeat = document.getElementById("act-repeat");
+  var days = document.getElementById("act-weekdays");
+  if (!repeat || !days) return;
+  function syncWeekdays() {
+    var show = repeat.value === "week" || repeat.value === "month";
+    days.hidden = !show;
+  }
+  repeat.addEventListener("change", syncWeekdays);
+  syncWeekdays();
+})();
+</script>
 {% endblock %}

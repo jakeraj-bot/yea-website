@@ -5661,3 +5661,27 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     grid-template-columns: 1fr;
   }
 }
+
+.portal-weekday-picks {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.portal-weekday-picks legend {
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.portal-weekday-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.1rem;
+}
+
+.portal-weekday-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}

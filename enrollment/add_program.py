@@ -46,16 +46,13 @@ def primary_applications_by_child(apps):
 def child_has_program(family, first_name, last_name, program):
     if not family:
         return False
-    return (
-        EnrollmentApplication.objects.filter(
-            portal_family=family,
-            program=program,
-            student_first_name__iexact=(first_name or "").strip(),
-            student_last_name__iexact=(last_name or "").strip(),
-        )
-        .exclude(status="declined")
-        .exists()
-    )
+    from portal.child_identity import child_names_match
+
+    target = f"{first_name or ''} {last_name or ''}".strip()
+    for app in EnrollmentApplication.objects.filter(portal_family=family, program=program).exclude(status="declined"):
+        if child_names_match(target, f"{app.student_first_name} {app.student_last_name}"):
+            return True
+    return False
 
 
 def child_has_before_care(family, first_name, last_name):
