@@ -807,7 +807,7 @@ GUIDES = {
             },
             {
                 "title": "Filter the kids to add",
-                "body": "Filter the left list by child name and by group (bus run, room, and other groups from the Groups page). Admins and Program directors can also filter by unit. Other staff only see children and activities at their unit.",
+                "body": "Filter the left list by school attending, grade, child name, and by group (bus run, room, and other groups from the Groups page). Admins and Program directors can also filter by unit. Other staff only see children and activities at their unit.",
             },
         ],
     },
@@ -821,7 +821,7 @@ GUIDES = {
             },
             {
                 "title": "Filter, then add",
-                "body": "The left list is kids to add. Filter by name, unit (admin), or a group. Add one child or Add all shown. The right list is already in this activity — Remove takes them off.",
+                "body": "The left list is kids to add. Filter by school attending, grade, name, unit (admin), or a group. Add one child or Add all shown. The right list is already in this activity — Remove takes them off.",
             },
             {
                 "title": "Who you can see",
@@ -839,7 +839,7 @@ GUIDES = {
             },
             {
                 "title": "Add members",
-                "body": "Click the group. The left list is kids you can add. The right list is already in the group. Filter by child name, and by unit if you are an admin.",
+                "body": "Click the group. The left list is kids you can add. The right list is already in the group. Filter by school attending, grade, or child name, and by unit if you are an admin.",
             },
             {
                 "title": "Print",
@@ -857,7 +857,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Add or remove members",
-                "body": "Left is kids to add. Right is already in the group. Filter by name (and unit for admin), then Add or Add all shown.",
+                "body": "Left is kids to add. Right is already in the group. Filter by school attending, grade, or name (and unit for admin), then Add or Add all shown.",
             },
             {
                 "title": "Print sheets",
