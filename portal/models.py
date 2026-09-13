@@ -182,6 +182,44 @@ class PortalIncident(models.Model):
         return f"{self.child.name} · {self.incident_type}"
 
 
+class PortalFamilyNote(models.Model):
+    """Staff/admin notes on a child or household. Parents never see these."""
+
+    family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="staff_notes")
+    child = models.ForeignKey(
+        PortalChild,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_notes",
+    )
+    unit = models.ForeignKey(
+        PortalUnit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="family_notes",
+    )
+    author = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="family_notes_authored",
+    )
+    author_name = models.CharField(max_length=200)
+    author_role = models.CharField(max_length=64, blank=True)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self):
+        who = self.author_name or "Staff"
+        return f"{who} · {self.family.name}"
+
+
 class SupportTicket(models.Model):
     ticket_id = models.CharField(max_length=32, unique=True)
     from_area = models.CharField(max_length=16)

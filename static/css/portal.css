@@ -4535,9 +4535,34 @@ nav.portal-nav-admin-groups {
 .portal-family-tab--applications { --tab-accent: #5c6bc0; --tab-accent-soft: rgba(92, 107, 192, 0.12); }
 .portal-family-tab--parentview { --tab-accent: #00838f; --tab-accent-soft: rgba(0, 131, 143, 0.12); }
 .portal-family-tab--attendance { --tab-accent: #43a047; --tab-accent-soft: rgba(67, 160, 71, 0.12); }
+.portal-family-tab--notes { --tab-accent: #f9a825; --tab-accent-soft: rgba(249, 168, 37, 0.14); }
 
 .portal-family-email-card {
   max-width: 42rem;
+}
+
+.portal-family-notes-compose,
+.portal-family-notes-list {
+  max-width: 42rem;
+}
+
+.portal-family-notes-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.portal-family-note-form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.portal-family-note-meta {
+  margin: 0 0 0.5rem;
+}
+
+.portal-family-note-body {
+  margin: 0 0 0.75rem;
 }
 
 .portal-profile-email-action {

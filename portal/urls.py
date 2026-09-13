@@ -519,6 +519,21 @@ urlpatterns = [
         name="portal_staff_family_incidents",
     ),
     path(
+        "staff/family/<slug:family_slug>/notes/",
+        views.staff_family_notes,
+        name="portal_staff_family_notes",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/notes/add/",
+        views_actions.family_note_add,
+        name="portal_staff_family_note_add",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/notes/<int:note_id>/delete/",
+        views_actions.family_note_delete,
+        name="portal_staff_family_note_delete",
+    ),
+    path(
         "staff/family/<slug:family_slug>/",
         views.staff_family_detail,
         name="portal_staff_family_detail",
@@ -635,6 +650,21 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/incidents/",
         views.admin_family_incidents,
         name="portal_admin_family_incidents",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/notes/",
+        views.admin_family_notes,
+        name="portal_admin_family_notes",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/notes/add/",
+        views_actions.family_note_add,
+        name="portal_admin_family_note_add",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/notes/<int:note_id>/delete/",
+        views_actions.family_note_delete,
+        name="portal_admin_family_note_delete",
     ),
     path(
         "admin/family/<slug:family_slug>/refund/",

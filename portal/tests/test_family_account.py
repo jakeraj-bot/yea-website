@@ -75,7 +75,7 @@ class FamilyAccountHubTests(TestCase):
         self.assertContains(response, "Jordan Jacobs")
         self.assertContains(response, "portal-account-children")
         self.assertContains(response, "portal-family-tabs-colorful")
-        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Incidents", "Pickup", "Attendance", "Parent view"):
+        for label in ("Profile", "Billing", "Plans", "4Cs", "Applications", "Policies", "Email parent", "Notes", "Incidents", "Pickup", "Attendance", "Parent view"):
             self.assertContains(response, label)
         self.assertContains(response, reverse("portal_admin_family_attendance", kwargs={"family_slug": "jacobs"}))
         self.assertContains(response, "Find a child or family")
@@ -145,6 +145,8 @@ class FamilyAccountHubTests(TestCase):
         self.assertContains(response, "4Cs")
         self.assertContains(response, "Applications")
         self.assertContains(response, "Attendance")
+        self.assertContains(response, "Notes")
+        self.assertContains(response, reverse("portal_staff_family_notes", kwargs={"family_slug": "jacobs"}))
         self.assertContains(response, "Find a child or family")
         self.assertContains(response, reverse("portal_staff_family_search"))
         self.assertContains(response, reverse("portal_staff_family_attendance", kwargs={"family_slug": "jacobs"}))

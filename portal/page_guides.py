@@ -557,7 +557,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Move between tabs",
-                "body": "Pickup, Attendance, Incidents, Billing, Plans, 4Cs, Applications, Policies, and Email parent are along the top of the account.",
+                "body": "Pickup, Attendance, Incidents, Billing, Plans, 4Cs, Applications, Policies, Email parent, and Notes are along the top of the account.",
             },
             {
                 "title": "Find another child without leaving",
@@ -922,6 +922,24 @@ GUIDES = {
             {
                 "title": "Reset parent password",
                 "body": "You cannot look up the old password. Use Reset password to open the family profile and email the parent a one-time link to create a new password.",
+            },
+        ],
+    },
+    "family-notes": {
+        "title": "How to use staff notes",
+        "intro": "Notes live on this child / family account, next to Profile, Pickup, Attendance, and Billing. Staff and admin can add many notes. Parents never see them.",
+        "steps": [
+            {
+                "title": "Add as many notes as you need",
+                "body": "Use Add a note. Choose This household or a child, then write the note. Each new note is saved on its own — you cannot edit another person’s note.",
+            },
+            {
+                "title": "See who wrote it and when",
+                "body": "Every note shows the staff or admin name and the date and time. Newest notes are at the top.",
+            },
+            {
+                "title": "Staff stay on their unit",
+                "body": "You only see notes for children at the unit in the header. Organization admin sees every note on the household. Delete asks for a reason, which is saved on the activity log.",
             },
         ],
     },
