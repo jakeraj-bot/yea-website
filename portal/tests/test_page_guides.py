@@ -125,6 +125,13 @@ class PageGuideCatalogTests(TestCase):
         self.assertIsNone(guide)
         apps = page_guide_from_context({"portal_area": "parent", "parent_page_slug": "applications"})
         self.assertEqual(apps["key"], "parent-applications")
+        contacts = page_guide_from_context(
+            {"portal_area": "parent", "parent_page_slug": "emergency-contacts"}
+        )
+        self.assertEqual(contacts["key"], "parent-emergency-contacts")
+        bodies = " ".join(step["body"] for step in contacts["steps"])
+        self.assertIn("Staff gets an email", contacts["steps"][2]["title"])
+        self.assertIn("add or delete", bodies.lower())
 
     def test_context_picks_family_tab_over_families_slug(self):
         guide = page_guide_from_context(

@@ -643,6 +643,12 @@ def family_profile_live(family_slug, unit=None, family_id=None):
         if app.status in {"under_review", "pending_documents", "approved"}:
             pending_count += 1
 
+    from .emergency_contact_services import attach_child_emergency_contacts
+
+    child_contacts = attach_child_emergency_contacts(children, family)
+    if child_contacts:
+        emergency_contacts = child_contacts
+
     return {
         "family_name": family_display_label(family),
         "family_name_raw": family.name,
@@ -651,6 +657,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
         "secondary": secondary,
         "children": children,
         "emergency_contacts": emergency_contacts,
+        "show_child_emergency_contacts": True,
         "pending_application_count": pending_count,
     }
 

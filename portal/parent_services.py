@@ -378,6 +378,7 @@ def _profile_from_application(family, account):
                 "program": family.program_label or "After-school program",
                 "allergies": "",
                 "medications": "",
+                "child_id": child.pk,
             }
         )
 
@@ -407,6 +408,13 @@ def _profile_from_application(family, account):
             }
             for contact in latest.emergency_contacts.all()
         ]
+
+    from .emergency_contact_services import attach_child_emergency_contacts
+
+    combined = attach_child_emergency_contacts(profile["children"], family)
+    if combined:
+        profile["emergency_contacts"] = combined
+    profile["show_child_emergency_contacts"] = True
 
     return profile
 
