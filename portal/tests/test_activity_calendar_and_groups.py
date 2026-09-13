@@ -77,6 +77,82 @@ class ActivityCalendarAndGroupsTests(TestCase):
         self.assertEqual(days[0], date(2026, 9, 14))
         self.assertEqual(days[-1], date(2026, 9, 18))
         self.assertEqual(len(days), 5)
+        mon_wed = weekday_dates_for_repeat(date(2026, 9, 16), "week", weekdays=[0, 2])
+        self.assertEqual(mon_wed, [date(2026, 9, 14), date(2026, 9, 16)])
+        tuesdays = weekday_dates_for_repeat(date(2026, 9, 16), "month", weekdays=[1])
+        self.assertEqual(tuesdays[0].weekday(), 1)
+        self.assertTrue(all(day.weekday() == 1 and day.month == 9 for day in tuesdays))
+
+    def test_week_with_all_five_days_matches_old_week_behavior(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_activity_calendar"),
+            {
+                "name": "Art all week",
+                "date": "2026-09-16",
+                "time": "15:30",
+                "end_time": "16:30",
+                "repeat": "week",
+                "weekday_picks": "1",
+                "weekday": ["0", "1", "2", "3", "4"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        created = PortalCalendarActivity.objects.filter(name="Art all week", unit=self.school_18)
+        self.assertEqual(created.count(), 5)
+        self.assertEqual(
+            set(created.values_list("activity_date", flat=True)),
+            {date(2026, 9, 14), date(2026, 9, 15), date(2026, 9, 16), date(2026, 9, 17), date(2026, 9, 18)},
+        )
+
+    def test_week_monday_and_wednesday_only_creates_those_two_dates(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_activity_calendar"),
+            {
+                "name": "Gym Mon Wed",
+                "date": "2026-09-16",
+                "time": "15:00",
+                "end_time": "16:00",
+                "repeat": "week",
+                "weekday_picks": "1",
+                "weekday": ["0", "2"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        created = PortalCalendarActivity.objects.filter(name="Gym Mon Wed", unit=self.school_18)
+        self.assertEqual(created.count(), 2)
+        self.assertEqual(
+            set(created.values_list("activity_date", flat=True)),
+            {date(2026, 9, 14), date(2026, 9, 16)},
+        )
+        self.assertEqual(created.filter(start_time=time(15, 0), end_time=time(16, 0)).count(), 2)
+        self.assertContains(response, "3:00 PM")
+        self.assertContains(response, "4:00 PM")
+
+    def test_month_tuesday_only_creates_tuesdays(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_activity_calendar"),
+            {
+                "name": "Tuesday club",
+                "date": "2026-09-16",
+                "time": "14:00",
+                "end_time": "15:00",
+                "repeat": "month",
+                "weekday_picks": "1",
+                "weekday": ["1"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        created = PortalCalendarActivity.objects.filter(name="Tuesday club", unit=self.school_18)
+        tuesdays = {date(2026, 9, 1), date(2026, 9, 8), date(2026, 9, 15), date(2026, 9, 22), date(2026, 9, 29)}
+        self.assertEqual(set(created.values_list("activity_date", flat=True)), tuesdays)
+        self.assertEqual(created.count(), 5)
+        self.assertEqual(created.filter(start_time=time(14, 0), end_time=time(15, 0)).count(), 5)
 
     def test_staff_can_create_a_week_of_activities(self):
         self._login(self.staff, "staff")

@@ -727,7 +727,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Create one day, a week, or a month",
-                "body": "Enter the name, start time, end time, and a date. This day only creates one activity. This week (Mon–Fri) or This month (weekdays) makes the same activity on each of those days so you can go back later.",
+                "body": "Enter the name, start time, end time, and a date. This day only creates one activity. This week or This month lets you check which weekdays to create — for example Monday and Wednesday only. Leave every box checked for all Monday–Friday days.",
             },
             {
                 "title": "Upload a lesson plan per day",

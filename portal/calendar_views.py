@@ -19,9 +19,11 @@ from .member_sets import (
     add_children_to_group,
     apply_child_filters,
     attach_lesson_plan,
+    WEEKDAY_CHOICES,
     create_activities,
     create_group,
     group_week_days,
+    parse_posted_weekdays,
     normalize_print_kind,
     get_visible_activity,
     get_visible_group,
@@ -174,6 +176,7 @@ def activity_calendar(request):
         today=timezone.localdate().isoformat(),
         default_time="15:00",
         default_end_time="16:00",
+        weekday_choices=WEEKDAY_CHOICES,
         default_unit=staff_unit.slug if staff_unit else "",
         calendar_list_url=_calendar_url(request),
     )
@@ -192,12 +195,17 @@ def _create_activity(request, area, staff_unit):
     repeat = (request.POST.get("repeat") or "once").strip()
     if repeat not in {"once", "week", "month"}:
         repeat = "once"
+    weekdays = parse_posted_weekdays(
+        request.POST.getlist("weekday"),
+        sent=request.POST.get("weekday_picks") == "1",
+    )
     created, error = create_activities(
         name=name,
         start_time=start_time,
         end_time=end_time,
         start_date=start_date,
         repeat=repeat,
+        weekdays=weekdays,
         unit=unit,
         user=request.user,
         lesson_file=request.FILES.get("lesson_plan") if repeat == "once" else None,
