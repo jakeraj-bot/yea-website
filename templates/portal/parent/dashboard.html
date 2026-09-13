@@ -16,6 +16,22 @@
     </div>
     {% endif %}
 
+    <div class="portal-callout card card-accent">
+      <div class="portal-add-child-callout-inner">
+        <div>
+          <h2 style="margin:0 0 0.35rem">Contact us</h2>
+          <p class="form-note" style="margin:0">Billing and portal questions — Jakera Jacobs. Programming questions — Janice Gomez. Send Jakera a message from the Contact us page.</p>
+        </div>
+        {% if admin_preview_sample %}
+        <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a>
+        {% elif admin_support_preview and admin_preview_family_slug %}
+        <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a>
+        {% else %}
+        <a class="btn btn-primary" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a>
+        {% endif %}
+      </div>
+    </div>
+
     {% if parent_authenticated %}
     <div class="portal-callout card card-accent portal-add-child-callout">
       <div class="portal-add-child-callout-inner">
@@ -98,6 +114,7 @@
         <li><a href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policies</a> ({{ dashboard.policies_signed }}/{{ dashboard.policies_total }})</li>
         <li><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
         <li><a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Field trips</a></li>
+        <li><a href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}"><strong>Contact us</strong></a> — Jakera (billing/portal) and Janice (programming)</li>
         <li><a href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
       </ul>
     </div>

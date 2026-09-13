@@ -3,6 +3,30 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.core.exceptions import ValidationError
 
+from core.forms import ContactForm
+
+
+class ParentContactForm(ContactForm):
+    """Same fields as the public contact form, with parent-portal topics first."""
+
+    TOPIC_CHOICES = [
+        ("billing", "Billing and portal questions"),
+        ("programming", "Programming questions"),
+        ("after_school", "After-school program"),
+        ("summer_camp", "Summer camp"),
+        ("general", "General"),
+    ]
+
+    topic = forms.ChoiceField(choices=TOPIC_CHOICES)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            if name == "company":
+                continue
+            css = field.widget.attrs.get("class", "")
+            field.widget.attrs["class"] = f"{css} portal-input".strip()
+
 
 class PortalAuthenticationForm(AuthenticationForm):
     def __init__(self, *args, portal_type="parent", **kwargs):

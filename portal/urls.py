@@ -161,6 +161,11 @@ urlpatterns = [
         views_actions.parent_drop_off_book,
         name="portal_parent_drop_off_book",
     ),
+    path(
+        "parent/contact/",
+        views.parent_contact_submit,
+        name="portal_parent_contact",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(
