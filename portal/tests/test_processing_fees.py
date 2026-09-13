@@ -145,6 +145,14 @@ class StripeFeeLedgerAndReportTests(TestCase):
         )
 
     def test_ledger_shows_stripe_total_and_fee_without_double_count(self):
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Ada Rivera",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition",
+            amount=Decimal("80.00"),
+        )
         payment = PortalPayment.objects.create(
             family=self.family,
             amount=Decimal("80.00"),

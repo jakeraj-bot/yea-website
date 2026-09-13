@@ -127,8 +127,6 @@ def _post_membership_fee_if_needed(app):
     if PortalLedgerEntry.objects.filter(family=family, description=description).exists():
         return
 
-    family.balance += amount
-    family.save(update_fields=["balance"])
     PortalLedgerEntry.objects.create(
         family=family,
         child_name=child_name,
@@ -138,6 +136,9 @@ def _post_membership_fee_if_needed(app):
         amount=amount,
         is_manual=False,
     )
+    from portal.family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
 
 
 def _activate_family_if_needed(family):
