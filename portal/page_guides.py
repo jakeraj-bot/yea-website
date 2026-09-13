@@ -397,7 +397,7 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "Outstanding balances and 4Cs copay files download as CSV for spreadsheets.",
+                "body": "If you can see billing, balance and 4Cs copay files download as CSV. Program director does not see those unless billing is turned on.",
             },
         ],
     },
@@ -721,6 +721,74 @@ GUIDES = {
             },
         ],
     },
+    "staff": {
+        "title": "How to create staff logins",
+        "intro": "Only organization admins create portal logins. Program director and Front desk staff both sign in at the staff portal.",
+        "steps": [
+            {
+                "title": "Create a Program director",
+                "body": "Use Create staff account. Choose Program director. Pick a primary unit. They sign in at the staff portal. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They can switch units because they are in charge of programming. Billing stays hidden unless you turn it on.",
+            },
+            {
+                "title": "Create Front desk staff",
+                "body": "Use Create staff account. Choose Front desk staff. Give them the unit they work at. They get full site operations: families, billing, take-payment, attendance, activities, groups, waitlist, and applications. They do not get Organization admin (units, staff accounts, or settings).",
+            },
+            {
+                "title": "Turn Program director billing on",
+                "body": "Open Billing permissions. Use Program Director can see billing for every Program director, or edit one person and check Program Director can see billing (this person).",
+            },
+        ],
+    },
+    "outside-programs": {
+        "title": "How to use Outside programs",
+        "intro": "This is the contact list for vendors and partners who run programs with YEA. Program directors and admins can add, edit, and delete.",
+        "steps": [
+            {
+                "title": "Add a contact",
+                "body": "Use + Add outside program. Enter name, email, phone, what they will be doing, and how much they want to charge YEA. Category and last-used date are optional.",
+            },
+            {
+                "title": "Find someone",
+                "body": "Search by name, email, phone, or notes. Filter by category.",
+            },
+            {
+                "title": "Print or export",
+                "body": "Print contact list makes a paper or PDF sheet. Export CSV is for a spreadsheet.",
+            },
+            {
+                "title": "Delete",
+                "body": "Delete asks for a reason. That reason is saved on the activity log.",
+            },
+        ],
+    },
+    "outside-programs-print": {
+        "title": "How to print the contact list",
+        "intro": "This is a printable list of outside program contacts.",
+        "steps": [
+            {
+                "title": "Check the list",
+                "body": "Name, email, phone, category, what they do, charge, and last used are on the sheet.",
+            },
+            {
+                "title": "Print / Save PDF",
+                "body": "Use the browser Print / Save PDF button.",
+            },
+        ],
+    },
+    "member-billing": {
+        "title": "How to use member billing",
+        "intro": "This list is families at your unit. Open Billing to post a charge or take a payment. Open Plans to change a child’s schedule.",
+        "steps": [
+            {
+                "title": "Open a family",
+                "body": "Use Billing for the ledger and take-payment. Use Plans for weekly amounts.",
+            },
+            {
+                "title": "Who sees this",
+                "body": "Front desk staff and other staff see this. Program director only sees it when billing is turned on for that role or person.",
+            },
+        ],
+    },
     "activity-calendar": {
         "title": "How to use the activity calendar",
         "intro": "Schedule activities for your unit, then open a day to add who attended and upload that day’s lesson plan.",
@@ -739,7 +807,7 @@ GUIDES = {
             },
             {
                 "title": "Filter the kids to add",
-                "body": "Filter the left list by child name and by group (bus run, room, and other groups from the Groups page). Admins can also filter by unit. Staff only see children and activities at their unit.",
+                "body": "Filter the left list by child name and by group (bus run, room, and other groups from the Groups page). Admins and Program directors can also filter by unit. Other staff only see children and activities at their unit.",
             },
         ],
     },
@@ -757,7 +825,7 @@ GUIDES = {
             },
             {
                 "title": "Who you can see",
-                "body": "Staff only see children at their unit. Admins see every unit and can narrow with the unit filter.",
+                "body": "Staff only see children at their unit. Admins and Program directors see every unit and can narrow with the unit filter.",
             },
         ],
     },
@@ -767,7 +835,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Create a group",
-                "body": "Enter a name (for example Bus run). Staff groups stay at their unit. Admins pick a unit.",
+                "body": "Enter a name (for example Bus run). Staff groups stay at their unit. Admins and Program directors pick a unit.",
             },
             {
                 "title": "Add members",

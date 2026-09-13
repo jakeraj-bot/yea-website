@@ -1,0 +1,57 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+{% include "portal/includes/print_wide.html" %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <h1>Outside programs contact list</h1>
+    <p class="lead">{{ programs|length }} contact{{ programs|length|pluralize }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+    </div>
+    <div class="card portal-medical-report-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Outside programs</h2>
+          <p class="portal-medical-report-meta">{{ programs|length }} contact{{ programs|length|pluralize }}</p>
+        </div>
+      </header>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Category</th>
+              <th>What they do</th>
+              <th>Charge to YEA</th>
+              <th>Last used</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in programs %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.email|default:"—" }}</td>
+              <td>{{ row.phone|default:"—" }}</td>
+              <td>{{ row.get_category_display|default:"—" }}</td>
+              <td>{{ row.description|default:"—" }}</td>
+              <td>{{ row.charge_display }}</td>
+              <td>{% if row.last_used_on %}{{ row.last_used_on|date:"M j, Y" }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No contacts to print.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

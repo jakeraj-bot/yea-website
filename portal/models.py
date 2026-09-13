@@ -329,6 +329,10 @@ class PortalStaffAccount(models.Model):
     can_edit_family_plans = models.BooleanField(default=False)
     can_approve_applications = models.BooleanField(default=False)
     can_approve_waitlist = models.BooleanField(default=False)
+    can_see_billing = models.BooleanField(
+        default=False,
+        help_text="When this person is a Program director, allow billing even if the org toggle is off.",
+    )
     charge_type_permissions = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1277,5 +1281,73 @@ class PortalMemberGroupMember(models.Model):
 
     def __str__(self):
         return f"{self.child.name} · {self.group.name}"
+
+
+class PortalOrgSetting(models.Model):
+    """Singleton organization toggles for portal roles."""
+
+    program_director_can_see_billing = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Portal organization setting"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return
+
+    @classmethod
+    def load(cls):
+        obj, _created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Organization settings"
+
+
+class PortalOutsideProgram(models.Model):
+    """Vendors and partners who run programs with YEA."""
+
+    CATEGORY_VENDOR = "vendor"
+    CATEGORY_PARTNER = "partner"
+    CATEGORY_CONTRACTOR = "contractor"
+    CATEGORY_OTHER = "other"
+    CATEGORY_CHOICES = [
+        (CATEGORY_VENDOR, "Vendor"),
+        (CATEGORY_PARTNER, "Partner"),
+        (CATEGORY_CONTRACTOR, "Contractor"),
+        (CATEGORY_OTHER, "Other"),
+    ]
+
+    name = models.CharField(max_length=180)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    description = models.TextField(blank=True, help_text="What they will be doing.")
+    charge_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="How much they want to charge YEA.",
+    )
+    notes = models.TextField(blank=True)
+    category = models.CharField(max_length=32, choices=CATEGORY_CHOICES, default=CATEGORY_VENDOR, blank=True)
+    last_used_on = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def charge_display(self):
+        if self.charge_amount is None:
+            return "—"
+        return f"${self.charge_amount:.2f}"
 
 

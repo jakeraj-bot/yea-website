@@ -9,8 +9,10 @@
 <section class="page-content">
   <div class="container">
     <div class="portal-callout card">
-      <p><strong>How creating an account works:</strong> choose staff or admin, enter their name and email, set a password (or leave it blank for staff so the portal generates one), then pick every unit they can open. After you create the account they get an email with their username, password, and the sign-in link.</p>
-      <p>Staff sign in at <code>/portal/staff/login/</code>. Admin logins sign in at <code>/portal/admin/login/</code>. An admin uses that <strong>same login</strong> to open Staff portal (attendance, families, and unit work). Do not create a second staff account for a partner who is already an admin — they click <strong>Staff portal</strong> in the header.</p>
+      <p><strong>How creating an account works:</strong> choose a role, enter their name and email, set a password (or leave it blank for staff so the portal generates one), then pick every unit they can open. After you create the account they get an email with their username, password, and the sign-in link.</p>
+      <p><strong>Program director</strong> signs in at the staff portal like other staff. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They see all units for programming. Billing stays hidden unless you turn on <strong>Program Director can see billing</strong> in Billing permissions, or the checkbox on their account.</p>
+      <p><strong>Front desk staff</strong> is full site operations: families, billing, payments, attendance, activities, groups, waitlist, and applications. They stay at their unit like other staff. They do not get Organization admin (units, staff accounts, settings).</p>
+      <p>Staff sign in at <code>/portal/staff/login/</code>. Admin logins sign in at <code>/portal/admin/login/</code>. An admin uses that <strong>same login</strong> to open Staff portal. Do not create a second staff account for a partner who is already an admin — they click <strong>Staff portal</strong> in the header.</p>
     </div>
 
     <div class="portal-toolbar">
@@ -45,6 +47,11 @@
             <option>{{ role }}</option>
             {% endfor %}
           </select>
+          <p class="form-note">Program director = all programming, no billing unless you turn it on. Front desk staff = unit operations including billing and activities.</p>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="can_see_billing"> Program Director can see billing (this person)</label>
+          <p class="form-note">Only needed for Program director. Leave unchecked unless this person should see billing now.</p>
         </div>
         <div class="form-group" id="staff-primary-unit-group">
           <label for="staff-unit">Primary unit</label>
@@ -125,6 +132,10 @@
             <option {% if editing_staff.role == role %}selected{% endif %}>{{ role }}</option>
             {% endfor %}
           </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="can_see_billing" {% if editing_staff.can_see_billing %}checked{% endif %}> Program Director can see billing (this person)</label>
+          <p class="form-note">Only needed for Program director. Front desk and other staff already have billing. You can also turn billing on for every Program director in Billing permissions.</p>
         </div>
         <div class="form-group">
           <label>Status</label>

@@ -14,6 +14,18 @@
       {% endfor %}
     </ul>
 
+    <div class="portal-panel card" style="margin-bottom:1.5rem;">
+      <h2>Program Director can see billing</h2>
+      <p class="form-note">Off by default. When this is on, every Program director sees Member billing, family Billing/Plans, 4Cs, and take-payment. You can also turn billing on for one person on their staff account.</p>
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_director_billing' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <label class="portal-check-label"><input type="checkbox" name="program_director_can_see_billing" {% if program_director_can_see_billing %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Program Director can see billing</label>
+        <div class="portal-form-actions" style="margin-top:0.75rem;">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save Program Director billing</button>
+        </div>
+      </form>
+    </div>
+
     <div class="portal-table-wrap">
       <form method="post" action="{% if portal_live %}{% url 'portal_admin_billing_permissions' %}{% else %}#{% endif %}">
         {% if portal_live %}{% csrf_token %}{% endif %}

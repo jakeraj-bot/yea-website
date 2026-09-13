@@ -787,6 +787,10 @@ def _portal_context(area, page_title, **extra):
     if area == "admin":
         context.setdefault("can_approve_applications", True)
         context.setdefault("can_approve_waitlist", True)
+        context.setdefault("can_see_billing", True)
+        context.setdefault("can_manage_outside_programs", True)
+    if area == "staff":
+        context.setdefault("can_see_billing", True)
     if "portal_back_fallback" not in context:
         pay_query = context.get("parent_pay_query", "")
         context["portal_back_fallback"] = _portal_back_fallback(area, pay_query)
@@ -825,8 +829,18 @@ def _staff_context(page_title, request=None, **extra):
         ctx["staff_authenticated"] = is_staff_portal_authenticated(request) or portal_preview_mode()
         ctx["staff_units"] = list(staff_accessible_units(request.user)) if request.user.is_authenticated else []
         ctx["staff_unit_slug"] = unit.slug if unit else ""
-        from .staff_auth import portal_switch_flags
+        from .staff_auth import (
+            can_manage_outside_programs,
+            is_front_desk,
+            is_program_director,
+            portal_switch_flags,
+            staff_can_see_billing,
+        )
 
+        ctx["can_see_billing"] = staff_can_see_billing(account)
+        ctx["is_program_director"] = is_program_director(account)
+        ctx["is_front_desk"] = is_front_desk(account)
+        ctx["can_manage_outside_programs"] = can_manage_outside_programs(account)
         ctx.update(portal_switch_flags(request.user))
     return ctx
 
@@ -1811,9 +1825,16 @@ def staff_page(request, page):
         "incidents": "portal/staff/incidents.html",
         "support": "portal/support/support.html",
         "emails-sent": "portal/staff/emails_sent.html",
+        "member-billing": "portal/staff/member_billing.html",
     }
     if page == "activity":
         return HttpResponseForbidden("Activity is admin-only.")
+    if page in ("agency", "member-billing"):
+        from .staff_auth import staff_billing_forbidden
+
+        blocked = staff_billing_forbidden(request)
+        if blocked:
+            return blocked
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
@@ -1929,7 +1950,21 @@ def staff_page(request, page):
             context["agency"] = AGENCY_UNIT_DATA
             context["agency"]["agency_live"] = False
     if page == "reports":
-        context["reports"] = STAFF_REPORTS
+        from .staff_auth import PAYMENT_REPORT_SLUGS
+
+        reports = list(STAFF_REPORTS)
+        if not context.get("can_see_billing"):
+            reports = [row for row in reports if row.get("slug") not in PAYMENT_REPORT_SLUGS]
+        context["reports"] = reports
+    if page == "member-billing":
+        if portal_is_live():
+            unit = _staff_unit(request)
+            context["families"] = families_for_staff(unit) if unit else []
+        else:
+            from .family_list import demo_family_list_rows
+
+            context["families"] = demo_family_list_rows("staff")
+        context["page_title"] = "Member billing"
     if page == "drop-off-pickup":
         from .drop_off_services import drop_off_member_rows, pickup_rows
 
@@ -2490,6 +2525,11 @@ def staff_signout_blank(request):
 @staff_login_required
 @require_GET
 def staff_agency_billing(request, family_slug):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     from .agency_services import get_agency_billing_live
 
     unit = _staff_unit(request)
@@ -2686,6 +2726,11 @@ def agency_week_preview(request):
 @staff_login_required
 @require_GET
 def staff_family_billing(request, family_slug):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     bundle = _family_billing_bundle(request, "staff", family_slug)
     if not bundle:
         return render(request, "portal/404.html", status=404)
@@ -3361,6 +3406,11 @@ def _render_family_plans(request, area, family_slug):
 @staff_login_required
 @require_GET
 def staff_family_plans(request, family_slug):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     return _render_family_plans(request, "staff", family_slug)
 
 
@@ -3384,6 +3434,11 @@ def _render_family_agency(request, area, family_slug):
 @staff_login_required
 @require_GET
 def staff_family_agency(request, family_slug):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     return _render_family_agency(request, "staff", family_slug)
 
 
@@ -3811,6 +3866,11 @@ def staff_unit_switch(request):
 @staff_login_required
 @require_GET
 def staff_balances_export(request):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     import csv
 
     from django.http import HttpResponse
@@ -3831,6 +3891,11 @@ def staff_balances_export(request):
 @staff_login_required
 @require_GET
 def staff_agency_copay_export(request):
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     import csv
 
     from django.http import HttpResponse
@@ -4268,6 +4333,9 @@ def admin_page(request, page):
             context["portal_staff_users"] = PORTAL_STAFF_USERS
             context["billing_charge_types"] = BILLING_CHARGE_TYPES
             context["default_billing_rules"] = []
+        from .models import PortalOrgSetting
+
+        context["program_director_can_see_billing"] = PortalOrgSetting.load().program_director_can_see_billing
         context["billing_permission_notes"] = [
             "Add charge — post fees to a member account.",
             "Delete charge — remove a posted charge.",

@@ -61,6 +61,18 @@ def portal_ops_area(request):
     return "staff"
 
 
+def programming_area(request, area=None):
+    """Admin and Program director see all units for activities and groups."""
+    area = area or portal_ops_area(request)
+    if area == "admin":
+        return "admin"
+    from .staff_auth import get_staff_account, is_program_director
+
+    if is_program_director(get_staff_account(request.user)):
+        return "admin"
+    return "staff"
+
+
 def ops_unit(request, area=None):
     area = area or portal_ops_area(request)
     if area == "admin":
