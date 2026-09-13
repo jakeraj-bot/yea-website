@@ -42,6 +42,81 @@
     </div>
     {% endif %}
 
+    {% if balance_updated_template %}
+    <div class="portal-panel card">
+      <h2>Updated balance email</h2>
+      <p class="form-note">Sent automatically when you change or remove a posted charge (checkbox is on by default). You can also send it from a family’s Billing tab. Placeholders: <code>{family_name}</code> <code>{owe_for}</code> <code>{child_name}</code> <code>{week}</code> <code>{previous_amount}</code> <code>{amount}</code> <code>{child_balance}</code> <code>{family_balance}</code> <code>{portal_url}</code>.</p>
+      <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="template_key" value="{{ balance_updated_template.key }}">
+        <input type="hidden" name="next_page" value="parent-emails">
+        <div class="form-group portal-form-full">
+          <label>Subject</label>
+          <input name="subject" class="portal-input" value="{{ balance_updated_template.subject }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Message</label>
+          <textarea name="body" class="portal-input portal-textarea" rows="8" required>{{ balance_updated_template.body }}</textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if balance_updated_template.is_enabled %}checked{% endif %}> Send this email when a balance changes</label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-secondary">Save updated-balance template</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if late_payment_template %}
+    <div class="portal-panel card">
+      <h2>Friday late-payment reminder</h2>
+      <p class="form-note">Payments are due Friday. If they do not pay, a ${{ late_fee_amount }} late fee is added as of Tuesday (one-day grace). Placeholders: <code>{family_name}</code> <code>{family_balance}</code> <code>{late_fee}</code> <code>{child_lines}</code> <code>{portal_url}</code>. A weekly command <code>send_late_payment_notices</code> can run each Friday; you can also send now to families who still owe.</p>
+      <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="template_key" value="{{ late_payment_template.key }}">
+        <input type="hidden" name="next_page" value="parent-emails">
+        <div class="form-group">
+          <label>Late fee amount</label>
+          <input name="late_fee_amount" class="portal-input" value="{{ late_fee_amount }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Subject</label>
+          <input name="subject" class="portal-input" value="{{ late_payment_template.subject }}" required>
+        </div>
+        <div class="form-group portal-form-full">
+          <label>Message</label>
+          <textarea name="body" class="portal-input portal-textarea" rows="8" required>{{ late_payment_template.body }}</textarea>
+        </div>
+        <div class="form-group portal-form-full">
+          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if late_payment_template.is_enabled %}checked{% endif %}> Keep this reminder available</label>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-secondary">Save late-payment template</button>
+        </div>
+      </form>
+      <h3>Families with a balance</h3>
+      <p class="form-note">Preview, then send to those parents. Uncheck anyone you want to skip.</p>
+      <form method="post" action="{% url 'portal_admin_member_ops' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send_late_payment_notices">
+        <div class="portal-email-recipients">
+          {% for row in late_notice_preview %}
+          <label class="portal-check-label">
+            <input type="checkbox" name="emails" value="{{ row.email }}" checked>
+            <span><strong>{{ row.family }}</strong> · {{ row.email }} · {{ row.unit }} · ${{ row.balance }}</span>
+          </label>
+          {% empty %}
+          <p class="form-note">No families with a balance and a parent email right now.</p>
+          {% endfor %}
+        </div>
+        <div class="portal-form-actions" style="margin-top:1rem;">
+          <button type="submit" class="btn btn-primary"{% if not portal_live or not late_notice_preview %} disabled{% endif %}>Send late-payment email now</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
     <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid card portal-panel" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="send_parent_emails">

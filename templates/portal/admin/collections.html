@@ -8,6 +8,7 @@
 </section>
 <section class="page-content">
   <div class="container">
+    <p class="form-note">For current balances and unpaid weeks, open <a href="{% url 'portal_admin_owed_weeks_report' %}">Who still owes — by week</a>. That report is also where you pick children for a $15 late fee. The Friday late-payment email lives on <a href="{% url 'portal_admin_page' page='parent-emails' %}">Email parents</a>.</p>
     <div class="card portal-panel">
       <h2>Add a prior balance</h2>
       <form class="portal-form-grid" method="post" action="{% url 'portal_admin_member_ops' %}">

@@ -40,6 +40,13 @@
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_detail' family_slug=billing.slug %}">View profile</a>
         <a class="btn btn-secondary" href="{% url 'portal_staff_family_email' family_slug=billing.slug %}">Email parent</a>
         {% endif %}
+        <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+          <input type="hidden" name="action" value="send_balance_email">
+          <button type="submit" class="btn btn-secondary"{% if not billing_live %} disabled{% endif %}>Send updated balance email</button>
+        </form>
       </div>
     </div>
 
@@ -256,6 +263,14 @@
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
                 <label class="visually-hidden" for="ledger-desc-{{ row.id }}">Description</label>
                 <input id="ledger-desc-{{ row.id }}" name="description" type="text" class="portal-input" value="{{ row.description }}" maxlength="255" required>
+                {% if row.type == 'charge' %}
+                <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Amount</label>
+                <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount }}" inputmode="decimal">
+                <label class="portal-check-label">
+                  <input type="checkbox" name="notify_balance" checked>
+                  Email parent that their balance was updated
+                </label>
+                {% endif %}
                 <button type="submit" class="btn btn-primary btn-sm">Save</button>
                 <button type="button" class="btn btn-secondary btn-sm cancel-ledger-desc">Cancel</button>
               </form>
@@ -278,6 +293,12 @@
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
+                {% if row.type == 'charge' %}
+                <label class="portal-check-label">
+                  <input type="checkbox" name="notify_balance" checked>
+                  Email updated balance
+                </label>
+                {% endif %}
                 <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge">Delete</button>
               </form>
               {% elif row.deletable %}

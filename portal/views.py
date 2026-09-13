@@ -3277,6 +3277,52 @@ def staff_emergency_contact_report(request):
     )
 
 
+def _owed_weeks_filters(request):
+    return {
+        "q": (request.GET.get("q") or "").strip(),
+        "unit": (request.GET.get("unit") or "").strip(),
+        "program": (request.GET.get("program") or "").strip(),
+    }
+
+
+@staff_login_required
+@require_GET
+def staff_owed_weeks_report(request):
+    from .owed_weeks import owed_weeks_csv_response, owed_weeks_report
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _owed_weeks_filters(request)
+    report = owed_weeks_report(filters, unit=unit, admin=False) if unit else {
+        "rows": [],
+        "programs": [],
+        "units": [],
+        "summary": "Choose a unit to see who still owes.",
+        "late_fee_amount": "15.00",
+        "outstanding": "0.00",
+    }
+    if request.GET.get("format") == "csv":
+        return owed_weeks_csv_response(report)
+    return render(
+        request,
+        "portal/admin/owed_weeks_report.html",
+        _staff_context(
+            "Who still owes — by week",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="owed-weeks",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            report=report,
+        ),
+    )
+
+
 @staff_login_required
 @require_GET
 def staff_family_detail(request, family_slug):
@@ -4426,9 +4472,20 @@ def admin_page(request, page):
             from .models import PortalEmailTemplate
 
             context["first_day_template"] = get_email_template(PortalEmailTemplate.KEY_FIRST_DAY_REMINDER)
+            context["balance_updated_template"] = get_email_template(PortalEmailTemplate.KEY_BALANCE_UPDATED)
+            context["late_payment_template"] = get_email_template(PortalEmailTemplate.KEY_LATE_PAYMENT)
+            from .email_templates import late_notice_preview_rows
+            from .owed_weeks import late_fee_amount
+
+            context["late_notice_preview"] = late_notice_preview_rows()
+            context["late_fee_amount"] = f"{late_fee_amount():.2f}"
         else:
             context["parent_recipients"] = []
             context["first_day_template"] = None
+            context["balance_updated_template"] = None
+            context["late_payment_template"] = None
+            context["late_notice_preview"] = []
+            context["late_fee_amount"] = "15.00"
         context["preselect_family_id"] = request.GET.get("family_id", "")
         _attach_email_ledger(context, request, area="admin", full=False)
     if page == "emails-sent":
@@ -4647,6 +4704,45 @@ def admin_emergency_contact_report(request):
                 ],
                 report_filters=filters,
                 **bundle,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_owed_weeks_report(request):
+    from .owed_weeks import owed_weeks_csv_response, owed_weeks_report
+
+    filters = _owed_weeks_filters(request)
+    if _portal_data_live():
+        report = owed_weeks_report(filters, admin=True)
+    else:
+        report = {
+            "rows": [],
+            "programs": [],
+            "units": [],
+            "summary": "No live data in preview mode.",
+            "late_fee_amount": "15.00",
+            "outstanding": "0.00",
+        }
+    if request.GET.get("format") == "csv":
+        return owed_weeks_csv_response(report)
+    return render(
+        request,
+        "portal/admin/owed_weeks_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Who still owes — by week",
+                admin_page_slug="reports",
+                page_guide_key="owed-weeks",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                report=report,
             ),
         ),
     )

@@ -76,7 +76,7 @@
     {% if charge_email_template %}
     <div class="portal-panel card" style="margin-top: 1.5rem;">
       <h2>Charge notice email</h2>
-      <p class="form-note">Parents get this automatically when a charge is posted to their account. Placeholders: <code>{family_name}</code> <code>{child_name}</code> <code>{description}</code> <code>{amount}</code> <code>{date}</code> <code>{balance}</code> <code>{portal_url}</code>.</p>
+      <p class="form-note">Parents get this automatically when a charge is posted. It lists what they owe for (plan / charge, child, week) and the current ledger balance. Placeholders: <code>{family_name}</code> <code>{owe_for}</code> <code>{child_name}</code> <code>{week}</code> <code>{description}</code> <code>{amount}</code> <code>{date}</code> <code>{child_balance}</code> <code>{family_balance}</code> <code>{balance}</code> <code>{portal_url}</code>.</p>
       <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
         {% csrf_token %}
         <input type="hidden" name="template_key" value="{{ charge_email_template.key }}">

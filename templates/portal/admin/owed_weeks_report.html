@@ -1,0 +1,128 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+{% include "portal/includes/print_wide.html" %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Who still owes — by week</p>
+    <h1>Who still owes — by week</h1>
+    <p class="lead">{{ report.summary }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
+      <h2>Filters</h2>
+      <p class="form-note">Find families or children with a balance and the weeks those charges cover. Staff see their unit only.</p>
+      <div class="portal-report-filters">
+        {% if show_unit_filter %}
+        <label class="portal-filter-label">
+          Unit
+          <select class="portal-select" name="unit">
+            <option value="">All units</option>
+            {% for slug, name in report.units %}
+            <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="portal-filter-label">
+          Program
+          <select class="portal-select" name="program">
+            <option value="">All programs</option>
+            {% for program in report.programs %}
+            <option value="{{ program }}"{% if report_filters.program == program %} selected{% endif %}>{{ program }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Name
+          <input class="portal-input" type="search" name="q" value="{{ report_filters.q }}" placeholder="Child or family">
+        </label>
+      </div>
+      <div class="portal-form-actions">
+        <button type="submit" class="btn btn-primary">Apply filters</button>
+        <a class="btn btn-secondary" href="?{% if report_filters.unit %}unit={{ report_filters.unit }}&{% endif %}format=csv">Download CSV</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">Print</button>
+      </div>
+    </form>
+
+    <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_owed_weeks_late_fee' %}{% else %}{% url 'portal_staff_owed_weeks_late_fee' %}{% endif %}" class="portal-no-print">
+      {% csrf_token %}
+      <input type="hidden" name="portal_area" value="{{ portal_area }}">
+      <input type="hidden" name="q" value="{{ report_filters.q }}">
+      <input type="hidden" name="unit" value="{{ report_filters.unit }}">
+      <input type="hidden" name="program" value="{{ report_filters.program }}">
+      <div class="portal-toolbar">
+        <p class="form-note">Check the children who should get a ${{ report.late_fee_amount }} late fee dated today. Nothing posts until you charge the ones you picked.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="owed-weeks-select-all">Select all</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="owed-weeks-clear">Clear</button>
+        <button type="submit" class="btn btn-primary"{% if not portal_live or not report.rows %} disabled{% endif %}>Charge ${{ report.late_fee_amount }} late fee on selected</button>
+      </div>
+
+    <div class="portal-print-header">
+      <h2>Who still owes — by week</h2>
+      <p class="portal-medical-report-meta">{{ report.summary }}</p>
+    </div>
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th class="portal-no-print"></th>
+            <th>Child</th>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Program</th>
+            <th>Weeks owed</th>
+            <th>Child balance</th>
+            <th>Family balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.rows %}
+          <tr>
+            <td class="portal-no-print">
+              <label class="portal-check-label">
+                <input type="checkbox" name="child_ids" value="{{ row.child_id }}" data-owed-child>
+                <span class="visually-hidden">Charge late fee for {{ row.child }}</span>
+              </label>
+            </td>
+            <td>
+              {% if portal_area == 'admin' %}
+              <a href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}?id={{ row.family_id }}">{{ row.child }}</a>
+              {% else %}
+              <a href="{% url 'portal_staff_family_billing' family_slug=row.family_slug %}">{{ row.child }}</a>
+              {% endif %}
+            </td>
+            <td>{{ row.family }}</td>
+            <td>{{ row.unit }}</td>
+            <td>{{ row.program }}</td>
+            <td>{{ row.weeks_display }}</td>
+            <td>${{ row.child_balance }}</td>
+            <td>${{ row.family_balance }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="form-note">No children with an outstanding balance match these filters.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var boxes = document.querySelectorAll("[data-owed-child]");
+  var selectAll = document.getElementById("owed-weeks-select-all");
+  var clear = document.getElementById("owed-weeks-clear");
+  if (selectAll) selectAll.addEventListener("click", function () {
+    boxes.forEach(function (box) { box.checked = true; });
+  });
+  if (clear) clear.addEventListener("click", function () {
+    boxes.forEach(function (box) { box.checked = false; });
+  });
+})();
+</script>
+{% endblock %}

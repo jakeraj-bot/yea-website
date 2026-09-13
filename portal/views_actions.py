@@ -836,6 +836,10 @@ def admin_email_template_save(request):
             request.POST.get("body"),
             is_enabled=request.POST.get("is_enabled") == "on",
         )
+        if request.POST.get("late_fee_amount"):
+            from .owed_weeks import save_late_fee_amount
+
+            save_late_fee_amount(request.POST.get("late_fee_amount"))
         messages.success(request, f"Saved “{template.name}” email template.")
     except Exception as exc:
         messages.error(request, str(exc))
@@ -1554,18 +1558,42 @@ def staff_billing_action(request, family_slug):
             checkout_redirect.status_code = 303
             return checkout_redirect
         elif action == "edit_description":
+            from .billing_services import update_ledger_amount
+
+            notify_update = request.POST.get("notify_balance", "on") == "on"
             update_ledger_description(
                 family,
                 request.POST.get("entry_id"),
                 request.POST.get("description", ""),
             )
-            messages.success(request, "Description updated.")
+            new_amount = (request.POST.get("amount") or "").strip()
+            if new_amount:
+                update_ledger_amount(
+                    family,
+                    request.POST.get("entry_id"),
+                    new_amount,
+                    notify=notify_update,
+                )
+            messages.success(request, "Ledger entry updated.")
+        elif action == "send_balance_email":
+            from .email_templates import send_updated_balance_email
+
+            send_updated_balance_email(family)
+            messages.success(request, "Updated balance email sent to the parent.")
+            _log_activity(
+                request,
+                "email",
+                action_label="Sent updated balance email",
+                object_type="family",
+                object_label=family.name,
+            )
         elif action == "delete":
             if not permissions.get("can_delete_charge"):
                 raise ValueError("Your role cannot delete ledger entries.")
             reason = _require_delete_reason(request)
             entry_id = request.POST.get("entry_id")
-            delete_ledger_entry(family, entry_id)
+            notify_update = request.POST.get("notify_balance", "on") == "on"
+            delete_ledger_entry(family, entry_id, notify=notify_update)
             _log_activity(
                 request,
                 "delete",
@@ -2765,6 +2793,16 @@ def admin_member_ops(request):
             )
             messages.success(request, f"Sent the first-day reminder to {sent} of {total} parent(s).")
             next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
+        elif action == "send_late_payment_notices":
+            from .email_templates import send_late_payment_notices
+
+            emails = request.POST.getlist("emails")
+            sent, total = send_late_payment_notices(
+                emails or None,
+                sender=request.user if request.user.is_authenticated else None,
+            )
+            messages.success(request, f"Sent the late payment reminder to {sent} of {total} parent(s) with a balance.")
+            next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
         elif action == "save_discount":
             plan = save_discount_plan(
                 request.POST.get("name", ""),
@@ -2909,4 +2947,79 @@ def staff_drop_off_mark_paid(request):
     if is_admin_portal_authenticated(request) and request.POST.get("portal_area") == "admin":
         return redirect("portal_admin_page", page="drop-off-pickup")
     return redirect("portal_staff_page", page="drop-off-pickup")
+
+
+@require_POST
+def owed_weeks_late_fee(request):
+    from django.conf import settings as django_settings
+    from urllib.parse import urlencode
+
+    from .owed_weeks import post_late_fees
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        billing_permissions_for_staff,
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    area = request.POST.get("portal_area", "staff")
+    if not portal_preview_mode():
+        if area == "admin" and not is_admin_portal_authenticated(request):
+            login_url = getattr(django_settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+        if area != "admin" and not is_staff_portal_authenticated(request):
+            login_url = getattr(django_settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if area == "admin":
+        redirect_url = reverse("portal_admin_owed_weeks_report")
+        permissions = billing_permissions_for_staff(None, portal_area="admin")
+        unit = None
+    else:
+        redirect_url = reverse("portal_staff_owed_weeks_report")
+        permissions = billing_permissions_for_staff(get_staff_account(request.user))
+        unit = resolve_staff_unit(request)
+
+    query = {
+        key: request.POST.get(key, "")
+        for key in ("q", "unit", "program")
+        if request.POST.get(key)
+    }
+    if query:
+        redirect_url = f"{redirect_url}?{urlencode(query)}"
+
+    if not _needs_live(request):
+        return redirect(redirect_url)
+    if not permissions.get("can_add_charge"):
+        messages.error(request, "Your role cannot post charges.")
+        return redirect(redirect_url)
+
+    selected = request.POST.getlist("child_ids")
+    if not selected:
+        messages.error(request, "Check the children who should get the late fee.")
+        return redirect(redirect_url)
+
+    if unit:
+        from .models import PortalChild
+        from .unit_visibility import child_belongs_to_unit
+
+        allowed = []
+        for raw in selected:
+            child = PortalChild.objects.select_related("family", "family__unit", "unit").filter(pk=raw).first()
+            if child and child_belongs_to_unit(child, unit):
+                allowed.append(raw)
+        selected = allowed
+        if not selected:
+            messages.error(request, "None of those children are at this program site.")
+            return redirect(redirect_url)
+
+    try:
+        posted = post_late_fees(selected, notify=True)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(redirect_url)
+    messages.success(request, f"Posted a late fee on {len(posted)} selected child(ren).")
+    return redirect(redirect_url)
 

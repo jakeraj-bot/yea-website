@@ -265,4 +265,5 @@ class ProgramDirectorFrontDeskTests(TestCase):
         self.assertEqual(reports.status_code, 200)
         self.assertNotContains(reports, reverse("portal_staff_balances_export"))
         self.assertNotContains(reports, reverse("portal_staff_agency_copay_export"))
+        self.assertNotContains(reports, reverse("portal_staff_owed_weeks_report"))
         self.assertContains(reports, "Attendance")

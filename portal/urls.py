@@ -229,6 +229,16 @@ urlpatterns = [
         name="portal_staff_balances_export",
     ),
     path(
+        "staff/reports/owed-weeks/",
+        views.staff_owed_weeks_report,
+        name="portal_staff_owed_weeks_report",
+    ),
+    path(
+        "staff/owed-weeks/late-fee/",
+        views_actions.owed_weeks_late_fee,
+        name="portal_staff_owed_weeks_late_fee",
+    ),
+    path(
         "staff/reports/agency-copay-export/",
         views.staff_agency_copay_export,
         name="portal_staff_agency_copay_export",
@@ -725,6 +735,16 @@ urlpatterns = [
         "admin/reports/emergency-contacts/",
         views.admin_emergency_contact_report,
         name="portal_admin_emergency_contact_report",
+    ),
+    path(
+        "admin/reports/print/owed-weeks/",
+        views.admin_owed_weeks_report,
+        name="portal_admin_owed_weeks_report",
+    ),
+    path(
+        "admin/owed-weeks/late-fee/",
+        views_actions.owed_weeks_late_fee,
+        name="portal_admin_owed_weeks_late_fee",
     ),
     path(
         "admin/reports/financial/",

@@ -397,7 +397,21 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "If you can see billing, balance and 4Cs copay files download as CSV. Program director does not see those unless billing is turned on.",
+                "body": "If you can see billing, balance and 4Cs copay files download as CSV. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check.",
+            },
+        ],
+    },
+    "owed-weeks": {
+        "title": "Who still owes — by week",
+        "intro": "See families and children with a balance, which weeks those charges cover, and pick who gets a late fee.",
+        "steps": [
+            {
+                "title": "Read the weeks",
+                "body": "Weeks come from the charge description (plan notes, 4Cs week dates, or the school week of the charge date). Family-level payments count toward the household balance.",
+            },
+            {
+                "title": "Charge a late fee only if you pick them",
+                "body": "Check the children who should get today’s Late fee, then charge selected. Nobody is charged until you choose them.",
             },
         ],
     },

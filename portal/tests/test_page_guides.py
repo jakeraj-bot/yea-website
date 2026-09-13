@@ -25,6 +25,7 @@ class PageGuideCatalogTests(TestCase):
             "incidents",
             "support",
             "reports",
+            "owed-weeks",
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
@@ -75,6 +76,17 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("cannot look up the current password", bodies)
         self.assertIn("one-time link to create a new password", bodies)
+
+    def test_reports_exports_keep_owed_weeks_and_program_director_note(self):
+        reports = guide_for("reports")
+        exports = next(step for step in reports["steps"] if step["title"] == "Exports")
+        self.assertIn("Program director", exports["body"])
+        self.assertIn("Who still owes", exports["body"])
+        owed = guide_for("owed-weeks")
+        self.assertIsNotNone(owed)
+        titles = [step["title"] for step in owed["steps"]]
+        self.assertIn("Read the weeks", titles)
+        self.assertIn("Charge a late fee only if you pick them", titles)
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")
