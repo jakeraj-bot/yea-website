@@ -3023,3 +3023,115 @@ def owed_weeks_late_fee(request):
     messages.success(request, f"Posted a late fee on {len(posted)} selected child(ren).")
     return redirect(redirect_url)
 
+
+def _family_notes_auth(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import resolve_family
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return None, redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_notes", kwargs={"family_slug": family_slug})
+        unit = None
+        families_page = "portal_admin_page"
+    else:
+        fallback = reverse("portal_staff_family_notes", kwargs={"family_slug": family_slug})
+        unit = resolve_staff_unit(request)
+        families_page = "portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page"
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return None, redirect(fallback)
+
+    if not _needs_live(request):
+        return None, redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return None, redirect(families_page, page="families")
+    return {
+        "family": family,
+        "unit": unit,
+        "fallback": _with_family_id(fallback, family),
+    }, None
+
+
+@require_POST
+def family_note_add(request, family_slug):
+    from .family_notes import add_family_note, resolve_note_child
+    from .models import PortalActivityEvent
+
+    auth, denied = _family_notes_auth(request, family_slug)
+    if denied:
+        return denied
+    family = auth["family"]
+    unit = auth["unit"]
+    fallback = auth["fallback"]
+    try:
+        child = resolve_note_child(family, request.POST.get("child_id"), unit=unit)
+        note = add_family_note(
+            family,
+            body=request.POST.get("body"),
+            user=request.user,
+            child=child,
+            unit=unit,
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, fallback))
+    _log_activity(
+        request,
+        PortalActivityEvent.ACTION_SAVE,
+        action_label="Added a family note",
+        object_type="family note",
+        object_label=family.name,
+        details=(note.body or "")[:200],
+        unit=note.unit or unit,
+    )
+    messages.success(request, "Note saved.")
+    return redirect(_portal_next_url(request, fallback))
+
+
+@require_POST
+def family_note_delete(request, family_slug, note_id):
+    from .family_notes import delete_family_note
+    from .models import PortalFamilyNote
+
+    auth, denied = _family_notes_auth(request, family_slug)
+    if denied:
+        return denied
+    family = auth["family"]
+    unit = auth["unit"]
+    fallback = auth["fallback"]
+    note = (
+        PortalFamilyNote.objects.select_related("family", "child", "child__family", "unit")
+        .filter(pk=note_id, family=family)
+        .first()
+    )
+    if not note:
+        messages.error(request, "Note not found.")
+        return redirect(_portal_next_url(request, fallback))
+    try:
+        delete_family_note(note, request, unit=unit)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, fallback))
+    messages.success(request, "Note deleted.")
+    return redirect(_portal_next_url(request, fallback))
+

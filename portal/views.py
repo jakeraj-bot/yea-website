@@ -237,6 +237,7 @@ FAMILY_TAB_URL_KEYS = {
     "applications": "family_applications",
     "policies": "family_policies",
     "email": "family_email",
+    "notes": "family_notes",
 }
 
 
@@ -3096,6 +3097,64 @@ def admin_family_attendance(request, family_slug):
     if not context:
         return render(request, "portal/404.html", status=404)
     return render(request, "portal/staff/family_attendance.html", context)
+
+
+def _family_notes_context(request, area, family_slug):
+    from .family_notes import notes_qs_for_family
+    from .member_admin import resolve_family
+
+    unit = None if area == "admin" else _staff_unit(request)
+    context = _family_hub_context(request, area, family_slug, "Notes", "notes")
+    if not context:
+        return None
+    family = None
+    if _portal_families_live():
+        family = resolve_family(
+            family_slug=family_slug,
+            family_id=context.get("family_id"),
+            unit=unit,
+        )
+    notes = list(notes_qs_for_family(family, unit)) if family else []
+    profile = context.get("profile") or {}
+    note_children = [
+        {"id": child.get("child_id"), "name": child.get("name")}
+        for child in profile.get("children") or []
+        if child.get("child_id")
+    ]
+    context.update(
+        {
+            "family_notes": notes,
+            "note_children": note_children,
+            "note_add_url": (
+                "portal_admin_family_note_add" if area == "admin" else "portal_staff_family_note_add"
+            ),
+            "note_delete_url": (
+                "portal_admin_family_note_delete"
+                if area == "admin"
+                else "portal_staff_family_note_delete"
+            ),
+        }
+    )
+    context["page_title"] = f"{profile.get('family_name') or family_slug} — Notes"
+    return context
+
+
+@staff_login_required
+@require_GET
+def staff_family_notes(request, family_slug):
+    context = _family_notes_context(request, "staff", family_slug)
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_notes.html", context)
+
+
+@admin_login_required
+@require_GET
+def admin_family_notes(request, family_slug):
+    context = _family_notes_context(request, "admin", family_slug)
+    if not context:
+        return render(request, "portal/404.html", status=404)
+    return render(request, "portal/staff/family_notes.html", context)
 
 
 @staff_login_required

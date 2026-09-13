@@ -15,6 +15,7 @@ FAMILY_TAB_URL_KEYS = {
     "applications": "family_applications",
     "policies": "family_policies",
     "email": "family_email",
+    "notes": "family_notes",
 }
 
 

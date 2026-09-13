@@ -1,0 +1,79 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <div class="portal-family-hero-head">
+    <div class="portal-family-hero-copy">
+    <div class="portal-family-hero-top">
+    <p class="portal-breadcrumb">
+      {% if portal_area == 'admin' %}
+      <a href="{% url 'portal_admin_page' page='families' %}">Families</a> /
+      {% else %}
+      <a href="{% url 'portal_staff_page' page='families' %}">Families</a> /
+      <a href="{% url 'portal_staff_family_detail' family_slug=family_slug %}">{{ profile.family_name }}</a> /
+      {% endif %}
+      Notes
+    </p>
+    </div>
+    <h1>Notes — {{ account_heading_name|default:profile.family_name }}</h1>
+    <p class="lead">Staff and admin notes on this child / family account. Parents do not see these.</p>
+    </div>
+    {% include "portal/includes/family_account_pager.html" %}
+    </div>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/family_account_tabs.html" %}
+
+    <section class="card portal-family-notes-compose portal-collapse-skip">
+      <h2>Add a note</h2>
+      <p class="form-note">Write as many notes as you need. Each one keeps your name and the date. You cannot edit another person’s note — add a new one instead.</p>
+      <form method="post" action="{% url note_add_url family_slug=family_slug %}" class="portal-family-note-form">
+        {% csrf_token %}
+        {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+        <input type="hidden" name="next" value="{{ request.path }}{% if family_account_query %}?{{ family_account_query }}{% elif family_id %}?id={{ family_id }}{% endif %}">
+        {% if note_children %}
+        <label for="note-child">About</label>
+        <select id="note-child" name="child_id" class="portal-input">
+          <option value="">This household</option>
+          {% for child in note_children %}
+          <option value="{{ child.id }}">{{ child.name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+        <label for="note-body">Note</label>
+        <textarea id="note-body" name="body" class="portal-input" rows="4" required maxlength="4000" placeholder="Example: Called mom about late pickup. She will send a note tomorrow."></textarea>
+        <button type="submit" class="btn btn-primary">Add note</button>
+      </form>
+    </section>
+
+    <section class="portal-family-notes-list">
+      <h2>Notes already written</h2>
+      {% if family_notes %}
+      {% for note in family_notes %}
+      <article class="card portal-family-note">
+        <p class="form-note portal-family-note-meta">
+          <strong>{{ note.author_name }}</strong>{% if note.author_role %} · {{ note.author_role }}{% endif %}
+          · {{ note.created_at|date:"M j, Y, g:i A" }}
+          {% if note.child %} · {{ note.child.name }}{% endif %}
+        </p>
+        <p class="portal-family-note-body">{{ note.body|linebreaksbr }}</p>
+        <form method="post" action="{% url note_delete_url family_slug=family_slug note_id=note.pk %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Delete this note?">
+          {% csrf_token %}
+          {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+          <input type="hidden" name="next" value="{{ request.path }}{% if family_account_query %}?{{ family_account_query }}{% elif family_id %}?id={{ family_id }}{% endif %}">
+          <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+        </form>
+      </article>
+      {% endfor %}
+      {% else %}
+      <div class="card">
+        <h3>No notes yet</h3>
+        <p class="form-note">Use Add a note when you need to leave something for the next staff person who opens this account.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}

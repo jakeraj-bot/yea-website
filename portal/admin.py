@@ -11,6 +11,7 @@ from .models import (
     PortalChildBillingPlan,
     PortalEmailTemplate,
     PortalFamily,
+    PortalFamilyNote,
     PortalFeeRule,
     PortalMemberGroup,
     PortalParentEmail,
@@ -39,6 +40,14 @@ class PortalFamilyAdmin(admin.ModelAdmin):
     list_display = ("name", "unit", "primary_contact", "status", "balance")
     list_filter = ("unit", "status")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(PortalFamilyNote)
+class PortalFamilyNoteAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "author_name", "family", "child", "unit")
+    list_filter = ("unit",)
+    search_fields = ("author_name", "body", "family__name", "child__name")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(PortalChild)

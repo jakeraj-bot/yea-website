@@ -57,6 +57,7 @@ class PageGuideCatalogTests(TestCase):
             "applications",
             "policies",
             "email",
+            "notes",
         ):
             self.assertIsNotNone(guide_for(f"family-{tab}"), tab)
 
