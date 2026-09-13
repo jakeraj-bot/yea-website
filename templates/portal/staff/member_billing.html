@@ -1,0 +1,46 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Member billing</h1>
+    <p class="lead">{{ staff_unit }} — open a family to post charges, take a payment, or edit plans.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Child</th>
+            <th>Billing</th>
+            <th>Child balance</th>
+            <th>Family balance</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for family in families %}
+          <tr>
+            <td><strong>{{ family.name }}</strong></td>
+            <td>{{ family.child_name }}</td>
+            <td>{{ family.billing_type }}</td>
+            <td>${{ family.child_balance }}</td>
+            <td>{% if family.is_first_child %}${{ family.family_balance }}{% endif %}</td>
+            <td>
+              {% if family.is_first_child %}
+              <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_plans' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Plans</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">No families at this unit.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

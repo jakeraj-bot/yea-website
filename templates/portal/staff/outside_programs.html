@@ -1,0 +1,127 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Outside programs</h1>
+    <p class="lead">Vendors and partners who run programs with YEA — contact, what they do, and what they want to charge.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="{{ list_url }}?add=1">+ Add outside program</a>
+      <a class="btn btn-secondary" href="{{ print_url }}">Print contact list</a>
+      <a class="btn btn-secondary" href="{{ export_url }}">Export CSV</a>
+    </div>
+
+    <form method="get" action="{{ list_url }}" class="card portal-program-form portal-collapse-skip">
+      <div class="portal-form-grid">
+        <div class="form-group">
+          <label for="op-search">Search</label>
+          <input id="op-search" name="q" type="search" class="portal-input" value="{{ filter_q }}" placeholder="Name, email, phone, notes">
+        </div>
+        <div class="form-group">
+          <label for="op-category">Category</label>
+          <select id="op-category" name="category" class="portal-select">
+            <option value="">All</option>
+            {% for value, label in outside_program_categories %}
+            <option value="{{ value }}"{% if filter_category == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn-secondary">Search</button>
+        </div>
+      </div>
+    </form>
+
+    {% if show_form %}
+    <div class="portal-panel card portal-program-form">
+      <h2>{% if editing %}Edit {{ editing.name }}{% else %}Add outside program{% endif %}</h2>
+      <form class="portal-form-grid" method="post" action="{% if editing %}{% url save_url_name program_id=editing.pk %}{% else %}{{ list_url }}{% endif %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="op-name">Name</label>
+          <input id="op-name" name="name" type="text" class="portal-input" value="{{ editing.name|default:'' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="op-email">Email</label>
+          <input id="op-email" name="email" type="email" class="portal-input" value="{{ editing.email|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="op-phone">Phone</label>
+          <input id="op-phone" name="phone" type="text" class="portal-input" value="{{ editing.phone|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label for="op-cat">Category</label>
+          <select id="op-cat" name="category" class="portal-select">
+            {% for value, label in outside_program_categories %}
+            <option value="{{ value }}"{% if editing and editing.category == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="op-desc">What they will be doing</label>
+          <textarea id="op-desc" name="description" class="portal-input portal-textarea" rows="3">{{ editing.description|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="op-charge">How much they want to charge YEA</label>
+          <input id="op-charge" name="charge_amount" type="text" class="portal-input" value="{% if editing and editing.charge_amount != None %}{{ editing.charge_amount }}{% endif %}" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="op-used">Last used</label>
+          <input id="op-used" name="last_used_on" type="date" class="portal-input" value="{% if editing and editing.last_used_on %}{{ editing.last_used_on|date:'Y-m-d' }}{% endif %}">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="op-notes">Notes</label>
+          <textarea id="op-notes" name="notes" class="portal-input portal-textarea" rows="3">{{ editing.notes|default:'' }}</textarea>
+        </div>
+        <div class="portal-form-actions portal-form-full">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <a class="btn btn-secondary" href="{{ list_url }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="portal-table-wrap">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Category</th>
+            <th>What they do</th>
+            <th>Charge to YEA</th>
+            <th>Last used</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in programs %}
+          <tr>
+            <td><strong>{{ row.name }}</strong></td>
+            <td>{% if row.email %}<a href="mailto:{{ row.email }}">{{ row.email }}</a>{% else %}—{% endif %}</td>
+            <td>{{ row.phone|default:"—" }}</td>
+            <td>{{ row.get_category_display|default:"—" }}</td>
+            <td>{{ row.description|default:"—"|truncatewords:16 }}</td>
+            <td>{{ row.charge_display }}</td>
+            <td>{% if row.last_used_on %}{{ row.last_used_on|date:"M j, Y" }}{% else %}—{% endif %}</td>
+            <td class="portal-row-actions">
+              <a class="btn btn-secondary btn-sm" href="{{ list_url }}?edit={{ row.pk }}">Edit</a>
+              <form method="post" action="{% url delete_url_name program_id=row.pk %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Delete {{ row.name }}? This removes them from Outside programs.">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8">No outside programs match this search.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -192,6 +192,7 @@ def get_staff_users_live():
                 "can_edit_family_plans": account.can_edit_family_plans,
                 "can_approve_applications": account.can_approve_applications,
                 "can_approve_waitlist": account.can_approve_waitlist,
+                "can_see_billing": account.can_see_billing,
                 "all_units_access": account.all_units_access,
                 "unit_slug": account.unit.slug,
                 "unit_slugs": unit_slugs,
@@ -468,7 +469,16 @@ def save_billing_permissions(
     return account
 
 
-def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_units_access=False, password=None):
+def invite_staff_user(
+    name,
+    email,
+    role,
+    unit_slug=None,
+    unit_slugs=None,
+    all_units_access=False,
+    password=None,
+    can_see_billing=False,
+):
     import secrets
 
     from .admin_config import ensure_admin_config_seeded
@@ -518,6 +528,7 @@ def invite_staff_user(name, email, role, unit_slug=None, unit_slugs=None, all_un
             "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else False,
             "can_approve_applications": default_rule.can_approve_applications if default_rule else False,
             "can_approve_waitlist": default_rule.can_approve_waitlist if default_rule else False,
+            "can_see_billing": bool(can_see_billing),
         },
     )
     if all_units_access:
@@ -599,6 +610,7 @@ def update_staff_user(staff_id, data):
     role = data.get("role")
     if role:
         account.role = role
+    account.can_see_billing = data.get("can_see_billing") == "on"
     all_units = data.get("all_units_access") == "on" or role == "Portal admin"
     account.all_units_access = all_units
     if role == "Portal admin":

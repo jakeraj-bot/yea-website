@@ -567,6 +567,7 @@ ADMIN_AGENCIES = [
 
 PORTAL_STAFF_ROLES = [
     "Portal admin",
+    "Program director",
     "Unit director",
     "Front desk staff",
     "Unit staff",
