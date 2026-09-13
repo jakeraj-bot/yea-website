@@ -3346,7 +3346,7 @@ def _render_family_plans(request, area, family_slug):
     )
     if not context:
         return render(request, "portal/404.html", status=404)
-    if context.get("portal_live") and area == "admin":
+    if context.get("portal_live"):
         from .models import PortalScholarshipFund
 
         context["scholarship_funds"] = list(
@@ -3354,6 +3354,7 @@ def _render_family_plans(request, area, family_slug):
         )
     else:
         context.setdefault("scholarship_funds", [])
+    context["can_edit_plans"] = True
     return render(request, "portal/staff/family_plans.html", context)
 
 

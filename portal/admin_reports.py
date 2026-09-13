@@ -43,7 +43,7 @@ def _active_children():
     return (
         PortalChild.objects.filter(is_active=True)
         .select_related("family", "family__unit", "unit")
-        .prefetch_related("scholarships__fund", "family__enrollment_applications")
+        .prefetch_related("scholarships__fund", "family__enrollment_applications", "billing_plans")
         .order_by("family__name", "name")
     )
 
@@ -93,36 +93,47 @@ def billing_plan_rows(filters=None):
         if child_school:
             schools.add(child_school)
         billings.add(billing_type)
-        if plan_name != "—":
-            plans.add(plan_name)
-        if unit and unit_slug != unit:
-            continue
-        if query and not _name_match(child.name, child.family.name, query):
-            continue
-        if school and child_school.lower() != school.lower():
-            continue
-        if billing and billing_type.lower() != billing.lower():
-            continue
-        if plan and plan.lower() not in plan_name.lower():
-            continue
-        assignment = _active_assignment(child)
-        rows.append(
-            {
-                "child": child.name,
-                "family": child.family.name,
-                "family_slug": child.family.slug,
-                "family_id": child.family_id,
-                "unit": unit_name or child.family.unit.name,
-                "school": child_school or "—",
-                "billing": billing_type,
-                "plan": plan_name,
-                "amount": _money(child.billing_amount) if child.billing_amount is not None else "—",
-                "auto_charge": "On" if child.auto_charge else "Off",
-                "next_charge": child.next_charge_date.isoformat() if child.next_charge_date else "—",
-                "scholarship": assignment.fund.name if assignment else "—",
-                "status": "Suspended" if child.family.is_suspended else child.family.status,
-            }
-        )
+        child_plans = list(child.billing_plans.all())
+        if not child_plans:
+            child_plans = [None]
+        for stored in child_plans:
+            row_plan = (stored.billing_plan if stored else plan_name) or "—"
+            row_amount = stored.billing_amount if stored else child.billing_amount
+            row_auto = stored.auto_charge if stored else child.auto_charge
+            row_next = stored.next_charge_date if stored else child.next_charge_date
+            row_desc = (stored.description if stored else "") or ""
+            if row_plan != "—":
+                plans.add(row_plan)
+            if unit and unit_slug != unit:
+                continue
+            if query and not _name_match(child.name, child.family.name, query):
+                continue
+            if school and child_school.lower() != school.lower():
+                continue
+            if billing and billing_type.lower() != billing.lower():
+                continue
+            if plan and plan.lower() not in row_plan.lower() and plan.lower() not in row_desc.lower():
+                continue
+            assignment = _active_assignment(child)
+            display_plan = f"{row_desc} · {row_plan}" if row_desc else row_plan
+            rows.append(
+                {
+                    "child": child.name,
+                    "family": child.family.name,
+                    "family_slug": child.family.slug,
+                    "family_id": child.family_id,
+                    "unit": unit_name or child.family.unit.name,
+                    "school": child_school or "—",
+                    "billing": billing_type,
+                    "plan": display_plan,
+                    "description": row_desc or "—",
+                    "amount": _money(row_amount) if row_amount is not None else "—",
+                    "auto_charge": "On" if row_auto else "Off",
+                    "next_charge": row_next.isoformat() if row_next else "—",
+                    "scholarship": assignment.fund.name if assignment else "—",
+                    "status": "Suspended" if child.family.is_suspended else child.family.status,
+                }
+            )
     return {
         "rows": rows,
         "schools": sorted(schools),
@@ -147,9 +158,17 @@ def missing_billing_plan_rows(filters=None):
             continue
         if query and not _name_match(child.name, child.family.name, query):
             continue
-        plan = (child.billing_plan or "").strip()
-        missing_plan = not plan
-        missing_amount = child.billing_amount is None or child.billing_amount <= 0
+        stored_plans = list(child.billing_plans.all())
+        if stored_plans:
+            if any((row.billing_plan or "").strip() and row.billing_amount and row.billing_amount > 0 for row in stored_plans):
+                continue
+            plan = (stored_plans[0].billing_plan or "").strip()
+            missing_plan = not any((row.billing_plan or "").strip() for row in stored_plans)
+            missing_amount = True
+        else:
+            plan = (child.billing_plan or "").strip()
+            missing_plan = not plan
+            missing_amount = child.billing_amount is None or child.billing_amount <= 0
         if not missing_plan and not missing_amount:
             continue
         reasons = []
@@ -880,6 +899,7 @@ ADMIN_DATA_REPORTS = {
             ("school", "School"),
             ("billing", "Payment type"),
             ("plan", "Plan"),
+            ("description", "Description"),
             ("amount", "Amount"),
             ("auto_charge", "Auto charge"),
             ("next_charge", "Next charge"),

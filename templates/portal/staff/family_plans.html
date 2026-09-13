@@ -63,7 +63,7 @@
         <h3>{{ child.name }}</h3>
         <dl class="portal-dl">
           <dt>Type</dt><dd>{{ child.type|default:"Private pay" }}</dd>
-          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
+          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}{% if child.description %} — {{ child.description }}{% endif %}</dd>
           {% if child.full_rate %}
           <dt>Full rate</dt><dd>${{ child.full_rate }}</dd>
           <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
@@ -96,6 +96,11 @@
           <input type="hidden" name="action" value="update_4cs_plan">
           <input type="hidden" name="child_name" value="{{ child.name }}">
           <input type="hidden" name="auto_charge" value="on">
+          {% if child.plans.0.id %}<input type="hidden" name="plan_id" value="{{ child.plans.0.id }}">{% endif %}
+          <div class="form-group portal-form-full">
+            <label for="fourcs-desc-{{ child.child_id }}">Description</label>
+            <input id="fourcs-desc-{{ child.child_id }}" name="plan_description" type="text" class="portal-input" value="{{ child.description|default:'' }}" placeholder="After care">
+          </div>
           <div class="form-group portal-form-full">
             <label for="fourcs-plan-{{ child.child_id }}">How often the parent pays</label>
             <select id="fourcs-plan-{{ child.child_id }}" name="billing_plan" class="portal-select">
@@ -139,25 +144,50 @@
           <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save 4Cs copay plan</button>
         </form>
         {% endif %}
-        {% if portal_area == 'admin' %}
-        <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan="{{ child.plan|default:'Weekly' }}" data-amount="{{ child.amount|default:'' }}" data-type="{{ child.type|default:'Private pay' }}" data-auto-charge="{% if child.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ child.next_charge_date|default:'' }}" data-weekday="{{ child.charge_weekday }}" data-month-day="{{ child.charge_month_day }}" data-scholarship-fund="{{ child.scholarship_fund_id|default:'' }}" data-full-rate="{{ child.full_rate|default:'' }}" data-parent-amount="{{ child.parent_amount|default:'' }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Edit plan</button>
+        {% if child.plans %}
+        <h4>This child’s plans</h4>
+        <ul class="portal-allocation-list">
+          {% for plan in child.plans %}
+          <li>
+            <strong>{% if plan.description %}{{ plan.description }}{% else %}{{ plan.plan }}{% endif %}</strong>
+            · {{ plan.plan }}
+            · {{ plan.amount_display }}
+            · {{ plan.auto_charge_label }}
+            <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan-id="{{ plan.id }}" data-description="{{ plan.description }}" data-plan="{{ plan.plan|default:'Weekly' }}" data-amount="{{ plan.amount|default:'' }}" data-type="{{ plan.billing_type|default:child.type|default:'Private pay' }}" data-auto-charge="{% if plan.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ plan.next_charge_date|default:'' }}" data-weekday="{{ plan.charge_weekday }}" data-month-day="{{ plan.charge_month_day }}" data-scholarship-fund="{{ child.scholarship_fund_id|default:'' }}" data-full-rate="{{ child.full_rate|default:'' }}" data-parent-amount="{{ child.parent_amount|default:'' }}"{% if not billing_live %} disabled{% endif %}>Edit</button>
+            {% if plan.id %}
+            <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form" onsubmit="return confirm('Remove this plan?');">
+              {% csrf_token %}
+              <input type="hidden" name="portal_area" value="{{ portal_area }}">
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+              <input type="hidden" name="action" value="delete_plan">
+              <input type="hidden" name="child_name" value="{{ child.name }}">
+              <input type="hidden" name="plan_id" value="{{ plan.id }}">
+              <button type="submit" class="btn btn-secondary btn-sm"{% if not billing_live %} disabled{% endif %}>Remove</button>
+            </form>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
         {% endif %}
+        <button type="button" class="btn btn-secondary btn-sm add-plan-btn" data-child="{{ child.name }}" data-type="{{ child.type|default:'Private pay' }}"{% if not billing_live %} disabled title="{% if show_dev_hints %}Run seed_portal for live billing{% else %}Billing is not available yet{% endif %}"{% endif %}>Add another plan</button>
       </article>
       {% empty %}
       <p class="form-note">No children on this account yet.</p>
       {% endfor %}
     </div>
 
-    {% if portal_area == 'admin' %}
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
-      <h2>Edit billing plan</h2>
-      <p class="form-note">Set the amount and when it repeats. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier.</p>
+      <h2 id="edit-plan-heading">Edit billing plan</h2>
+      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
-        <input type="hidden" name="portal_area" value="admin">
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
         {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
         <input type="hidden" name="action" value="update_plan">
+        <input type="hidden" name="plan_id" id="plan-id" value="">
+        <input type="hidden" name="create_plan" id="create-plan" value="">
         <div class="form-group portal-form-full">
           <label for="plan-child">Child</label>
           <select id="plan-child" name="child_name" class="portal-select" required>
@@ -165,6 +195,11 @@
             <option value="{{ child.name }}">{{ child.name }}</option>
             {% endfor %}
           </select>
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="plan-description">Description</label>
+          <input id="plan-description" name="plan_description" type="text" class="portal-input" maxlength="120" placeholder="Before care">
+          <p class="form-note">Shows on the ledger charge. Example: Before care or After care.</p>
         </div>
         <div class="form-group portal-form-full">
           <label for="plan-type">Billing type</label>
@@ -239,7 +274,6 @@
         </div>
       </form>
     </div>
-    {% endif %}
 
     {% if portal_area == 'admin' and portal_live %}
     <div class="portal-profile-grid">
@@ -352,35 +386,48 @@
     var fund = document.getElementById("plan-scholarship-fund");
     if (fund) fund.required = !!isScholarship;
   }
+  function fillPlanForm(btn, isNew) {
+    var panel = document.getElementById("edit-plan-panel");
+    var heading = document.getElementById("edit-plan-heading");
+    var childSelect = document.getElementById("plan-child");
+    var planSelect = document.getElementById("plan-name");
+    var typeSelect = document.getElementById("plan-type");
+    var amountInput = document.getElementById("plan-amount");
+    var descInput = document.getElementById("plan-description");
+    var planId = document.getElementById("plan-id");
+    var createPlan = document.getElementById("create-plan");
+    if (heading) heading.textContent = isNew ? "Add billing plan" : "Edit billing plan";
+    if (childSelect) childSelect.value = btn.getAttribute("data-child") || "";
+    if (planSelect) planSelect.value = isNew ? "Weekly" : (btn.getAttribute("data-plan") || "Weekly");
+    if (typeSelect) typeSelect.value = btn.getAttribute("data-type") || "Private pay";
+    if (amountInput) amountInput.value = isNew ? "" : (btn.getAttribute("data-amount") || "").replace(/[^0-9.]/g, "");
+    if (descInput) descInput.value = isNew ? "" : (btn.getAttribute("data-description") || "");
+    if (planId) planId.value = isNew ? "" : (btn.getAttribute("data-plan-id") || "");
+    if (createPlan) createPlan.value = isNew ? "1" : "";
+    var autoCharge = document.getElementById("plan-auto-charge");
+    var nextCharge = document.getElementById("plan-next-charge");
+    var weekday = document.getElementById("plan-weekday");
+    var monthDay = document.getElementById("plan-month-day");
+    if (autoCharge) autoCharge.checked = !isNew && btn.getAttribute("data-auto-charge") === "1";
+    if (nextCharge) nextCharge.value = isNew ? "" : (btn.getAttribute("data-next-charge") || "");
+    if (weekday) weekday.value = isNew ? "" : (btn.getAttribute("data-weekday") || "");
+    if (monthDay) monthDay.value = isNew ? "" : (btn.getAttribute("data-month-day") || "");
+    var fundSelect = document.getElementById("plan-scholarship-fund");
+    var fullRate = document.getElementById("plan-full-rate");
+    var parentAmount = document.getElementById("plan-parent-amount");
+    if (fundSelect) fundSelect.value = isNew ? "" : (btn.getAttribute("data-scholarship-fund") || "");
+    if (fullRate) fullRate.value = isNew ? "" : (btn.getAttribute("data-full-rate") || "").replace(/[^0-9.]/g, "");
+    if (parentAmount) parentAmount.value = isNew ? "" : (btn.getAttribute("data-parent-amount") || "").replace(/[^0-9.]/g, "");
+    togglePlanRepeat();
+    toggleScholarshipFields();
+    if (panel) panel.hidden = false;
+    if (descInput) descInput.focus();
+  }
   document.querySelectorAll(".edit-plan-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var panel = document.getElementById("edit-plan-panel");
-      var childSelect = document.getElementById("plan-child");
-      var planSelect = document.getElementById("plan-name");
-      var typeSelect = document.getElementById("plan-type");
-      var amountInput = document.getElementById("plan-amount");
-      if (childSelect) childSelect.value = btn.getAttribute("data-child") || "";
-      if (planSelect) planSelect.value = btn.getAttribute("data-plan") || "Weekly";
-      if (typeSelect) typeSelect.value = btn.getAttribute("data-type") || "Private pay";
-      if (amountInput) amountInput.value = (btn.getAttribute("data-amount") || "").replace(/[^0-9.]/g, "");
-      var autoCharge = document.getElementById("plan-auto-charge");
-      var nextCharge = document.getElementById("plan-next-charge");
-      var weekday = document.getElementById("plan-weekday");
-      var monthDay = document.getElementById("plan-month-day");
-      if (autoCharge) autoCharge.checked = btn.getAttribute("data-auto-charge") === "1";
-      if (nextCharge) nextCharge.value = btn.getAttribute("data-next-charge") || "";
-      if (weekday) weekday.value = btn.getAttribute("data-weekday") || "";
-      if (monthDay) monthDay.value = btn.getAttribute("data-month-day") || "";
-      var fundSelect = document.getElementById("plan-scholarship-fund");
-      var fullRate = document.getElementById("plan-full-rate");
-      var parentAmount = document.getElementById("plan-parent-amount");
-      if (fundSelect) fundSelect.value = btn.getAttribute("data-scholarship-fund") || "";
-      if (fullRate) fullRate.value = (btn.getAttribute("data-full-rate") || "").replace(/[^0-9.]/g, "");
-      if (parentAmount) parentAmount.value = (btn.getAttribute("data-parent-amount") || "").replace(/[^0-9.]/g, "");
-      togglePlanRepeat();
-      toggleScholarshipFields();
-      if (panel) panel.hidden = false;
-    });
+    btn.addEventListener("click", function () { fillPlanForm(btn, false); });
+  });
+  document.querySelectorAll(".add-plan-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () { fillPlanForm(btn, true); });
   });
   var cancel = document.getElementById("cancel-edit-plan");
   if (cancel) cancel.addEventListener("click", function () {

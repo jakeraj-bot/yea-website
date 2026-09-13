@@ -5,6 +5,7 @@ from .models import (
     PortalActivityEvent,
     PortalBillingDefaultRule,
     PortalChild,
+    PortalChildBillingPlan,
     PortalEmailTemplate,
     PortalFamily,
     PortalFeeRule,
@@ -40,6 +41,13 @@ class PortalFamilyAdmin(admin.ModelAdmin):
 class PortalChildAdmin(admin.ModelAdmin):
     list_display = ("name", "family", "unit", "grade", "is_active")
     list_filter = ("unit", "family__unit", "is_active")
+
+
+@admin.register(PortalChildBillingPlan)
+class PortalChildBillingPlanAdmin(admin.ModelAdmin):
+    list_display = ("child", "description", "billing_plan", "billing_amount", "auto_charge", "sort_order")
+    list_filter = ("billing_plan", "auto_charge")
+    search_fields = ("child__name", "description")
 
 
 @admin.register(AttendanceRecord)
