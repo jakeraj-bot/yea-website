@@ -397,7 +397,7 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "Outstanding balances and 4Cs copay files download as CSV for spreadsheets.",
+                "body": "If you can see billing, balance and 4Cs copay files download as CSV. Program director does not see those unless billing is turned on.",
             },
         ],
     },

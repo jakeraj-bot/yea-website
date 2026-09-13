@@ -263,6 +263,6 @@ class ProgramDirectorFrontDeskTests(TestCase):
         self._login(self.pd_user)
         reports = self.client.get(reverse("portal_staff_page", kwargs={"page": "reports"}))
         self.assertEqual(reports.status_code, 200)
-        self.assertNotContains(reports, "Outstanding balances")
-        self.assertNotContains(reports, "4Cs copay report")
+        self.assertNotContains(reports, reverse("portal_staff_balances_export"))
+        self.assertNotContains(reports, reverse("portal_staff_agency_copay_export"))
         self.assertContains(reports, "Attendance")
