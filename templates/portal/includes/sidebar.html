@@ -96,7 +96,6 @@
     <li><a class="portal-nav-link portal-nav-staff-incidents{% if staff_page_slug == 'incidents' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='incidents' %}" title="Incidents">Incidents</a></li>
     <li><a class="portal-nav-link portal-nav-staff-support{% if staff_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='support' %}" title="Support">Support</a></li>
     <li><a class="portal-nav-link portal-nav-staff-reports{% if staff_page_slug == 'reports' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='reports' %}" title="Reports &amp; PDFs">Reports &amp; PDFs</a></li>
-    <li><a class="portal-nav-link portal-nav-staff-activity{% if staff_page_slug == 'activity' %} is-active{% endif %}" href="{% url 'portal_staff_page' page='activity' %}" title="My activity">My activity</a></li>
   </ul>
   {% if can_open_admin_portal %}
   <div class="portal-sidebar-footer">

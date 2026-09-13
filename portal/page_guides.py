@@ -739,20 +739,6 @@ GUIDES = {
             },
         ],
     },
-    "my-activity": {
-        "title": "How to read your activity",
-        "intro": "This list is only what you have done in the portal — not everyone else’s work.",
-        "steps": [
-            {
-                "title": "Read your own list",
-                "body": "Each row is a date and time, the action, and the page or family you touched.",
-            },
-            {
-                "title": "See why you deleted something",
-                "body": "Deletes ask for a required reason. That reason is saved here. Admins can also open your list from Organization → Activity.",
-            },
-        ],
-    },
     "billing-settings": {
         "title": "How to use member accounts",
         "intro": "This list is every enrolled family ledger, plus parent portal logins.",

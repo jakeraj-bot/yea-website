@@ -329,43 +329,25 @@ def activity_page_context(request, *, area="admin"):
     search = (request.GET.get("q") or "").strip()
     date_from = (request.GET.get("date_from") or "").strip()
     date_to = (request.GET.get("date_to") or "").strip()
-    people = []
+    people = activity_people(search=search)
     selected = None
     events = []
-    if area == "staff":
-        user = request.user
-        selected = {
-            "id": user.pk,
-            "name": actor_display_name(user) or user.username,
-            "username": user.username,
-            "email": user.email or "",
-            "role": actor_role_label(user),
-            "unit": "",
-        }
-        events = list(events_for_user(user.pk, date_from=date_from, date_to=date_to)[:200])
-        selected_id = str(user.pk)
-    else:
-        people = activity_people(search=search)
-        if selected_id.isdigit():
-            selected = next((row for row in people if str(row["id"]) == selected_id), None)
-            if selected is None:
-                User = get_user_model()
-                user = User.objects.filter(pk=int(selected_id)).first()
-                if user:
-                    selected = {
-                        "id": user.pk,
-                        "name": actor_display_name(user) or user.username,
-                        "username": user.username,
-                        "email": user.email or "",
-                        "role": actor_role_label(user),
-                        "unit": "",
-                    }
-            if selected:
-                events = list(events_for_user(selected["id"], date_from=date_from, date_to=date_to)[:200])
-        elif search:
-            selected = None
-        else:
-            selected = None
+    if selected_id.isdigit():
+        selected = next((row for row in people if str(row["id"]) == selected_id), None)
+        if selected is None:
+            User = get_user_model()
+            user = User.objects.filter(pk=int(selected_id)).first()
+            if user:
+                selected = {
+                    "id": user.pk,
+                    "name": actor_display_name(user) or user.username,
+                    "username": user.username,
+                    "email": user.email or "",
+                    "role": actor_role_label(user),
+                    "unit": "",
+                }
+        if selected:
+            events = list(events_for_user(selected["id"], date_from=date_from, date_to=date_to)[:200])
     return {
         "activity_people": people,
         "activity_selected": selected,
@@ -374,6 +356,5 @@ def activity_page_context(request, *, area="admin"):
         "activity_date_from": date_from,
         "activity_date_to": date_to,
         "activity_user_id": selected_id,
-        "activity_own_only": area == "staff",
-        "page_title": "My activity" if area == "staff" else "Activity",
+        "page_title": "Activity",
     }

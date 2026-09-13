@@ -79,18 +79,35 @@ class ActivityLogUserFilterTests(TestCase):
         self.assertNotContains(response, "Admin portal")
         self.assertNotContains(response, "Signed in")
 
-    def test_staff_my_activity_shows_only_own_events(self):
+    def test_activity_sections_are_collapse_ready(self):
+        response = self.client.get(reverse("portal_admin_page", kwargs={"page": "activity"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "portal-collapse.js")
+        self.assertContains(response, "<h2>Choose a person</h2>")
+        self.assertContains(response, 'class="card"')
+        self.assertNotContains(response, "portal-collapse-skip")
+        self.assertNotContains(response, "My activity")
+        picked = self.client.get(
+            reverse("portal_admin_page", kwargs={"page": "activity"}),
+            {"user": str(self.staff.pk)},
+        )
+        self.assertContains(picked, "<h2>Unit Staff</h2>")
+        self.assertNotContains(picked, "portal-collapse-skip")
+
+    def test_staff_cannot_open_activity_urls(self):
         self.client.force_login(self.staff)
         session = self.client.session
         session[PORTAL_AUTH_SESSION_KEY] = "staff"
         session.save()
-        response = self.client.get(reverse("portal_staff_page", kwargs={"page": "activity"}))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "My activity")
-        self.assertContains(response, "Saved family")
-        self.assertNotContains(response, "Signed in")
-        self.assertNotContains(response, "Open activity")
-        self.assertNotContains(response, "Find people")
+        staff_url = self.client.get(reverse("portal_staff_page", kwargs={"page": "activity"}))
+        self.assertEqual(staff_url.status_code, 403)
+        admin_url = self.client.get(reverse("portal_admin_page", kwargs={"page": "activity"}))
+        self.assertIn(admin_url.status_code, {302, 403})
+        self.assertNotEqual(admin_url.status_code, 200)
+        dashboard = self.client.get(reverse("portal_staff_page", kwargs={"page": "dashboard"}))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotContains(dashboard, "My activity")
+        self.assertNotContains(dashboard, "portal-nav-staff-activity")
 
 
 @override_settings(PORTAL_PREVIEW_MODE=False)
