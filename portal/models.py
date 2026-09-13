@@ -1165,6 +1165,7 @@ class PortalCalendarActivity(models.Model):
     name = models.CharField(max_length=160)
     activity_date = models.DateField()
     start_time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
     unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="calendar_activities")
     created_by = models.ForeignKey(
         "auth.User",

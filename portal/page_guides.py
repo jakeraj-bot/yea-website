@@ -727,7 +727,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Create one day, a week, or a month",
-                "body": "Enter the name, time, and a date. This day only creates one activity. This week (Mon–Fri) or This month (weekdays) makes the same activity on each of those days so you can go back later.",
+                "body": "Enter the name, start time, end time, and a date. This day only creates one activity. This week (Mon–Fri) or This month (weekdays) makes the same activity on each of those days so you can go back later.",
             },
             {
                 "title": "Upload a lesson plan per day",
@@ -775,7 +775,7 @@ GUIDES = {
             },
             {
                 "title": "Print",
-                "body": "From a group you can print an attendance sheet, member list, contact list, or emergency contacts. The logo and title repeat on printed pages the same way other reports do.",
+                "body": "From a group you can print daily attendance, weekly attendance (Monday–Friday), a member list, contact list, or emergency contacts. The logo and title repeat on printed pages the same way other reports do.",
             },
             {
                 "title": "Use a group on the activity calendar",
@@ -793,7 +793,7 @@ GUIDES = {
             },
             {
                 "title": "Print sheets",
-                "body": "Use the print buttons for an attendance sheet, member list, contact list, or emergency contacts.",
+                "body": "Use the print buttons for daily attendance, weekly attendance (Monday–Friday), a member list, contact list, or emergency contacts.",
             },
         ],
     },
@@ -803,7 +803,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Check the list",
-                "body": "Attendance has blank time-in and time-out lines. Member list is names. Contact list is the parent phone. Emergency contacts is who to call.",
+                "body": "Daily attendance has blank time-in and time-out lines for one day. Weekly attendance has Monday–Friday columns. Member list is names. Contact list is the parent phone. Emergency contacts is who to call.",
             },
             {
                 "title": "Print / Save PDF",
