@@ -4,6 +4,8 @@ from .models import (
     AttendanceRecord,
     PortalActivityEvent,
     PortalBillingDefaultRule,
+    PortalOrgSetting,
+    PortalOutsideProgram,
     PortalCalendarActivity,
     PortalChild,
     PortalChildBillingPlan,
@@ -179,3 +181,15 @@ class PortalActivityEventAdmin(admin.ModelAdmin):
         "details",
         "delete_reason",
     )
+
+
+@admin.register(PortalOrgSetting)
+class PortalOrgSettingAdmin(admin.ModelAdmin):
+    list_display = ("program_director_can_see_billing",)
+
+
+@admin.register(PortalOutsideProgram)
+class PortalOutsideProgramAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "phone", "category", "charge_amount", "last_used_on")
+    list_filter = ("category",)
+    search_fields = ("name", "email", "phone", "description", "notes")

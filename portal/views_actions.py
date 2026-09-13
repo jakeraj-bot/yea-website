@@ -397,6 +397,23 @@ def admin_billing_permissions(request):
 
 @admin_login_required_post
 @require_POST
+def admin_program_director_billing_toggle(request):
+    from .models import PortalOrgSetting
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="billing-permissions")
+    setting = PortalOrgSetting.load()
+    setting.program_director_can_see_billing = request.POST.get("program_director_can_see_billing") == "on"
+    setting.save(update_fields=["program_director_can_see_billing"])
+    if setting.program_director_can_see_billing:
+        messages.success(request, "Program directors can now see billing.")
+    else:
+        messages.success(request, "Program director billing is off. Individual accounts can still be turned on.")
+    return redirect("portal_admin_page", page="billing-permissions")
+
+
+@admin_login_required_post
+@require_POST
 def admin_staff_invite(request):
     from .admin_services import invite_staff_user
 
@@ -416,6 +433,7 @@ def admin_staff_invite(request):
             unit_slugs=request.POST.getlist("unit_slugs"),
             all_units_access=request.POST.get("all_units_access") == "on" or role == "Portal admin",
             password=password or None,
+            can_see_billing=request.POST.get("can_see_billing") == "on",
         )
         portal_type = "admin" if role == "Portal admin" else "staff"
         emailed = False
@@ -1372,6 +1390,12 @@ def staff_billing_action(request, family_slug):
 
     area = request.POST.get("portal_area", "staff")
     if not portal_preview_mode():
+        if area != "admin":
+            from .staff_auth import staff_billing_forbidden
+
+            blocked = staff_billing_forbidden(request)
+            if blocked:
+                return blocked
         if area == "admin" and not is_admin_portal_authenticated(request):
             from django.conf import settings
 
@@ -2148,6 +2172,11 @@ def staff_agency_action(request):
     from .staff_auth import resolve_staff_unit
 
     redirect_url = reverse("portal_staff_page", kwargs={"page": "agency"})
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
     if not _needs_live(request):
         return redirect(redirect_url)
 

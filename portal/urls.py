@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import auth_views, calendar_views, password_reset_views, views, views_actions
+from . import auth_views, calendar_views, outside_program_views, password_reset_views, views, views_actions
 
 urlpatterns = [
     path("", views.portal_home, name="portal_home"),
@@ -347,6 +347,11 @@ urlpatterns = [
         name="portal_admin_billing_permissions",
     ),
     path(
+        "admin/billing-permissions/program-director/",
+        views_actions.admin_program_director_billing_toggle,
+        name="portal_admin_program_director_billing",
+    ),
+    path(
         "admin/staff/invite/",
         views_actions.admin_staff_invite,
         name="portal_admin_staff_invite",
@@ -569,6 +574,31 @@ urlpatterns = [
         calendar_views.group_detail,
         name="portal_staff_group_detail",
     ),
+    path(
+        "staff/outside-programs/",
+        outside_program_views.outside_program_list,
+        name="portal_staff_outside_programs",
+    ),
+    path(
+        "staff/outside-programs/export/",
+        outside_program_views.outside_program_export,
+        name="portal_staff_outside_programs_export",
+    ),
+    path(
+        "staff/outside-programs/print/",
+        outside_program_views.outside_program_print,
+        name="portal_staff_outside_programs_print",
+    ),
+    path(
+        "staff/outside-programs/<int:program_id>/save/",
+        outside_program_views.outside_program_save,
+        name="portal_staff_outside_program_save",
+    ),
+    path(
+        "staff/outside-programs/<int:program_id>/delete/",
+        outside_program_views.outside_program_delete,
+        name="portal_staff_outside_program_delete",
+    ),
     path("staff/<slug:page>/", views.staff_page, name="portal_staff_page"),
     # Admin — detail and report routes before catch-all
     path(
@@ -771,6 +801,31 @@ urlpatterns = [
         "admin/groups/<int:group_id>/",
         calendar_views.group_detail,
         name="portal_admin_group_detail",
+    ),
+    path(
+        "admin/outside-programs/",
+        outside_program_views.outside_program_list,
+        name="portal_admin_outside_programs",
+    ),
+    path(
+        "admin/outside-programs/export/",
+        outside_program_views.outside_program_export,
+        name="portal_admin_outside_programs_export",
+    ),
+    path(
+        "admin/outside-programs/print/",
+        outside_program_views.outside_program_print,
+        name="portal_admin_outside_programs_print",
+    ),
+    path(
+        "admin/outside-programs/<int:program_id>/save/",
+        outside_program_views.outside_program_save,
+        name="portal_admin_outside_program_save",
+    ),
+    path(
+        "admin/outside-programs/<int:program_id>/delete/",
+        outside_program_views.outside_program_delete,
+        name="portal_admin_outside_program_delete",
     ),
     path("admin/<slug:page>/", views.admin_page, name="portal_admin_page"),
 ]
