@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from portal.billing_services import (
+    delete_child_billing_plan,
     first_plan_charge_date,
     next_plan_charge_date,
     post_credit,
@@ -15,15 +16,17 @@ from portal.billing_services import (
     update_child_billing_plan,
     update_ledger_description,
 )
+from portal.family_list import household_balance
 from portal.models import (
     PortalChild,
+    PortalChildBillingPlan,
     PortalFamily,
     PortalLedgerEntry,
     PortalPayment,
     PortalStaffAccount,
     PortalUnit,
 )
-from portal.parent_services import get_receipts_live, payment_to_receipt_dict
+from portal.parent_services import get_billing_live, get_receipts_live, payment_to_receipt_dict
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
 
@@ -333,6 +336,138 @@ class BillingPlanChargeTests(TestCase):
         self.assertEqual(entry.description, "Weekly tuition — after-school")
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(billing, "Weekly tuition — after-school")
+
+    def test_two_plans_post_separate_charges_and_keep_balance(self):
+        today = timezone.localdate()
+        weekday = (today.weekday() + 1) % 7
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "40.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=weekday,
+            description="After care",
+        )
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "25.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=weekday,
+            description="Before care",
+            create_new=True,
+        )
+        charges = list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").order_by("pk")
+        )
+        self.assertEqual(len(charges), 2)
+        descriptions = [entry.description for entry in charges]
+        self.assertTrue(any("After care" in item for item in descriptions))
+        self.assertTrue(any("Before care" in item for item in descriptions))
+        self.assertEqual(sum((entry.amount for entry in charges), Decimal("0")), Decimal("65.00"))
+        self.family.refresh_from_db()
+        billing = get_billing_live(self.family)
+        child = next(item for item in billing["children"] if item["name"] == "Jordan Jacobs")
+        self.assertEqual(child["balance"], "65.00")
+        self.assertEqual(billing["running_balance"], "65.00")
+        self.assertEqual(household_balance(self.family), Decimal("65.00"))
+        self.assertEqual(self.family.balance, Decimal("65.00"))
+        self.assertEqual(len(child["plans"]), 2)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.child).count(), 2)
+
+    def test_can_remove_extra_plan_without_losing_first_plan(self):
+        today = timezone.localdate()
+        weekday = today.weekday()
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "40.00",
+            auto_charge=True,
+            next_charge_date=today + timedelta(days=7),
+            charge_weekday=weekday,
+            description="After care",
+        )
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "25.00",
+            auto_charge=True,
+            next_charge_date=today + timedelta(days=7),
+            charge_weekday=weekday,
+            description="Before care",
+            create_new=True,
+        )
+        extra = PortalChildBillingPlan.objects.get(child=self.child, description="Before care")
+        delete_child_billing_plan(self.family, "Jordan Jacobs", extra.pk)
+        remaining = list(PortalChildBillingPlan.objects.filter(child=self.child))
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0].description, "After care")
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.billing_amount, Decimal("40.00"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_add_second_plan_from_plans_tab(self):
+        self._login_admin()
+        today = timezone.localdate()
+        weekday = (today.weekday() + 1) % 7
+        first = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "update_plan",
+                "child_name": "Jordan Jacobs",
+                "billing_plan": "Weekly",
+                "billing_amount": "40.00",
+                "billing_type": "Private pay",
+                "plan_description": "After care",
+                "auto_charge": "on",
+                "next_charge_date": today.isoformat(),
+                "charge_weekday": str(weekday),
+                "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}),
+            },
+        )
+        self.assertEqual(first.status_code, 302)
+        second = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "update_plan",
+                "child_name": "Jordan Jacobs",
+                "billing_plan": "Weekly",
+                "billing_amount": "25.00",
+                "billing_type": "Private pay",
+                "plan_description": "Before care",
+                "create_plan": "1",
+                "auto_charge": "on",
+                "next_charge_date": today.isoformat(),
+                "charge_weekday": str(weekday),
+                "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}),
+            },
+        )
+        self.assertEqual(second.status_code, 302)
+        descriptions = list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").values_list(
+                "description", flat=True
+            )
+        )
+        self.assertEqual(len(descriptions), 2)
+        self.assertTrue(any("After care" in item for item in descriptions))
+        self.assertTrue(any("Before care" in item for item in descriptions))
+        plans_page = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(plans_page, "Before care")
+        self.assertContains(plans_page, "After care")
+        self.assertContains(plans_page, "Add another plan")
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Before care")
+        self.assertContains(billing, "After care")
 
 
 class MoneyOrderPaymentTests(TestCase):
