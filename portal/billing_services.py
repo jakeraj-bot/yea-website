@@ -483,6 +483,14 @@ def _record_in_person_receipt(family, amount, method_label, description, referen
     )
 
 
+class _DeletedCharge:
+    def __init__(self, entry):
+        self.child_name = entry.child_name
+        self.description = entry.description
+        self.date = entry.date
+        self.amount = Decimal("0.00")
+
+
 @transaction.atomic
 def update_ledger_description(family, entry_id, description):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
@@ -501,16 +509,45 @@ def update_ledger_description(family, entry_id, description):
 
 
 @transaction.atomic
-def delete_ledger_entry(family, entry_id):
+def update_ledger_amount(family, entry_id, amount, notify=True):
+    entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
+    if not entry:
+        raise ValueError("Ledger entry not found.")
+    if entry.entry_type != "charge":
+        raise ValueError("Only charge amounts can be edited.")
+    previous = entry.amount
+    new_amount = _parse_amount(amount, allow_zero=True)
+    if new_amount == previous:
+        return entry
+    entry.amount = new_amount
+    entry.save(update_fields=["amount"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
+    if notify:
+        from .email_templates import notify_balance_updated
+
+        notify_balance_updated(family, entry, previous_amount=previous)
+    return entry
+
+
+@transaction.atomic
+def delete_ledger_entry(family, entry_id, notify=False):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
     if entry.entry_type not in ("payment", "credit", "discount", "charge"):
         raise ValueError("This entry cannot be deleted.")
+    snapshot = _DeletedCharge(entry) if entry.entry_type == "charge" else None
+    previous = entry.amount if entry.entry_type == "charge" else None
     entry.delete()
     from .family_list import sync_family_balance_from_ledger
 
     sync_family_balance_from_ledger(family)
+    if notify and snapshot is not None:
+        from .email_templates import notify_balance_updated
+
+        notify_balance_updated(family, snapshot, previous_amount=previous)
 
 
 def default_entry_date():

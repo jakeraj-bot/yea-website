@@ -26,12 +26,14 @@ DEFAULT_TEMPLATES = {
         "subject": "New charge on your YEA account",
         "body": (
             "Hello {family_name},\n\n"
-            "A charge has been posted to your account:\n\n"
+            "A charge has been posted to your account.\n\n"
+            "What you owe for: {owe_for}\n"
             "Child: {child_name}\n"
-            "Description: {description}\n"
-            "Amount: ${amount}\n"
+            "Week: {week}\n"
+            "This charge: ${amount}\n"
             "Date: {date}\n\n"
-            "Your current balance is ${balance}.\n\n"
+            "Current balance for {child_name}: ${child_balance}\n"
+            "Family balance (what the household owes): ${family_balance}\n\n"
             "You can review and pay in the parent portal:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
@@ -46,6 +48,38 @@ DEFAULT_TEMPLATES = {
             "program for your child to begin.\n\n"
             "Please also remember the $20 membership fee for the year.\n\n"
             "Sign in to review your balance and pay:\n"
+            "{portal_url}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
+    PortalEmailTemplate.KEY_BALANCE_UPDATED: {
+        "name": "Balance updated",
+        "subject": "Your YEA balance was updated",
+        "body": (
+            "Hello {family_name},\n\n"
+            "Your balance was updated.\n\n"
+            "What it is for: {owe_for}\n"
+            "Child: {child_name}\n"
+            "Week: {week}\n"
+            "Previous charge amount: ${previous_amount}\n"
+            "New charge amount: ${amount}\n\n"
+            "Current balance for {child_name}: ${child_balance}\n"
+            "Family balance (what the household owes): ${family_balance}\n\n"
+            "You can review and pay in the parent portal:\n"
+            "{portal_url}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
+    PortalEmailTemplate.KEY_LATE_PAYMENT: {
+        "name": "Late payment reminder",
+        "subject": "Payment due Friday — ${late_fee} late fee as of Tuesday",
+        "body": (
+            "Hello {family_name},\n\n"
+            "Payments are due Friday. If you do not pay, a ${late_fee} late fee will be "
+            "added as of Tuesday (one-day grace: due Friday, fee Tuesday).\n\n"
+            "Your current family balance is ${family_balance}.\n"
+            "{child_lines}\n"
+            "Please pay in the parent portal:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
         ),
@@ -136,6 +170,32 @@ def send_staff_welcome_email(account, username, password, portal_type="staff"):
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 
+def _charge_email_context(family, entry=None, *, previous_amount=None):
+    from .owed_weeks import charge_owe_for, ledger_balance_context, week_label_from_charge
+
+    child_name = (getattr(entry, "child_name", None) or "").strip() or ("your family" if entry is None else "Family")
+    description = (getattr(entry, "description", None) or "").strip()
+    charge_date = getattr(entry, "date", None)
+    week = week_label_from_charge(description, charge_date) if entry else ""
+    balances = ledger_balance_context(family, "" if child_name == "Family" else child_name)
+    amount = abs(entry.amount) if entry is not None and getattr(entry, "amount", None) is not None else 0
+    previous = previous_amount if previous_amount is not None else amount
+    return {
+        "family_name": family.name,
+        "child_name": child_name,
+        "description": description,
+        "owe_for": charge_owe_for(entry),
+        "week": week or "—",
+        "amount": f"{amount:.2f}",
+        "previous_amount": f"{abs(previous):.2f}",
+        "date": charge_date.isoformat() if charge_date else "",
+        "child_balance": balances["child_balance_display"],
+        "family_balance": balances["family_balance_display"],
+        "balance": balances["family_balance_display"],
+        "portal_url": parent_portal_url(),
+    }
+
+
 def notify_charge_posted(family, entry):
     from .member_admin import parent_email_for_family
 
@@ -145,20 +205,38 @@ def notify_charge_posted(family, entry):
     email = parent_email_for_family(family)
     if not email:
         return 0
-    family.refresh_from_db(fields=["balance", "name"])
     subject, body = render_email(
         PortalEmailTemplate.KEY_CHARGE_NOTICE,
-        {
-            "family_name": family.name,
-            "child_name": entry.child_name or "Family",
-            "description": entry.description,
-            "amount": f"{abs(entry.amount):.2f}",
-            "date": entry.date.isoformat(),
-            "balance": f"{family.balance:.2f}",
-            "portal_url": parent_portal_url(),
-        },
+        _charge_email_context(family, entry),
     )
     return send_site_email(subject=subject, message=body, recipient_list=[email])
+
+
+def notify_balance_updated(family, entry=None, *, previous_amount=None):
+    from .member_admin import parent_email_for_family
+
+    template = get_email_template(PortalEmailTemplate.KEY_BALANCE_UPDATED)
+    if not template.is_enabled:
+        return 0
+    email = parent_email_for_family(family)
+    if not email:
+        return 0
+    subject, body = render_email(
+        PortalEmailTemplate.KEY_BALANCE_UPDATED,
+        _charge_email_context(family, entry, previous_amount=previous_amount),
+    )
+    return send_site_email(subject=subject, message=body, recipient_list=[email])
+
+
+def send_updated_balance_email(family, entry=None, *, previous_amount=None):
+    """Manual send from the family Billing tab."""
+    template = get_email_template(PortalEmailTemplate.KEY_BALANCE_UPDATED)
+    if not template.is_enabled:
+        raise ValueError("The updated-balance email template is turned off.")
+    sent = notify_balance_updated(family, entry, previous_amount=previous_amount)
+    if not sent:
+        raise ValueError("No parent email is on file for this family.")
+    return sent
 
 
 def send_first_day_reminders(emails=None, sender=None):
@@ -188,3 +266,87 @@ def send_first_day_reminders(emails=None, sender=None):
         sender=sender,
         source=PortalParentEmail.SOURCE_REMINDER,
     )
+
+
+def late_notice_preview_rows(*, unit=None):
+    from .member_admin import parent_email_for_family
+    from .owed_weeks import families_with_balance
+
+    rows = []
+    seen = set()
+    for item in families_with_balance(unit=unit):
+        family = item["family"]
+        email = parent_email_for_family(family)
+        if not email or email.lower() in seen:
+            continue
+        seen.add(email.lower())
+        rows.append(
+            {
+                "family_id": family.pk,
+                "family": family.name,
+                "email": email,
+                "unit": family.unit.name,
+                "balance": f"{item['balance']:.2f}",
+            }
+        )
+    return rows
+
+
+def _child_balance_lines(family):
+    from .family_list import child_balance_from_map, child_balance_map
+
+    maps = child_balance_map(family)
+    lines = []
+    for child in family.children.filter(is_active=True).order_by("name"):
+        amount = child_balance_from_map(maps, child.name)
+        if amount > 0:
+            lines.append(f"- {child.name}: ${amount:.2f}")
+    return "\n".join(lines)
+
+
+def send_late_payment_notices(emails=None, sender=None, *, unit=None):
+    from .member_admin import parent_email_for_family, send_parent_emails
+    from .models import PortalParentEmail
+    from .owed_weeks import families_with_balance, late_fee_amount
+
+    template = get_email_template(PortalEmailTemplate.KEY_LATE_PAYMENT)
+    if not template.is_enabled:
+        raise ValueError("The late payment email template is turned off.")
+    wanted = None
+    if emails is not None:
+        wanted = {email.strip().lower() for email in emails if email and email.strip()}
+    rows = []
+    seen = set()
+    for item in families_with_balance(unit=unit):
+        family = item["family"]
+        email = parent_email_for_family(family)
+        if not email or email.lower() in seen:
+            continue
+        if wanted is not None and email.lower() not in wanted:
+            continue
+        seen.add(email.lower())
+        rows.append((family, email, item["balance"]))
+    if not rows:
+        raise ValueError("No families with a balance and a parent email.")
+    sent = 0
+    fee = f"{late_fee_amount():.2f}"
+    for family, email, balance in rows:
+        subject, body = render_email(
+            PortalEmailTemplate.KEY_LATE_PAYMENT,
+            {
+                "family_name": family.name,
+                "family_balance": f"{balance:.2f}",
+                "late_fee": fee,
+                "child_lines": _child_balance_lines(family),
+                "portal_url": parent_portal_url(),
+            },
+        )
+        count, _total = send_parent_emails(
+            subject,
+            body,
+            [email],
+            sender=sender,
+            source=PortalParentEmail.SOURCE_REMINDER,
+        )
+        sent += count
+    return sent, len(rows)

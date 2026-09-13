@@ -649,6 +649,16 @@ class PortalTaxStatementSetting(models.Model):
         return "Tax statement settings"
 
 
+class PortalLateFeeSetting(models.Model):
+    """One-row late-fee rule: payments due Friday, $15 fee as of Tuesday."""
+
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=15)
+    notify_on_charge_change = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Late fee ${self.amount}"
+
+
 class PortalScholarshipFund(models.Model):
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
@@ -1075,10 +1085,14 @@ class PortalEmailTemplate(models.Model):
     KEY_STAFF_WELCOME = "staff_welcome"
     KEY_CHARGE_NOTICE = "charge_notice"
     KEY_FIRST_DAY_REMINDER = "first_day_reminder"
+    KEY_BALANCE_UPDATED = "balance_updated"
+    KEY_LATE_PAYMENT = "late_payment"
     KEY_CHOICES = (
         (KEY_STAFF_WELCOME, "Staff / admin welcome"),
         (KEY_CHARGE_NOTICE, "Charge posted"),
         (KEY_FIRST_DAY_REMINDER, "First-day payment reminder"),
+        (KEY_BALANCE_UPDATED, "Balance updated"),
+        (KEY_LATE_PAYMENT, "Late payment reminder"),
     )
 
     key = models.SlugField(unique=True, choices=KEY_CHOICES)
