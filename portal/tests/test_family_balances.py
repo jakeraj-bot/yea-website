@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
 
-from portal.admin_services import get_admin_families_live
+from portal.admin_services import get_admin_families_live, get_member_families_live
 from portal.attendance_service import families_for_staff
 from portal.billing_services import (
     delete_ledger_entry,
@@ -15,7 +15,14 @@ from portal.billing_services import (
     post_payment,
     prepare_billing_for_staff,
 )
-from portal.family_list import child_balance_map, household_balance, live_family_child_rows
+from portal.family_list import (
+    child_balance,
+    child_balance_map,
+    family_balance,
+    household_balance,
+    live_family_child_rows,
+)
+from portal.live_services import family_meta_live
 from portal.models import PortalChild, PortalFamily, PortalLedgerEntry, PortalPayment, PortalUnit
 from portal.parent_services import get_billing_live, record_successful_payment
 
@@ -314,3 +321,138 @@ class MultiChildFamilyBalanceTests(TestCase):
         jordan = next(row for row in rows if row["child_name"] == "Jordan Jacobs")
         self.assertEqual(jordan["child_balance"], "25.00")
         self.assertEqual(jordan["family_balance"], "25.00")
+
+
+class FamilyBalanceEqualsChildrenTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="brooks",
+            name="Brooks",
+            primary_contact="Pat Brooks",
+            balance=Decimal("0.00"),
+            status="Active",
+        )
+        self.ava = PortalChild.objects.create(
+            family=self.family, name="Ava Brooks", school="School 18", is_active=True
+        )
+        self.ben = PortalChild.objects.create(
+            family=self.family, name="Ben Brooks", school="School 18", is_active=True
+        )
+
+    def test_one_child_twenty_family_twenty(self):
+        post_charge(
+            self.family,
+            "Ava Brooks",
+            "tuition",
+            "20.00",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        self.family.balance = Decimal("0.00")
+        self.family.save(update_fields=["balance"])
+
+        self.assertEqual(child_balance(self.ava), Decimal("20.00"))
+        self.assertEqual(family_balance(self.family), Decimal("20.00"))
+
+        row = next(
+            item
+            for item in get_admin_families_live()
+            if item["slug"] == "brooks" and item["child_name"] == "Ava Brooks"
+        )
+        self.assertEqual(row["child_balance"], "20.00")
+        self.assertEqual(row["family_balance"], "20.00")
+
+        plans = get_billing_live(self.family)
+        ava = next(item for item in plans["children"] if item["name"] == "Ava Brooks")
+        self.assertEqual(ava["balance"], "20.00")
+        self.assertEqual(plans["running_balance"], "20.00")
+        self.assertEqual(family_meta_live("brooks")["balance"], "20.00")
+
+    def test_two_children_twenty_each_family_forty(self):
+        post_charge(
+            self.family,
+            "Ava Brooks",
+            "tuition",
+            "20.00",
+            date(2026, 9, 1),
+            "Ava tuition",
+            notify=False,
+        )
+        post_charge(
+            self.family,
+            "Ben Brooks",
+            "tuition",
+            "20.00",
+            date(2026, 9, 1),
+            "Ben tuition",
+            notify=False,
+        )
+        self.family.balance = Decimal("0.00")
+        self.family.save(update_fields=["balance"])
+
+        self.assertEqual(child_balance(self.ava), Decimal("20.00"))
+        self.assertEqual(child_balance(self.ben), Decimal("20.00"))
+        self.assertEqual(family_balance(self.family), Decimal("40.00"))
+
+        rows = [row for row in get_admin_families_live() if row["slug"] == "brooks"]
+        by_child = {row["child_name"]: row for row in rows}
+        self.assertEqual(by_child["Ava Brooks"]["child_balance"], "20.00")
+        self.assertEqual(by_child["Ben Brooks"]["child_balance"], "20.00")
+        self.assertEqual(by_child["Ava Brooks"]["family_balance"], "40.00")
+        self.assertEqual(by_child["Ben Brooks"]["family_balance"], "40.00")
+
+        plans = get_billing_live(self.family)
+        plan_by_child = {child["name"]: child for child in plans["children"]}
+        self.assertEqual(plan_by_child["Ava Brooks"]["balance"], "20.00")
+        self.assertEqual(plan_by_child["Ben Brooks"]["balance"], "20.00")
+        self.assertEqual(plans["running_balance"], "40.00")
+        self.assertEqual(family_meta_live("brooks")["balance"], "40.00")
+
+        member_row = next(row for row in get_member_families_live() if row["slug"] == "brooks")
+        self.assertEqual(member_row["balance"], "40.00")
+
+    def test_payment_on_one_child_reduces_child_and_family(self):
+        post_charge(
+            self.family,
+            "Ava Brooks",
+            "tuition",
+            "20.00",
+            date(2026, 9, 1),
+            "Ava tuition",
+            notify=False,
+        )
+        post_charge(
+            self.family,
+            "Ben Brooks",
+            "tuition",
+            "20.00",
+            date(2026, 9, 1),
+            "Ben tuition",
+            notify=False,
+        )
+        post_payment(
+            self.family,
+            "Ava Brooks",
+            "5.00",
+            date(2026, 9, 2),
+            "Cash",
+            "Cash",
+        )
+
+        self.assertEqual(child_balance(self.ava), Decimal("15.00"))
+        self.assertEqual(child_balance(self.ben), Decimal("20.00"))
+        self.assertEqual(family_balance(self.family), Decimal("35.00"))
+
+        rows = [row for row in get_admin_families_live() if row["slug"] == "brooks"]
+        by_child = {row["child_name"]: row for row in rows}
+        self.assertEqual(by_child["Ava Brooks"]["child_balance"], "15.00")
+        self.assertEqual(by_child["Ben Brooks"]["child_balance"], "20.00")
+        self.assertEqual(by_child["Ava Brooks"]["family_balance"], "35.00")
+        self.assertEqual(by_child["Ben Brooks"]["family_balance"], "35.00")
+
+        plans = get_billing_live(self.family)
+        self.assertEqual(plans["running_balance"], "35.00")
+        self.assertEqual(family_meta_live("brooks")["balance"], "35.00")

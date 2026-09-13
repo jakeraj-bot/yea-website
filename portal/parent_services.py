@@ -208,10 +208,13 @@ def get_billing_live(family):
 
     children = _child_balances_from_ledger(family)
     payment_type = demo.get("payment_type") or family.billing_type or "Private pay"
-    from .family_list import household_balance
+    child_total = sum((Decimal(str(child.get("balance") or "0")) for child in children), Decimal("0"))
+    if children:
+        ledger_total = child_total
+    elif ledger_qs.exists():
+        from .family_list import family_balance
 
-    if ledger_qs.exists():
-        ledger_total = household_balance(family)
+        ledger_total = family_balance(family)
     elif demo.get("running_balance") is not None:
         ledger_total = Decimal(str(demo["running_balance"]))
     else:

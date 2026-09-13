@@ -31,6 +31,18 @@ def _normalize_child_name(name):
     return (name or "").strip()
 
 
+def _child_name_key(name):
+    return _normalize_child_name(name).casefold()
+
+
+def _as_decimal(value):
+    if value in (None, ""):
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
 def household_balance_from_child_map(family_balances):
     """Household total from a per-child ledger map (includes unassigned rows)."""
     if not family_balances:
@@ -38,10 +50,22 @@ def household_balance_from_child_map(family_balances):
     return sum(family_balances.values(), Decimal("0"))
 
 
+def family_balance_from_names(family_balances, child_names):
+    """Family total = the named children's ledger balances added together."""
+    return sum((child_balance_from_map(family_balances, name) for name in child_names or []), Decimal("0"))
+
+
 def child_balance_from_map(family_balances, child_name):
     if not family_balances:
         return Decimal("0")
-    return family_balances.get(_normalize_child_name(child_name), Decimal("0"))
+    name = _normalize_child_name(child_name)
+    if name in family_balances:
+        return family_balances[name] or Decimal("0")
+    folded = _child_name_key(name)
+    for key, amount in family_balances.items():
+        if _child_name_key(key) == folded:
+            return amount or Decimal("0")
+    return Decimal("0")
 
 
 def child_balance_map(family):
@@ -49,18 +73,51 @@ def child_balance_map(family):
     return maps.get(getattr(family, "pk", None), defaultdict(lambda: Decimal("0")))
 
 
-def household_balance(family):
-    """Ledger total for one household. Processing fees are not included."""
+def _active_child_names(family):
+    if not family:
+        return []
+    cached = getattr(family, "_prefetched_objects_cache", None)
+    if cached and "children" in cached:
+        return [child.name for child in family.children.all() if getattr(child, "is_active", True)]
+    if not getattr(family, "pk", None):
+        return []
+    return list(family.children.filter(is_active=True).values_list("name", flat=True))
+
+
+def child_balance(child, balances=None):
+    """Ledger balance for one child (tuition/charges minus payments; no Stripe fees)."""
+    if child is None:
+        return Decimal("0")
+    family = getattr(child, "family", None)
+    maps = balances if balances is not None else (child_balance_map(family) if family else {})
+    return child_balance_from_map(maps, getattr(child, "name", "") or "")
+
+
+def family_balance(family, balances=None, child_names=None):
+    """Family balance is the children's ledger balances added together.
+
+    Processing fees are not included. Unlabeled ledger rows are left out so the
+    family total always matches the children on the same household.
+    """
     if not family or not getattr(family, "pk", None):
         return Decimal("0")
-    return household_balance_from_child_map(child_balance_map(family))
+    maps = balances if balances is not None else child_balance_map(family)
+    names = list(child_names) if child_names is not None else _active_child_names(family)
+    if names:
+        return family_balance_from_names(maps, names)
+    return household_balance_from_child_map(maps)
+
+
+def household_balance(family):
+    """Ledger total for one household. Same rules as family_balance()."""
+    return family_balance(family)
 
 
 def sync_family_balance_from_ledger(family):
-    """Keep PortalFamily.balance equal to the household ledger (tuition only)."""
+    """Keep PortalFamily.balance equal to the sum of the children's ledgers."""
     if not family or not getattr(family, "pk", None):
         return Decimal("0")
-    total = household_balance(family)
+    total = family_balance(family)
     if family.balance != total:
         family.balance = total
         family.save(update_fields=["balance"])
@@ -87,7 +144,14 @@ def child_balance_maps(family_ids):
         .annotate(total=Sum("amount"))
     ):
         name = _normalize_child_name(row["child_name"])
-        maps[row["family_id"]][name] += row["total"] or Decimal("0")
+        family_map = maps[row["family_id"]]
+        key = name
+        folded = _child_name_key(name)
+        for existing in family_map:
+            if _child_name_key(existing) == folded:
+                key = existing
+                break
+        family_map[key] += row["total"] or Decimal("0")
     return maps
 
 
@@ -187,7 +251,6 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     rows = []
     for family in families:
         family_balances = balances.get(family.pk, {})
-        household_total = household_balance_from_child_map(family_balances)
         household_children = _active_prefetched_children(family)
         apps = list(family.enrollment_applications.all())
         if is_waitlist_only_household(apps, household_children):
@@ -259,6 +322,10 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     has_login = False
             base_row["has_parent_login"] = bool(has_login)
             base_row["is_suspended"] = family.is_suspended
+        if children_specs:
+            household_total = sum((_as_decimal(spec.get("balance")) for spec in children_specs), Decimal("0"))
+        else:
+            household_total = family_balance(family, family_balances)
         rows.extend(expand_family_record(base_row, children_specs, household_total))
     return sort_family_child_rows(rows)
 
@@ -348,7 +415,10 @@ def expand_demo_families(families):
             for name in family.get("children", [])
         ]
         base = {key: value for key, value in family.items() if key != "children"}
-        rows.extend(expand_family_record(base, children_specs, family["balance"]))
+        family_total = sum((_as_decimal(spec.get("balance")) for spec in children_specs), Decimal("0"))
+        if not children_specs:
+            family_total = _as_decimal(family.get("balance"))
+        rows.extend(expand_family_record(base, children_specs, family_total))
     return sort_family_child_rows(rows)
 
 

@@ -15,7 +15,7 @@
     </p>
     </div>
     <h1>{% if portal_area == 'admin' %}Family account — {{ account_heading_name|default:profile.family_name }}{% else %}{{ account_heading_name|default:profile.family_name }} family{% endif %}</h1>
-    <p class="lead">{% if account_family_name and account_child_label %}{{ account_family_name }} household · {% endif %}{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
+    <p class="lead">{% if account_family_name and account_child_label %}{{ account_family_name }} household · {% endif %}{{ staff_unit }}{% if family_meta.program %} · {{ family_meta.program }}{% endif %} · Family balance ${{ family_meta.balance|default:"0.00" }}{% if profile.pending_application_count %} · {{ profile.pending_application_count }} pending application{{ profile.pending_application_count|pluralize }}{% endif %}</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}
     </div>
@@ -166,7 +166,7 @@
         <dl class="portal-dl">
           <dt>Address</dt><dd>{{ profile.home_address }}</dd>
           {% if family_meta.billing_type %}<dt>Billing type</dt><dd>{{ family_meta.billing_type }}</dd>{% endif %}
-          {% if family_meta.balance %}<dt>Balance</dt><dd>${{ family_meta.balance }}</dd>{% endif %}
+          <dt>Family balance</dt><dd>${{ family_meta.balance|default:"0.00" }}</dd>
         </dl>
       </section>
       <section class="card">
