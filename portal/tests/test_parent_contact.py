@@ -71,6 +71,7 @@ class ParentContactUsTests(TestCase):
         self.assertContains(page, "janiceg@yeanj.org")
         self.assertContains(page, "609-357-8608")
         self.assertContains(page, "This form emails")
+        self.assertContains(page, "portal-collapse-skip")
         self.assertContains(page, reverse("portal_parent_contact"))
         self.assertContains(page, "Ada Rivera")
         self.assertContains(page, "ada.rivera@example.com")
