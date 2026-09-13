@@ -3,6 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
+from django.db.models import Sum
 from django.test import TestCase
 from django.utils import timezone
 
@@ -458,99 +459,110 @@ class FamilyBalanceEqualsChildrenTests(TestCase):
         self.assertEqual(family_meta_live("brooks")["balance"], "35.00")
 
 
-class UnallocatedHouseholdPaymentTests(TestCase):
-    """Family-level card payments (empty child column) still clear the household."""
+class ChildBalanceFollowsHouseholdPaymentTests(TestCase):
+    """Family already uses the household ledger. Child balances must follow payments."""
 
     def setUp(self):
         self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
-        self.family = PortalFamily.objects.create(
+        self.paid = PortalFamily.objects.create(
             unit=self.unit,
-            slug="marmol",
-            name="Marmol",
-            primary_contact="Parent Marmol",
+            slug="paid-household",
+            name="Paid Household",
+            primary_contact="Paid Parent",
             balance=Decimal("0.00"),
             status="Active",
         )
-        self.amelia = PortalChild.objects.create(
-            family=self.family, name="Amelia Marmol", school="School 18", is_active=True
+        self.child_a = PortalChild.objects.create(
+            family=self.paid, name="Amelia Paid", school="School 18", is_active=True
         )
-        self.ashtrid = PortalChild.objects.create(
-            family=self.family, name="Ashtrid Marmol", school="School 18", is_active=True
+        self.child_b = PortalChild.objects.create(
+            family=self.paid, name="Ashtrid Paid", school="School 18", is_active=True
+        )
+        self.unpaid = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="unpaid-household",
+            name="Unpaid Household",
+            primary_contact="Unpaid Parent",
+            balance=Decimal("0.00"),
+            status="Active",
+        )
+        self.unpaid_child = PortalChild.objects.create(
+            family=self.unpaid, name="Ada Unpaid", school="School 18", is_active=True
         )
 
-    def test_unallocated_stripe_payment_clears_children_and_family(self):
+    def test_family_payment_zeros_children_on_all_families_and_keeps_charge_names(self):
         post_charge(
-            self.family,
-            "Amelia Marmol",
+            self.paid,
+            "Amelia Paid",
             "tuition",
             "20.00",
             date(2026, 8, 25),
-            "Membership fee ($20.00) — Amelia Marmol",
+            "Membership fee ($20.00) — Amelia Paid",
             notify=False,
         )
         post_charge(
-            self.family,
-            "Ashtrid Marmol",
+            self.paid,
+            "Ashtrid Paid",
             "tuition",
             "20.00",
             date(2026, 8, 25),
-            "Membership fee ($20.00) — Ashtrid Marmol",
+            "Membership fee ($20.00) — Ashtrid Paid",
+            notify=False,
+        )
+        post_charge(
+            self.unpaid,
+            "Ada Unpaid",
+            "tuition",
+            "20.00",
+            date(2026, 8, 25),
+            "Membership fee ($20.00) — Ada Unpaid",
             notify=False,
         )
         payment = PortalPayment.objects.create(
-            family=self.family,
+            family=self.paid,
             amount=Decimal("40.00"),
             fee_amount=Decimal("1.46"),
             total_charged=Decimal("41.46"),
             payment_kind="balance",
             dropin_child="",
-            stripe_session_id="cs_marmol_unallocated",
-            stripe_payment_intent_id="pi_marmol_unallocated",
+            stripe_session_id="cs_paid_household",
+            stripe_payment_intent_id="pi_paid_household",
         )
         record_successful_payment(payment, method_label="Card", child_name="")
 
-        self.family.refresh_from_db()
-        self.assertEqual(child_balance(self.amelia), Decimal("0.00"))
-        self.assertEqual(child_balance(self.ashtrid), Decimal("0.00"))
-        self.assertEqual(family_balance(self.family), Decimal("0.00"))
-        self.assertEqual(self.family.balance, Decimal("0.00"))
+        self.paid.refresh_from_db()
+        ledger_net = PortalLedgerEntry.objects.filter(family=self.paid).aggregate(total=Sum("amount"))["total"]
+        self.assertEqual(ledger_net, Decimal("0.00"))
+        self.assertEqual(family_balance(self.paid), Decimal("0.00"))
+        self.assertEqual(child_balance(self.child_a), Decimal("0.00"))
+        self.assertEqual(child_balance(self.child_b), Decimal("0.00"))
 
-        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="payment")
-        self.assertEqual(entry.child_name, "")
-        self.assertEqual(entry.amount, Decimal("-40.00"))
-        self.assertEqual(entry.fee_amount, Decimal("1.46"))
-
-        rows = [row for row in get_admin_families_live() if row["slug"] == "marmol"]
-        by_child = {row["child_name"]: row for row in rows}
-        self.assertEqual(by_child["Amelia Marmol"]["child_balance"], "0.00")
-        self.assertEqual(by_child["Ashtrid Marmol"]["child_balance"], "0.00")
-        self.assertEqual(by_child["Amelia Marmol"]["family_balance"], "0.00")
-        self.assertEqual(by_child["Ashtrid Marmol"]["family_balance"], "0.00")
-
-        plans = get_billing_live(self.family)
-        plan_by_child = {child["name"]: child for child in plans["children"]}
-        self.assertEqual(plan_by_child["Amelia Marmol"]["balance"], "0.00")
-        self.assertEqual(plan_by_child["Ashtrid Marmol"]["balance"], "0.00")
-        self.assertEqual(plans["running_balance"], "0.00")
-        self.assertEqual(family_meta_live("marmol")["balance"], "0.00")
-
-    def test_one_child_unpaid_still_shows_twenty(self):
-        solo = PortalFamily.objects.create(
-            unit=self.unit,
-            slug="solo-marmol",
-            name="Solo",
-            primary_contact="Solo Parent",
-            balance=Decimal("0.00"),
-            status="Active",
+        charge_names = set(
+            PortalLedgerEntry.objects.filter(family=self.paid, entry_type="charge").values_list("child_name", flat=True)
         )
-        child = PortalChild.objects.create(family=solo, name="Ada Solo", school="School 18", is_active=True)
-        post_charge(solo, "Ada Solo", "tuition", "20.00", date(2026, 8, 25), "Membership", notify=False)
-        solo.balance = Decimal("0.00")
-        solo.save(update_fields=["balance"])
+        self.assertEqual(charge_names, {"Amelia Paid", "Ashtrid Paid"})
+        payment_row = PortalLedgerEntry.objects.get(family=self.paid, entry_type="payment")
+        self.assertEqual(payment_row.child_name, "")
+        self.assertEqual(payment_row.amount, Decimal("-40.00"))
+        self.assertEqual(payment_row.fee_amount, Decimal("1.46"))
 
-        self.assertEqual(child_balance(child), Decimal("20.00"))
-        self.assertEqual(family_balance(solo), Decimal("20.00"))
-        row = next(item for item in get_admin_families_live() if item["slug"] == "solo-marmol")
-        self.assertEqual(row["child_balance"], "20.00")
-        self.assertEqual(row["family_balance"], "20.00")
-        self.assertEqual(get_billing_live(solo)["running_balance"], "20.00")
+        rows = get_admin_families_live()
+        paid_rows = [row for row in rows if row["slug"] == "paid-household"]
+        unpaid_rows = [row for row in rows if row["slug"] == "unpaid-household"]
+        by_child = {row["child_name"]: row for row in paid_rows}
+        self.assertEqual(by_child["Amelia Paid"]["child_balance"], "0.00")
+        self.assertEqual(by_child["Ashtrid Paid"]["child_balance"], "0.00")
+        self.assertEqual(by_child["Amelia Paid"]["family_balance"], "0.00")
+        self.assertEqual(by_child["Ashtrid Paid"]["family_balance"], "0.00")
+        self.assertEqual(unpaid_rows[0]["child_balance"], "20.00")
+        self.assertEqual(unpaid_rows[0]["family_balance"], "20.00")
+
+        plans = get_billing_live(self.paid)
+        plan_by_child = {child["name"]: child for child in plans["children"]}
+        self.assertEqual(plan_by_child["Amelia Paid"]["balance"], "0.00")
+        self.assertEqual(plan_by_child["Ashtrid Paid"]["balance"], "0.00")
+        self.assertEqual(plans["running_balance"], "0.00")
+        self.assertEqual(family_meta_live("paid-household")["balance"], "0.00")
+        self.assertEqual(get_billing_live(self.unpaid)["running_balance"], "20.00")
+        self.assertEqual(child_balance(self.unpaid_child), Decimal("20.00"))
+        self.assertEqual(family_balance(self.unpaid), Decimal("20.00"))

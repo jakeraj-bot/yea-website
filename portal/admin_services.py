@@ -201,7 +201,7 @@ def get_staff_users_live():
 
 
 def get_member_families_live():
-    from .family_list import child_balance_maps, family_balance
+    from .family_list import household_ledger_totals
     from .unit_visibility import unit_label_for_child
 
     families = list(
@@ -209,7 +209,7 @@ def get_member_families_live():
             "unit__name", "name"
         )
     )
-    balances = child_balance_maps([family.pk for family in families])
+    household_totals = household_ledger_totals([family.pk for family in families])
     rows = []
     for family in families:
         active_children = [child for child in family.children.all() if child.is_active]
@@ -227,7 +227,7 @@ def get_member_families_live():
                 "unit": " · ".join(units) if units else family.unit.name,
                 "primary_contact": family.primary_contact or "—",
                 "children": child_names,
-                "balance": f"{family_balance(family, balances.get(family.pk) or {}, child_names):.2f}",
+                "balance": f"{household_totals.get(family.pk, Decimal('0')):.2f}",
                 "billing_type": family.billing_type or "Private pay",
                 "status": "Suspended" if family.is_suspended else family.status,
             }

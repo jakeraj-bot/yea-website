@@ -44,8 +44,30 @@ def _as_decimal(value):
     return Decimal(str(value))
 
 
+def household_ledger_totals(family_ids):
+    """{family_id: Decimal} household net — every ledger amount, fees excluded.
+
+    Family balance uses this total. It is not the sum of the child-balance column.
+    """
+    from django.db.models import Sum
+
+    from .models import PortalLedgerEntry
+
+    totals = {}
+    ids = [pk for pk in family_ids if pk]
+    if not ids:
+        return totals
+    for row in (
+        PortalLedgerEntry.objects.filter(family_id__in=ids)
+        .values("family_id")
+        .annotate(total=Sum("amount"))
+    ):
+        totals[row["family_id"]] = row["total"] or Decimal("0")
+    return totals
+
+
 def household_balance_from_child_map(family_balances):
-    """Household total from a per-child ledger map (includes unassigned rows)."""
+    """Sum of a per-child map. Prefer household_ledger_totals for family display."""
     if not family_balances:
         return Decimal("0")
     return sum(family_balances.values(), Decimal("0"))
@@ -78,11 +100,11 @@ def _split_amount(amount, count):
 
 
 def allocate_unlabeled_to_children(family_map, child_names):
-    """Apply household rows with no child name across the children who still owe.
+    """Update child balances only: apply family-level payments to kids who still owe.
 
-    A family-level card payment (empty child column) is tuition only — Stripe
-    fees stay in ``fee_amount`` and never enter this map. When the payment
-    covers what the children owe, each child and the family go to $0.
+    Charge rows keep their child names. A payment with an empty child column is
+    tuition only (Stripe fees stay in ``fee_amount``). Family balance is computed
+    separately from the full household ledger.
     """
     if family_map is None:
         return family_map
@@ -174,15 +196,14 @@ def child_balance(child, balances=None):
 
 
 def family_balance(family, balances=None, child_names=None):
-    """Household net: charges minus payments (tuition only; Stripe fees excluded).
+    """Household ledger: charges minus tuition payments. Stripe fees excluded.
 
-    Card payments with no child on the line still count. After those unallocated
-    payments are shared across the children, this matches the children's totals.
+    Family-level payments (empty child column) are included here. This is not
+    the sum of the child-balance column — child balances are updated separately.
     """
     if not family or not getattr(family, "pk", None):
         return Decimal("0")
-    maps = balances if balances is not None else child_balance_map(family)
-    return household_balance_from_child_map(maps)
+    return household_ledger_totals([family.pk]).get(family.pk, Decimal("0"))
 
 
 def household_balance(family):
@@ -332,6 +353,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     families = list(families)
     family_ids = [family.pk for family in families]
     balances = child_balance_maps(family_ids)
+    household_totals = household_ledger_totals(family_ids)
     duplicate_keys = family_name_duplicate_keys()
     units_by_slug = _units_by_slug()
     rows = []
@@ -412,7 +434,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     has_login = False
             base_row["has_parent_login"] = bool(has_login)
             base_row["is_suspended"] = family.is_suspended
-        household_total = family_balance(family, family_balances)
+        household_total = household_totals.get(family.pk, Decimal("0"))
         rows.extend(expand_family_record(base_row, children_specs, household_total))
     return sort_family_child_rows(rows)
 
