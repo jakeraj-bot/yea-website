@@ -6,6 +6,7 @@ from django.db.models import Q
 from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import find_existing_family_for_parent
 
+from .child_identity import child_names_match
 from .member_admin import parent_email_for_family
 from .models import (
     AttendanceRecord,
@@ -37,7 +38,7 @@ def dob_for_child(child):
 
 def children_are_same_person(left, right):
     """True when two roster rows are the same child (name + matching DOB)."""
-    if _norm_name(left.name) != _norm_name(right.name):
+    if not child_names_match(left.name, right.name):
         return False
     dob_left = dob_for_child(left)
     dob_right = dob_for_child(right)
@@ -46,19 +47,37 @@ def children_are_same_person(left, right):
     return True
 
 
+def is_membership_fee_entry(entry):
+    if (getattr(entry, "entry_type", "") or "").strip().lower() == "membership":
+        return True
+    description = (getattr(entry, "description", "") or "").lower()
+    return "membership fee" in description
+
+
+def family_has_membership_for_child(family, child_name=""):
+    """True when this household already posted a membership fee for this child."""
+    fees = [entry for entry in family.ledger_entries.all() if is_membership_fee_entry(entry)]
+    if not fees:
+        return False
+    if not (child_name or "").strip():
+        return True
+    if any(child_names_match(entry.child_name, child_name) for entry in fees if entry.child_name):
+        return True
+    return any(not (entry.child_name or "").strip() for entry in fees)
+
+
 def _child_has_site_history(child):
     """True when this roster row is actually used at its site (not just a duplicate charge)."""
     if child.attendance_records.exists():
         return True
     from enrollment.locations import get_unit_for_enrollment_key
 
-    name = _norm_name(child.name)
     unit_id = child.unit_id or getattr(child.family, "unit_id", None)
     for app in EnrollmentApplication.objects.filter(
         portal_family=child.family,
         status__in=("approved", "enrolled"),
     ):
-        if _norm_name(f"{app.student_first_name} {app.student_last_name}") != name:
+        if not child_names_match(f"{app.student_first_name} {app.student_last_name}", child.name):
             continue
         app_unit = get_unit_for_enrollment_key(app.program_location)
         if app_unit and unit_id and app_unit.pk == unit_id:
@@ -122,9 +141,7 @@ def suggested_merge_families(family):
             _add(app.portal_family)
 
     for child in family.children.all():
-        for other in PortalChild.objects.filter(name__iexact=child.name).exclude(family=family).select_related(
-            "family"
-        ):
+        for other in PortalChild.objects.exclude(family=family).select_related("family"):
             if children_are_same_person(child, other):
                 _add(other.family)
         parts = (child.name or "").split()
@@ -135,6 +152,7 @@ def suggested_merge_families(family):
                     child_first=parts[0],
                     child_last=" ".join(parts[1:]),
                     child_dob=dob,
+                    child_name=child.name,
                 )
                 _add(match)
     return candidates
@@ -291,7 +309,12 @@ def merge_families(keep, drop):
         keep_children.append(incoming)
 
     EnrollmentApplication.objects.filter(portal_family=drop).update(portal_family=keep)
-    PortalLedgerEntry.objects.filter(family=drop).update(family=keep)
+    for entry in list(PortalLedgerEntry.objects.filter(family=drop)):
+        if is_membership_fee_entry(entry) and family_has_membership_for_child(keep, entry.child_name):
+            entry.delete()
+            continue
+        entry.family = keep
+        entry.save(update_fields=["family"])
     drop.payments.update(family=keep)
     drop.discount_assignments.update(family=keep)
     drop.prior_balances.update(linked_family=keep)

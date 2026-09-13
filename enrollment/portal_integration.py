@@ -201,20 +201,26 @@ def find_existing_family_for_parent(
     first = (child_first or "").strip()
     last = (child_last or "").strip()
     full_name = (child_name or "").strip() or " ".join(part for part in [first, last] if part).strip()
-    if first and last and child_dob:
-        same_child_app = (
-            EnrollmentApplication.objects.filter(
-                student_first_name__iexact=first,
-                student_last_name__iexact=last,
-                student_dob=child_dob,
-                portal_family__isnull=False,
-            )
-            .select_related("portal_family", "portal_family__unit")
-            .order_by("-submitted_at")
-            .first()
+    return _family_for_same_child(full_name, child_dob)
+
+
+def _family_for_same_child(full_name, child_dob):
+    """Reuse the household when the same child already has an application (middle names allowed)."""
+    from portal.child_identity import child_names_match
+
+    if not full_name or not child_dob:
+        return None
+    for app in (
+        EnrollmentApplication.objects.filter(
+            student_dob=child_dob,
+            portal_family__isnull=False,
         )
-        if same_child_app:
-            return same_child_app.portal_family
+        .select_related("portal_family", "portal_family__unit")
+        .order_by("-submitted_at")
+    ):
+        app_name = f"{app.student_first_name} {app.student_last_name}".strip()
+        if child_names_match(full_name, app_name):
+            return app.portal_family
     return None
 
 
@@ -255,6 +261,11 @@ def create_portal_account_from_enrollment(session_data, username, password):
         child_first=first_child.get("student_first_name", ""),
         child_last=first_child.get("student_last_name", ""),
         child_dob=first_child.get("student_dob"),
+        child_name=" ".join(
+            part
+            for part in [first_child.get("student_first_name", ""), first_child.get("student_last_name", "")]
+            if part
+        ),
     )
 
     primary_name = " ".join(
@@ -301,21 +312,66 @@ def create_portal_account_from_enrollment(session_data, username, password):
     return family, user, True
 
 
+def _application_child_name(app):
+    return f"{app.student_first_name} {app.student_last_name}".strip()
+
+
+def _is_duplicate_child_program(existing, incoming):
+    from portal.child_identity import child_names_match
+
+    if existing.program != incoming.program:
+        return False
+    if (existing.program_location or "") != (incoming.program_location or ""):
+        return False
+    if not child_names_match(_application_child_name(existing), _application_child_name(incoming)):
+        return False
+    if existing.student_dob and incoming.student_dob and existing.student_dob != incoming.student_dob:
+        return False
+    return True
+
+
 def link_applications_to_family(applications, family):
+    """Attach new applications to an existing household. Do not duplicate waitlist rows."""
+    existing_apps = list(
+        EnrollmentApplication.objects.filter(portal_family=family).exclude(status="declined")
+    )
     for app in applications:
-        app.portal_family = family
+        duplicate = next(
+            (row for row in existing_apps if row.pk != app.pk and _is_duplicate_child_program(row, app)),
+            None,
+        )
+        if duplicate:
+            if app.pk and app.portal_family_id != family.pk:
+                app.delete()
+            continue
+        updates = []
+        if app.portal_family_id != family.pk:
+            app.portal_family = family
+            updates.append("portal_family")
         if not app.status:
             app.status = "under_review"
-        app.save(update_fields=["portal_family", "status"])
+            updates.append("status")
+        if updates:
+            app.save(update_fields=updates)
+        existing_apps.append(app)
 
 
 def link_applications_by_email(family, email):
     if not email:
         return 0
-    return EnrollmentApplication.objects.filter(
+    linked = 0
+    for app in EnrollmentApplication.objects.filter(
         primary_email__iexact=email.strip(),
         portal_family__isnull=True,
-    ).update(portal_family=family, status="under_review")
+    ):
+        app.portal_family = family
+        updates = ["portal_family"]
+        if not app.status:
+            app.status = "under_review"
+            updates.append("status")
+        app.save(update_fields=updates)
+        linked += 1
+    return linked
 
 
 def application_to_portal_dict(app):
