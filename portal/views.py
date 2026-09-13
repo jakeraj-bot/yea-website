@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1720,8 +1720,9 @@ def staff_page(request, page):
         "incidents": "portal/staff/incidents.html",
         "support": "portal/support/support.html",
         "emails-sent": "portal/staff/emails_sent.html",
-        "activity": "portal/admin/activity.html",
     }
+    if page == "activity":
+        return HttpResponseForbidden("Activity is admin-only.")
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
@@ -1893,15 +1894,6 @@ def staff_page(request, page):
         program = get_active_program(unit) if unit else None
         context["active_program"] = program.name if program else ATTENDANCE_SESSION["program"]
         context["today"] = date.today().isoformat()
-    if page == "activity":
-        from .activity_log import activity_page_context
-
-        context.update(activity_page_context(request, area="staff"))
-        context["page_title"] = "My activity"
-        context["page_guide_key"] = "my-activity"
-        from .page_guides import page_guide_from_context
-
-        context["page_guide"] = page_guide_from_context(context)
     return render(request, template, context)
 
 

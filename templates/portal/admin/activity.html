@@ -2,20 +2,15 @@
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>{% if activity_own_only %}My activity{% else %}Activity{% endif %}</h1>
+    <h1>Activity</h1>
     <p class="lead">
-      {% if activity_own_only %}
-      What you have done in the portal — sign-ins, saves, charges, emails, and deletes. Delete reasons show here.
-      {% else %}
       Choose a person first, then read only that person’s activity. Dates, actions, and delete reasons stay on their list.
-      {% endif %}
     </p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    {% if not activity_own_only %}
-    <section class="card portal-collapse-skip">
+    <section class="card">
       <h2>Choose a person</h2>
       <form method="get" class="portal-activity-picker-form" action="{% url 'portal_admin_page' page='activity' %}">
         <div class="form-group">
@@ -58,14 +53,13 @@
       <p class="form-note">No matching people. Try a shorter name, or wait until someone has signed in.</p>
       {% endif %}
     </section>
-    {% endif %}
 
     {% if activity_selected %}
-    <section class="card portal-collapse-skip" style="margin-top:1.25rem;">
+    <section class="card" style="margin-top:1.25rem;">
       <h2>{{ activity_selected.name }}</h2>
       <p class="form-note">{{ activity_selected.role }}{% if activity_selected.unit %} · {{ activity_selected.unit }}{% endif %} · {{ activity_selected.username }}</p>
-      <form method="get" class="portal-activity-filters" action="{% if activity_own_only %}{% url 'portal_staff_page' page='activity' %}{% else %}{% url 'portal_admin_page' page='activity' %}{% endif %}">
-        {% if not activity_own_only %}<input type="hidden" name="user" value="{{ activity_selected.id }}">{% endif %}
+      <form method="get" class="portal-activity-filters" action="{% url 'portal_admin_page' page='activity' %}">
+        <input type="hidden" name="user" value="{{ activity_selected.id }}">
         <div class="form-group">
           <label for="activity-from">From</label>
           <input id="activity-from" type="date" name="date_from" class="portal-input" value="{{ activity_date_from }}">
@@ -76,9 +70,7 @@
         </div>
         <div class="portal-form-actions">
           <button type="submit" class="btn btn-primary">Apply dates</button>
-          {% if not activity_own_only %}
           <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='activity' %}">Choose someone else</a>
-          {% endif %}
         </div>
       </form>
 
@@ -116,7 +108,7 @@
       <p class="form-note" style="margin-top:1rem;">No activity for this person in that date range.</p>
       {% endif %}
     </section>
-    {% elif not activity_own_only %}
+    {% else %}
     <p class="form-note" style="margin-top:1rem;">Open a person above to see only their activity. The full organization is not dumped on one page.</p>
     {% endif %}
   </div>

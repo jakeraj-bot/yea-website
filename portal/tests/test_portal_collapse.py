@@ -237,6 +237,11 @@ class PortalCollapsePageTests(TestCase):
         settings_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "fees"}))
         self._assert_collapse_ready(settings_page)
 
+        activity = self.client.get(reverse("portal_admin_page", kwargs={"page": "activity"}))
+        self._assert_collapse_ready(activity)
+        self.assertContains(activity, "<h2>Choose a person</h2>")
+        self.assertNotContains(activity, "portal-collapse-skip")
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_report_filter_skip_is_scoped_to_the_filter_card(self):
         session = self.client.session
