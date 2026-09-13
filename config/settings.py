@@ -21,7 +21,7 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 
 PORTAL_PREVIEW_MODE = os.environ.get("PORTAL_PREVIEW_MODE", "False") == "True"
 STAGING_SITE = os.environ.get("STAGING_SITE", "False") == "True"
-# When False, hide portal links on the public site. Direct login URLs still work.
+# Kept for older deploys. The public header always shows Portal; /portal/ is the hub.
 PORTALS_PUBLIC = os.environ.get("PORTALS_PUBLIC", "True") == "True"
 # Demo families/logins from seed_portal — never enable on the live site.
 ALLOW_PORTAL_DEMO_SEED = os.environ.get("ALLOW_PORTAL_DEMO_SEED", "False") == "True"

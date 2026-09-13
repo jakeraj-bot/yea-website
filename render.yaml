@@ -21,7 +21,7 @@ services:
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://yeanj.org,https://www.yeanj.org"
       - key: PORTALS_PUBLIC
-        value: "False"
+        value: "True"
       - key: PORTAL_BOOTSTRAP_ON_DEPLOY
         value: "True"
       - key: CONTACT_EMAIL
