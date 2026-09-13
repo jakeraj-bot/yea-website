@@ -5,7 +5,7 @@
     <p class="portal-breadcrumb"><a href="{{ calendar_url }}">Activity calendar</a> / {{ activity.name }}</p>
     <h1>{{ activity.name }}</h1>
     <p class="lead">
-      {{ activity.activity_date|date:"l, F j, Y" }} · {{ activity.start_time|time:"g:i A" }}
+      {{ activity.activity_date|date:"l, F j, Y" }} · {{ activity.start_time|time:"g:i A" }}{% if activity.end_time %} – {{ activity.end_time|time:"g:i A" }}{% endif %}
       · {{ activity.unit.name }}
     </p>
   </div>

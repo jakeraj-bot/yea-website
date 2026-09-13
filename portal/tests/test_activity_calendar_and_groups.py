@@ -98,8 +98,57 @@ class ActivityCalendarAndGroupsTests(TestCase):
             {date(2026, 9, 14), date(2026, 9, 15), date(2026, 9, 16), date(2026, 9, 17), date(2026, 9, 18)},
         )
         self.assertEqual(created.values("series_id").distinct().count(), 1)
+        self.assertEqual(created.filter(end_time=time(16, 30)).count(), 5)
         self.assertContains(response, "Art")
         self.assertContains(response, "How to use the activity calendar")
+
+    def test_end_time_is_saved_on_create(self):
+        self._login(self.staff, "staff")
+        response = self.client.post(
+            reverse("portal_staff_activity_calendar"),
+            {
+                "name": "Homework help",
+                "date": "2026-09-16",
+                "time": "15:00",
+                "end_time": "17:15",
+                "repeat": "once",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        activity = PortalCalendarActivity.objects.get(name="Homework help", unit=self.school_18)
+        self.assertEqual(activity.start_time, time(15, 0))
+        self.assertEqual(activity.end_time, time(17, 15))
+        self.assertContains(response, "3:00 PM")
+        self.assertContains(response, "5:15 PM")
+
+    def test_groups_is_not_a_child_nav_of_activity_calendar(self):
+        self._login(self.admin, "admin")
+        admin_page = self.client.get(reverse("portal_admin_activity_calendar"), {"month": "2026-09"})
+        self.assertEqual(admin_page.status_code, 200)
+        admin_html = admin_page.content.decode()
+        self.assertIn("portal-nav-admin-member-groups", admin_html)
+        self.assertIn('title="Activity calendar">Activity calendar</a></li>', admin_html)
+        between = admin_html[
+            admin_html.find('title="Activity calendar">Activity calendar</a></li>') : admin_html.find(
+                'title="Groups">Groups</a></li>'
+            )
+        ]
+        self.assertIn("</li>", between)
+        self.assertNotIn("<ul", between)
+        self.assertIn("portal-nav-admin-calendar", admin_html)
+
+        self._login(self.staff, "staff")
+        staff_page = self.client.get(reverse("portal_staff_activity_calendar"), {"month": "2026-09"})
+        staff_html = staff_page.content.decode()
+        self.assertIn("portal-nav-staff-member-groups", staff_html)
+        staff_between = staff_html[
+            staff_html.find('title="Activity calendar">Activity calendar</a></li>') : staff_html.find(
+                'title="Groups">Groups</a></li>'
+            )
+        ]
+        self.assertIn("</li>", staff_between)
+        self.assertNotIn("<ul", staff_between)
 
     def test_staff_can_add_a_member_to_an_activity(self):
         self._login(self.staff, "staff")
@@ -172,7 +221,8 @@ class ActivityCalendarAndGroupsTests(TestCase):
         group = PortalMemberGroup.objects.create(name="Bus run", unit=self.school_18, created_by=self.staff)
         PortalMemberGroupMember.objects.create(group=group, child=self.ada, added_by=self.staff)
         for kind, title in (
-            ("attendance", "Attendance sheet"),
+            ("daily-attendance", "Daily attendance"),
+            ("weekly-attendance", "Weekly attendance"),
             ("members", "Member list"),
             ("contacts", "Contact list"),
             ("emergency", "Emergency contacts"),
@@ -185,6 +235,12 @@ class ActivityCalendarAndGroupsTests(TestCase):
             self.assertContains(page, "Ada Rivera")
             self.assertContains(page, "Youth Education Academy")
             self.assertContains(page, "yea-logo")
+            if kind == "daily-attendance":
+                self.assertContains(page, "Time in")
+                self.assertContains(page, "Time out")
+            if kind == "weekly-attendance":
+                for weekday in ("Mon", "Tue", "Wed", "Thu", "Fri"):
+                    self.assertContains(page, weekday, msg_prefix=weekday)
 
     def test_group_is_used_as_activity_filter(self):
         self._login(self.staff, "staff")

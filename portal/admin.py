@@ -147,7 +147,7 @@ class PortalParentEmailAdmin(admin.ModelAdmin):
 
 @admin.register(PortalCalendarActivity)
 class PortalCalendarActivityAdmin(admin.ModelAdmin):
-    list_display = ("name", "activity_date", "start_time", "unit")
+    list_display = ("name", "activity_date", "start_time", "end_time", "unit")
     list_filter = ("unit", "activity_date")
     search_fields = ("name",)
 

@@ -21,6 +21,8 @@ from .member_sets import (
     attach_lesson_plan,
     create_activities,
     create_group,
+    group_week_days,
+    normalize_print_kind,
     get_visible_activity,
     get_visible_group,
     group_member_children,
@@ -171,6 +173,7 @@ def activity_calendar(request):
         create_url=_calendar_url(request),
         today=timezone.localdate().isoformat(),
         default_time="15:00",
+        default_end_time="16:00",
         default_unit=staff_unit.slug if staff_unit else "",
         calendar_list_url=_calendar_url(request),
     )
@@ -184,13 +187,15 @@ def _create_activity(request, area, staff_unit):
         return redirect(_calendar_url(request))
     name = request.POST.get("name")
     start_date = parse_optional_date(request.POST.get("date"))
-    start_time = parse_optional_time(request.POST.get("time"))
+    start_time = parse_optional_time(request.POST.get("time") or request.POST.get("start_time"))
+    end_time = parse_optional_time(request.POST.get("end_time"))
     repeat = (request.POST.get("repeat") or "once").strip()
     if repeat not in {"once", "week", "month"}:
         repeat = "once"
     created, error = create_activities(
         name=name,
         start_time=start_time,
+        end_time=end_time,
         start_date=start_date,
         repeat=repeat,
         unit=unit,
@@ -422,10 +427,13 @@ def group_print(request, group_id, kind):
     area = portal_ops_area(request)
     staff_unit = ops_unit(request, area)
     group = get_visible_group(group_id, area, staff_unit)
+    kind = normalize_print_kind(kind)
     if not group or kind not in PRINT_KINDS:
         messages.error(request, "That printout is not available.")
         return redirect(_groups_url(request))
     rows = group_print_rows(group, kind)
+    week_start = parse_optional_date(request.GET.get("week")) or timezone.localdate()
+    sheet_date = parse_optional_date(request.GET.get("date")) or timezone.localdate()
     context = _page_context(
         request,
         f"{group.name} — {PRINT_KIND_LABELS[kind]}",
@@ -436,6 +444,8 @@ def group_print(request, group_id, kind):
         print_kind=kind,
         print_label=PRINT_KIND_LABELS[kind],
         report_rows=rows,
+        week_days=group_week_days(week_start),
+        sheet_date=sheet_date,
         generated_date=timezone.localdate().strftime("%B %d, %Y"),
         group_url=_group_url(request, group.pk),
         groups_url=_groups_url(request),

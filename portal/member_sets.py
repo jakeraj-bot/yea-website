@@ -1,7 +1,7 @@
 """Shared helpers for the activity calendar and member groups."""
 
 from calendar import SUNDAY, Calendar
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -44,9 +44,11 @@ LESSON_PLAN_CONTENT_TYPES = {
     "image/webp",
 }
 
-PRINT_KINDS = ("attendance", "members", "contacts", "emergency")
+PRINT_KINDS = ("daily-attendance", "weekly-attendance", "members", "contacts", "emergency")
+PRINT_KIND_ALIASES = {"attendance": "daily-attendance"}
 PRINT_KIND_LABELS = {
-    "attendance": "Attendance sheet",
+    "daily-attendance": "Daily attendance",
+    "weekly-attendance": "Weekly attendance",
     "members": "Member list",
     "contacts": "Contact list",
     "emergency": "Emergency contacts",
@@ -83,6 +85,35 @@ def parse_optional_time(raw):
     if not text:
         return None
     return parse_time(text)
+
+
+def add_hours_to_time(start_time, hours=1):
+    if not start_time:
+        return None
+    return (datetime.combine(date.today(), start_time) + timedelta(hours=hours)).time()
+
+
+def resolve_end_time(start_time, end_time=None):
+    if end_time:
+        return end_time
+    return add_hours_to_time(start_time, 1)
+
+
+def normalize_print_kind(kind):
+    kind = (kind or "").strip()
+    return PRINT_KIND_ALIASES.get(kind, kind)
+
+
+def group_week_days(start=None):
+    days = weekday_dates_for_repeat(start or timezone.localdate(), "week")
+    return [
+        {
+            "date": day,
+            "label": day.strftime("%a"),
+            "date_short": day.strftime("%m/%d").lstrip("0").replace("/0", "/"),
+        }
+        for day in days
+    ]
 
 
 def weekday_dates_for_repeat(start, repeat):
@@ -238,10 +269,13 @@ def picker_payload(
     }
 
 
-def create_activities(*, name, start_time, start_date, repeat, unit, user, lesson_file=None):
+def create_activities(*, name, start_time, start_date, repeat, unit, user, lesson_file=None, end_time=None):
     name = (name or "").strip()
     if not name or not start_time or not start_date or not unit:
-        return [], "Name, date, time, and unit are required."
+        return [], "Name, date, start time, and unit are required."
+    resolved_end = resolve_end_time(start_time, end_time)
+    if resolved_end and resolved_end <= start_time:
+        return [], "End time must be after start time."
     dates = weekday_dates_for_repeat(start_date, repeat)
     if not dates:
         return [], "Choose a date."
@@ -266,6 +300,7 @@ def create_activities(*, name, start_time, start_date, repeat, unit, user, lesso
             name=name,
             activity_date=activity_date,
             start_time=start_time,
+            end_time=resolved_end,
             unit=unit,
             created_by=user if getattr(user, "is_authenticated", False) else None,
             series_id=series_id,

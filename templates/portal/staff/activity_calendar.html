@@ -28,8 +28,12 @@
           <input id="act-date" name="date" type="date" class="portal-input" value="{{ today }}" required>
         </div>
         <div class="form-group">
-          <label for="act-time">Time</label>
+          <label for="act-time">Start time</label>
           <input id="act-time" name="time" type="time" class="portal-input" value="{{ default_time }}" required>
+        </div>
+        <div class="form-group">
+          <label for="act-end-time">End time</label>
+          <input id="act-end-time" name="end_time" type="time" class="portal-input" value="{{ default_end_time }}" required>
         </div>
         <div class="form-group">
           <label for="act-repeat">How many days</label>
@@ -100,7 +104,7 @@
                   {% for item in day.activities %}
                   <li>
                     <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_activity_detail' activity_id=item.pk %}{% else %}{% url 'portal_staff_activity_detail' activity_id=item.pk %}{% endif %}">
-                      {{ item.start_time|time:"g:i A" }} · {{ item.name }}
+                      {{ item.start_time|time:"g:i A" }}{% if item.end_time %}–{{ item.end_time|time:"g:i A" }}{% endif %} · {{ item.name }}
                       {% if show_unit_filter %} · {{ item.unit.name }}{% endif %}
                     </a>
                   </li>
@@ -135,7 +139,7 @@
             {% for item in activities %}
             <tr>
               <td>{{ item.activity_date|date:"D, M j" }}</td>
-              <td>{{ item.start_time|time:"g:i A" }}</td>
+              <td>{{ item.start_time|time:"g:i A" }}{% if item.end_time %} – {{ item.end_time|time:"g:i A" }}{% endif %}</td>
               <td>
                 <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_activity_detail' activity_id=item.pk %}{% else %}{% url 'portal_staff_activity_detail' activity_id=item.pk %}{% endif %}">{{ item.name }}</a>
               </td>

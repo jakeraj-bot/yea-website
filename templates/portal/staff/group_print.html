@@ -23,6 +23,11 @@
           <h2>Youth Education Academy — {{ print_label }}</h2>
           <p class="portal-medical-report-meta">
             <strong>{{ group.name }}</strong> · {{ group.unit.name }}
+            {% if print_kind == "daily-attendance" %}
+            · Daily sheet · {{ sheet_date|date:"l, F j, Y" }}
+            {% elif print_kind == "weekly-attendance" %}
+            · Weekly sheet (Mon–Fri)
+            {% endif %}
             · {{ report_rows|length }} row{{ report_rows|length|pluralize }}
             · Generated {{ generated_date }}
           </p>
@@ -30,7 +35,7 @@
       </header>
 
       <div class="portal-table-wrap">
-        {% if print_kind == "attendance" %}
+        {% if print_kind == "daily-attendance" %}
         <table class="portal-table portal-medical-report-table">
           <thead>
             <tr>
@@ -56,6 +61,33 @@
             </tr>
             {% empty %}
             <tr><td colspan="7">No members in this group.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% elif print_kind == "weekly-attendance" %}
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              {% for day in week_days %}
+              <th>{{ day.label }}<br><span class="form-note">{{ day.date_short }}</span></th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td class="portal-row-num">{{ row.index }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              {% for day in week_days %}
+              <td class="portal-print-blank-cell"></td>
+              {% endfor %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="{{ week_days|length|add:3 }}">No members in this group.</td></tr>
             {% endfor %}
           </tbody>
         </table>
