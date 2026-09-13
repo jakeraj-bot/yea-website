@@ -1015,6 +1015,24 @@ GUIDES = {
             },
         ],
     },
+    "parent-emergency-contacts": {
+        "title": "How to update emergency contacts",
+        "intro": "Add a person we can call, or delete someone who is out of date. Staff gets an email when you change this list.",
+        "steps": [
+            {
+                "title": "Add a contact",
+                "body": "Choose the child, then enter first name, last name, and phone. Add the relationship if you know it. Check authorized pickup if that person may pick up your child.",
+            },
+            {
+                "title": "Delete if outdated",
+                "body": "Use Delete next to a contact you no longer want. Confirm so we do not remove someone by accident.",
+            },
+            {
+                "title": "Staff gets an email",
+                "body": "When you add or delete a contact, YEA is emailed so we know which family, parent, and child changed, and who was added or removed.",
+            },
+        ],
+    },
     "parent-application": {
         "title": "How to add After-care from this application",
         "intro": "This is one child's application. If they are waitlisted for before-care only, you can add After-care here without starting over.",
@@ -1059,6 +1077,8 @@ def page_guide_from_context(context):
                 key = "parent-applications"
             elif slug == "application":
                 key = "parent-application"
+            elif slug == "emergency-contacts":
+                key = "parent-emergency-contacts"
             else:
                 return None
         else:

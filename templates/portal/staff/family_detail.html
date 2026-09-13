@@ -200,7 +200,32 @@
 
       <section class="card portal-profile-full">
         <h2>Emergency contacts</h2>
-        {% if profile.emergency_contacts %}
+        {% if profile.show_child_emergency_contacts %}
+          {% for child in profile.children %}
+          <h3>{{ child.name }}</h3>
+          {% if child.emergency_contacts %}
+          <div class="portal-table-wrap">
+            <table class="portal-table">
+              <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th><th>Authorized pickup</th></tr></thead>
+              <tbody>
+                {% for c in child.emergency_contacts %}
+                <tr>
+                  <td>{{ c.name }}</td>
+                  <td>{{ c.phone }}</td>
+                  <td>{{ c.relationship|default:"—" }}</td>
+                  <td>{% if c.authorized_pickup %}Yes{% else %}No{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="form-note">No emergency contacts on file for {{ child.name }}.</p>
+          {% endif %}
+          {% empty %}
+          <p class="form-note">No emergency contacts on file.</p>
+          {% endfor %}
+        {% elif profile.emergency_contacts %}
         <div class="portal-table-wrap">
           <table class="portal-table">
             <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th></tr></thead>

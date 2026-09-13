@@ -892,6 +892,29 @@ def _parent_contact_page_extras(request, account=None):
     }
 
 
+def _parent_emergency_contacts_extras(request, context):
+    from .emergency_contact_services import demo_emergency_children, parent_emergency_children
+    from .forms import ParentEmergencyContactForm
+
+    account = get_parent_account(request.user) if request.user.is_authenticated else None
+    live = _parent_live_mode(request) and account
+    if live:
+        children = parent_emergency_children(account.family)
+    else:
+        profile = (context.get("parent_preview") or {}).get("profile") or context.get("profile") or {}
+        children = demo_emergency_children(profile)
+    extras = {
+        "emergency_children": children,
+        "emergency_contact_form": ParentEmergencyContactForm(),
+        "page_guide_key": "parent-emergency-contacts",
+        "can_edit_emergency_contacts": bool(live) and not context.get("admin_support_preview"),
+    }
+    from .page_guides import page_guide_from_context
+
+    extras["page_guide"] = page_guide_from_context({**context, **extras})
+    return extras
+
+
 def _parent_policy_data(preview_key):
     slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
     return get_family_policies(slug)
@@ -1207,12 +1230,15 @@ def parent_page(request, page):
         "tax-statements": "portal/parent/tax_statements.html",
         "support": "portal/support/support.html",
         "contact-us": "portal/parent/contact.html",
+        "emergency-contacts": "portal/parent/emergency_contacts.html",
     }
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
 
     page_title = "Contact us" if page == "contact-us" else page.replace("-", " ").title()
+    if page == "emergency-contacts":
+        page_title = "Emergency contacts"
     context = _parent_context(request, page_title, page_slug=page)
     if page == "billing":
         context["billing"] = context["parent_preview"]["billing"]
@@ -1361,6 +1387,8 @@ def parent_page(request, page):
     if page == "contact-us":
         account = get_parent_account(request.user) if request.user.is_authenticated else None
         context.update(_parent_contact_page_extras(request, account))
+    if page == "emergency-contacts":
+        context.update(_parent_emergency_contacts_extras(request, context))
     return render(request, template, context)
 
 
@@ -4884,6 +4912,7 @@ PARENT_PREVIEW_TEMPLATES = {
     "tax-statements": "portal/parent/tax_statements.html",
     "support": "portal/support/support.html",
     "contact-us": "portal/parent/contact.html",
+    "emergency-contacts": "portal/parent/emergency_contacts.html",
 }
 
 
@@ -5026,6 +5055,8 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             )
         if page == "contact-us":
             context.update(_parent_contact_page_extras(request, account))
+        if page == "emergency-contacts":
+            context.update(_parent_emergency_contacts_extras(request, context))
         return render(request, template, context)
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
@@ -5064,6 +5095,8 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         context["portal_live"] = False
     if page == "contact-us":
         context.update(_parent_contact_page_extras(request))
+    if page == "emergency-contacts":
+        context.update(_parent_emergency_contacts_extras(request, context))
     context.update(
         _family_neighbor_nav(
             request,
@@ -5110,6 +5143,8 @@ def admin_parent_preview_sample(request, page="dashboard"):
         context["dashboard"] = context["parent_preview"]["dashboard"]
     if page == "contact-us":
         context.update(_parent_contact_page_extras(request))
+    if page == "emergency-contacts":
+        context.update(_parent_emergency_contacts_extras(request, context))
     return render(request, template, context)
 
 

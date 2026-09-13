@@ -166,6 +166,16 @@ urlpatterns = [
         views.parent_contact_submit,
         name="portal_parent_contact",
     ),
+    path(
+        "parent/emergency-contacts/add/",
+        views_actions.parent_emergency_contact_add,
+        name="portal_parent_emergency_contact_add",
+    ),
+    path(
+        "parent/emergency-contacts/delete/",
+        views_actions.parent_emergency_contact_delete,
+        name="portal_parent_emergency_contact_delete",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(

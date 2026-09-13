@@ -2354,6 +2354,85 @@ def parent_profile_save(request):
 
 @require_POST
 @parent_login_required_post
+def parent_emergency_contact_add(request):
+    from .emergency_contact_services import add_parent_emergency_contact
+    from .forms import ParentEmergencyContactForm
+    from .parent_auth import get_parent_account, portal_preview_mode
+
+    if portal_preview_mode():
+        return redirect("portal_parent_page", page="emergency-contacts")
+    account = get_parent_account(request.user)
+    if not account:
+        return redirect("portal_parent_login")
+    form = ParentEmergencyContactForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Name and phone are required to add an emergency contact.")
+        return redirect("portal_parent_page", page="emergency-contacts")
+    try:
+        contact = add_parent_emergency_contact(
+            account.family,
+            request.POST.get("child_id"),
+            form.cleaned_data,
+            account=account,
+        )
+        messages.success(
+            request,
+            f"Added {contact['name']} as an emergency contact. YEA was emailed so staff know.",
+        )
+        _log_activity(
+            request,
+            "save",
+            action_label="Added emergency contact",
+            object_type="emergency_contact",
+            object_label=f"{contact['name']} · {account.family.name}",
+            details=f"Parent added emergency contact {contact['name']} for a child on {account.family.name}.",
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_parent_page", page="emergency-contacts")
+
+
+@require_POST
+@parent_login_required_post
+def parent_emergency_contact_delete(request):
+    from .emergency_contact_services import delete_parent_emergency_contact
+    from .parent_auth import get_parent_account, portal_preview_mode
+
+    if portal_preview_mode():
+        return redirect("portal_parent_page", page="emergency-contacts")
+    account = get_parent_account(request.user)
+    if not account:
+        return redirect("portal_parent_login")
+    if request.POST.get("confirm_delete") != "1":
+        messages.error(request, "Confirm delete before removing an emergency contact.")
+        return redirect("portal_parent_page", page="emergency-contacts")
+    try:
+        contact = delete_parent_emergency_contact(
+            account.family,
+            request.POST.get("child_id"),
+            request.POST.get("contact_id"),
+            account=account,
+        )
+        messages.success(
+            request,
+            f"Removed {contact['name']} from emergency contacts. YEA was emailed so staff know.",
+        )
+        _log_activity(
+            request,
+            "delete",
+            action_label="Deleted emergency contact",
+            object_type="emergency_contact",
+            object_label=f"{contact['name']} · {account.family.name}",
+            details=f"Parent deleted emergency contact {contact['name']} for a child on {account.family.name}.",
+            delete_reason="Parent removed an outdated emergency contact.",
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect("portal_parent_page", page="emergency-contacts")
+
+
+@require_POST
+@parent_login_required_post
 def parent_account_update(request):
     from django.contrib.auth import authenticate
 

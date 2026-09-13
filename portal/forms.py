@@ -28,6 +28,22 @@ class ParentContactForm(ContactForm):
             field.widget.attrs["class"] = f"{css} portal-input".strip()
 
 
+class ParentEmergencyContactForm(forms.Form):
+    first_name = forms.CharField(max_length=80, label="First name")
+    last_name = forms.CharField(max_length=80, label="Last name")
+    phone = forms.CharField(max_length=30, label="Phone")
+    relationship = forms.CharField(max_length=80, required=False, label="Relationship to child")
+    authorized_pickup = forms.BooleanField(required=False, label="Authorized to pick up")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            if name == "authorized_pickup":
+                continue
+            css = field.widget.attrs.get("class", "")
+            field.widget.attrs["class"] = f"{css} portal-input".strip()
+
+
 class PortalAuthenticationForm(AuthenticationForm):
     def __init__(self, *args, portal_type="parent", **kwargs):
         self.portal_type = portal_type
