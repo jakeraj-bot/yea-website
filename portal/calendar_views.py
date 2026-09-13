@@ -1,6 +1,7 @@
 """Staff and admin views for the activity calendar and member groups."""
 
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -131,18 +132,24 @@ def _picker_filters(request, area):
             group_id = int(group_raw)
         except (TypeError, ValueError):
             group_id = None
-    return q, unit_slug, group_id
+    school = (request.GET.get("school") or request.POST.get("filter_school") or "").strip()
+    grade = (request.GET.get("grade") or request.POST.get("filter_grade") or "").strip()
+    return q, unit_slug, group_id, school, grade
 
 
-def _keep_picker_query(q, unit_slug, group_id):
-    parts = []
+def _keep_picker_query(q, unit_slug, group_id, school="", grade=""):
+    params = {}
     if q:
-        parts.append(f"q={q}")
+        params["q"] = q
     if unit_slug:
-        parts.append(f"unit={unit_slug}")
+        params["unit"] = unit_slug
     if group_id:
-        parts.append(f"group={group_id}")
-    return ("?" + "&".join(parts)) if parts else ""
+        params["group"] = str(group_id)
+    if school:
+        params["school"] = school
+    if grade:
+        params["grade"] = grade
+    return f"?{urlencode(params)}" if params else ""
 
 
 @staff_or_admin_required
@@ -229,10 +236,10 @@ def activity_detail(request, activity_id):
         messages.error(request, "That activity is not available.")
         return redirect(_calendar_url(request))
 
-    q, unit_slug, group_id = _picker_filters(request, area)
+    q, unit_slug, group_id, school, grade = _picker_filters(request, area)
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        q, unit_slug, group_id = _picker_filters(request, area)
+        q, unit_slug, group_id, school, grade = _picker_filters(request, area)
         if action == "add":
             added = add_children_to_activity(
                 activity, posted_child_ids(request), area=area, staff_unit=staff_unit, user=request.user
@@ -245,6 +252,8 @@ def activity_detail(request, activity_id):
                 q=q,
                 group_id=group_id,
                 exclude_ids=enrolled_ids,
+                school=school,
+                grade=grade,
             )
             added = add_children_to_activity(
                 activity,
@@ -271,7 +280,9 @@ def activity_detail(request, activity_id):
             activity.delete()
             messages.success(request, f"Deleted {label}.")
             return redirect(_calendar_url(request))
-        return redirect(_activity_url(request, activity.pk) + _keep_picker_query(q, unit_slug, group_id))
+        return redirect(
+            _activity_url(request, activity.pk) + _keep_picker_query(q, unit_slug, group_id, school, grade)
+        )
 
     enrolled = [row.child for row in activity.memberships.all()]
     picker = picker_payload(
@@ -281,6 +292,8 @@ def activity_detail(request, activity_id):
         q=q,
         unit_slug=unit_slug,
         group_id=group_id,
+        school=school,
+        grade=grade,
         show_group_filter=True,
     )
     context = _page_context(
@@ -340,12 +353,12 @@ def group_detail(request, group_id):
         messages.error(request, "That group is not available.")
         return redirect(_groups_url(request))
 
-    q, unit_slug, _group_filter = _picker_filters(request, area)
+    q, unit_slug, _group_filter, school, grade = _picker_filters(request, area)
     if area == "admin" and not unit_slug:
         unit_slug = group.unit.slug
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        q, unit_slug, _group_filter = _picker_filters(request, area)
+        q, unit_slug, _group_filter, school, grade = _picker_filters(request, area)
         if area == "admin" and not unit_slug:
             unit_slug = group.unit.slug
         if action == "add":
@@ -359,6 +372,8 @@ def group_detail(request, group_id):
                 scoped_children_qs(area, staff_unit, unit_slug),
                 q=q,
                 exclude_ids=enrolled_ids,
+                school=school,
+                grade=grade,
             )
             added = add_children_to_group(
                 group,
@@ -378,7 +393,7 @@ def group_detail(request, group_id):
             group.delete()
             messages.success(request, f"Deleted {label}.")
             return redirect(_groups_url(request))
-        return redirect(_group_url(request, group.pk) + _keep_picker_query(q, unit_slug, None))
+        return redirect(_group_url(request, group.pk) + _keep_picker_query(q, unit_slug, None, school, grade))
 
     enrolled = group_member_children(group)
     picker = picker_payload(
@@ -388,6 +403,8 @@ def group_detail(request, group_id):
         q=q,
         unit_slug=unit_slug,
         group_id=None,
+        school=school,
+        grade=grade,
         show_group_filter=False,
     )
     print_links = [

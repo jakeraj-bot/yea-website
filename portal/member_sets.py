@@ -197,10 +197,45 @@ def scoped_children_qs(area, staff_unit, unit_slug=""):
     )
 
 
-def apply_child_filters(qs, *, q="", group_id=None, exclude_ids=None):
+def _grade_sort_key(grade):
+    raw = (grade or "").strip()
+    lower = raw.lower()
+    if lower in {"k", "kindergarten"}:
+        return (0, 0, lower)
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if digits:
+        return (1, int(digits), lower)
+    return (2, 0, lower)
+
+
+def picker_school_choices(qs):
+    names = {
+        (name or "").strip()
+        for name in qs.exclude(school="").values_list("school", flat=True)
+        if (name or "").strip()
+    }
+    return sorted(names, key=str.lower)
+
+
+def picker_grade_choices(qs):
+    grades = {
+        (name or "").strip()
+        for name in qs.exclude(grade="").values_list("grade", flat=True)
+        if (name or "").strip()
+    }
+    return sorted(grades, key=_grade_sort_key)
+
+
+def apply_child_filters(qs, *, q="", group_id=None, exclude_ids=None, school="", grade=""):
     name = (q or "").strip()
     if name:
         qs = qs.filter(Q(name__icontains=name) | Q(family__name__icontains=name))
+    school_name = (school or "").strip()
+    if school_name:
+        qs = qs.filter(school__iexact=school_name)
+    grade_name = (grade or "").strip()
+    if grade_name:
+        qs = qs.filter(grade__iexact=grade_name)
     if group_id:
         qs = qs.filter(group_memberships__group_id=group_id)
     if exclude_ids:
@@ -238,14 +273,19 @@ def picker_payload(
     q="",
     unit_slug="",
     group_id=None,
+    school="",
+    grade="",
     show_group_filter=True,
 ):
     enrolled_ids = {child.pk for child in enrolled_children}
+    scoped_qs = scoped_children_qs(area, staff_unit, unit_slug)
     available_qs = apply_child_filters(
-        scoped_children_qs(area, staff_unit, unit_slug),
+        scoped_qs,
         q=q,
         group_id=group_id,
         exclude_ids=enrolled_ids,
+        school=school,
+        grade=grade,
     )
     enrolled_qs = apply_child_filters(
         PortalChild.objects.filter(pk__in=enrolled_ids).select_related(
@@ -262,9 +302,14 @@ def picker_payload(
         "filter_q": q,
         "filter_unit": unit_slug if area == "admin" else "",
         "filter_group": str(group_id or ""),
+        "filter_school": (school or "").strip(),
+        "filter_grade": (grade or "").strip(),
         "group_choices": [(str(group.pk), f"{group.name} · {group.unit.name}") for group in groups],
+        "school_choices": picker_school_choices(scoped_qs),
+        "grade_choices": picker_grade_choices(scoped_qs),
         "show_group_filter": show_group_filter,
         "show_unit_filter": area == "admin",
+        "fixed_unit_name": staff_unit.name if area == "staff" and staff_unit else "",
         "unit_choices": unit_choices_for_area(area) if area == "admin" else [],
     }
 

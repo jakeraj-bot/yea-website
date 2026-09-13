@@ -28,13 +28,28 @@ class ActivityCalendarAndGroupsTests(TestCase):
         self.family_18 = PortalFamily.objects.create(unit=self.school_18, slug="rivera", name="Rivera")
         self.family_26 = PortalFamily.objects.create(unit=self.school_26, slug="chen", name="Chen")
         self.ada = PortalChild.objects.create(
-            family=self.family_18, name="Ada Rivera", unit=self.school_18, is_active=True, grade="3"
+            family=self.family_18,
+            name="Ada Rivera",
+            unit=self.school_18,
+            is_active=True,
+            grade="3",
+            school="Philips Academy",
         )
         self.ben = PortalChild.objects.create(
-            family=self.family_18, name="Ben Rivera", unit=self.school_18, is_active=True, grade="4"
+            family=self.family_18,
+            name="Ben Rivera",
+            unit=self.school_18,
+            is_active=True,
+            grade="4",
+            school="Philips Academy",
         )
         self.cara = PortalChild.objects.create(
-            family=self.family_26, name="Cara Chen", unit=self.school_26, is_active=True, grade="2"
+            family=self.family_26,
+            name="Cara Chen",
+            unit=self.school_26,
+            is_active=True,
+            grade="2",
+            school="Lincoln Elementary",
         )
         self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
         PortalStaffAccount.objects.create(
@@ -340,3 +355,93 @@ class ActivityCalendarAndGroupsTests(TestCase):
         self.assertTrue(activity.has_lesson_plan)
         self.assertEqual(activity.lesson_plan_name, "plan.pdf")
         self.assertContains(response, "plan.pdf")
+
+    def test_group_picker_filters_kids_to_add_by_grade_and_school(self):
+        self._login(self.admin, "admin")
+        group = PortalMemberGroup.objects.create(
+            name="Philips Academy Bus run", unit=self.school_18, created_by=self.admin
+        )
+        page = self.client.get(reverse("portal_admin_group_detail", kwargs={"group_id": group.pk}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "School attending")
+        self.assertContains(page, "Grade")
+        self.assertContains(page, "Ada Rivera")
+        self.assertContains(page, "Ben Rivera")
+        self.assertContains(page, "Philips Academy")
+
+        by_grade = self.client.get(
+            reverse("portal_admin_group_detail", kwargs={"group_id": group.pk}),
+            {"grade": "3"},
+        )
+        self.assertContains(by_grade, "Ada Rivera")
+        self.assertNotContains(by_grade, "Ben Rivera")
+        self.assertNotContains(by_grade, "Cara Chen")
+
+        by_school = self.client.get(
+            reverse("portal_admin_group_detail", kwargs={"group_id": group.pk}),
+            {"school": "Philips Academy"},
+        )
+        self.assertContains(by_school, "Ada Rivera")
+        self.assertContains(by_school, "Ben Rivera")
+        self.assertNotContains(by_school, "Cara Chen")
+
+        added = self.client.post(
+            reverse("portal_admin_group_detail", kwargs={"group_id": group.pk}),
+            {"action": "add_filtered", "filter_grade": "3", "filter_school": "Philips Academy"},
+            follow=True,
+        )
+        self.assertEqual(added.status_code, 200)
+        self.assertTrue(PortalMemberGroupMember.objects.filter(group=group, child=self.ada).exists())
+        self.assertFalse(PortalMemberGroupMember.objects.filter(group=group, child=self.ben).exists())
+        self.assertFalse(PortalMemberGroupMember.objects.filter(group=group, child=self.cara).exists())
+
+        activity = PortalCalendarActivity.objects.create(
+            name="Homework",
+            activity_date=date(2026, 9, 15),
+            start_time=time(16, 0),
+            unit=self.school_18,
+            created_by=self.admin,
+        )
+        activity_page = self.client.get(
+            reverse("portal_admin_activity_detail", kwargs={"activity_id": activity.pk}),
+            {"grade": "4", "school": "Philips Academy"},
+        )
+        self.assertContains(activity_page, "School attending")
+        self.assertContains(activity_page, "Ben Rivera")
+        self.assertNotContains(activity_page, "Ada Rivera")
+        self.assertNotContains(activity_page, "Cara Chen")
+
+    def test_staff_group_picker_cannot_see_other_unit_kids(self):
+        self._login(self.staff, "staff")
+        group = PortalMemberGroup.objects.create(name="Bus run", unit=self.school_18, created_by=self.staff)
+        page = self.client.get(reverse("portal_staff_group_detail", kwargs={"group_id": group.pk}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "School attending")
+        self.assertContains(page, "Grade")
+        self.assertContains(page, "Ada Rivera")
+        self.assertContains(page, "Ben Rivera")
+        self.assertNotContains(page, "Cara Chen")
+        self.assertContains(page, "School 18")
+        html = page.content.decode()
+        unit_block = html[html.find("Unit") : html.find("School attending")]
+        self.assertIn("disabled", unit_block)
+        self.assertNotIn("All units", unit_block)
+
+        sneak = self.client.get(
+            reverse("portal_staff_group_detail", kwargs={"group_id": group.pk}),
+            {"unit": "school-26", "school": "Lincoln Elementary", "grade": "2"},
+        )
+        self.assertNotContains(sneak, "Cara Chen")
+        self.assertNotContains(sneak, "Lincoln Elementary")
+
+        hidden_group = PortalMemberGroup.objects.create(
+            name="School 26 bus", unit=self.school_26, created_by=self.staff_26
+        )
+        hidden = self.client.get(reverse("portal_staff_group_detail", kwargs={"group_id": hidden_group.pk}))
+        self.assertRedirects(hidden, reverse("portal_staff_groups"))
+        sneak_add = self.client.post(
+            reverse("portal_staff_group_detail", kwargs={"group_id": group.pk}),
+            {"action": "add", "child_id": str(self.cara.pk)},
+        )
+        self.assertEqual(sneak_add.status_code, 302)
+        self.assertFalse(PortalMemberGroupMember.objects.filter(group=group, child=self.cara).exists())

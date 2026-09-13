@@ -9,7 +9,32 @@
       {% endfor %}
     </select>
   </label>
+  {% elif picker.fixed_unit_name %}
+  <label class="portal-filter-label">
+    Unit
+    <select class="portal-select" disabled>
+      <option selected>{{ picker.fixed_unit_name }}</option>
+    </select>
+  </label>
   {% endif %}
+  <label class="portal-filter-label">
+    School attending
+    <select class="portal-select" name="school">
+      <option value="">All schools</option>
+      {% for school in picker.school_choices %}
+      <option value="{{ school }}"{% if picker.filter_school == school %} selected{% endif %}>{{ school }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="portal-filter-label">
+    Grade
+    <select class="portal-select" name="grade">
+      <option value="">All grades</option>
+      {% for grade in picker.grade_choices %}
+      <option value="{{ grade }}"{% if picker.filter_grade == grade %} selected{% endif %}>{{ grade }}</option>
+      {% endfor %}
+    </select>
+  </label>
   <label class="portal-filter-label">
     Child name
     <input class="portal-input" type="search" name="q" value="{{ picker.filter_q }}" placeholder="Child or family">
@@ -42,6 +67,8 @@
       <input type="hidden" name="q" value="{{ picker.filter_q }}">
       <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
       <input type="hidden" name="group" value="{{ picker.filter_group }}">
+      <input type="hidden" name="filter_school" value="{{ picker.filter_school }}">
+      <input type="hidden" name="filter_grade" value="{{ picker.filter_grade }}">
       <button type="submit" class="btn btn-secondary btn-sm">Add all shown</button>
     </form>
     <ul class="portal-picker-list">
@@ -49,7 +76,7 @@
       <li>
         <div>
           <strong>{{ child.name }}</strong>
-          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
+          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.school %} · {{ child.school }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
         </div>
         <form method="post" action="{{ picker_action }}">
           {% csrf_token %}
@@ -58,6 +85,8 @@
           <input type="hidden" name="q" value="{{ picker.filter_q }}">
           <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
           <input type="hidden" name="group" value="{{ picker.filter_group }}">
+          <input type="hidden" name="filter_school" value="{{ picker.filter_school }}">
+          <input type="hidden" name="filter_grade" value="{{ picker.filter_grade }}">
           <button type="submit" class="btn btn-primary btn-sm">Add</button>
         </form>
       </li>
@@ -77,7 +106,7 @@
       <li>
         <div>
           <strong>{{ child.name }}</strong>
-          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
+          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.school %} · {{ child.school }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
         </div>
         <form method="post" action="{{ picker_action }}">
           {% csrf_token %}
@@ -86,6 +115,8 @@
           <input type="hidden" name="q" value="{{ picker.filter_q }}">
           <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
           <input type="hidden" name="group" value="{{ picker.filter_group }}">
+          <input type="hidden" name="filter_school" value="{{ picker.filter_school }}">
+          <input type="hidden" name="filter_grade" value="{{ picker.filter_grade }}">
           <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
         </form>
       </li>
