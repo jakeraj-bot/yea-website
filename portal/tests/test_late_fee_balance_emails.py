@@ -83,7 +83,8 @@ class ChargeInvoiceEmailTests(TestCase):
         )
         message = send_email.call_args.kwargs["message"]
         self.assertIn("Family balance (what the household owes): $30.00", message)
-        self.assertIn("Current balance for Ada Rivera: $40.00", message)
+        # Unlabeled household payments are shared onto children (same as All families).
+        self.assertIn("Current balance for Ada Rivera: $30.00", message)
 
 
 class UpdatedBalanceEmailTests(TestCase):
