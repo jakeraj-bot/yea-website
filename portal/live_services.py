@@ -543,13 +543,16 @@ def family_meta_live(family_slug, unit=None, family_id=None):
             if unit and not application_belongs_to_unit(app, unit):
                 continue
             pending.append(child_name)
+    from .family_list import family_balance
+
+    household_children = enrolled + pending
     return {
         "id": family.pk,
         "slug": family.slug,
         "name": family_display_label(family),
         "primary_contact": family.primary_contact,
-        "children": enrolled + pending,
-        "balance": format(family.balance, ".2f"),
+        "children": household_children,
+        "balance": format(family_balance(family, child_names=household_children), ".2f"),
         "program": family.program_label,
         "billing_type": family.billing_type,
         "status": "Suspended" if family.is_suspended else family.status,

@@ -637,18 +637,20 @@ def balance_report_rows(filters=None):
     filters = filters or {}
     query = (filters.get("q") or "").strip()
     unit = (filters.get("unit") or "").strip()
-    families = PortalFamily.objects.select_related("unit").order_by("-balance", "name")
+    families = PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("-balance", "name")
     if unit:
         families = families.filter(unit__slug=unit)
     if query:
         families = families.filter(Q(name__icontains=query) | Q(primary_contact__icontains=query))
+    from .family_list import child_balance_maps, family_balance
+
+    family_list = [family for family in families if not is_placeholder_unit(family.unit)]
+    ledger_maps = child_balance_maps([family.pk for family in family_list])
     rows = []
     outstanding = Decimal("0")
     credit = Decimal("0")
-    for family in families:
-        if is_placeholder_unit(family.unit):
-            continue
-        balance = family.balance or Decimal("0")
+    for family in family_list:
+        balance = family_balance(family, ledger_maps.get(family.pk) or {})
         if balance > 0:
             outstanding += balance
         elif balance < 0:
