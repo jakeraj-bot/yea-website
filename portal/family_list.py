@@ -1,7 +1,7 @@
 """Helpers for staff/admin family tables — one row per child."""
 
 from collections import defaultdict
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from urllib.parse import urlencode
 
 from .child_identity import child_name_in_collection
@@ -44,16 +44,117 @@ def _as_decimal(value):
     return Decimal(str(value))
 
 
+def household_ledger_totals(family_ids):
+    """{family_id: Decimal} household net — every ledger amount, fees excluded.
+
+    Family balance uses this total. It is not the sum of the child-balance column.
+    """
+    from django.db.models import Sum
+
+    from .models import PortalLedgerEntry
+
+    totals = {}
+    ids = [pk for pk in family_ids if pk]
+    if not ids:
+        return totals
+    for row in (
+        PortalLedgerEntry.objects.filter(family_id__in=ids)
+        .values("family_id")
+        .annotate(total=Sum("amount"))
+    ):
+        totals[row["family_id"]] = row["total"] or Decimal("0")
+    return totals
+
+
 def household_balance_from_child_map(family_balances):
-    """Household total from a per-child ledger map (includes unassigned rows)."""
+    """Sum of a per-child map. Prefer household_ledger_totals for family display."""
     if not family_balances:
         return Decimal("0")
     return sum(family_balances.values(), Decimal("0"))
 
 
 def family_balance_from_names(family_balances, child_names):
-    """Family total = the named children's ledger balances added together."""
+    """Named children's balances after unallocated household payments are applied."""
     return sum((child_balance_from_map(family_balances, name) for name in child_names or []), Decimal("0"))
+
+
+def _map_key_for_name(family_map, child_name):
+    name = _normalize_child_name(child_name)
+    if name in family_map:
+        return name
+    folded = _child_name_key(name)
+    for key in family_map:
+        if _child_name_key(key) == folded:
+            return key
+    return name
+
+
+def _split_amount(amount, count):
+    """Split cents across ``count`` people; the last share gets any leftover penny."""
+    if count <= 0 or amount == 0:
+        return []
+    share = (amount / count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    parts = [share] * (count - 1)
+    parts.append(amount - share * (count - 1))
+    return parts
+
+
+def allocate_unlabeled_to_children(family_map, child_names):
+    """Update child balances only: apply family-level payments to kids who still owe.
+
+    Charge rows keep their child names. A payment with an empty child column is
+    tuition only (Stripe fees stay in ``fee_amount``). Family balance is computed
+    separately from the full household ledger.
+    """
+    if family_map is None:
+        return family_map
+    unlabeled = Decimal("0")
+    for key in [item for item in family_map if not _normalize_child_name(item)]:
+        unlabeled += family_map.pop(key) or Decimal("0")
+
+    keys = []
+    seen = set()
+    for name in child_names or []:
+        key = _map_key_for_name(family_map, name)
+        folded = _child_name_key(key)
+        if not folded or folded in seen:
+            continue
+        seen.add(folded)
+        keys.append(key)
+        family_map.setdefault(key, Decimal("0"))
+
+    if not keys:
+        if unlabeled:
+            family_map[""] = unlabeled
+        return family_map
+    if unlabeled == 0:
+        return family_map
+
+    if unlabeled < 0:
+        remaining = -unlabeled
+        owing = [key for key in keys if family_map[key] > 0]
+        total_owing = sum((family_map[key] for key in owing), Decimal("0"))
+        if owing and remaining > 0:
+            if remaining >= total_owing:
+                for key in owing:
+                    remaining -= family_map[key]
+                    family_map[key] = Decimal("0")
+            else:
+                applied = Decimal("0")
+                for index, key in enumerate(owing):
+                    share = remaining - applied if index == len(owing) - 1 else (family_map[key] * remaining / total_owing).quantize(
+                        Decimal("0.01"), rounding=ROUND_DOWN
+                    )
+                    family_map[key] -= share
+                    applied += share
+                remaining = Decimal("0")
+        if remaining > 0:
+            for key, share in zip(keys, _split_amount(-remaining, len(keys))):
+                family_map[key] += share
+    else:
+        for key, share in zip(keys, _split_amount(unlabeled, len(keys))):
+            family_map[key] += share
+    return family_map
 
 
 def child_balance_from_map(family_balances, child_name):
@@ -95,18 +196,14 @@ def child_balance(child, balances=None):
 
 
 def family_balance(family, balances=None, child_names=None):
-    """Family balance is the children's ledger balances added together.
+    """Household ledger: charges minus tuition payments. Stripe fees excluded.
 
-    Processing fees are not included. Unlabeled ledger rows are left out so the
-    family total always matches the children on the same household.
+    Family-level payments (empty child column) are included here. This is not
+    the sum of the child-balance column — child balances are updated separately.
     """
     if not family or not getattr(family, "pk", None):
         return Decimal("0")
-    maps = balances if balances is not None else child_balance_map(family)
-    names = list(child_names) if child_names is not None else _active_child_names(family)
-    if names:
-        return family_balance_from_names(maps, names)
-    return household_balance_from_child_map(maps)
+    return household_ledger_totals([family.pk]).get(family.pk, Decimal("0"))
 
 
 def household_balance(family):
@@ -115,7 +212,7 @@ def household_balance(family):
 
 
 def sync_family_balance_from_ledger(family):
-    """Keep PortalFamily.balance equal to the sum of the children's ledgers."""
+    """Keep PortalFamily.balance equal to the household ledger (tuition only)."""
     if not family or not getattr(family, "pk", None):
         return Decimal("0")
     total = family_balance(family)
@@ -129,11 +226,12 @@ def child_balance_maps(family_ids):
     """One aggregated ledger query → {family_id: {child_name: Decimal}}.
 
     Amounts are the ledger ``amount`` (tuition / applied). Stripe processing
-    fees live in ``fee_amount`` and are left out of the balance.
+    fees live in ``fee_amount`` and are left out of the balance. Rows with no
+    child name are then shared across the household's children.
     """
     from django.db.models import Sum
 
-    from .models import PortalLedgerEntry
+    from .models import PortalChild, PortalLedgerEntry
 
     maps = defaultdict(lambda: defaultdict(lambda: Decimal("0")))
     ids = [pk for pk in family_ids if pk]
@@ -153,6 +251,14 @@ def child_balance_maps(family_ids):
                 key = existing
                 break
         family_map[key] += row["total"] or Decimal("0")
+
+    child_names_by_family = defaultdict(list)
+    for family_id, name in PortalChild.objects.filter(family_id__in=ids, is_active=True).values_list(
+        "family_id", "name"
+    ):
+        child_names_by_family[family_id].append(name)
+    for family_id, family_map in maps.items():
+        allocate_unlabeled_to_children(family_map, child_names_by_family.get(family_id, []))
     return maps
 
 
@@ -247,6 +353,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     families = list(families)
     family_ids = [family.pk for family in families]
     balances = child_balance_maps(family_ids)
+    household_totals = household_ledger_totals(family_ids)
     duplicate_keys = family_name_duplicate_keys()
     units_by_slug = _units_by_slug()
     rows = []
@@ -327,10 +434,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     has_login = False
             base_row["has_parent_login"] = bool(has_login)
             base_row["is_suspended"] = family.is_suspended
-        if children_specs:
-            household_total = sum((_as_decimal(spec.get("balance")) for spec in children_specs), Decimal("0"))
-        else:
-            household_total = family_balance(family, family_balances)
+        household_total = household_totals.get(family.pk, Decimal("0"))
         rows.extend(expand_family_record(base_row, children_specs, household_total))
     return sort_family_child_rows(rows)
 
