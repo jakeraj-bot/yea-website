@@ -456,3 +456,101 @@ class FamilyBalanceEqualsChildrenTests(TestCase):
         plans = get_billing_live(self.family)
         self.assertEqual(plans["running_balance"], "35.00")
         self.assertEqual(family_meta_live("brooks")["balance"], "35.00")
+
+
+class UnallocatedHouseholdPaymentTests(TestCase):
+    """Family-level card payments (empty child column) still clear the household."""
+
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="marmol",
+            name="Marmol",
+            primary_contact="Parent Marmol",
+            balance=Decimal("0.00"),
+            status="Active",
+        )
+        self.amelia = PortalChild.objects.create(
+            family=self.family, name="Amelia Marmol", school="School 18", is_active=True
+        )
+        self.ashtrid = PortalChild.objects.create(
+            family=self.family, name="Ashtrid Marmol", school="School 18", is_active=True
+        )
+
+    def test_unallocated_stripe_payment_clears_children_and_family(self):
+        post_charge(
+            self.family,
+            "Amelia Marmol",
+            "tuition",
+            "20.00",
+            date(2026, 8, 25),
+            "Membership fee ($20.00) — Amelia Marmol",
+            notify=False,
+        )
+        post_charge(
+            self.family,
+            "Ashtrid Marmol",
+            "tuition",
+            "20.00",
+            date(2026, 8, 25),
+            "Membership fee ($20.00) — Ashtrid Marmol",
+            notify=False,
+        )
+        payment = PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            fee_amount=Decimal("1.46"),
+            total_charged=Decimal("41.46"),
+            payment_kind="balance",
+            dropin_child="",
+            stripe_session_id="cs_marmol_unallocated",
+            stripe_payment_intent_id="pi_marmol_unallocated",
+        )
+        record_successful_payment(payment, method_label="Card", child_name="")
+
+        self.family.refresh_from_db()
+        self.assertEqual(child_balance(self.amelia), Decimal("0.00"))
+        self.assertEqual(child_balance(self.ashtrid), Decimal("0.00"))
+        self.assertEqual(family_balance(self.family), Decimal("0.00"))
+        self.assertEqual(self.family.balance, Decimal("0.00"))
+
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="payment")
+        self.assertEqual(entry.child_name, "")
+        self.assertEqual(entry.amount, Decimal("-40.00"))
+        self.assertEqual(entry.fee_amount, Decimal("1.46"))
+
+        rows = [row for row in get_admin_families_live() if row["slug"] == "marmol"]
+        by_child = {row["child_name"]: row for row in rows}
+        self.assertEqual(by_child["Amelia Marmol"]["child_balance"], "0.00")
+        self.assertEqual(by_child["Ashtrid Marmol"]["child_balance"], "0.00")
+        self.assertEqual(by_child["Amelia Marmol"]["family_balance"], "0.00")
+        self.assertEqual(by_child["Ashtrid Marmol"]["family_balance"], "0.00")
+
+        plans = get_billing_live(self.family)
+        plan_by_child = {child["name"]: child for child in plans["children"]}
+        self.assertEqual(plan_by_child["Amelia Marmol"]["balance"], "0.00")
+        self.assertEqual(plan_by_child["Ashtrid Marmol"]["balance"], "0.00")
+        self.assertEqual(plans["running_balance"], "0.00")
+        self.assertEqual(family_meta_live("marmol")["balance"], "0.00")
+
+    def test_one_child_unpaid_still_shows_twenty(self):
+        solo = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="solo-marmol",
+            name="Solo",
+            primary_contact="Solo Parent",
+            balance=Decimal("0.00"),
+            status="Active",
+        )
+        child = PortalChild.objects.create(family=solo, name="Ada Solo", school="School 18", is_active=True)
+        post_charge(solo, "Ada Solo", "tuition", "20.00", date(2026, 8, 25), "Membership", notify=False)
+        solo.balance = Decimal("0.00")
+        solo.save(update_fields=["balance"])
+
+        self.assertEqual(child_balance(child), Decimal("20.00"))
+        self.assertEqual(family_balance(solo), Decimal("20.00"))
+        row = next(item for item in get_admin_families_live() if item["slug"] == "solo-marmol")
+        self.assertEqual(row["child_balance"], "20.00")
+        self.assertEqual(row["family_balance"], "20.00")
+        self.assertEqual(get_billing_live(solo)["running_balance"], "20.00")
