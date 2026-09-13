@@ -201,7 +201,8 @@ class ParentEmergencyContactTests(TestCase):
         )
         self.assertEqual(len(mail.outbox), 1)
         sent = mail.outbox[0]
-        self.assertIn(PARENT_CONTACT_EMAIL, sent.to)
+        recipients = {email.lower() for email in sent.to}
+        self.assertIn(PARENT_CONTACT_EMAIL.lower(), recipients)
         self.assertIn("added", sent.subject.lower())
         self.assertIn("Jordan Rivera", sent.body)
         self.assertIn("Rivera", sent.body)
@@ -228,10 +229,12 @@ class ParentEmergencyContactTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(EmergencyContact.objects.filter(pk=self.existing.pk).exists())
         page = self.client.get(self._page_url())
-        self.assertNotContains(page, "Rosa Rivera")
+        self.assertContains(page, "No emergency contacts on file for Jordan Rivera.")
+        self.assertNotContains(page, "555-0199")
         self.assertEqual(len(mail.outbox), 1)
         sent = mail.outbox[0]
-        self.assertIn(PARENT_CONTACT_EMAIL, sent.to)
+        recipients = {email.lower() for email in sent.to}
+        self.assertIn(PARENT_CONTACT_EMAIL.lower(), recipients)
         self.assertIn("deleted", sent.subject.lower())
         self.assertIn("Jordan Rivera", sent.body)
         self.assertIn("Rosa Rivera", sent.body)
