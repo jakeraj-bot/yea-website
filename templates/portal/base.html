@@ -93,6 +93,13 @@
             {% endif %}
           </div>
           <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
+          {% if admin_preview_sample %}
+          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a>
+          {% elif admin_support_preview and admin_preview_family_slug %}
+          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a>
+          {% else %}
+          <a class="btn btn-primary btn-sm" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a>
+          {% endif %}
           {% if parent_authenticated and not admin_support_preview %}
           <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">Sign out</a>
           {% endif %}

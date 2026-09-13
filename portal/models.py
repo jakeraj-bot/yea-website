@@ -106,6 +106,30 @@ class PortalChild(models.Model):
         super().save(*args, **kwargs)
 
 
+class PortalChildBillingPlan(models.Model):
+    """One billing schedule for a child. A child can have after-care plus before-care."""
+
+    child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="billing_plans")
+    description = models.CharField(max_length=120, blank=True)
+    billing_plan = models.CharField(max_length=64, default="Weekly")
+    billing_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    auto_charge = models.BooleanField(default=False)
+    next_charge_date = models.DateField(null=True, blank=True)
+    last_auto_charge_date = models.DateField(null=True, blank=True)
+    charge_weekday = models.PositiveSmallIntegerField(null=True, blank=True)
+    charge_month_day = models.PositiveSmallIntegerField(null=True, blank=True)
+    billing_kind = models.CharField(max_length=32, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sort_order", "pk"]
+
+    def __str__(self):
+        label = self.description or self.billing_plan or "Plan"
+        return f"{self.child.name} · {label}"
+
+
 class AttendanceRecord(models.Model):
     STATUS_EXPECTED = "expected"
     STATUS_PRESENT = "present"

@@ -10,6 +10,7 @@ from .payment_refs import attach_ledger_reference, method_label_for_reference
 from .models import (
     PortalAgencyProfile,
     PortalChild,
+    PortalChildBillingPlan,
     PortalFamily,
     PortalLedgerEntry,
     PortalPayment,
@@ -41,6 +42,183 @@ def child_uses_4cs_copay_plan(child):
     billing_type = (child.family.billing_type or "").lower()
     plan = (child.billing_plan or "").lower()
     return "4cs" in billing_type or "copay" in plan or "4cs" in plan
+
+
+def billing_kind_from_type(billing_type):
+    label = (billing_type or "").strip().lower()
+    if "4cs" in label or "copay" in label:
+        return "4cs"
+    if "scholar" in label:
+        return "scholarship"
+    if "private" in label:
+        return "private"
+    return ""
+
+
+def plan_uses_4cs_copay(child, plan=None):
+    if not agency_profile_for(child):
+        return False
+    if plan is not None:
+        kind = (plan.billing_kind or "").lower()
+        cadence = (plan.billing_plan or "").lower()
+        if kind == "4cs" or "copay" in cadence or "4cs" in cadence:
+            return True
+        if kind in ("private", "scholarship"):
+            return False
+        if getattr(plan, "sort_order", 1) != 1:
+            return False
+    return child_uses_4cs_copay_plan(child)
+
+
+def primary_billing_plan(child):
+    if not child or not child.pk:
+        return None
+    return child.billing_plans.filter(sort_order=1).first() or child.billing_plans.order_by("sort_order", "pk").first()
+
+
+def next_plan_sort_order(child):
+    last = child.billing_plans.order_by("-sort_order").first()
+    return (last.sort_order + 1) if last else 1
+
+
+def child_has_saved_plan(child):
+    if child.billing_plans.exists():
+        return True
+    plan = (child.billing_plan or "").strip().lower()
+    return bool(
+        child.billing_amount is not None
+        or child.auto_charge
+        or child.next_charge_date
+        or child.charge_weekday is not None
+        or child.charge_month_day is not None
+        or (plan and plan != "weekly")
+    )
+
+
+def ledger_charge_description(child, cadence, kind="tuition", period_label=None, description=""):
+    note = (description or "").strip()
+    if kind == "4cs_copay":
+        base = f"{cadence or 'Copay'} — {child.name}"
+        if period_label:
+            base = f"{base} ({period_label})"
+    else:
+        base = f"{cadence or 'Plan'} tuition — {child.name}"
+    if note:
+        return f"{note} — {base}"
+    return base
+
+
+def plan_description_for(child, plan=None):
+    if plan is not None:
+        return (plan.description or "").strip()
+    primary = primary_billing_plan(child)
+    return (primary.description or "").strip() if primary else ""
+
+
+def serialize_billing_plan(plan, child=None):
+    child = child or plan.child
+    kind = (plan.billing_kind or "").lower()
+    if kind == "4cs":
+        billing_type = "4Cs"
+    elif kind == "scholarship":
+        billing_type = "Scholarship"
+    elif kind == "private":
+        billing_type = "Private pay"
+    else:
+        billing_type = child.family.billing_type or "Private pay"
+    return {
+        "id": plan.pk,
+        "description": plan.description or "",
+        "plan": plan.billing_plan or "Weekly",
+        "amount": f"{plan.billing_amount:.2f}" if plan.billing_amount is not None else "",
+        "amount_display": f"{plan.billing_amount:.2f}" if plan.billing_amount is not None else "—",
+        "auto_charge": plan.auto_charge,
+        "next_charge_date": plan.next_charge_date.isoformat() if plan.next_charge_date else "",
+        "charge_weekday": "" if plan.charge_weekday is None else plan.charge_weekday,
+        "charge_month_day": "" if plan.charge_month_day is None else plan.charge_month_day,
+        "auto_charge_label": plan_repeat_label(plan),
+        "billing_type": billing_type,
+        "is_primary": plan.sort_order == 1,
+    }
+
+
+def serialize_child_primary_plan(child, extra=None):
+    extra = extra or {}
+    row = {
+        "id": extra.get("id", ""),
+        "description": extra.get("description", ""),
+        "plan": extra.get("plan") or child.billing_plan or "Weekly",
+        "amount": extra.get("amount") if extra.get("amount") not in (None, "—") else (
+            f"{child.billing_amount:.2f}" if child.billing_amount is not None else ""
+        ),
+        "amount_display": extra.get("amount") or (
+            f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—"
+        ),
+        "auto_charge": extra.get("auto_charge", child.auto_charge),
+        "next_charge_date": extra.get("next_charge_date")
+        or (child.next_charge_date.isoformat() if child.next_charge_date else ""),
+        "charge_weekday": extra.get("charge_weekday", "" if child.charge_weekday is None else child.charge_weekday),
+        "charge_month_day": extra.get("charge_month_day", "" if child.charge_month_day is None else child.charge_month_day),
+        "auto_charge_label": extra.get("auto_charge_label") or plan_repeat_label(child),
+        "billing_type": extra.get("type") or child.family.billing_type or "Private pay",
+        "is_primary": True,
+    }
+    return row
+
+
+def sync_plan_from_child(child, plan=None, description=None, billing_kind=None):
+    plan = plan or primary_billing_plan(child)
+    fields = {
+        "billing_plan": child.billing_plan or "Weekly",
+        "billing_amount": child.billing_amount,
+        "auto_charge": child.auto_charge,
+        "next_charge_date": child.next_charge_date,
+        "last_auto_charge_date": child.last_auto_charge_date,
+        "charge_weekday": child.charge_weekday,
+        "charge_month_day": child.charge_month_day,
+        "sort_order": 1,
+    }
+    if description is not None:
+        fields["description"] = (description or "").strip()
+    if billing_kind is not None:
+        fields["billing_kind"] = billing_kind
+    if plan:
+        for name, value in fields.items():
+            setattr(plan, name, value)
+        plan.save()
+        return plan
+    fields.setdefault("description", "")
+    fields.setdefault("billing_kind", billing_kind_from_type(child.family.billing_type))
+    return PortalChildBillingPlan.objects.create(child=child, **fields)
+
+
+def sync_child_from_plan(child, plan):
+    child.billing_plan = plan.billing_plan or child.billing_plan
+    child.billing_amount = plan.billing_amount
+    child.auto_charge = plan.auto_charge
+    child.next_charge_date = plan.next_charge_date
+    child.last_auto_charge_date = plan.last_auto_charge_date
+    child.charge_weekday = plan.charge_weekday
+    child.charge_month_day = plan.charge_month_day
+    child.save(
+        update_fields=[
+            "billing_plan",
+            "billing_amount",
+            "auto_charge",
+            "next_charge_date",
+            "last_auto_charge_date",
+            "charge_weekday",
+            "charge_month_day",
+        ]
+    )
+    return child
+
+
+def ensure_primary_billing_plan(child):
+    plan = primary_billing_plan(child)
+    if plan:
+        return plan
+    return sync_plan_from_child(child)
 
 
 from .parent_services import get_billing_live
@@ -575,6 +753,135 @@ def plan_repeat_label(child):
     return repeat
 
 
+def _apply_plan_schedule(
+    target,
+    plan,
+    amount=None,
+    billing_type=None,
+    auto_charge=None,
+    next_charge_date=None,
+    charge_weekday=None,
+    charge_month_day=None,
+    four_cs_profile=None,
+):
+    target.billing_plan = (plan or "").strip() or target.billing_plan
+    billing_label = (billing_type or "").strip()
+    if amount not in (None, "") and not four_cs_profile:
+        target.billing_amount = _parse_amount(amount)
+    if four_cs_profile:
+        from .agency_weeks import (
+            FOUR_CS_WEEKLY_POST_WEEKDAY,
+            cadence_key,
+            next_thursday_on_or_after,
+            next_unposted_parent_period,
+            typical_parent_period_amount,
+        )
+
+        four_cs_cadence = cadence_key(target.billing_plan)
+        four_cs_weekly = four_cs_cadence == "weekly"
+        four_cs_biweekly = four_cs_cadence == "biweekly"
+        target.billing_amount = typical_parent_period_amount(
+            four_cs_profile,
+            target.billing_plan,
+            start_from=next_charge_date if four_cs_biweekly else None,
+        )
+        if four_cs_weekly and charge_weekday in (None, ""):
+            charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
+        if not next_charge_date:
+            if four_cs_weekly:
+                next_charge_date = next_thursday_on_or_after(timezone.localdate())
+            elif four_cs_biweekly:
+                next_charge_date = timezone.localdate()
+            else:
+                upcoming = next_unposted_parent_period(four_cs_profile, target.billing_plan)
+                if upcoming:
+                    next_charge_date = upcoming["start"]
+    if auto_charge is not None:
+        target.auto_charge = bool(auto_charge)
+        if target.auto_charge and not target.billing_amount and not four_cs_profile:
+            raise ValueError("Set a plan amount before turning on automatic charges.")
+        if target.auto_charge:
+            target.charge_weekday = _parse_optional_int(charge_weekday, 0, 6)
+            target.charge_month_day = _parse_optional_int(charge_month_day, 0, 31)
+            label = (target.billing_plan or "").lower()
+            if four_cs_profile:
+                target.next_charge_date = next_charge_date or timezone.localdate()
+                if target.charge_weekday is None and target.next_charge_date:
+                    target.charge_weekday = target.next_charge_date.weekday()
+            elif "month" in label:
+                target.charge_weekday = None
+                if target.charge_month_day is None:
+                    raise ValueError("Pick the day of the month this plan should repeat.")
+                target.next_charge_date = first_plan_charge_date(
+                    next_charge_date,
+                    target.billing_plan,
+                    weekday=target.charge_weekday,
+                    month_day=target.charge_month_day,
+                )
+            else:
+                target.charge_month_day = None
+                if target.charge_weekday is None:
+                    raise ValueError("Pick the weekday this plan should repeat.")
+                target.next_charge_date = first_plan_charge_date(
+                    next_charge_date,
+                    target.billing_plan,
+                    weekday=target.charge_weekday,
+                    month_day=target.charge_month_day,
+                )
+        else:
+            target.next_charge_date = None
+            target.charge_weekday = None
+            target.charge_month_day = None
+    elif next_charge_date is not None:
+        target.next_charge_date = next_charge_date
+    return target
+
+
+def _save_extra_billing_plan(
+    child,
+    family,
+    existing=None,
+    plan="Weekly",
+    amount=None,
+    billing_type=None,
+    auto_charge=None,
+    next_charge_date=None,
+    charge_weekday=None,
+    charge_month_day=None,
+    description="",
+):
+    billing_label = (billing_type or "").strip()
+    four_cs_profile = (
+        agency_profile_for(child)
+        if billing_label.lower() == "4cs" or "4cs" in billing_label.lower()
+        else None
+    )
+    row = existing or PortalChildBillingPlan(
+        child=child,
+        sort_order=next_plan_sort_order(child),
+    )
+    if amount not in (None, "") and not four_cs_profile:
+        row.billing_amount = _parse_amount(amount)
+    _apply_plan_schedule(
+        row,
+        plan,
+        amount=amount,
+        billing_type=billing_type,
+        auto_charge=auto_charge,
+        next_charge_date=next_charge_date,
+        charge_weekday=charge_weekday,
+        charge_month_day=charge_month_day,
+        four_cs_profile=four_cs_profile,
+    )
+    row.description = (description or "").strip()
+    row.billing_kind = billing_kind_from_type(billing_label) or row.billing_kind or "private"
+    row.save()
+    posted = []
+    if row.auto_charge and row.next_charge_date and row.next_charge_date <= timezone.localdate():
+        posted = run_due_plan_charges(child=child, plan=row)
+    return child, posted
+
+
 @transaction.atomic
 def update_child_billing_plan(
     family,
@@ -589,10 +896,40 @@ def update_child_billing_plan(
     scholarship_fund_id=None,
     scholarship_full_rate=None,
     scholarship_parent_amount=None,
+    description=None,
+    plan_id=None,
+    create_new=False,
 ):
     child = family.children.filter(name=child_name, is_active=True).first()
     if not child:
         raise ValueError("Child not found on this family account.")
+    existing_plan = None
+    if plan_id:
+        existing_plan = child.billing_plans.filter(pk=plan_id).first()
+        if not existing_plan:
+            raise ValueError("Plan not found on this child.")
+    is_extra = False
+    if create_new:
+        is_extra = child_has_saved_plan(child)
+        if is_extra:
+            ensure_primary_billing_plan(child)
+            existing_plan = None
+    elif existing_plan and existing_plan.sort_order != 1 and existing_plan != primary_billing_plan(child):
+        is_extra = True
+    if is_extra:
+        return _save_extra_billing_plan(
+            child,
+            family,
+            existing=existing_plan,
+            plan=plan,
+            amount=amount,
+            billing_type=billing_type,
+            auto_charge=auto_charge,
+            next_charge_date=next_charge_date,
+            charge_weekday=charge_weekday,
+            charge_month_day=charge_month_day,
+            description="" if description is None else description,
+        )
     child.billing_plan = plan.strip() or child.billing_plan
     billing_label = (billing_type or "").strip()
     if billing_label.lower() == "scholarship":
@@ -686,6 +1023,11 @@ def update_child_billing_plan(
             "charge_month_day",
         ]
     )
+    kind = billing_kind_from_type(billing_type) if billing_type else None
+    note = description
+    if note is None and existing_plan:
+        note = existing_plan.description
+    sync_plan_from_child(child, plan=existing_plan if existing_plan and existing_plan.sort_order == 1 else None, description=note, billing_kind=kind)
     if billing_type:
         family.billing_type = billing_type.strip()
         family.save(update_fields=["billing_type"])
@@ -712,7 +1054,7 @@ def _next_4cs_charge_date(plan, today, profile, scheduled=None):
     return nxt["start"] if nxt else None
 
 
-def _post_4cs_copay_period(locked, today):
+def _post_4cs_copay_period(locked, today, plan=None):
     """Post a parent-copay period dated today. Returns True if a family charge was posted.
 
     Weekly 4Cs copay covers the school week after the most recent Thursday
@@ -730,21 +1072,22 @@ def _post_4cs_copay_period(locked, today):
     profile = agency_profile_for(locked)
     if not profile:
         return False
-    key = cadence_key(locked.billing_plan)
-    scheduled = locked.next_charge_date or today
+    target = plan or locked
+    key = cadence_key(target.billing_plan)
+    scheduled = target.next_charge_date or today
     if key == "weekly":
-        period = parent_period_for_weekly_thursday_post(profile, locked.billing_plan, today)
+        period = parent_period_for_weekly_thursday_post(profile, target.billing_plan, today)
     elif key == "biweekly":
-        period = parent_period_for_biweekly_from_date(profile, locked.billing_plan, scheduled)
+        period = parent_period_for_biweekly_from_date(profile, target.billing_plan, scheduled)
     else:
-        period = next_unposted_parent_period(profile, locked.billing_plan)
+        period = next_unposted_parent_period(profile, target.billing_plan)
     if not period:
-        locked.next_charge_date = None
+        target.next_charge_date = None
         return False
     charge_date = today
-    if locked.last_auto_charge_date == charge_date:
-        locked.next_charge_date = _next_4cs_charge_date(
-            locked.billing_plan, today, profile, scheduled=scheduled
+    if target.last_auto_charge_date == charge_date:
+        target.next_charge_date = _next_4cs_charge_date(
+            target.billing_plan, today, profile, scheduled=scheduled
         )
         return False
     amount = period["amount"]
@@ -755,22 +1098,131 @@ def _post_4cs_copay_period(locked, today):
             "4cs_copay",
             amount,
             charge_date,
-            f"{locked.billing_plan or 'Copay'} — {locked.name} ({period['label']})",
+            ledger_charge_description(
+                locked,
+                target.billing_plan,
+                "4cs_copay",
+                period["label"],
+                plan_description_for(locked, plan),
+            ),
             is_manual=False,
         )
     mark_parent_period_posted(period["weeks"], charge_date)
-    locked.last_auto_charge_date = charge_date
-    locked.next_charge_date = _next_4cs_charge_date(
-        locked.billing_plan, today, profile, scheduled=scheduled
+    target.last_auto_charge_date = charge_date
+    target.next_charge_date = _next_4cs_charge_date(
+        target.billing_plan, today, profile, scheduled=scheduled
     )
     return amount > 0
 
 
-def run_due_plan_charges(today=None, child=None):
+def _post_regular_plan_charge(child, target, today):
+    """Post one regular (non-4Cs) period for a child or extra plan. Returns True if posted."""
+    charge_date = target.next_charge_date
+    if not charge_date:
+        return False
+    if target.last_auto_charge_date == charge_date:
+        target.next_charge_date = next_plan_charge_date(
+            charge_date,
+            target.billing_plan,
+            weekday=target.charge_weekday,
+            month_day=target.charge_month_day,
+        )
+        return False
+    plan_row = target if isinstance(target, PortalChildBillingPlan) else None
+    note = plan_description_for(child, plan_row)
+    scholarship = active_scholarship_for_child(child, charge_date) if plan_row is None or plan_row.sort_order == 1 else None
+    if scholarship and scholarship.full_rate:
+        post_charge(
+            child.family,
+            child.name,
+            "tuition",
+            scholarship.full_rate,
+            charge_date,
+            ledger_charge_description(child, target.billing_plan, "tuition", description=note),
+            is_manual=False,
+        )
+        discount = scholarship.full_rate - scholarship.parent_amount
+        if discount > 0:
+            post_discount(
+                child.family,
+                child.name,
+                discount,
+                charge_date,
+                f"{scholarship.fund.name} scholarship",
+            )
+    else:
+        if not target.billing_amount:
+            target.next_charge_date = next_plan_charge_date(
+                charge_date,
+                target.billing_plan,
+                weekday=target.charge_weekday,
+                month_day=target.charge_month_day,
+            )
+            return False
+        post_charge(
+            child.family,
+            child.name,
+            "tuition",
+            target.billing_amount,
+            charge_date,
+            ledger_charge_description(child, target.billing_plan, "tuition", description=note),
+            is_manual=False,
+        )
+    target.last_auto_charge_date = charge_date
+    target.next_charge_date = next_plan_charge_date(
+        charge_date,
+        target.billing_plan,
+        weekday=target.charge_weekday,
+        month_day=target.charge_month_day,
+    )
+    return True
+
+
+def _run_due_extra_plan(plan, today):
+    child = plan.child
+    uses_4cs = plan_uses_4cs_copay(child, plan)
+    if not uses_4cs and not plan.billing_amount:
+        return False
+    did_post = False
+    periods = 0
+    while plan.next_charge_date and plan.next_charge_date <= today and periods < 8:
+        if uses_4cs:
+            if _post_4cs_copay_period(child, today, plan=plan):
+                did_post = True
+            periods += 1
+            if not plan.next_charge_date or plan.next_charge_date > today:
+                break
+            continue
+        if _post_regular_plan_charge(child, plan, today):
+            did_post = True
+        periods += 1
+    plan.save(update_fields=["last_auto_charge_date", "next_charge_date", "billing_amount"])
+    return did_post
+
+
+def run_due_plan_charges(today=None, child=None, plan=None):
     """Post due child plan charges and advance each next charge date."""
     from django.db.models import Q
 
     today = today or timezone.localdate()
+    posted = []
+    only_child = child
+    only_plan = plan
+    if only_plan is not None:
+        try:
+            with transaction.atomic():
+                locked_plan = (
+                    PortalChildBillingPlan.objects.select_for_update()
+                    .select_related("child", "child__family")
+                    .filter(pk=only_plan.pk, auto_charge=True, next_charge_date__lte=today)
+                    .first()
+                )
+                if locked_plan and _run_due_extra_plan(locked_plan, today):
+                    posted.append(locked_plan.child)
+        except Exception:
+            if only_child is not None or only_plan is not None:
+                raise
+        return posted
     due = PortalChild.objects.select_related("family").filter(
         is_active=True,
         auto_charge=True,
@@ -778,10 +1230,8 @@ def run_due_plan_charges(today=None, child=None):
         next_charge_date__lte=today,
         family__status="Active",
     ).filter(Q(billing_amount__gt=0) | Q(agency_profile__isnull=False))
-    only_child = child
     if only_child is not None:
         due = due.filter(pk=only_child.pk)
-    posted = []
     for due_child in due:
         try:
             with transaction.atomic():
@@ -810,60 +1260,77 @@ def run_due_plan_charges(today=None, child=None):
                         if not locked.next_charge_date or locked.next_charge_date > today:
                             break
                         continue
-                    charge_date = locked.next_charge_date
-                    if locked.last_auto_charge_date == charge_date:
-                        locked.next_charge_date = next_plan_charge_date(
-                            charge_date,
-                            locked.billing_plan,
-                            weekday=locked.charge_weekday,
-                            month_day=locked.charge_month_day,
-                        )
-                        continue
-                    scholarship = active_scholarship_for_child(locked, charge_date)
-                    if scholarship and scholarship.full_rate:
-                        post_charge(
-                            locked.family,
-                            locked.name,
-                            "tuition",
-                            scholarship.full_rate,
-                            charge_date,
-                            f"{locked.billing_plan or 'Plan'} tuition — {locked.name}",
-                            is_manual=False,
-                        )
-                        discount = scholarship.full_rate - scholarship.parent_amount
-                        if discount > 0:
-                            post_discount(
-                                locked.family,
-                                locked.name,
-                                discount,
-                                charge_date,
-                                f"{scholarship.fund.name} scholarship",
-                            )
-                    else:
-                        post_charge(
-                            locked.family,
-                            locked.name,
-                            "tuition",
-                            locked.billing_amount,
-                            charge_date,
-                            f"{locked.billing_plan or 'Plan'} tuition — {locked.name}",
-                            is_manual=False,
-                        )
-                    locked.last_auto_charge_date = charge_date
-                    locked.next_charge_date = next_plan_charge_date(
-                        charge_date,
-                        locked.billing_plan,
-                        weekday=locked.charge_weekday,
-                        month_day=locked.charge_month_day,
-                    )
-                    posted.append(locked)
+                    if _post_regular_plan_charge(locked, locked, today):
+                        posted.append(locked)
                     periods += 1
                 locked.save(update_fields=["last_auto_charge_date", "next_charge_date"])
+                primary = primary_billing_plan(locked)
+                if primary:
+                    primary.next_charge_date = locked.next_charge_date
+                    primary.last_auto_charge_date = locked.last_auto_charge_date
+                    primary.billing_amount = locked.billing_amount
+                    primary.auto_charge = locked.auto_charge
+                    primary.billing_plan = locked.billing_plan
+                    primary.charge_weekday = locked.charge_weekday
+                    primary.charge_month_day = locked.charge_month_day
+                    primary.save(
+                        update_fields=[
+                            "next_charge_date",
+                            "last_auto_charge_date",
+                            "billing_amount",
+                            "auto_charge",
+                            "billing_plan",
+                            "charge_weekday",
+                            "charge_month_day",
+                        ]
+                    )
+        except Exception:
+            if only_child is not None:
+                raise
+            continue
+    extra = PortalChildBillingPlan.objects.select_related("child", "child__family").filter(
+        auto_charge=True,
+        next_charge_date__isnull=False,
+        next_charge_date__lte=today,
+        child__is_active=True,
+        child__family__status="Active",
+        sort_order__gt=1,
+    ).filter(Q(billing_amount__gt=0) | Q(child__agency_profile__isnull=False))
+    if only_child is not None:
+        extra = extra.filter(child=only_child)
+    for extra_plan in extra:
+        try:
+            with transaction.atomic():
+                locked_plan = (
+                    PortalChildBillingPlan.objects.select_for_update()
+                    .select_related("child", "child__family")
+                    .filter(pk=extra_plan.pk, auto_charge=True, next_charge_date__lte=today)
+                    .first()
+                )
+                if locked_plan and _run_due_extra_plan(locked_plan, today):
+                    posted.append(locked_plan.child)
         except Exception:
             if only_child is not None:
                 raise
             continue
     return posted
+
+
+def _scheduled_row(child, plan_label, repeat, amount, next_charge_date, description=""):
+    label = plan_label
+    note = (description or "").strip()
+    if note:
+        label = f"{note} · {plan_label}" if plan_label else note
+    return {
+        "family_slug": child.family.slug,
+        "family_name": child.family.name,
+        "unit": child.family.unit.name if child.family.unit_id else "",
+        "child_name": child.name,
+        "plan": label,
+        "repeat": repeat,
+        "amount": f"{amount:.2f}" if amount is not None else "—",
+        "next_charge_date": next_charge_date.isoformat() if next_charge_date else "",
+    }
 
 
 def get_scheduled_plan_charges(limit=50):
@@ -874,19 +1341,68 @@ def get_scheduled_plan_charges(limit=50):
     )
     rows = []
     for child in children:
+        primary = primary_billing_plan(child)
         rows.append(
-            {
-                "family_slug": child.family.slug,
-                "family_name": child.family.name,
-                "unit": child.family.unit.name if child.family.unit_id else "",
-                "child_name": child.name,
-                "plan": child.billing_plan,
-                "repeat": plan_repeat_label(child),
-                "amount": f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—",
-                "next_charge_date": child.next_charge_date.isoformat() if child.next_charge_date else "",
-            }
+            _scheduled_row(
+                child,
+                child.billing_plan,
+                plan_repeat_label(child),
+                child.billing_amount,
+                child.next_charge_date,
+                primary.description if primary else "",
+            )
         )
-    return rows
+        seen_primary.add(child.pk)
+    extras = (
+        PortalChildBillingPlan.objects.select_related("child", "child__family", "child__family__unit")
+        .filter(
+            auto_charge=True,
+            next_charge_date__isnull=False,
+            child__is_active=True,
+            sort_order__gt=1,
+        )
+        .order_by("next_charge_date", "child__family__name", "child__name")[:limit]
+    )
+    for plan in extras:
+        rows.append(
+            _scheduled_row(
+                plan.child,
+                plan.billing_plan,
+                plan_repeat_label(plan),
+                plan.billing_amount,
+                plan.next_charge_date,
+                plan.description,
+            )
+        )
+    rows.sort(key=lambda row: (row["next_charge_date"] or "", row["family_name"], row["child_name"], row["plan"]))
+    return rows[:limit]
+
+
+@transaction.atomic
+def delete_child_billing_plan(family, child_name, plan_id):
+    child = family.children.filter(name=child_name, is_active=True).first()
+    if not child:
+        raise ValueError("Child not found on this family account.")
+    plan = child.billing_plans.filter(pk=plan_id).first()
+    if not plan:
+        raise ValueError("Plan not found on this child.")
+    was_primary = plan.sort_order == 1 or plan == primary_billing_plan(child)
+    plan.delete()
+    if was_primary:
+        nxt = child.billing_plans.order_by("sort_order", "pk").first()
+        if nxt:
+            nxt.sort_order = 1
+            nxt.save(update_fields=["sort_order"])
+            sync_child_from_plan(child, nxt)
+        else:
+            child.auto_charge = False
+            child.next_charge_date = None
+            child.charge_weekday = None
+            child.charge_month_day = None
+            child.save(
+                update_fields=["auto_charge", "next_charge_date", "charge_weekday", "charge_month_day"]
+            )
+    return child
 
 
 def get_refundable_payments(family):

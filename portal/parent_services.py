@@ -59,7 +59,13 @@ def _child_balances_from_ledger(family):
     portal_children = list(family.children.filter(is_active=True))
     if portal_children:
         from .agency_weeks import cadence_key, get_program_calendar, parent_charge_periods, serialize_week
-        from .billing_services import active_scholarship_for_child, agency_profile_for, plan_repeat_label
+        from .billing_services import (
+            active_scholarship_for_child,
+            agency_profile_for,
+            plan_repeat_label,
+            serialize_billing_plan,
+            serialize_child_primary_plan,
+        )
         from .family_list import child_balance_from_map
 
         balances = child_balance_map(family)
@@ -94,6 +100,13 @@ def _child_balances_from_ledger(family):
                         "scholarship_fund_id": assignment.fund_id,
                     }
                 )
+            stored_plans = list(child.billing_plans.all())
+            if stored_plans:
+                row["plans"] = [serialize_billing_plan(plan, child) for plan in stored_plans]
+                row["description"] = stored_plans[0].description or ""
+            else:
+                row["plans"] = [serialize_child_primary_plan(child, row)]
+                row["description"] = ""
             profile = agency_profile_for(child)
             if profile:
                 row["agency_profile_id"] = profile.pk

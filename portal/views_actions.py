@@ -1355,6 +1355,7 @@ def staff_billing_action(request, family_slug):
         staff_payment_note,
         update_child_billing_plan,
         update_ledger_description,
+        delete_child_billing_plan,
     )
     from .staff_auth import (
         billing_permissions_for_staff,
@@ -1585,6 +1586,8 @@ def staff_billing_action(request, family_slug):
                 next_charge_date=next_charge_date,
                 charge_weekday=request.POST.get("charge_weekday"),
                 charge_month_day=request.POST.get("charge_month_day"),
+                description=request.POST.get("plan_description"),
+                plan_id=request.POST.get("plan_id") or None,
             )
             if posted:
                 count = len(posted)
@@ -1604,8 +1607,6 @@ def staff_billing_action(request, family_slug):
                 details=request.POST.get("child_name", ""),
             )
         elif action == "update_plan":
-            if area != "admin":
-                raise ValueError("Only portal admin can edit billing plans.")
             _child, posted = update_child_billing_plan(
                 family,
                 request.POST.get("child_name", "").strip(),
@@ -1619,6 +1620,9 @@ def staff_billing_action(request, family_slug):
                 scholarship_fund_id=request.POST.get("scholarship_fund_id"),
                 scholarship_full_rate=request.POST.get("scholarship_full_rate"),
                 scholarship_parent_amount=request.POST.get("scholarship_parent_amount"),
+                description=request.POST.get("plan_description"),
+                plan_id=request.POST.get("plan_id") or None,
+                create_new=request.POST.get("create_plan") == "1",
             )
             if posted:
                 count = len(posted)
@@ -1633,6 +1637,21 @@ def staff_billing_action(request, family_slug):
                 request,
                 "plan",
                 action_label="Saved billing plan",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("child_name", ""),
+            )
+        elif action == "delete_plan":
+            delete_child_billing_plan(
+                family,
+                request.POST.get("child_name", "").strip(),
+                request.POST.get("plan_id"),
+            )
+            messages.success(request, "Billing plan removed.")
+            _log_activity(
+                request,
+                "plan",
+                action_label="Removed billing plan",
                 object_type="family",
                 object_label=family.name,
                 details=request.POST.get("child_name", ""),

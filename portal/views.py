@@ -850,6 +850,33 @@ def _parent_live_mode(request):
     return bool(get_parent_account(request.user))
 
 
+PARENT_CONTACT_EMAIL = "Jakeraj@yeanj.org"
+
+
+def _parent_contact_form(data=None, account=None):
+    from .forms import ParentContactForm
+
+    initial = {}
+    if account:
+        user = account.user
+        name = (user.get_full_name() or "").strip() if user else ""
+        if not name and account.family:
+            name = account.family.primary_contact or ""
+        email = (user.email if user else "") or ""
+        initial = {"name": name, "email": email}
+    if data is not None:
+        return ParentContactForm(data, initial=initial)
+    return ParentContactForm(initial=initial)
+
+
+def _parent_contact_page_extras(request, account=None):
+    return {
+        "contact_form": _parent_contact_form(account=account),
+        "contact_submitted": request.GET.get("sent") == "1",
+        "parent_contact_email": PARENT_CONTACT_EMAIL,
+    }
+
+
 def _parent_policy_data(preview_key):
     slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
     return get_family_policies(slug)
@@ -1164,12 +1191,14 @@ def parent_page(request, page):
         "account": "portal/parent/account.html",
         "tax-statements": "portal/parent/tax_statements.html",
         "support": "portal/support/support.html",
+        "contact-us": "portal/parent/contact.html",
     }
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
 
-    context = _parent_context(request, page.replace("-", " ").title(), page_slug=page)
+    page_title = "Contact us" if page == "contact-us" else page.replace("-", " ").title()
+    context = _parent_context(request, page_title, page_slug=page)
     if page == "billing":
         context["billing"] = context["parent_preview"]["billing"]
         for payment in context["parent_preview"].get("stripe_reconciled") or []:
@@ -1314,7 +1343,69 @@ def parent_page(request, page):
             if account:
                 family_slug = account.family.slug
         context = _support_context("parent", "Support", request, preview_family=family_slug)
+    if page == "contact-us":
+        account = get_parent_account(request.user) if request.user.is_authenticated else None
+        context.update(_parent_contact_page_extras(request, account))
     return render(request, template, context)
+
+
+@require_POST
+@parent_login_required
+def parent_contact_submit(request):
+    from core.email_service import send_site_email
+    from core.spam_protection import is_honeypot_triggered
+
+    account = get_parent_account(request.user) if request.user.is_authenticated else None
+    form = _parent_contact_form(request.POST, account=account)
+    if not form.is_valid():
+        context = _parent_context(request, "Contact us", page_slug="contact-us")
+        context.update(
+            {
+                "contact_form": form,
+                "contact_submitted": False,
+                "parent_contact_email": PARENT_CONTACT_EMAIL,
+            }
+        )
+        return render(request, "portal/parent/contact.html", context)
+
+    if is_honeypot_triggered(form.cleaned_data):
+        return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'contact-us'})}?sent=1")
+
+    name = form.cleaned_data["name"]
+    email = form.cleaned_data["email"]
+    topic_label = form.cleaned_data.get("topic")
+    topic_display = dict(form.fields["topic"].choices).get(topic_label, topic_label)
+    family_name = account.family.name if account and account.family else ""
+    body = (
+        f"Name: {name}\n"
+        f"Email: {email}\n"
+        f"Family: {family_name or '—'}\n"
+        f"Topic: {topic_display}\n\n"
+        f"Message:\n{form.cleaned_data['message']}\n"
+    )
+    sent = send_site_email(
+        subject=f"[YEA Parent Portal] {topic_display} — {name}",
+        message=body,
+        recipient_list=[PARENT_CONTACT_EMAIL],
+        reply_to=[email],
+    )
+    if not sent:
+        messages.error(
+            request,
+            f"We could not send that message just now. Email {PARENT_CONTACT_EMAIL} directly, or try again in a few minutes.",
+        )
+        context = _parent_context(request, "Contact us", page_slug="contact-us")
+        context.update(
+            {
+                "contact_form": form,
+                "contact_submitted": False,
+                "parent_contact_email": PARENT_CONTACT_EMAIL,
+            }
+        )
+        return render(request, "portal/parent/contact.html", context)
+
+    messages.success(request, "Thank you! Your message was sent to Jakera Jacobs.")
+    return redirect(f"{reverse('portal_parent_page', kwargs={'page': 'contact-us'})}?sent=1")
 
 
 @require_GET
@@ -3255,7 +3346,7 @@ def _render_family_plans(request, area, family_slug):
     )
     if not context:
         return render(request, "portal/404.html", status=404)
-    if context.get("portal_live") and area == "admin":
+    if context.get("portal_live"):
         from .models import PortalScholarshipFund
 
         context["scholarship_funds"] = list(
@@ -3263,6 +3354,7 @@ def _render_family_plans(request, area, family_slug):
         )
     else:
         context.setdefault("scholarship_funds", [])
+    context["can_edit_plans"] = True
     return render(request, "portal/staff/family_plans.html", context)
 
 
@@ -4568,6 +4660,7 @@ PARENT_PREVIEW_TEMPLATES = {
     "account": "portal/parent/account.html",
     "tax-statements": "portal/parent/tax_statements.html",
     "support": "portal/support/support.html",
+    "contact-us": "portal/parent/contact.html",
 }
 
 
@@ -4708,6 +4801,8 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
                     parent_page=page,
                 )
             )
+        if page == "contact-us":
+            context.update(_parent_contact_page_extras(request, account))
         return render(request, template, context)
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
@@ -4744,6 +4839,8 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         context["parent_page_slug"] = "support"
         context["hide_card_details"] = True
         context["portal_live"] = False
+    if page == "contact-us":
+        context.update(_parent_contact_page_extras(request))
     context.update(
         _family_neighbor_nav(
             request,
@@ -4788,6 +4885,8 @@ def admin_parent_preview_sample(request, page="dashboard"):
         context["profile"] = context["parent_preview"]["profile"]
     if page == "dashboard":
         context["dashboard"] = context["parent_preview"]["dashboard"]
+    if page == "contact-us":
+        context.update(_parent_contact_page_extras(request))
     return render(request, template, context)
 
 

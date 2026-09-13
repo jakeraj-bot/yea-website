@@ -619,6 +619,12 @@ def _sync_child_plan_from_scholarship(assignment):
     if not (child.billing_plan or "").strip():
         child.billing_plan = "Weekly"
     child.save(update_fields=["billing_amount", "billing_plan"])
+    try:
+        from .billing_services import sync_plan_from_child
+
+        sync_plan_from_child(child, billing_kind="scholarship")
+    except Exception:
+        pass
     family = child.family
     family.billing_type = "Scholarship"
     family.save(update_fields=["billing_type"])
