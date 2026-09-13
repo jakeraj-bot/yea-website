@@ -1,0 +1,30 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ groups_url }}">Groups</a> / {{ group.name }}</p>
+    <h1>{{ group.name }}</h1>
+    <p class="lead">{{ group.unit.name }} — standing list, not a calendar day.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar">
+      {% for link in print_links %}
+      <a class="btn btn-secondary" href="{{ link.url }}">Print {{ link.label|lower }}</a>
+      {% endfor %}
+    </div>
+
+    <h2>Members</h2>
+    <p class="form-note">Left: kids you can add. Right: members in this group. Filter the left list by unit or child name.</p>
+    {% include "portal/includes/member_picker.html" %}
+
+    <form method="post" action="{{ picker_action }}" class="portal-toolbar" onsubmit="return confirm('Delete this group?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn btn-secondary">Delete group</button>
+      <a class="btn btn-secondary" href="{{ groups_url }}">Back to groups</a>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Activity calendar</h1>
+    <p class="lead">
+      {% if ops_area == "admin" %}
+        Schedule activities for any unit, then open a day to add who attended and upload that day’s lesson plan.
+      {% else %}
+        {{ staff_unit }} — schedule activities, then add the children who attended.
+      {% endif %}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="card portal-program-form portal-collapse-skip">
+      <h2>Create activity</h2>
+      <p class="form-note">One day, a school week (Monday–Friday), or every weekday in the month. Lesson plans are uploaded per day after you create the week or month.</p>
+      <form class="portal-form-grid" method="post" action="{{ create_url }}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="act-name">Name</label>
+          <input id="act-name" name="name" type="text" class="portal-input" required placeholder="Art, gym, bus run…">
+        </div>
+        <div class="form-group">
+          <label for="act-date">Date</label>
+          <input id="act-date" name="date" type="date" class="portal-input" value="{{ today }}" required>
+        </div>
+        <div class="form-group">
+          <label for="act-time">Time</label>
+          <input id="act-time" name="time" type="time" class="portal-input" value="{{ default_time }}" required>
+        </div>
+        <div class="form-group">
+          <label for="act-repeat">How many days</label>
+          <select id="act-repeat" name="repeat" class="portal-select">
+            <option value="once">This day only</option>
+            <option value="week">This week (Mon–Fri)</option>
+            <option value="month">This month (weekdays)</option>
+          </select>
+        </div>
+        {% if show_unit_filter %}
+        <div class="form-group">
+          <label for="act-unit">Unit</label>
+          <select id="act-unit" name="unit" class="portal-select" required>
+            {% for slug, name in unit_choices %}
+            <option value="{{ slug }}"{% if default_unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="form-group portal-form-full">
+          <label for="act-plan">Lesson plan for this day only (optional)</label>
+          <input id="act-plan" name="lesson_plan" type="file" class="portal-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp">
+          <p class="form-note">PDF, Word, or image. For a week or month, skip this and upload on each day later.</p>
+        </div>
+        <div class="form-group portal-form-full">
+          <button type="submit" class="btn btn-primary">Create activity</button>
+        </div>
+      </form>
+    </div>
+
+    <section class="card portal-collapse-skip portal-child-calendar-card">
+      <div class="portal-child-calendar-nav">
+        <a class="btn btn-secondary btn-sm" href="{{ calendar_list_url }}?month={{ calendar.prev_month }}{% if filter_unit %}&amp;unit={{ filter_unit }}{% endif %}">Previous month</a>
+        <h2 class="portal-child-calendar-month">{{ calendar.month_label }}</h2>
+        <a class="btn btn-secondary btn-sm" href="{{ calendar_list_url }}?month={{ calendar.next_month }}{% if filter_unit %}&amp;unit={{ filter_unit }}{% endif %}">Next month</a>
+      </div>
+      {% if show_unit_filter %}
+      <form method="get" class="portal-member-picker-filters">
+        <input type="hidden" name="month" value="{{ calendar.month_value }}">
+        <label class="portal-filter-label">
+          Unit
+          <select class="portal-select" name="unit" onchange="this.form.submit()">
+            <option value="">All units</option>
+            {% for slug, name in unit_choices %}
+            <option value="{{ slug }}"{% if filter_unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+      {% endif %}
+      <div class="portal-table-wrap">
+        <table class="portal-child-calendar portal-activity-calendar" aria-label="Activity calendar">
+          <thead>
+            <tr>
+              {% for weekday in calendar.weekdays %}
+              <th>{{ weekday }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in calendar.weeks %}
+            <tr>
+              {% for day in week %}
+              <td class="portal-child-calendar-day{% if not day.in_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.activities %} has-activities{% endif %}">
+                <span class="portal-child-calendar-num">{{ day.day }}</span>
+                {% if day.in_month %}
+                <ul class="portal-activity-day-list">
+                  {% for item in day.activities %}
+                  <li>
+                    <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_activity_detail' activity_id=item.pk %}{% else %}{% url 'portal_staff_activity_detail' activity_id=item.pk %}{% endif %}">
+                      {{ item.start_time|time:"g:i A" }} · {{ item.name }}
+                      {% if show_unit_filter %} · {{ item.unit.name }}{% endif %}
+                    </a>
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card portal-collapse-skip">
+      <h2>This month</h2>
+      {% if activities %}
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Name</th>
+              {% if show_unit_filter %}<th>Unit</th>{% endif %}
+              <th>Lesson plan</th>
+              <th>Members</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in activities %}
+            <tr>
+              <td>{{ item.activity_date|date:"D, M j" }}</td>
+              <td>{{ item.start_time|time:"g:i A" }}</td>
+              <td>
+                <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_activity_detail' activity_id=item.pk %}{% else %}{% url 'portal_staff_activity_detail' activity_id=item.pk %}{% endif %}">{{ item.name }}</a>
+              </td>
+              {% if show_unit_filter %}<td>{{ item.unit.name }}</td>{% endif %}
+              <td>{% if item.has_lesson_plan %}Uploaded{% else %}—{% endif %}</td>
+              <td>{{ item.member_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="form-note">No activities this month{% if filter_unit %} for that unit{% endif %}.</p>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}

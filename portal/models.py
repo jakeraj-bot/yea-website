@@ -1136,3 +1136,121 @@ class PortalActivityEvent(models.Model):
         who = self.actor_name or self.actor_username or "Someone"
         return f"{who} · {self.action_label} · {self.created_at}"
 
+
+class PortalCalendarActivity(models.Model):
+    name = models.CharField(max_length=160)
+    activity_date = models.DateField()
+    start_time = models.TimeField()
+    unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="calendar_activities")
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_calendar_activities",
+    )
+    series_id = models.UUIDField(null=True, blank=True, db_index=True)
+    lesson_plan = models.FileField(upload_to="portal/activity-lesson-plans/%Y/%m/", blank=True)
+    lesson_plan_name = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    members = models.ManyToManyField(
+        PortalChild,
+        through="PortalCalendarActivityMember",
+        related_name="calendar_activities",
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["activity_date", "start_time", "name"]
+
+    def __str__(self):
+        return f"{self.name} · {self.activity_date}"
+
+    @property
+    def has_lesson_plan(self):
+        return bool(self.lesson_plan)
+
+
+class PortalCalendarActivityMember(models.Model):
+    activity = models.ForeignKey(
+        PortalCalendarActivity,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    child = models.ForeignKey(
+        PortalChild,
+        on_delete=models.CASCADE,
+        related_name="calendar_activity_memberships",
+    )
+    added_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="added_calendar_activity_members",
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["child__name"]
+        unique_together = [("activity", "child")]
+
+    def __str__(self):
+        return f"{self.child.name} · {self.activity.name}"
+
+
+class PortalMemberGroup(models.Model):
+    name = models.CharField(max_length=160)
+    unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="member_groups")
+    created_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_member_groups",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    members = models.ManyToManyField(
+        PortalChild,
+        through="PortalMemberGroupMember",
+        related_name="member_groups",
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} · {self.unit.name}"
+
+
+class PortalMemberGroupMember(models.Model):
+    group = models.ForeignKey(
+        PortalMemberGroup,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    child = models.ForeignKey(
+        PortalChild,
+        on_delete=models.CASCADE,
+        related_name="group_memberships",
+    )
+    added_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="added_member_group_members",
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["child__name"]
+        unique_together = [("group", "child")]
+
+    def __str__(self):
+        return f"{self.child.name} · {self.group.name}"
+
+

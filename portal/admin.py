@@ -4,10 +4,12 @@ from .models import (
     AttendanceRecord,
     PortalActivityEvent,
     PortalBillingDefaultRule,
+    PortalCalendarActivity,
     PortalChild,
     PortalEmailTemplate,
     PortalFamily,
     PortalFeeRule,
+    PortalMemberGroup,
     PortalParentEmail,
     PortalParentEmailAttachment,
     PortalPaymentPlan,
@@ -133,6 +135,20 @@ class PortalParentEmailAdmin(admin.ModelAdmin):
         "sent_at",
     )
     inlines = [PortalParentEmailAttachmentInline]
+
+
+@admin.register(PortalCalendarActivity)
+class PortalCalendarActivityAdmin(admin.ModelAdmin):
+    list_display = ("name", "activity_date", "start_time", "unit")
+    list_filter = ("unit", "activity_date")
+    search_fields = ("name",)
+
+
+@admin.register(PortalMemberGroup)
+class PortalMemberGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "unit")
+    list_filter = ("unit",)
+    search_fields = ("name",)
 
 
 @admin.register(PortalActivityEvent)

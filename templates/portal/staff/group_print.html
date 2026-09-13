@@ -1,0 +1,150 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+{% include "portal/includes/print_wide.html" %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ groups_url }}">Groups</a> / <a href="{{ group_url }}">{{ group.name }}</a> / Print</p>
+    <h1>{{ print_label }}</h1>
+    <p class="lead">{{ group.name }} · {{ group.unit.name }} · {{ report_rows|length }} row{{ report_rows|length|pluralize }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{{ group_url }}">Back to group</a>
+    </div>
+
+    <div class="card portal-medical-report-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — {{ print_label }}</h2>
+          <p class="portal-medical-report-meta">
+            <strong>{{ group.name }}</strong> · {{ group.unit.name }}
+            · {{ report_rows|length }} row{{ report_rows|length|pluralize }}
+            · Generated {{ generated_date }}
+          </p>
+        </div>
+      </header>
+
+      <div class="portal-table-wrap">
+        {% if print_kind == "attendance" %}
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Grade</th>
+              <th>Time in</th>
+              <th>Time out</th>
+              <th>Staff</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td class="portal-row-num">{{ row.index }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.grade }}</td>
+              <td class="portal-print-blank-cell"></td>
+              <td class="portal-print-blank-cell"></td>
+              <td class="portal-print-blank-cell"></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No members in this group.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% elif print_kind == "contacts" %}
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Parent / primary</th>
+              <th>Phone</th>
+              <th>School</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td class="portal-row-num">{{ row.index }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.parent_name }}</td>
+              <td>{{ row.parent_phone }}</td>
+              <td>{{ row.school }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No members in this group.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% elif print_kind == "emergency" %}
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Emergency contact</th>
+              <th>Phone</th>
+              <th>Relationship</th>
+              <th>Authorized pickup</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr{% if not row.has_contact %} class="portal-report-missing-row"{% endif %}>
+              <td class="portal-row-num">{{ forloop.counter }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.contact_name }}</td>
+              <td>{{ row.contact_phone }}</td>
+              <td>{{ row.relationship }}</td>
+              <td>{{ row.authorized_label }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No members in this group.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <table class="portal-table portal-medical-report-table">
+          <thead>
+            <tr>
+              <th class="portal-row-num" scope="col">#</th>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Unit</th>
+              <th>Grade</th>
+              <th>School</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td class="portal-row-num">{{ row.index }}</td>
+              <td>{{ row.child }}</td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.unit }}</td>
+              <td>{{ row.grade }}</td>
+              <td>{{ row.school }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No members in this group.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

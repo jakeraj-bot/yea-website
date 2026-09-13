@@ -721,6 +721,96 @@ GUIDES = {
             },
         ],
     },
+    "activity-calendar": {
+        "title": "How to use the activity calendar",
+        "intro": "Schedule activities for your unit, then open a day to add who attended and upload that day’s lesson plan.",
+        "steps": [
+            {
+                "title": "Create one day, a week, or a month",
+                "body": "Enter the name, time, and a date. This day only creates one activity. This week (Mon–Fri) or This month (weekdays) makes the same activity on each of those days so you can go back later.",
+            },
+            {
+                "title": "Upload a lesson plan per day",
+                "body": "For a single day you can attach a PDF, Word file, or image when you create it. For a week or month, open each day on the calendar and upload that day’s lesson plan there.",
+            },
+            {
+                "title": "Add the children who attended",
+                "body": "Click an activity. The left list is kids you can add. The right list is members already in the activity. Use Add or Add all shown.",
+            },
+            {
+                "title": "Filter the kids to add",
+                "body": "Filter the left list by child name and by group (bus run, room, and other groups from the Groups page). Admins can also filter by unit. Staff only see children and activities at their unit.",
+            },
+        ],
+    },
+    "activity-calendar-detail": {
+        "title": "How to add kids to an activity",
+        "intro": "This is one scheduled day. Add who attended, and upload this day’s lesson plan.",
+        "steps": [
+            {
+                "title": "Upload this day’s lesson plan",
+                "body": "Use the upload box for a PDF, Word file, or image. Each day in a week or month series has its own file.",
+            },
+            {
+                "title": "Filter, then add",
+                "body": "The left list is kids to add. Filter by name, unit (admin), or a group. Add one child or Add all shown. The right list is already in this activity — Remove takes them off.",
+            },
+            {
+                "title": "Who you can see",
+                "body": "Staff only see children at their unit. Admins see every unit and can narrow with the unit filter.",
+            },
+        ],
+    },
+    "groups": {
+        "title": "How to use groups",
+        "intro": "Groups are standing lists such as a bus run. They do not have dates. Use them to pick the same kids again on the activity calendar.",
+        "steps": [
+            {
+                "title": "Create a group",
+                "body": "Enter a name (for example Bus run). Staff groups stay at their unit. Admins pick a unit.",
+            },
+            {
+                "title": "Add members",
+                "body": "Click the group. The left list is kids you can add. The right list is already in the group. Filter by child name, and by unit if you are an admin.",
+            },
+            {
+                "title": "Print",
+                "body": "From a group you can print an attendance sheet, member list, contact list, or emergency contacts. The logo and title repeat on printed pages the same way other reports do.",
+            },
+            {
+                "title": "Use a group on the activity calendar",
+                "body": "When you add kids to an activity, choose that group in the Group filter so only those members show on the left.",
+            },
+        ],
+    },
+    "groups-detail": {
+        "title": "How to add kids to a group",
+        "intro": "This is one standing group. Add members here, then print or use the group as a filter on the activity calendar.",
+        "steps": [
+            {
+                "title": "Add or remove members",
+                "body": "Left is kids to add. Right is already in the group. Filter by name (and unit for admin), then Add or Add all shown.",
+            },
+            {
+                "title": "Print sheets",
+                "body": "Use the print buttons for an attendance sheet, member list, contact list, or emergency contacts.",
+            },
+        ],
+    },
+    "groups-print": {
+        "title": "How to print a group sheet",
+        "intro": "This printout is only the members of this group.",
+        "steps": [
+            {
+                "title": "Check the list",
+                "body": "Attendance has blank time-in and time-out lines. Member list is names. Contact list is the parent phone. Emergency contacts is who to call.",
+            },
+            {
+                "title": "Print / Save PDF",
+                "body": "Use the browser print button. The YEA logo and title stay at the top of each printed page.",
+            },
+        ],
+    },
     "activity": {
         "title": "How to read activity",
         "intro": "This is not one giant list. Choose a person first, then read only what that person did.",
