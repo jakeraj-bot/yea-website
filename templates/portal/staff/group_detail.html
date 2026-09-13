@@ -15,9 +15,11 @@
       {% endfor %}
     </div>
 
-    <h2>Members</h2>
-    <p class="form-note">Left: kids you can add. Right: members in this group. Filter the left list by unit or child name.</p>
-    {% include "portal/includes/member_picker.html" %}
+    <section class="card portal-collapse-skip">
+      <h2>Members</h2>
+      <p class="form-note">Left: kids you can add. Right: members in this group. Filter the left list by unit or child name.</p>
+      {% include "portal/includes/member_picker.html" %}
+    </section>
 
     <form method="post" action="{{ picker_action }}" class="portal-toolbar" onsubmit="return confirm('Delete this group?');">
       {% csrf_token %}
