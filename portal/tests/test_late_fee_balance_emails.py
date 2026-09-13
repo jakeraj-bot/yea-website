@@ -325,7 +325,7 @@ class OwedWeeksReportAndLateFeeTests(TestCase):
         )
         self.assertEqual(
             week_label_from_charge("Weekly tuition", date(2026, 9, 10)),
-            "9/8/26–9/12/26",
+            "9/7/26–9/11/26",
         )
 
     def test_report_lists_owed_weeks(self):
