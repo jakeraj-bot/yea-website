@@ -508,6 +508,9 @@ def build_parent_preview_live(family, account):
     dashboard = {
         "balance": balance,
         "running_balance": balance,
+        "has_credit": billing["has_credit"],
+        "account_credit": billing["account_credit"],
+        "balance_due": billing["balance_due"],
         "application_status": _dashboard_status_for_family(family),
         "policies_signed": policies_signed,
         "policies_total": policies_total,

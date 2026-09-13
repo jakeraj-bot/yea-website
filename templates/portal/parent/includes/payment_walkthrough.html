@@ -1,92 +1,98 @@
-<div class="card card-accent portal-pay-howto" id="parent-pay-howto" data-lang="en">
-  <div class="portal-pay-howto-toolbar">
-    <p class="form-note portal-pay-howto-kicker">How to pay · Cómo pagar</p>
-    <div class="portal-pay-howto-langs" role="group" aria-label="Language / Idioma">
-      <button type="button" class="btn btn-secondary btn-sm" data-lang-set="en" aria-pressed="true">EN</button>
-      <button type="button" class="btn btn-secondary btn-sm" data-lang-set="es" aria-pressed="false">ES</button>
+<div class="card card-accent portal-pay-howto portal-collapse is-collapsed" id="parent-pay-howto" data-lang="en" data-collapse-key="how to pay your balance">
+  <button type="button" class="portal-collapse-toggle" id="parent-pay-howto-toggle" aria-expanded="false">
+    <span data-lang-title="en">How to pay your balance</span>
+    <span data-lang-title="es" hidden>Cómo pagar su saldo</span>
+  </button>
+  <div class="portal-collapse-body">
+    <div class="portal-pay-howto-toolbar">
+      <p class="form-note portal-pay-howto-kicker">How to pay · Cómo pagar</p>
+      <div class="portal-pay-howto-langs" role="group" aria-label="Language / Idioma">
+        <button type="button" class="btn btn-secondary btn-sm" data-lang-set="en" aria-pressed="true">EN</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-lang-set="es" aria-pressed="false">ES</button>
+      </div>
     </div>
-  </div>
 
-  <div data-lang-panel="en">
-    <h2>How to pay your balance</h2>
-    <p>Use these steps to pay online with a card. You can also pay by check or money order at the site — staff will record it. There is no check or money-order form in this portal.</p>
-    <ol class="portal-pay-howto-steps">
-      <li>
-        <strong>Log in</strong>
-        <span>Open Parent login. Enter your username and password, then press <strong>Log in</strong>.</span>
-      </li>
-      <li>
-        <strong>Open Billing &amp; balance</strong>
-        <span>In the menu, open <strong>Billing &amp; balance</strong>. Your family running balance is also on this dashboard.</span>
-      </li>
-      <li>
-        <strong>See what you owe</strong>
-        <span>The top shows the family balance. <strong>Balance by child</strong> lists each child and their balance due. <strong>Charges &amp; payments</strong> shows the date, child, and description for each charge.</span>
-      </li>
-      <li>
-        <strong>Press Pay balance</strong>
-        <span>Press <strong>Pay balance</strong>. If the balance is $0 or you have credit, that button says <strong>Pay ahead</strong>.</span>
-      </li>
-      <li>
-        <strong>Choose the amount</strong>
-        <span>Pick <strong>Pay full balance</strong> or a different amount. The side list shows each child’s balance — you pay the family amount, not a separate button per child. Press <strong>Continue to review</strong>.</span>
-      </li>
-      <li>
-        <strong>Pay with your card on Stripe</strong>
-        <span>Review the amount and processing fee. Press <strong>Pay … with Stripe</strong>. Enter the card on Stripe’s checkout page. You do not need to add a card on Billing first.</span>
-      </li>
-      <li>
-        <strong>Confirmation and ledger</strong>
-        <span>After Stripe, you will see <strong>Payment received</strong> and a receipt you can print. The payment also shows on <strong>Billing &amp; balance</strong> and <strong>Receipts</strong>.</span>
-      </li>
-    </ol>
-    <p class="form-note">Questions? Use <strong>Contact us</strong> to message Jakera (billing and portal).</p>
-  </div>
+    <div data-lang-panel="en">
+      <h2>How to pay your balance</h2>
+      <p>Use these steps to pay online with a card. You can also pay by check or money order at the site — staff will record it. There is no check or money-order form in this portal.</p>
+      <ol class="portal-pay-howto-steps">
+        <li>
+          <strong>Log in</strong>
+          <span>Open Parent login. Enter your username and password, then press <strong>Log in</strong>.</span>
+        </li>
+        <li>
+          <strong>Open Billing &amp; balance</strong>
+          <span>In the menu, open <strong>Billing &amp; balance</strong>. Your family running balance is also on this dashboard.</span>
+        </li>
+        <li>
+          <strong>See what you owe</strong>
+          <span>The top shows the family balance. <strong>Balance by child</strong> lists each child and their balance due. <strong>Charges &amp; payments</strong> shows the date, child, and description for each charge.</span>
+        </li>
+        <li>
+          <strong>Press Pay balance</strong>
+          <span>Press <strong>Pay balance</strong>. If the balance is $0 or you have credit, that button says <strong>Pay ahead</strong>.</span>
+        </li>
+        <li>
+          <strong>Choose the amount</strong>
+          <span>Pick <strong>Pay full balance</strong> or a different amount. The side list shows each child’s balance — you pay the family amount, not a separate button per child. Press <strong>Continue to review</strong>.</span>
+        </li>
+        <li>
+          <strong>Pay with your card on Stripe</strong>
+          <span>Review the amount and processing fee. Press <strong>Pay … with Stripe</strong>. Enter the card on Stripe’s checkout page. You do not need to add a card on Billing first.</span>
+        </li>
+        <li>
+          <strong>Confirmation and ledger</strong>
+          <span>After Stripe, you will see <strong>Payment received</strong> and a receipt you can print. The payment also shows on <strong>Billing &amp; balance</strong> and <strong>Receipts</strong>.</span>
+        </li>
+      </ol>
+      <p class="form-note">Questions? Use <strong>Contact us</strong> to message Jakera (billing and portal).</p>
+    </div>
 
-  <div data-lang-panel="es" hidden>
-    <h2>Cómo pagar su saldo</h2>
-    <p>Siga estos pasos para pagar en línea con tarjeta. También puede pagar con cheque o giro postal (money order) en el sitio — el personal lo anota. No hay un formulario de cheque o giro postal en este portal.</p>
-    <ol class="portal-pay-howto-steps">
-      <li>
-        <strong>Inicie sesión</strong>
-        <span>Abra Parent login. Escriba su usuario y contraseña y pulse <strong>Log in</strong>.</span>
-      </li>
-      <li>
-        <strong>Abra Billing &amp; balance</strong>
-        <span>En el menú, abra <strong>Billing &amp; balance</strong>. El saldo de la familia también aparece en este Dashboard.</span>
-      </li>
-      <li>
-        <strong>Vea lo que debe</strong>
-        <span>Arriba está el saldo de la familia. <strong>Balance by child</strong> muestra cada niño y su saldo. <strong>Charges &amp; payments</strong> muestra la fecha, el niño y la descripción de cada cargo.</span>
-      </li>
-      <li>
-        <strong>Pulse Pay balance</strong>
-        <span>Pulse <strong>Pay balance</strong>. Si el saldo es $0 o tiene crédito, ese botón dice <strong>Pay ahead</strong>.</span>
-      </li>
-      <li>
-        <strong>Elija el monto</strong>
-        <span>Elija <strong>Pay full balance</strong> o un monto distinto. A un lado verá el saldo de cada niño — usted paga el monto de la familia, no hay un botón aparte por niño. Pulse <strong>Continue to review</strong>.</span>
-      </li>
-      <li>
-        <strong>Pague con tarjeta en Stripe</strong>
-        <span>Revise el monto y la cuota de procesamiento. Pulse <strong>Pay … with Stripe</strong>. Escriba la tarjeta en la página de Stripe. No tiene que agregar la tarjeta primero en Billing.</span>
-      </li>
-      <li>
-        <strong>Confirmación y registro</strong>
-        <span>Después de Stripe verá <strong>Payment received</strong> y un recibo para imprimir. El pago también aparece en <strong>Billing &amp; balance</strong> y en <strong>Receipts</strong>.</span>
-      </li>
-    </ol>
-    <p class="form-note">¿Preguntas? Use <strong>Contact us</strong> para escribirle a Jakera (facturación y portal).</p>
-  </div>
+    <div data-lang-panel="es" hidden>
+      <h2>Cómo pagar su saldo</h2>
+      <p>Siga estos pasos para pagar en línea con tarjeta. También puede pagar con cheque o giro postal (money order) en el sitio — el personal lo anota. No hay un formulario de cheque o giro postal en este portal.</p>
+      <ol class="portal-pay-howto-steps">
+        <li>
+          <strong>Inicie sesión</strong>
+          <span>Abra Parent login. Escriba su usuario y contraseña y pulse <strong>Log in</strong>.</span>
+        </li>
+        <li>
+          <strong>Abra Billing &amp; balance</strong>
+          <span>En el menú, abra <strong>Billing &amp; balance</strong>. El saldo de la familia también aparece en este Dashboard.</span>
+        </li>
+        <li>
+          <strong>Vea lo que debe</strong>
+          <span>Arriba está el saldo de la familia. <strong>Balance by child</strong> muestra cada niño y su saldo. <strong>Charges &amp; payments</strong> muestra la fecha, el niño y la descripción de cada cargo.</span>
+        </li>
+        <li>
+          <strong>Pulse Pay balance</strong>
+          <span>Pulse <strong>Pay balance</strong>. Si el saldo es $0 o tiene crédito, ese botón dice <strong>Pay ahead</strong>.</span>
+        </li>
+        <li>
+          <strong>Elija el monto</strong>
+          <span>Elija <strong>Pay full balance</strong> o un monto distinto. A un lado verá el saldo de cada niño — usted paga el monto de la familia, no hay un botón aparte por niño. Pulse <strong>Continue to review</strong>.</span>
+        </li>
+        <li>
+          <strong>Pague con tarjeta en Stripe</strong>
+          <span>Revise el monto y la cuota de procesamiento. Pulse <strong>Pay … with Stripe</strong>. Escriba la tarjeta en la página de Stripe. No tiene que agregar la tarjeta primero en Billing.</span>
+        </li>
+        <li>
+          <strong>Confirmación y registro</strong>
+          <span>Después de Stripe verá <strong>Payment received</strong> y un recibo para imprimir. El pago también aparece en <strong>Billing &amp; balance</strong> y en <strong>Receipts</strong>.</span>
+        </li>
+      </ol>
+      <p class="form-note">¿Preguntas? Use <strong>Contact us</strong> para escribirle a Jakera (facturación y portal).</p>
+    </div>
 
-  <div class="portal-pay-howto-actions">
-    {% if admin_preview_sample %}
-    <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_sample_page' page='billing' %}">Billing &amp; balance</a>
-    {% elif admin_support_preview and admin_preview_family_slug %}
-    <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='billing' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Billing &amp; balance</a>
-    {% else %}
-    <a class="btn btn-primary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing &amp; balance</a>
-    {% endif %}
+    <div class="portal-pay-howto-actions">
+      {% if admin_preview_sample %}
+      <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_sample_page' page='billing' %}">Billing &amp; balance</a>
+      {% elif admin_support_preview and admin_preview_family_slug %}
+      <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='billing' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Billing &amp; balance</a>
+      {% else %}
+      <a class="btn btn-primary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing &amp; balance</a>
+      {% endif %}
+    </div>
   </div>
 </div>
 
@@ -95,6 +101,9 @@
     background: var(--yea-yellow-soft, #fff8e1);
     border-color: var(--yea-yellow, #ffcc00);
     margin-bottom: 1.5rem;
+  }
+  .portal-pay-howto > .portal-collapse-toggle {
+    font-size: 1.15rem;
   }
   .portal-pay-howto-toolbar {
     display: flex;
@@ -123,7 +132,7 @@
   .portal-pay-howto h2 {
     margin: 0 0 0.5rem;
   }
-  .portal-pay-howto > [data-lang-panel] > p {
+  .portal-pay-howto [data-lang-panel] > p {
     margin: 0 0 0.85rem;
   }
   .portal-pay-howto-steps {
@@ -171,8 +180,11 @@
 <script>
 (function () {
   var COOKIE = "yea_parent_lang";
+  var STORAGE_KEY = "yea-portal-collapse";
+  var COLLAPSE_KEY = "how to pay your balance";
   var root = document.getElementById("parent-pay-howto");
   if (!root) return;
+  var toggle = document.getElementById("parent-pay-howto-toggle");
 
   function readCookie() {
     var parts = ("; " + document.cookie).split("; " + COOKIE + "=");
@@ -193,11 +205,50 @@
     return value === "es" ? "es" : "en";
   }
 
+  function loadCollapseState() {
+    try {
+      return JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function storedCollapsed() {
+    var stored = loadCollapseState();
+    var pageState = stored[window.location.pathname] || {};
+    if (Object.prototype.hasOwnProperty.call(pageState, COLLAPSE_KEY)) {
+      return pageState[COLLAPSE_KEY];
+    }
+    if (Object.prototype.hasOwnProperty.call(pageState, "cómo pagar su saldo")) {
+      return pageState["cómo pagar su saldo"];
+    }
+    return true;
+  }
+
+  function persistCollapsed(collapsed) {
+    try {
+      var stored = loadCollapseState();
+      var pageKey = window.location.pathname;
+      var pageState = stored[pageKey] || {};
+      pageState[COLLAPSE_KEY] = collapsed;
+      stored[pageKey] = pageState;
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    } catch (err) {}
+  }
+
+  function applyCollapsed(collapsed) {
+    root.classList.toggle("is-collapsed", collapsed);
+    if (toggle) toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  }
+
   function apply(lang) {
     lang = lang === "es" ? "es" : "en";
     root.setAttribute("data-lang", lang);
     root.querySelectorAll("[data-lang-panel]").forEach(function (panel) {
       panel.hidden = panel.getAttribute("data-lang-panel") !== lang;
+    });
+    root.querySelectorAll("[data-lang-title]").forEach(function (title) {
+      title.hidden = title.getAttribute("data-lang-title") !== lang;
     });
     root.querySelectorAll("[data-lang-set]").forEach(function (button) {
       button.setAttribute("aria-pressed", button.getAttribute("data-lang-set") === lang ? "true" : "false");
@@ -206,10 +257,20 @@
   }
 
   apply(storedLang());
+  applyCollapsed(storedCollapsed());
+
   root.querySelectorAll("[data-lang-set]").forEach(function (button) {
     button.addEventListener("click", function () {
       apply(button.getAttribute("data-lang-set"));
     });
   });
+
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      var nowCollapsed = !root.classList.contains("is-collapsed");
+      applyCollapsed(nowCollapsed);
+      persistCollapsed(nowCollapsed);
+    });
+  }
 })();
 </script>
