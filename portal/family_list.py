@@ -4,6 +4,7 @@ from collections import defaultdict
 from decimal import Decimal
 from urllib.parse import urlencode
 
+from .child_identity import child_name_in_collection
 from .demo_data import FAMILIES_BILLING
 
 DEFAULT_LIST_SORT = "child-asc"
@@ -204,10 +205,10 @@ def is_waitlist_only_household(apps, active_children=None):
     waitlist_apps = [app for app in apps if app.status == WAITLIST_APPLICATION_STATUS]
     if not waitlist_apps:
         return False
-    waitlist_names = {application_child_name(app).lower() for app in waitlist_apps}
+    waitlist_names = [application_child_name(app) for app in waitlist_apps]
     for child in active_children or []:
-        name = (getattr(child, "name", None) or "").strip().lower()
-        if name and name not in waitlist_names:
+        name = (getattr(child, "name", None) or "").strip()
+        if name and not child_name_in_collection(name, waitlist_names):
             return False
     return True
 
@@ -260,8 +261,8 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
             for child in household_children
             if not staff_unit or child_belongs_to_unit(child, staff_unit)
         ]
-        enrolled_lower = {child.name.lower() for child in active_children}
         children_specs = []
+        listed_names = []
         for child in active_children:
             unit_name, unit_slug = unit_label_for_child(child)
             children_specs.append(
@@ -274,9 +275,12 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     "unit_slug": unit_slug or (family.unit.slug if family.unit_id else ""),
                 }
             )
+            listed_names.append(child.name)
         for app in apps:
             child_name = application_child_name(app)
-            if child_name.lower() in enrolled_lower or app.status in {"declined", "enrolled"}:
+            if app.status in {"declined", "enrolled", WAITLIST_APPLICATION_STATUS}:
+                continue
+            if child_name_in_collection(child_name, listed_names):
                 continue
             if staff_unit and not application_belongs_to_unit(app, staff_unit):
                 continue
@@ -293,6 +297,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     "unit_slug": (app_unit.slug if app_unit else "") or (family.unit.slug if family.unit_id else ""),
                 }
             )
+            listed_names.append(child_name)
         if staff_unit and not children_specs:
             continue
         has_application = getattr(family, "list_has_application", None)
