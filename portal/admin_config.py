@@ -84,7 +84,8 @@ def ensure_admin_config_minimal():
         ("Unit staff", True, False, False, False, False, False),
         ("Unit director", True, True, False, False, False, False),
         ("Portal admin", True, True, True, True, True, True),
-        ("Front desk staff", True, False, False, False, False, False),
+        ("Front desk staff", True, False, True, True, True, True),
+        ("Program director", False, False, False, False, True, True),
     ]
     for role_name, add, delete, credit, plans, approve_apps, approve_waitlist in defaults:
         PortalBillingDefaultRule.objects.get_or_create(

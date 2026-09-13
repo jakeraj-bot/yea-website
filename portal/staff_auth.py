@@ -1,14 +1,25 @@
 from functools import wraps
 
 from django.conf import settings
+from django.http import HttpResponseForbidden
 from django.shortcuts import redirect
 
 from .attendance_service import get_unit
 from .demo_data import ADMIN_BILLING_PERMISSIONS, STAFF_BILLING_PERMISSIONS
-from .models import PortalStaffAccount, PortalUnit
+from .models import PortalOrgSetting, PortalStaffAccount, PortalUnit
 from .parent_auth import portal_preview_mode
 
 PORTAL_AUTH_SESSION_KEY = "portal_auth_area"
+
+ROLE_PORTAL_ADMIN = "Portal admin"
+ROLE_PROGRAM_DIRECTOR = "Program director"
+ROLE_UNIT_DIRECTOR = "Unit director"
+ROLE_FRONT_DESK = "Front desk staff"
+ROLE_FRONT_DESK_ALIAS = "Front desk"
+ROLE_UNIT_STAFF = "Unit staff"
+
+FRONT_DESK_ROLES = {ROLE_FRONT_DESK, ROLE_FRONT_DESK_ALIAS}
+PAYMENT_REPORT_SLUGS = {"balances", "4cs"}
 
 
 def set_portal_auth(request, area):
@@ -81,11 +92,54 @@ def get_staff_account(user):
     return account
 
 
+def is_program_director(account):
+    return bool(account and account.role == ROLE_PROGRAM_DIRECTOR)
+
+
+def is_front_desk(account):
+    return bool(account and account.role in FRONT_DESK_ROLES)
+
+
 def is_portal_admin(user):
     account = get_staff_account(user)
     if not account:
         return False
-    return account.role == "Portal admin" or account.all_units_access
+    if is_program_director(account) or is_front_desk(account):
+        return False
+    return account.role == ROLE_PORTAL_ADMIN or account.all_units_access
+
+
+def org_program_director_can_see_billing():
+    return bool(PortalOrgSetting.load().program_director_can_see_billing)
+
+
+def staff_can_see_billing(account, portal_area="staff"):
+    if portal_area == "admin":
+        return True
+    if not account:
+        return True
+    if is_program_director(account):
+        return bool(account.can_see_billing or org_program_director_can_see_billing())
+    return True
+
+
+def staff_billing_forbidden(request, portal_area="staff"):
+    if portal_preview_mode():
+        return None
+    if is_admin_portal_authenticated(request):
+        return None
+    account = get_staff_account(request.user)
+    if staff_can_see_billing(account, portal_area=portal_area):
+        return None
+    return HttpResponseForbidden("Billing is not available for this account.")
+
+
+def can_manage_outside_programs(account, portal_area="staff"):
+    if portal_area == "admin":
+        return True
+    if portal_preview_mode():
+        return True
+    return is_program_director(account) or (account and account.role == ROLE_PORTAL_ADMIN)
 
 
 def staff_accessible_units(user):
@@ -94,7 +148,7 @@ def staff_accessible_units(user):
         if portal_preview_mode():
             return PortalUnit.objects.filter(is_active=True).order_by("name")
         return PortalUnit.objects.none()
-    if account.all_units_access or account.role == "Portal admin":
+    if account.all_units_access or account.role == ROLE_PORTAL_ADMIN or is_program_director(account):
         return PortalUnit.objects.filter(is_active=True).order_by("name")
     extra = account.accessible_units.filter(is_active=True)
     if extra.exists():
@@ -124,7 +178,12 @@ def _can_access_unit(user, unit):
 
 
 def billing_permissions_for_staff(account=None, portal_area="staff"):
-    if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):
+    if portal_area == "admin" or (
+        account
+        and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access)
+        and not is_program_director(account)
+        and not is_front_desk(account)
+    ):
         perms = dict(ADMIN_BILLING_PERMISSIONS)
         perms["can_edit_family_plans"] = True
         return perms

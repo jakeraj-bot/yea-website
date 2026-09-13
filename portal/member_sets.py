@@ -61,6 +61,18 @@ def portal_ops_area(request):
     return "staff"
 
 
+def programming_area(request, area=None):
+    """Admin and Program director see all units for activities and groups."""
+    area = area or portal_ops_area(request)
+    if area == "admin":
+        return "admin"
+    from .staff_auth import get_staff_account, is_program_director
+
+    if is_program_director(get_staff_account(request.user)):
+        return "admin"
+    return "staff"
+
+
 def ops_unit(request, area=None):
     area = area or portal_ops_area(request)
     if area == "admin":
@@ -116,19 +128,50 @@ def group_week_days(start=None):
     ]
 
 
-def weekday_dates_for_repeat(start, repeat):
-    """Return dates for a single day, the Mon–Fri of that week, or every weekday in the month."""
+WEEKDAY_CHOICES = (
+    (0, "Monday"),
+    (1, "Tuesday"),
+    (2, "Wednesday"),
+    (3, "Thursday"),
+    (4, "Friday"),
+)
+DEFAULT_WEEKDAYS = (0, 1, 2, 3, 4)
+
+
+def parse_posted_weekdays(raw_values, *, sent=False):
+    """Return selected Mon–Fri indexes, or None when the form omitted the boxes."""
+    if not sent:
+        return None
+    picked = []
+    for value in raw_values or []:
+        try:
+            day = int(value)
+        except (TypeError, ValueError):
+            continue
+        if day in DEFAULT_WEEKDAYS and day not in picked:
+            picked.append(day)
+    return picked
+
+
+def weekday_dates_for_repeat(start, repeat, weekdays=None):
+    """Return dates for a single day, selected weekdays that week, or those weekdays in the month."""
     if not start:
+        return []
+    allowed = DEFAULT_WEEKDAYS if weekdays is None else tuple(weekdays)
+    allowed_set = {day for day in allowed if day in DEFAULT_WEEKDAYS}
+    if repeat == "once" or not repeat:
+        return [start]
+    if not allowed_set:
         return []
     if repeat == "week":
         monday = start - timedelta(days=start.weekday())
-        return [monday + timedelta(days=offset) for offset in range(5)]
+        return [monday + timedelta(days=offset) for offset in range(5) if offset in allowed_set]
     if repeat == "month":
         first = date(start.year, start.month, 1)
         days = []
         cursor = first
         while cursor.month == start.month:
-            if cursor.weekday() < 5:
+            if cursor.weekday() in allowed_set:
                 days.append(cursor)
             cursor += timedelta(days=1)
         return days
@@ -314,14 +357,16 @@ def picker_payload(
     }
 
 
-def create_activities(*, name, start_time, start_date, repeat, unit, user, lesson_file=None, end_time=None):
+def create_activities(*, name, start_time, start_date, repeat, unit, user, lesson_file=None, end_time=None, weekdays=None):
     name = (name or "").strip()
     if not name or not start_time or not start_date or not unit:
         return [], "Name, date, start time, and unit are required."
     resolved_end = resolve_end_time(start_time, end_time)
     if resolved_end and resolved_end <= start_time:
         return [], "End time must be after start time."
-    dates = weekday_dates_for_repeat(start_date, repeat)
+    if repeat in {"week", "month"} and weekdays is not None and not weekdays:
+        return [], "Choose at least one weekday."
+    dates = weekday_dates_for_repeat(start_date, repeat, weekdays=weekdays)
     if not dates:
         return [], "Choose a date."
     series_id = uuid4() if len(dates) > 1 else None

@@ -552,7 +552,7 @@ def family_meta_live(family_slug, unit=None, family_id=None):
         "name": family_display_label(family),
         "primary_contact": family.primary_contact,
         "children": household_children,
-        "balance": format(family_balance(family, child_names=household_children), ".2f"),
+        "balance": format(family_balance(family), ".2f"),
         "program": family.program_label,
         "billing_type": family.billing_type,
         "status": "Suspended" if family.is_suspended else family.status,

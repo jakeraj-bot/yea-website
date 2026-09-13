@@ -20,9 +20,11 @@ from .member_sets import (
     add_children_to_group,
     apply_child_filters,
     attach_lesson_plan,
+    WEEKDAY_CHOICES,
     create_activities,
     create_group,
     group_week_days,
+    parse_posted_weekdays,
     normalize_print_kind,
     get_visible_activity,
     get_visible_group,
@@ -34,6 +36,7 @@ from .member_sets import (
     picker_payload,
     portal_ops_area,
     posted_child_ids,
+    programming_area,
     read_lesson_plan,
     remove_child_from_activity,
     remove_child_from_group,
@@ -74,9 +77,10 @@ def _page_context(request, title, *, staff_slug, admin_slug, page_guide_key, **e
     from .views import _portal_context, _staff_context
 
     area = portal_ops_area(request)
+    prog_area = programming_area(request, area)
     extra.setdefault("ops_area", area)
-    extra.setdefault("show_unit_filter", area == "admin")
-    extra.setdefault("unit_choices", unit_choices_for_area(area) if area == "admin" else [])
+    extra.setdefault("show_unit_filter", prog_area == "admin")
+    extra.setdefault("unit_choices", unit_choices_for_area(prog_area) if prog_area == "admin" else [])
     if area == "admin":
         return _portal_context(
             "admin",
@@ -156,14 +160,15 @@ def _keep_picker_query(q, unit_slug, group_id, school="", grade=""):
 @require_http_methods(["GET", "POST"])
 def activity_calendar(request):
     area = portal_ops_area(request)
+    prog_area = programming_area(request, area)
     staff_unit = ops_unit(request, area)
     if request.method == "POST":
-        return _create_activity(request, area, staff_unit)
+        return _create_activity(request, prog_area, staff_unit)
 
     month_start = parse_calendar_month(request.GET.get("month"), fallback=timezone.localdate())
-    unit_slug = (request.GET.get("unit") or "").strip() if area == "admin" else ""
+    unit_slug = (request.GET.get("unit") or "").strip() if prog_area == "admin" else ""
     activities = list(
-        visible_activities_qs(area, staff_unit, unit_slug)
+        visible_activities_qs(prog_area, staff_unit, unit_slug)
         .filter(activity_date__year=month_start.year, activity_date__month=month_start.month)
         .annotate(member_count=Count("memberships"))
         .order_by("activity_date", "start_time", "name")
@@ -181,6 +186,7 @@ def activity_calendar(request):
         today=timezone.localdate().isoformat(),
         default_time="15:00",
         default_end_time="16:00",
+        weekday_choices=WEEKDAY_CHOICES,
         default_unit=staff_unit.slug if staff_unit else "",
         calendar_list_url=_calendar_url(request),
     )
@@ -199,12 +205,17 @@ def _create_activity(request, area, staff_unit):
     repeat = (request.POST.get("repeat") or "once").strip()
     if repeat not in {"once", "week", "month"}:
         repeat = "once"
+    weekdays = parse_posted_weekdays(
+        request.POST.getlist("weekday"),
+        sent=request.POST.get("weekday_picks") == "1",
+    )
     created, error = create_activities(
         name=name,
         start_time=start_time,
         end_time=end_time,
         start_date=start_date,
         repeat=repeat,
+        weekdays=weekdays,
         unit=unit,
         user=request.user,
         lesson_file=request.FILES.get("lesson_plan") if repeat == "once" else None,
@@ -230,25 +241,26 @@ def _create_activity(request, area, staff_unit):
 @require_http_methods(["GET", "POST"])
 def activity_detail(request, activity_id):
     area = portal_ops_area(request)
+    prog_area = programming_area(request, area)
     staff_unit = ops_unit(request, area)
-    activity = get_visible_activity(activity_id, area, staff_unit)
+    activity = get_visible_activity(activity_id, prog_area, staff_unit)
     if not activity:
         messages.error(request, "That activity is not available.")
         return redirect(_calendar_url(request))
 
-    q, unit_slug, group_id, school, grade = _picker_filters(request, area)
+    q, unit_slug, group_id, school, grade = _picker_filters(request, prog_area)
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        q, unit_slug, group_id, school, grade = _picker_filters(request, area)
+        q, unit_slug, group_id, school, grade = _picker_filters(request, prog_area)
         if action == "add":
             added = add_children_to_activity(
-                activity, posted_child_ids(request), area=area, staff_unit=staff_unit, user=request.user
+                activity, posted_child_ids(request), area=prog_area, staff_unit=staff_unit, user=request.user
             )
             messages.success(request, f"Added {added} member{'s' if added != 1 else ''}.")
         elif action == "add_filtered":
             enrolled_ids = {row.child_id for row in activity.memberships.all()}
             available = apply_child_filters(
-                scoped_children_qs(area, staff_unit, unit_slug),
+                scoped_children_qs(prog_area, staff_unit, unit_slug),
                 q=q,
                 group_id=group_id,
                 exclude_ids=enrolled_ids,
@@ -258,13 +270,13 @@ def activity_detail(request, activity_id):
             added = add_children_to_activity(
                 activity,
                 [child.pk for child in available],
-                area=area,
+                area=prog_area,
                 staff_unit=staff_unit,
                 user=request.user,
             )
             messages.success(request, f"Added {added} member{'s' if added != 1 else ''} from the filtered list.")
         elif action == "remove":
-            if remove_child_from_activity(activity, request.POST.get("child_id"), area=area, staff_unit=staff_unit):
+            if remove_child_from_activity(activity, request.POST.get("child_id"), area=prog_area, staff_unit=staff_unit):
                 messages.success(request, "Removed that member.")
             else:
                 messages.error(request, "Could not remove that member.")
@@ -287,7 +299,7 @@ def activity_detail(request, activity_id):
     enrolled = [row.child for row in activity.memberships.all()]
     picker = picker_payload(
         enrolled_children=enrolled,
-        area=area,
+        area=prog_area,
         staff_unit=staff_unit,
         q=q,
         unit_slug=unit_slug,
@@ -317,9 +329,10 @@ def activity_detail(request, activity_id):
 @require_http_methods(["GET", "POST"])
 def group_list(request):
     area = portal_ops_area(request)
+    prog_area = programming_area(request, area)
     staff_unit = ops_unit(request, area)
     if request.method == "POST":
-        unit = resolve_create_unit(request, area, staff_unit)
+        unit = resolve_create_unit(request, prog_area, staff_unit)
         group, error = create_group(name=request.POST.get("name"), unit=unit, user=request.user)
         if error:
             messages.error(request, error)
@@ -327,8 +340,8 @@ def group_list(request):
         messages.success(request, f"Saved {group.name}. Add members next.")
         return redirect(_group_url(request, group.pk))
 
-    unit_slug = (request.GET.get("unit") or "").strip() if area == "admin" else ""
-    groups = list(visible_groups_qs(area, staff_unit, unit_slug))
+    unit_slug = (request.GET.get("unit") or "").strip() if prog_area == "admin" else ""
+    groups = list(visible_groups_qs(prog_area, staff_unit, unit_slug))
     context = _page_context(
         request,
         "Groups",
@@ -347,29 +360,30 @@ def group_list(request):
 @require_http_methods(["GET", "POST"])
 def group_detail(request, group_id):
     area = portal_ops_area(request)
+    prog_area = programming_area(request, area)
     staff_unit = ops_unit(request, area)
-    group = get_visible_group(group_id, area, staff_unit)
+    group = get_visible_group(group_id, prog_area, staff_unit)
     if not group:
         messages.error(request, "That group is not available.")
         return redirect(_groups_url(request))
 
-    q, unit_slug, _group_filter, school, grade = _picker_filters(request, area)
-    if area == "admin" and not unit_slug:
+    q, unit_slug, _group_filter, school, grade = _picker_filters(request, prog_area)
+    if prog_area == "admin" and not unit_slug:
         unit_slug = group.unit.slug
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        q, unit_slug, _group_filter, school, grade = _picker_filters(request, area)
-        if area == "admin" and not unit_slug:
+        q, unit_slug, _group_filter, school, grade = _picker_filters(request, prog_area)
+        if prog_area == "admin" and not unit_slug:
             unit_slug = group.unit.slug
         if action == "add":
             added = add_children_to_group(
-                group, posted_child_ids(request), area=area, staff_unit=staff_unit, user=request.user
+                group, posted_child_ids(request), area=prog_area, staff_unit=staff_unit, user=request.user
             )
             messages.success(request, f"Added {added} member{'s' if added != 1 else ''}.")
         elif action == "add_filtered":
             enrolled_ids = {row.child_id for row in group.memberships.all()}
             available = apply_child_filters(
-                scoped_children_qs(area, staff_unit, unit_slug),
+                scoped_children_qs(prog_area, staff_unit, unit_slug),
                 q=q,
                 exclude_ids=enrolled_ids,
                 school=school,
@@ -378,13 +392,13 @@ def group_detail(request, group_id):
             added = add_children_to_group(
                 group,
                 [child.pk for child in available],
-                area=area,
+                area=prog_area,
                 staff_unit=staff_unit,
                 user=request.user,
             )
             messages.success(request, f"Added {added} member{'s' if added != 1 else ''} from the filtered list.")
         elif action == "remove":
-            if remove_child_from_group(group, request.POST.get("child_id"), area=area, staff_unit=staff_unit):
+            if remove_child_from_group(group, request.POST.get("child_id"), area=prog_area, staff_unit=staff_unit):
                 messages.success(request, "Removed that member.")
             else:
                 messages.error(request, "Could not remove that member.")
@@ -398,7 +412,7 @@ def group_detail(request, group_id):
     enrolled = group_member_children(group)
     picker = picker_payload(
         enrolled_children=enrolled,
-        area=area,
+        area=prog_area,
         staff_unit=staff_unit,
         q=q,
         unit_slug=unit_slug,
@@ -443,7 +457,7 @@ def group_detail(request, group_id):
 def group_print(request, group_id, kind):
     area = portal_ops_area(request)
     staff_unit = ops_unit(request, area)
-    group = get_visible_group(group_id, area, staff_unit)
+    group = get_visible_group(group_id, programming_area(request, area), staff_unit)
     kind = normalize_print_kind(kind)
     if not group or kind not in PRINT_KINDS:
         messages.error(request, "That printout is not available.")

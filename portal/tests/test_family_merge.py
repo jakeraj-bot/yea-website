@@ -419,3 +419,35 @@ class FamilyMergeTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Merge a duplicate account")
         self.assertContains(page, str(self.drop.pk))
+
+    def test_merge_skips_duplicate_membership_fee(self):
+        PortalLedgerEntry.objects.create(
+            family=self.keep,
+            child_name="Danuska Rivera",
+            date=date(2026, 9, 1),
+            entry_type="membership",
+            description="Membership fee ($20) — Danuska Rivera",
+            amount=Decimal("20.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.drop,
+            child_name="Danuska Daenerys Rivera",
+            date=date(2026, 9, 2),
+            entry_type="membership",
+            description="Membership fee ($20) — Danuska Daenerys Rivera",
+            amount=Decimal("20.00"),
+        )
+        keep, _dropped = merge_families(self.keep, self.drop)
+        memberships = keep.ledger_entries.filter(entry_type="membership")
+        self.assertEqual(memberships.count(), 1)
+        self.assertEqual(memberships.get().amount, Decimal("20.00"))
+        self.assertEqual(memberships.get().child_name, "Danuska Rivera")
+        self.assertTrue(keep.ledger_entries.filter(description="Card payment").exists())
+
+    def test_suggested_merge_matches_middle_name_variant(self):
+        self.dup_child.name = "Danuska Daenerys Rivera"
+        self.dup_child.save(update_fields=["name"])
+        self.drop_app.student_first_name = "Danuska Daenerys"
+        self.drop_app.save(update_fields=["student_first_name"])
+        matches = suggested_merge_families(self.keep)
+        self.assertEqual({family.pk for family in matches}, {self.drop.pk})

@@ -59,10 +59,14 @@ def _ensure_child_on_roster(app):
     if not family:
         return None
 
+    from portal.child_identity import child_names_match
+
     from .portal_integration import apply_application_billing_plan, billing_plan_from_application, cadence_defaults_for_plan
 
     name = child_display_name(app)
     child = family.children.filter(name__iexact=name).first()
+    if child is None:
+        child = next((row for row in family.children.all() if child_names_match(row.name, name)), None)
     unit = get_unit_for_enrollment_key(app.program_location) if app.program_location else None
     if child:
         fields = []
@@ -121,10 +125,14 @@ def _post_membership_fee_if_needed(app):
     if not amount:
         return
 
+    from portal.family_merge import family_has_membership_for_child
+
     child_name = child_display_name(app)
     label = get_fee_display(MEMBERSHIP_FEE_KEY, f"${amount}")
     description = f"Membership fee ({label}) — {child_name}"
     if PortalLedgerEntry.objects.filter(family=family, description=description).exists():
+        return
+    if family_has_membership_for_child(family, child_name):
         return
 
     PortalLedgerEntry.objects.create(

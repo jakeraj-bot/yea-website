@@ -10,9 +10,11 @@
         <option value="all">All families</option>
         <option value="active">Active</option>
         <option value="pending-enrollment">Pending enrollment</option>
+        {% if can_see_billing %}
         <option value="past-due">Past due</option>
         <option value="4cs">4Cs</option>
         <option value="private-pay">Private pay</option>
+        {% endif %}
         <option value="pending-membership">Pending membership</option>
         <option value="no-application">No application</option>
       </select>
@@ -24,10 +26,12 @@
         <option value="child-desc">Child name Z–A</option>
         <option value="name-asc">Family name A–Z</option>
         <option value="name-desc">Family name Z–A</option>
+        {% if can_see_billing %}
         <option value="balance-desc">Family balance (high to low)</option>
         <option value="balance-asc">Family balance (low to high)</option>
         <option value="child-balance-desc">Child balance (high to low)</option>
         <option value="child-balance-asc">Child balance (low to high)</option>
+        {% endif %}
         <option value="contact-asc">Primary contact A–Z</option>
       </select>
     </label>
@@ -54,9 +58,11 @@
           <label><input type="checkbox" data-col-toggle="school" checked> School attending</label>
           <label><input type="checkbox" data-col-toggle="medical" checked> Medical</label>
           <label><input type="checkbox" data-col-toggle="program"> Program</label>
+          {% if can_see_billing %}
           <label><input type="checkbox" data-col-toggle="billing" checked> Billing</label>
           <label><input type="checkbox" data-col-toggle="child-balance" checked> Child balance</label>
           <label><input type="checkbox" data-col-toggle="family-balance" checked> Family balance</label>
+          {% endif %}
           <label><input type="checkbox" data-col-toggle="status" checked> Status</label>
         </div>
       </div>

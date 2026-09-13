@@ -2,21 +2,35 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from datetime import date
+
 from enrollment.add_program import (
     can_add_after_school_for_application,
     create_after_school_from_application,
+    create_before_care_from_application,
 )
 from enrollment.application_review import approve_application, place_on_waitlist
 from enrollment.models import EnrollmentApplication, PolicySignature
 from enrollment.portal_integration import (
     applications_for_admin,
+    create_portal_account_from_enrollment,
+    find_existing_family_for_parent,
+    link_applications_by_email,
+    link_applications_to_family,
     parent_application_list_items,
     waitlist_for_admin,
 )
 from portal.admin_services import get_admin_families_live
 from portal.attendance_service import families_for_staff
 from portal.member_admin import families_without_parent_login
-from portal.models import PortalChild, PortalFamily, PortalParentAccount, PortalStaffAccount, PortalUnit
+from portal.models import (
+    PortalChild,
+    PortalFamily,
+    PortalLedgerEntry,
+    PortalParentAccount,
+    PortalStaffAccount,
+    PortalUnit,
+)
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application, _staff_login
 
@@ -316,16 +330,14 @@ class WaitlistHiddenFromFamiliesTests(TestCase):
 
         rows = get_admin_families_live()
         names = _child_names(rows, "siblings")
-        self.assertIn("Ada Siblings", names)
-        self.assertIn("Ben Siblings", names)
-        self.assertEqual(len([row for row in rows if row["slug"] == "siblings"]), 2)
+        self.assertEqual(names, ["Ada Siblings"])
+        self.assertEqual(len([row for row in rows if row["slug"] == "siblings"]), 1)
         ada = next(row for row in rows if row["child_name"] == "Ada Siblings")
         self.assertEqual(ada.get("child_id"), family.children.get(name="Ada Siblings").pk)
         self.assertIsNone(ada.get("application_id"))
-        ben = next(row for row in rows if row["child_name"] == "Ben Siblings")
-        self.assertEqual(ben.get("application_id"), EnrollmentApplication.objects.get(student_first_name="Ben").pk)
         self.assertTrue(any(item["child"] == "Ben Siblings" for item in waitlist_for_admin()))
         self.assertEqual(approved.status, "approved")
+        self.assertEqual(family.enrollment_applications.filter(status="waitlist").count(), 1)
 
     def test_two_waitlist_apps_without_approval_stay_hidden(self):
         family = PortalFamily.objects.create(unit=self.unit, slug="two-wait", name="Twowait")
@@ -358,6 +370,7 @@ class WaitlistHiddenFromFamiliesTests(TestCase):
         self.assertContains(admin_page, "All families")
         self.assertContains(admin_page, "Mia Listed")
         self.assertContains(admin_page, "Owen Mixed")
+        self.assertNotContains(admin_page, "Pia Mixed")
         self.assertNotContains(admin_page, "Nia Hiddenwait")
         self.assertNotContains(admin_page, "hidden-wait")
 
@@ -376,3 +389,135 @@ class WaitlistHiddenFromFamiliesTests(TestCase):
         self.assertNotContains(staff_page, "Nia Hiddenwait")
         staff_waitlist = self.client.get(reverse("portal_staff_page", kwargs={"page": "waitlist"}))
         self.assertContains(staff_waitlist, "Nia Hiddenwait")
+
+
+class SameChildWaitlistFamilyTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(
+            slug="school-18",
+            name="School 18",
+            program_type="both",
+            is_active=True,
+        )
+        self.family, self.user, created = create_portal_account_from_enrollment(
+            {
+                "family_name": "Montoya Cuenca",
+                "primary_email": "parent@example.com",
+                "primary_email_address": "parent@example.com",
+                "primary_first_name": "Jakera",
+                "primary_last_name": "Montoya",
+                "children": [
+                    {
+                        "student_first_name": "Danuska",
+                        "student_last_name": "Montoya Cuenca",
+                        "student_dob": date(2016, 5, 1),
+                        "program": "after_school",
+                        "program_location": "school_18",
+                    }
+                ],
+            },
+            "jakera",
+            "ParentPass123",
+        )
+        self.assertTrue(created)
+        self.app = _make_application(self.family, location="school_18", status="under_review")
+        self.app.student_first_name = "Danuska"
+        self.app.student_last_name = "Montoya Cuenca"
+        self.app.student_dob = date(2016, 5, 1)
+        self.app.primary_email = "parent@example.com"
+        self.app.membership_fee_agreed = "yes"
+        self.app.save()
+        approve_application(self.app)
+
+    def test_before_care_waitlist_reuses_family_and_one_all_families_row(self):
+        waitlist = create_before_care_from_application(self.app)
+        waitlist.student_first_name = "Danuska Daenerys"
+        waitlist.student_last_name = "Montoya Cuenca"
+        waitlist.save(update_fields=["student_first_name", "student_last_name"])
+
+        self.assertEqual(waitlist.portal_family_id, self.family.pk)
+        self.assertEqual(PortalFamily.objects.count(), 1)
+
+        rows = [row for row in get_admin_families_live() if row["id"] == self.family.pk]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["child_name"], "Danuska Montoya Cuenca")
+        self.assertTrue(any(item["child"] == "Danuska Daenerys Montoya Cuenca" for item in waitlist_for_admin()))
+
+    def test_new_waitlist_apply_with_middle_name_does_not_create_second_family(self):
+        family, user, created = create_portal_account_from_enrollment(
+            {
+                "family_name": "Montoya Cuenca",
+                "primary_email": "other-parent@example.com",
+                "primary_email_address": "other-parent@example.com",
+                "primary_first_name": "Jakera",
+                "primary_last_name": "Montoya",
+                "children": [
+                    {
+                        "student_first_name": "Danuska Daenerys",
+                        "student_last_name": "Montoya Cuenca",
+                        "student_dob": date(2016, 5, 1),
+                        "program": "before_care",
+                        "program_location": "school_18",
+                    }
+                ],
+            },
+            "jakera2",
+            "ParentPass123",
+        )
+        self.assertFalse(created)
+        self.assertEqual(family.pk, self.family.pk)
+        self.assertEqual(user.pk, self.user.pk)
+        self.assertEqual(PortalFamily.objects.count(), 1)
+        self.assertEqual(
+            find_existing_family_for_parent(
+                child_first="Danuska Daenerys",
+                child_last="Montoya Cuenca",
+                child_dob=date(2016, 5, 1),
+            ).pk,
+            self.family.pk,
+        )
+
+    def test_membership_fee_posts_once_for_same_child_with_middle_name(self):
+        fees = PortalLedgerEntry.objects.filter(family=self.family, entry_type="membership")
+        self.assertEqual(fees.count(), 1)
+        extra = _make_application(self.family, location="school_18", status="under_review")
+        extra.student_first_name = "Danuska Daenerys"
+        extra.student_last_name = "Montoya Cuenca"
+        extra.student_dob = date(2016, 5, 1)
+        extra.membership_fee_agreed = "yes"
+        extra.save()
+        approve_application(extra)
+        self.assertEqual(PortalLedgerEntry.objects.filter(family=self.family, entry_type="membership").count(), 1)
+        self.assertEqual(self.family.children.filter(is_active=True).count(), 1)
+
+    def test_link_by_email_keeps_waitlist_status(self):
+        orphan = _make_application(self.family, location="school_18", status="waitlist")
+        orphan.program = "before_care"
+        orphan.portal_family = None
+        orphan.primary_email = "parent@example.com"
+        orphan.save()
+        linked = link_applications_by_email(self.family, "parent@example.com")
+        orphan.refresh_from_db()
+        self.assertEqual(linked, 1)
+        self.assertEqual(orphan.portal_family_id, self.family.pk)
+        self.assertEqual(orphan.status, "waitlist")
+        self.assertEqual(PortalFamily.objects.count(), 1)
+
+    def test_duplicate_before_care_application_is_not_kept(self):
+        first = create_before_care_from_application(self.app)
+        clone = _make_application(self.family, location="school_18", status="waitlist")
+        clone.program = "before_care"
+        clone.student_first_name = "Danuska Daenerys"
+        clone.student_last_name = "Montoya Cuenca"
+        clone.student_dob = date(2016, 5, 1)
+        clone.portal_family = None
+        clone.save()
+        link_applications_to_family([clone], self.family)
+        self.assertFalse(EnrollmentApplication.objects.filter(pk=clone.pk).exists())
+        self.assertEqual(
+            EnrollmentApplication.objects.filter(
+                portal_family=self.family, program="before_care", status="waitlist"
+            ).count(),
+            1,
+        )
+        self.assertEqual(first.portal_family_id, self.family.pk)

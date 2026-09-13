@@ -642,15 +642,15 @@ def balance_report_rows(filters=None):
         families = families.filter(unit__slug=unit)
     if query:
         families = families.filter(Q(name__icontains=query) | Q(primary_contact__icontains=query))
-    from .family_list import child_balance_maps, family_balance
+    from .family_list import household_ledger_totals
 
     family_list = [family for family in families if not is_placeholder_unit(family.unit)]
-    ledger_maps = child_balance_maps([family.pk for family in family_list])
+    household_totals = household_ledger_totals([family.pk for family in family_list])
     rows = []
     outstanding = Decimal("0")
     credit = Decimal("0")
     for family in family_list:
-        balance = family_balance(family, ledger_maps.get(family.pk) or {})
+        balance = household_totals.get(family.pk, Decimal("0"))
         if balance > 0:
             outstanding += balance
         elif balance < 0:

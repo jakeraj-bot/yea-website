@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Families</h1>
-    <p class="lead">{{ staff_unit }} — {{ family_count }} families · {{ families|length }} children listed · click through to profile or billing.</p>
+    <p class="lead">{{ staff_unit }} — {{ family_count }} families · {{ families|length }} children listed · click through to profile{% if can_see_billing %} or billing{% endif %}.</p>
   </div>
 </section>
 <section class="page-content">
@@ -21,9 +21,11 @@
             <th data-col="school">School attending</th>
             <th data-col="medical">Medical</th>
             <th data-col="program">Program</th>
+            {% if can_see_billing %}
             <th data-col="billing">Billing</th>
             <th data-col="child-balance">Child balance</th>
             <th data-col="family-balance">Family balance</th>
+            {% endif %}
             <th data-col="status">Status</th>
             <th data-col="actions"></th>
           </tr>
@@ -70,16 +72,20 @@
               {% else %}—{% endif %}
             </td>
             <td data-col="program">{{ family.program }}</td>
+            {% if can_see_billing %}
             <td data-col="billing">{{ family.billing_type }}</td>
             <td data-col="child-balance"><span class="portal-money">${{ family.child_balance }}</span></td>
             <td data-col="family-balance"><span class="portal-money">${{ family.family_balance }}</span></td>
+            {% endif %}
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
               {% if family.is_first_child %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">Profile</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_email' family_slug=family.slug %}">Email</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_policies' family_slug=family.slug %}">Policies</a>
+              {% if can_see_billing %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_billing' family_slug=family.slug %}{% if family.id %}?id={{ family.id }}{% endif %}">Billing</a>
+              {% endif %}
               {% endif %}
             </td>
           </tr>
