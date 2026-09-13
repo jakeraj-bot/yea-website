@@ -162,7 +162,16 @@ a:hover { color: var(--yea-orange); }
 .site-nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.5rem;
 }
 
 .site-nav > ul {
@@ -2757,9 +2766,15 @@ a.partner-logo:hover {
 
   .has-dropdown.is-open .dropdown { display: block; }
 
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 0.5rem;
+  }
+
   .btn-nav {
     text-align: center;
-    margin-top: 0.5rem;
+    margin-top: 0;
   }
 
   .hero-inner {

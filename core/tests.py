@@ -1,11 +1,46 @@
+from pathlib import Path
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from core.models import ContactMessage
 from core.spam_protection import CONTACT_FORM_SESSION_KEY
+
+
+class PublicHeaderPortalTests(TestCase):
+    def test_homepage_shows_portal_button_next_to_apply(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, ">Portal</a>")
+        self.assertContains(response, reverse("portal_home"))
+        self.assertContains(response, ">Apply</a>")
+        self.assertContains(response, "header-actions")
+        self.assertContains(response, "Making a")
+        self.assertContains(response, "difference in every community we serve")
+        self.assertNotContains(response, "Programms")
+        self.assertNotContains(response, "not open to the public yet")
+
+    def test_contact_page_shows_portal_button(self):
+        response = self.client.get(reverse("contact"))
+        self.assertContains(response, ">Portal</a>")
+        self.assertContains(response, reverse("portal_home"))
+
+    @override_settings(PORTALS_PUBLIC=False)
+    def test_portal_button_stays_visible_when_legacy_flag_is_off(self):
+        home = self.client.get(reverse("home"))
+        hub = self.client.get(reverse("portal_home"))
+        self.assertContains(home, ">Portal</a>")
+        self.assertContains(hub, "Parent portal")
+        self.assertContains(hub, "Sign in to parent portal")
+        self.assertNotContains(hub, "not open to the public yet")
+
+
+class SiteCssBraceTests(SimpleTestCase):
+    def test_site_css_braces_are_balanced(self):
+        css = Path("static/css/site.css").read_text()
+        self.assertEqual(css.count("{"), css.count("}"))
+        self.assertIn(".header-actions", css)
 
 
 class ContactSpamProtectionTests(TestCase):

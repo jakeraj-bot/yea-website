@@ -1180,12 +1180,8 @@ def _support_context(area, page_title, request, preview_family=None, **extra):
 
 @require_GET
 def portal_home(request):
-    from django.conf import settings
-
     from .staff_auth import portal_switch_flags
 
-    if not getattr(settings, "PORTALS_PUBLIC", True):
-        return render(request, "core/portals_unavailable.html")
     return render(request, "core/portals.html", portal_switch_flags(request.user))
 
 
