@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("portal", "0030_program_director_front_desk"),
+        ("portal", "0032_merge_late_fee_and_program_director"),
     ]
 
     operations = [
