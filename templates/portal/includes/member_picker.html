@@ -1,0 +1,98 @@
+<form method="get" class="portal-member-picker-filters portal-collapse-skip">
+  {% if picker.show_unit_filter %}
+  <label class="portal-filter-label">
+    Unit
+    <select class="portal-select" name="unit">
+      <option value="">All units</option>
+      {% for slug, name in picker.unit_choices %}
+      <option value="{{ slug }}"{% if picker.filter_unit == slug %} selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <label class="portal-filter-label">
+    Child name
+    <input class="portal-input" type="search" name="q" value="{{ picker.filter_q }}" placeholder="Child or family">
+  </label>
+  {% if picker.show_group_filter %}
+  <label class="portal-filter-label">
+    Group
+    <select class="portal-select" name="group">
+      <option value="">All kids</option>
+      {% for group_id, label in picker.group_choices %}
+      <option value="{{ group_id }}"{% if picker.filter_group == group_id %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <div class="portal-toolbar" style="margin-top:0;margin-bottom:0;">
+    <button type="submit" class="btn btn-secondary">Apply filters</button>
+    <a class="btn btn-secondary" href="{{ picker_action }}">Clear</a>
+  </div>
+</form>
+
+<div class="portal-member-picker">
+  <section class="portal-picker-col card portal-collapse-skip">
+    <h3>{{ available_heading|default:"Kids to add" }}</h3>
+    <p class="form-note">{{ picker.available_children|length }} shown. Filters apply to this list.</p>
+    {% if picker.available_children %}
+    <form method="post" action="{{ picker_action }}" class="portal-picker-bulk">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_filtered">
+      <input type="hidden" name="q" value="{{ picker.filter_q }}">
+      <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
+      <input type="hidden" name="group" value="{{ picker.filter_group }}">
+      <button type="submit" class="btn btn-secondary btn-sm">Add all shown</button>
+    </form>
+    <ul class="portal-picker-list">
+      {% for child in picker.available_children %}
+      <li>
+        <div>
+          <strong>{{ child.name }}</strong>
+          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
+        </div>
+        <form method="post" action="{{ picker_action }}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add">
+          <input type="hidden" name="child_id" value="{{ child.id }}">
+          <input type="hidden" name="q" value="{{ picker.filter_q }}">
+          <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
+          <input type="hidden" name="group" value="{{ picker.filter_group }}">
+          <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="form-note">No children match these filters, or everyone matching is already added.</p>
+    {% endif %}
+  </section>
+
+  <section class="portal-picker-col card portal-collapse-skip">
+    <h3>{{ enrolled_heading|default:"Added members" }}</h3>
+    <p class="form-note">{{ picker.enrolled_children|length }} added{% if picker.filter_q %} matching “{{ picker.filter_q }}”{% endif %}.</p>
+    {% if picker.enrolled_children %}
+    <ul class="portal-picker-list">
+      {% for child in picker.enrolled_children %}
+      <li>
+        <div>
+          <strong>{{ child.name }}</strong>
+          <span class="form-note">{{ child.family }}{% if child.unit %} · {{ child.unit }}{% endif %}{% if child.grade %} · {{ child.grade }}{% endif %}</span>
+        </div>
+        <form method="post" action="{{ picker_action }}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="remove">
+          <input type="hidden" name="child_id" value="{{ child.id }}">
+          <input type="hidden" name="q" value="{{ picker.filter_q }}">
+          <input type="hidden" name="filter_unit" value="{{ picker.filter_unit }}">
+          <input type="hidden" name="group" value="{{ picker.filter_group }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="form-note">No members added yet{% if picker.filter_q %} match this name filter{% endif %}.</p>
+    {% endif %}
+  </section>
+</div>

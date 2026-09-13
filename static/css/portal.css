@@ -5567,3 +5567,87 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 .portal-delete-reason-error {
   color: #9b1c1c;
 }
+
+.portal-member-picker-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  margin: 0 0 1rem;
+}
+
+.portal-member-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.portal-picker-col h3 {
+  margin-top: 0;
+}
+
+.portal-picker-bulk {
+  margin: 0 0 0.65rem;
+}
+
+.portal-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.portal-picker-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #e4e8ee;
+}
+
+.portal-picker-list li:last-child {
+  border-bottom: 0;
+}
+
+.portal-picker-list .form-note {
+  display: block;
+  margin: 0.15rem 0 0;
+}
+
+.portal-activity-calendar td {
+  vertical-align: top;
+  min-width: 7.5rem;
+}
+
+.portal-activity-day-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+}
+
+.portal-activity-day-list a {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  margin: 0 0 0.3rem;
+}
+
+.portal-child-calendar-day.has-activities {
+  background: #fff8dc;
+}
+
+.portal-activity-series {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.portal-print-blank-cell {
+  min-width: 4.5rem;
+}
+
+@media (max-width: 800px) {
+  .portal-member-picker {
+    grid-template-columns: 1fr;
+  }
+}

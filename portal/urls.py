@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import auth_views, password_reset_views, views, views_actions
+from . import auth_views, calendar_views, password_reset_views, views, views_actions
 
 urlpatterns = [
     path("", views.portal_home, name="portal_home"),
@@ -538,6 +538,27 @@ urlpatterns = [
         views.staff_program_roster,
         name="portal_staff_program_roster",
     ),
+    path(
+        "staff/activity-calendar/",
+        calendar_views.activity_calendar,
+        name="portal_staff_activity_calendar",
+    ),
+    path(
+        "staff/activity-calendar/<int:activity_id>/",
+        calendar_views.activity_detail,
+        name="portal_staff_activity_detail",
+    ),
+    path("staff/groups/", calendar_views.group_list, name="portal_staff_groups"),
+    path(
+        "staff/groups/<int:group_id>/print/<slug:kind>/",
+        calendar_views.group_print,
+        name="portal_staff_group_print",
+    ),
+    path(
+        "staff/groups/<int:group_id>/",
+        calendar_views.group_detail,
+        name="portal_staff_group_detail",
+    ),
     path("staff/<slug:page>/", views.staff_page, name="portal_staff_page"),
     # Admin — detail and report routes before catch-all
     path(
@@ -709,6 +730,27 @@ urlpatterns = [
         "admin/application/<slug:app_slug>/",
         views.admin_application_detail,
         name="portal_admin_application_detail",
+    ),
+    path(
+        "admin/activity-calendar/",
+        calendar_views.activity_calendar,
+        name="portal_admin_activity_calendar",
+    ),
+    path(
+        "admin/activity-calendar/<int:activity_id>/",
+        calendar_views.activity_detail,
+        name="portal_admin_activity_detail",
+    ),
+    path("admin/groups/", calendar_views.group_list, name="portal_admin_groups"),
+    path(
+        "admin/groups/<int:group_id>/print/<slug:kind>/",
+        calendar_views.group_print,
+        name="portal_admin_group_print",
+    ),
+    path(
+        "admin/groups/<int:group_id>/",
+        calendar_views.group_detail,
+        name="portal_admin_group_detail",
     ),
     path("admin/<slug:page>/", views.admin_page, name="portal_admin_page"),
 ]

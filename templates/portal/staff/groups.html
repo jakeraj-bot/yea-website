@@ -1,0 +1,86 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Groups</h1>
+    <p class="lead">
+      {% if ops_area == "admin" %}
+        Standing groups such as a bus run — no dates. Open a group to add members and print sheets.
+      {% else %}
+        {{ staff_unit }} — standing groups such as a bus run. Open a group to add members and print.
+      {% endif %}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="card portal-program-form portal-collapse-skip">
+      <h2>Create group</h2>
+      <form class="portal-form-grid" method="post" action="{{ create_url }}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="grp-name">Name</label>
+          <input id="grp-name" name="name" type="text" class="portal-input" required placeholder="Bus run, room 3, homework club…">
+        </div>
+        {% if show_unit_filter %}
+        <div class="form-group">
+          <label for="grp-unit">Unit</label>
+          <select id="grp-unit" name="unit" class="portal-select" required>
+            {% for slug, name in unit_choices %}
+            <option value="{{ slug }}"{% if default_unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary">Create group</button>
+        </div>
+      </form>
+    </div>
+
+    {% if show_unit_filter %}
+    <form method="get" class="card portal-member-picker-filters portal-collapse-skip">
+      <label class="portal-filter-label">
+        Unit
+        <select class="portal-select" name="unit" onchange="this.form.submit()">
+          <option value="">All units</option>
+          {% for slug, name in unit_choices %}
+          <option value="{{ slug }}"{% if filter_unit == slug %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+    {% endif %}
+
+    <section class="card portal-collapse-skip">
+      <h2>All groups</h2>
+      {% if groups %}
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              {% if show_unit_filter %}<th>Unit</th>{% endif %}
+              <th>Members</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for group in groups %}
+            <tr>
+              <td>
+                <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_group_detail' group_id=group.pk %}{% else %}{% url 'portal_staff_group_detail' group_id=group.pk %}{% endif %}">{{ group.name }}</a>
+              </td>
+              {% if show_unit_filter %}<td>{{ group.unit.name }}</td>{% endif %}
+              <td>{{ group.member_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="form-note">No groups yet{% if filter_unit %} for that unit{% endif %}.</p>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}

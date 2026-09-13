@@ -1,0 +1,61 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ calendar_url }}">Activity calendar</a> / {{ activity.name }}</p>
+    <h1>{{ activity.name }}</h1>
+    <p class="lead">
+      {{ activity.activity_date|date:"l, F j, Y" }} · {{ activity.start_time|time:"g:i A" }}
+      · {{ activity.unit.name }}
+    </p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="card portal-collapse-skip">
+      <h2>Lesson plan for this day</h2>
+      {% if activity.has_lesson_plan %}
+      <p>Current file: <a href="{{ activity.lesson_plan.url }}">{{ activity.lesson_plan_name|default:activity.lesson_plan.name }}</a></p>
+      {% else %}
+      <p class="form-note">No lesson plan uploaded for this day yet.</p>
+      {% endif %}
+      <form class="portal-form-grid" method="post" action="{{ picker_action }}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="lesson_plan">
+        <div class="form-group portal-form-full">
+          <label for="act-plan">Upload PDF, Word, or image</label>
+          <input id="act-plan" name="lesson_plan" type="file" class="portal-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp" required>
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary">Save lesson plan</button>
+        </div>
+      </form>
+      {% if series_days %}
+      <p class="form-note">Same activity on other days in this week or month:</p>
+      <ul class="portal-activity-series">
+        {% for day in series_days %}
+        <li>
+          <a href="{% if ops_area == 'admin' %}{% url 'portal_admin_activity_detail' activity_id=day.pk %}{% else %}{% url 'portal_staff_activity_detail' activity_id=day.pk %}{% endif %}">
+            {{ day.activity_date|date:"D, M j" }}{% if day.has_lesson_plan %} · lesson plan{% endif %}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+
+    <section class="card portal-collapse-skip">
+      <h2>Who attended</h2>
+      <p class="form-note">Left: kids you can add. Right: members already in this activity. Filter the left list by unit, child name, or a group.</p>
+      {% include "portal/includes/member_picker.html" %}
+    </section>
+
+    <form method="post" action="{{ picker_action }}" class="portal-toolbar" onsubmit="return confirm('Delete this activity?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn btn-secondary">Delete activity</button>
+      <a class="btn btn-secondary" href="{{ calendar_url }}">Back to calendar</a>
+    </form>
+  </div>
+</section>
+{% endblock %}
