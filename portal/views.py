@@ -2896,6 +2896,8 @@ def admin_data_report(request, report_slug):
     if report_slug not in ADMIN_DATA_REPORTS:
         return render(request, "portal/404.html", status=404)
     filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status")}
+    if report_slug == "balances" and "status" not in request.GET:
+        filters["status"] = "Active"
     report = build_admin_report(report_slug, filters) if _portal_data_live() else {
         **ADMIN_DATA_REPORTS[report_slug],
         "rows": [],
@@ -2937,6 +2939,8 @@ def admin_data_report(request, report_slug):
                 writer.writerow([cell["value"] for cell in row["display"]])
         return response
     query = {key: value for key, value in filters.items() if value}
+    if report_slug == "balances":
+        query["status"] = filters.get("status") or ""
     query["format"] = "csv"
     return render(
         request,
@@ -2947,7 +2951,13 @@ def admin_data_report(request, report_slug):
                 "admin",
                 report["title"],
                 admin_page_slug="reports",
-                page_guide_key="member-information" if report_slug == "member-information" else None,
+                page_guide_key=(
+                    "member-information"
+                    if report_slug == "member-information"
+                    else "outstanding-balances"
+                    if report_slug == "balances"
+                    else None
+                ),
                 report=report,
                 filters=filters,
                 csv_query=urlencode(query),

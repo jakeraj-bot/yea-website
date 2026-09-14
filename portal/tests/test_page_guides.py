@@ -97,6 +97,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Read the weeks", titles)
         self.assertIn("Charge a late fee only if you pick them", titles)
 
+    def test_outstanding_balances_guide_explains_child_names_and_status_filter(self):
+        guide = guide_for("outstanding-balances")
+        self.assertIsNotNone(guide)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("child", bodies.lower())
+        self.assertIn("status", bodies.lower())
+        self.assertIn("filter", bodies.lower())
+
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")
         self.assertIsNotNone(guide)

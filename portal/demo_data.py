@@ -683,7 +683,7 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Outstanding balances",
-        "description": "Every family balance — sorted by amount due",
+        "description": "Children who still owe — sorted by amount due",
         "format": "PDF / CSV",
         "slug": "balances",
         "report": "balances",

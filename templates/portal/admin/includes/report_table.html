@@ -15,7 +15,9 @@
       <tr>
         {% for cell in row.display %}
         <td>
-          {% if cell.key == "family" and row.family_slug %}
+          {% if cell.key == "child" and row.family_slug %}
+          <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+          {% elif cell.key == "family" and row.family_slug %}
           <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
           {% else %}
           {{ cell.value }}
