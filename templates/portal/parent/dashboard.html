@@ -1,11 +1,67 @@
 {% extends "portal/base.html" %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
-  <div class="container">
-    <h1>Dashboard</h1>
-    <p class="lead">Welcome back, {{ parent_preview.family_name }} family — {{ parent_preview.label }} account.</p>
+  <div class="container portal-dash-hero">
+    <div class="portal-dash-hero-copy">
+      <h1>Dashboard</h1>
+      <p class="lead">Welcome back, {{ parent_preview.family_name }} family — {{ parent_preview.label }} account.</p>
+    </div>
+    <div class="portal-dash-hero-balance{% if dashboard.has_credit or parent_preview.billing.has_credit %} is-credit{% elif dashboard.balance == '0.00' %} is-zero{% else %} is-due{% endif %}" aria-label="Family balance">
+      <span class="portal-stat-label">Family balance</span>
+      {% if dashboard.has_credit or parent_preview.billing.has_credit %}
+      <strong class="portal-dash-hero-balance-amount">${{ dashboard.account_credit|default:parent_preview.billing.account_credit }} credit</strong>
+      {% else %}
+      <strong class="portal-dash-hero-balance-amount">${{ dashboard.balance }}</strong>
+      {% endif %}
+    </div>
   </div>
 </section>
+<style>
+  .portal-dash-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+  }
+  .portal-dash-hero-copy {
+    min-width: min(100%, 16rem);
+    flex: 1 1 16rem;
+  }
+  .portal-dash-hero-copy h1,
+  .portal-dash-hero-copy .lead {
+    margin-bottom: 0.35rem;
+  }
+  .portal-dash-hero-copy .lead {
+    margin-bottom: 0;
+  }
+  .portal-dash-hero-balance {
+    margin-left: auto;
+    text-align: right;
+    min-width: 9.5rem;
+  }
+  .portal-dash-hero-balance .portal-stat-label {
+    margin-bottom: 0.15rem;
+  }
+  .portal-dash-hero-balance-amount {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-heading);
+  }
+  .portal-dash-hero-balance.is-credit .portal-dash-hero-balance-amount {
+    color: var(--yea-green);
+  }
+  @media (max-width: 640px) {
+    .portal-dash-hero-balance {
+      margin-left: 0;
+      text-align: left;
+      width: 100%;
+    }
+  }
+</style>
 <section class="page-content">
   <div class="container">
     {% if parent_announcement.active %}
