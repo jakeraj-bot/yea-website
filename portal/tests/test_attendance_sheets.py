@@ -238,6 +238,9 @@ class AttendanceSheetFilterTests(TestCase):
         self.assertIn("Child name", thead)
         self.assertIn("portal-attendance-print-wrap", html)
         self.assertIn("portal-attendance-print-table", html)
+        self.assertIn("data-print-row-chunk", html)
+        self.assertIn("portal-attendance-print.js", html)
+        self.assertIn("portalPaginateAttendanceTables", Path(__file__).resolve().parents[2].joinpath("static/js/portal-attendance-print.js").read_text())
         self.assertIn("counter(page)", html)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
@@ -272,3 +275,13 @@ class AttendanceSheetFilterTests(TestCase):
         js = (Path(__file__).resolve().parents[2] / "static" / "js" / "portal-report-print.js").read_text()
         skip = js.split("portal-attendance-print-sheet", 1)[1].split("\n", 1)[0]
         self.assertIn("continue", skip)
+        print_css = css.split("@media print {\n  @page", 1)[1]
+        self.assertIn(".portal-attendance-print-page + .portal-attendance-print-page", print_css)
+        self.assertIn("page-break-before: always", print_css)
+        chrome = (Path(__file__).resolve().parents[2] / "templates" / "portal" / "includes" / "attendance_print_chrome.html").read_text()
+        self.assertIn("portal-attendance-print.js", chrome)
+        paginate = (Path(__file__).resolve().parents[2] / "static" / "js" / "portal-attendance-print.js").read_text()
+        self.assertIn("cloneNode(true)", paginate)
+        self.assertIn("beforeprint", paginate)
+        self.assertIn("afterprint", paginate)
+        self.assertIn("data-print-row-chunk", paginate)

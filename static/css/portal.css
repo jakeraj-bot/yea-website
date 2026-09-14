@@ -3530,6 +3530,15 @@ nav.portal-nav-admin-groups {
     break-inside: avoid;
   }
 
+  .portal-attendance-print-table[data-print-source] {
+    display: none !important;
+  }
+
+  .portal-attendance-print-page + .portal-attendance-print-page {
+    page-break-before: always;
+    break-before: page;
+  }
+
   .portal-attendance-print-footer {
     display: none;
   }
