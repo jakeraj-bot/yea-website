@@ -633,43 +633,65 @@ def stripe_settlement_rows(filters=None):
     }
 
 
+def _family_row_status(family):
+    if family.is_suspended:
+        return "Suspended"
+    return (family.status or "Active").strip() or "Active"
+
+
 def balance_report_rows(filters=None):
+    """One row per child who still owes, using the same child-balance rules as All families."""
     filters = filters or {}
     query = (filters.get("q") or "").strip()
     unit = (filters.get("unit") or "").strip()
-    families = PortalFamily.objects.select_related("unit").prefetch_related("children").order_by("-balance", "name")
-    if unit:
-        families = families.filter(unit__slug=unit)
-    if query:
-        families = families.filter(Q(name__icontains=query) | Q(primary_contact__icontains=query))
-    from .family_list import household_ledger_totals
+    if "status" in filters:
+        status = (filters.get("status") or "").strip()
+    else:
+        status = "Active"
+    from .family_list import child_balance_from_map, child_balance_maps
+    from .unit_visibility import child_unit_slug_q, unit_label_for_child
 
-    family_list = [family for family in families if not is_placeholder_unit(family.unit)]
-    household_totals = household_ledger_totals([family.pk for family in family_list])
+    children = PortalChild.objects.select_related("family", "family__unit", "unit").order_by("name")
+    if unit:
+        children = children.filter(child_unit_slug_q(unit))
+    if query:
+        children = children.filter(
+            Q(name__icontains=query) | Q(family__name__icontains=query) | Q(family__primary_contact__icontains=query)
+        )
+    child_list = [child for child in children if not is_placeholder_unit(child.family.unit)]
+    maps = child_balance_maps([child.family_id for child in child_list])
     rows = []
+    statuses = set()
     outstanding = Decimal("0")
-    credit = Decimal("0")
-    for family in family_list:
-        balance = household_totals.get(family.pk, Decimal("0"))
-        if balance > 0:
-            outstanding += balance
-        elif balance < 0:
-            credit += abs(balance)
+    for child in child_list:
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if balance <= 0:
+            continue
+        row_status = _family_row_status(child.family)
+        statuses.add(row_status)
+        if status and row_status.lower() != status.lower():
+            continue
+        unit_name, _slug = unit_label_for_child(child)
+        outstanding += balance
         rows.append(
             {
-                "family": family.name,
-                "family_slug": family.slug,
-                "family_id": family.pk,
-                "unit": family.unit.name,
-                "billing": (family.billing_type or "Private pay").strip() or "Private pay",
-                "status": "Suspended" if family.is_suspended else family.status,
+                "child": child.name,
+                "family": child.family.name,
+                "family_slug": child.family.slug,
+                "family_id": child.family_id,
+                "unit": unit_name or child.family.unit.name,
+                "billing": (child.family.billing_type or "Private pay").strip() or "Private pay",
                 "balance": _money(balance),
             }
         )
+    rows.sort(key=lambda row: (-Decimal(row["balance"]), row["child"].casefold()))
+    if status:
+        statuses.add(status)
+    statuses.add("Active")
     return {
         "rows": rows,
         "outstanding": _money(outstanding),
-        "credit": _money(credit),
+        "statuses": sorted(statuses),
     }
 
 
@@ -842,16 +864,15 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Outstanding balances",
-        "lead": "Family balances across all units, largest first.",
+        "lead": "Children who still owe, largest balance first. Use status to include waitlist or withdrawn accounts.",
         "columns": [
-            ("family", "Family"),
+            ("child", "Child"),
             ("unit", "Unit"),
             ("billing", "Payment type"),
-            ("status", "Status"),
             ("balance", "Balance"),
         ],
         "filename": "outstanding-balances.csv",
-        "filters": ("q", "unit"),
+        "filters": ("q", "unit", "status"),
     },
     "payments": {
         "title": "Who paid what",
@@ -1042,7 +1063,9 @@ def build_admin_report(slug, filters=None):
     elif slug == "balances":
         data = balance_report_rows(filters)
         rows = data["rows"]
-        extra["summary"] = f"{len(rows)} families · ${data['outstanding']} outstanding · ${data['credit']} in credit"
+        extra["summary"] = f"{len(rows)} children · ${data['outstanding']} outstanding"
+        extra["statuses"] = data["statuses"]
+        extra["outstanding"] = data["outstanding"]
     elif slug == "payments":
         data = payment_report_rows(filters)
         rows = data["rows"]

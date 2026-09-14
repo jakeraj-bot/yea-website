@@ -401,6 +401,20 @@ GUIDES = {
             },
         ],
     },
+    "outstanding-balances": {
+        "title": "How to use outstanding balances",
+        "intro": "This list is one row per child who still owes. Child names open the family billing account. Status is a filter, not a column.",
+        "steps": [
+            {
+                "title": "Read child names and amounts",
+                "body": "Each row is a child with that child's outstanding amount, not the household last name. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
+            },
+            {
+                "title": "Filter by status",
+                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, withdrawn, suspended, or all statuses. Apply filters, then print or download CSV.",
+            },
+        ],
+    },
     "owed-weeks": {
         "title": "Who still owes — by week",
         "intro": "See families and children with a balance, which weeks those charges cover, and pick who gets a late fee.",

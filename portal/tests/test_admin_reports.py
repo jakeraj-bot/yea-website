@@ -139,8 +139,204 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertEqual(len(ledger["rows"]), 1)
         self.assertIn("50.00", ledger["summary"])
         balances = build_admin_report("balances", {})
-        jacobs = next(row for row in balances["rows"] if row["family"] == "Jacobs")
-        self.assertEqual(jacobs["balance"], "50.00")
+        jordan = next(row for row in balances["rows"] if row["child"] == "Jordan Jacobs")
+        self.assertEqual(jordan["balance"], "50.00")
+        self.assertNotIn("status", jordan)
+        self.assertEqual(balances["columns"][0], ("child", "Child"))
+        self.assertNotIn(("family", "Family"), balances["columns"])
+        self.assertNotIn(("status", "Status"), balances["columns"])
+
+    def test_outstanding_balance_report_lists_children_and_filters_status(self):
+        sibling = PortalChild.objects.create(
+            family=self.family,
+            name="Maya Jacobs",
+            school="School 18",
+            is_active=True,
+        )
+        wait_family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="wait-owe",
+            name="Waitowe",
+            billing_type="Private pay",
+            status="Waitlist",
+        )
+        wait_child = PortalChild.objects.create(
+            family=wait_family,
+            name="Nia Waitowe",
+            school="School 18",
+            is_active=True,
+        )
+        withdrawn_family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="left",
+            name="Left",
+            billing_type="Private pay",
+            status="Withdrawn",
+        )
+        withdrawn_child = PortalChild.objects.create(
+            family=withdrawn_family,
+            name="Omar Left",
+            school="School 18",
+            is_active=False,
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Jordan Jacobs",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition — Jordan Jacobs",
+            amount=Decimal("35.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Maya Jacobs",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition — Maya Jacobs",
+            amount=Decimal("45.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.no_plan,
+            child_name="Ada Rivera",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition — Ada Rivera",
+            amount=Decimal("20.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.no_plan,
+            child_name="Ada Rivera",
+            date=timezone.localdate(),
+            entry_type="payment",
+            description="Payment — Ada Rivera",
+            amount=Decimal("-20.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=wait_family,
+            child_name="Nia Waitowe",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Membership — Nia Waitowe",
+            amount=Decimal("15.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=withdrawn_family,
+            child_name="Omar Left",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Past due — Omar Left",
+            amount=Decimal("80.00"),
+        )
+        self.assertEqual(sibling.name, "Maya Jacobs")
+        self.assertEqual(self.no_plan_child.name, "Ada Rivera")
+        self.assertEqual(wait_child.name, "Nia Waitowe")
+        self.assertEqual(withdrawn_child.name, "Omar Left")
+
+        default_report = build_admin_report("balances", {})
+        default_names = [row["child"] for row in default_report["rows"]]
+        self.assertEqual(default_names, ["Maya Jacobs", "Jordan Jacobs"])
+        self.assertEqual(default_report["rows"][0]["balance"], "45.00")
+        self.assertEqual(default_report["rows"][1]["balance"], "35.00")
+        self.assertEqual(default_report["outstanding"], "80.00")
+        self.assertIn("children", default_report["summary"])
+        self.assertNotIn("Ada Rivera", default_names)
+        self.assertNotIn("Nia Waitowe", default_names)
+        self.assertNotIn("Omar Left", default_names)
+        for row in default_report["rows"]:
+            self.assertNotIn("status", row)
+            display_keys = [cell["key"] for cell in row["display"]]
+            self.assertEqual(display_keys, ["child", "unit", "billing", "balance"])
+
+        waitlist_report = build_admin_report("balances", {"status": "Waitlist"})
+        self.assertEqual([row["child"] for row in waitlist_report["rows"]], ["Nia Waitowe"])
+        self.assertEqual(waitlist_report["rows"][0]["balance"], "15.00")
+
+        withdrawn_report = build_admin_report("balances", {"status": "Withdrawn"})
+        self.assertEqual([row["child"] for row in withdrawn_report["rows"]], ["Omar Left"])
+        self.assertEqual(withdrawn_report["rows"][0]["balance"], "80.00")
+
+        all_statuses = build_admin_report("balances", {"status": ""})
+        all_names = {row["child"] for row in all_statuses["rows"]}
+        self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Nia Waitowe", "Omar Left"})
+        self.assertEqual(all_statuses["outstanding"], "175.00")
+        self.assertIn("Waitlist", all_statuses["statuses"])
+        self.assertIn("Withdrawn", all_statuses["statuses"])
+        self.assertIn("Active", all_statuses["statuses"])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_outstanding_balance_page_has_child_column_and_status_filter(self):
+        PortalChild.objects.create(
+            family=self.family,
+            name="Maya Jacobs",
+            school="School 18",
+            is_active=True,
+        )
+        wait_family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="wait-owe",
+            name="Waitowe",
+            billing_type="Private pay",
+            status="Waitlist",
+        )
+        PortalChild.objects.create(
+            family=wait_family,
+            name="Nia Waitowe",
+            school="School 18",
+            is_active=True,
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Jordan Jacobs",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition — Jordan Jacobs",
+            amount=Decimal("35.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Maya Jacobs",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Weekly tuition — Maya Jacobs",
+            amount=Decimal("45.00"),
+        )
+        PortalLedgerEntry.objects.create(
+            family=wait_family,
+            child_name="Nia Waitowe",
+            date=timezone.localdate(),
+            entry_type="charge",
+            description="Membership — Nia Waitowe",
+            amount=Decimal("15.00"),
+        )
+        self._login_admin()
+        url = reverse("portal_admin_data_report", kwargs={"report_slug": "balances"})
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn("<th>Child</th>", html)
+        self.assertNotIn("<th>Family</th>", html)
+        self.assertNotIn("<th>Status</th>", html)
+        self.assertIn('name="status"', html)
+        self.assertIn("Jordan Jacobs", html)
+        self.assertIn("Maya Jacobs", html)
+        self.assertNotIn("Nia Waitowe", html)
+        self.assertIn(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}), html)
+        self.assertContains(page, "How to use outstanding balances")
+        self.assertContains(page, "Status is a filter")
+
+        waitlist_page = self.client.get(url, {"status": "Waitlist"})
+        waitlist_html = waitlist_page.content.decode()
+        self.assertIn("Nia Waitowe", waitlist_html)
+        self.assertNotIn("Jordan Jacobs", waitlist_html)
+        self.assertNotIn("<th>Status</th>", waitlist_html)
+
+        csv_response = self.client.get(url, {"format": "csv"})
+        csv_text = csv_response.content.decode()
+        header = csv_text.splitlines()[0]
+        self.assertEqual(header, "Child,Unit,Payment type,Balance")
+        self.assertIn("Jordan Jacobs", csv_text)
+        self.assertNotIn("Nia Waitowe", csv_text)
+        self.assertNotIn("Status", header)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_reports_hub_and_csv_export(self):
