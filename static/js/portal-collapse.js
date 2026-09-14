@@ -24,6 +24,10 @@
     return (heading.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
   }
 
+  function startsCollapsed(el) {
+    return !(el && el.hasAttribute("data-collapse-open"));
+  }
+
   function applyCollapsed(section, collapsed) {
     section.classList.toggle("is-collapsed", collapsed);
     var toggle = section.querySelector(".portal-collapse-toggle");
@@ -54,7 +58,9 @@
     var heading = card.querySelector(":scope > h2, :scope > h3");
     if (!heading) return;
     var key = sectionKey(heading);
-    var collapsed = Object.prototype.hasOwnProperty.call(pageState, key) ? pageState[key] : true;
+    var collapsed = Object.prototype.hasOwnProperty.call(pageState, key)
+      ? pageState[key]
+      : startsCollapsed(card);
     var button = document.createElement("button");
     button.type = "button";
     button.className = "portal-collapse-toggle";
@@ -101,7 +107,9 @@
     }
     section.appendChild(bodyWrap);
     var key = sectionKey(button);
-    var collapsed = Object.prototype.hasOwnProperty.call(pageState, key) ? pageState[key] : true;
+    var collapsed = Object.prototype.hasOwnProperty.call(pageState, key)
+      ? pageState[key]
+      : startsCollapsed(heading);
     applyCollapsed(section, collapsed);
     button.addEventListener("click", function () {
       var nowCollapsed = !section.classList.contains("is-collapsed");

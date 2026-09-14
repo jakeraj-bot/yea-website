@@ -121,6 +121,18 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("cannot look up the old password", bodies)
         self.assertIn("one-time link to create a new password", bodies)
 
+    def test_email_guides_explain_collapsing_sections(self):
+        family = guide_for("family-email")
+        bulk = guide_for("parent-emails")
+        self.assertIn("Collapse sections", [step["title"] for step in family["steps"]])
+        self.assertIn("Collapse sections", [step["title"] for step in bulk["steps"]])
+        family_text = family["intro"] + " " + " ".join(step["body"] for step in family["steps"])
+        bulk_text = bulk["intro"] + " " + " ".join(step["body"] for step in bulk["steps"])
+        self.assertIn("fold it up", family_text)
+        self.assertIn("Compose starts open", family_text)
+        self.assertIn("Recipients start open", bulk_text)
+        self.assertIn("Expand all", bulk_text)
+
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")
         bodies = " ".join(step["body"] for step in guide["steps"])
