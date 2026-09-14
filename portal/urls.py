@@ -244,6 +244,11 @@ urlpatterns = [
         name="portal_staff_owed_weeks_report",
     ),
     path(
+        "staff/reports/four-cs-payout/",
+        views.staff_four_cs_payout_report,
+        name="portal_staff_four_cs_payout_report",
+    ),
+    path(
         "staff/owed-weeks/late-fee/",
         views_actions.owed_weeks_late_fee,
         name="portal_staff_owed_weeks_late_fee",
@@ -780,6 +785,11 @@ urlpatterns = [
         "admin/reports/print/owed-weeks/",
         views.admin_owed_weeks_report,
         name="portal_admin_owed_weeks_report",
+    ),
+    path(
+        "admin/reports/print/four-cs-payout/",
+        views.admin_four_cs_payout_report,
+        name="portal_admin_four_cs_payout_report",
     ),
     path(
         "admin/owed-weeks/late-fee/",

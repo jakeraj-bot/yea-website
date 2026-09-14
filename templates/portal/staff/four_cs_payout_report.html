@@ -1,0 +1,283 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+{% include "portal/includes/print_wide.html" %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / 4Cs expected amounts</p>
+    <h1>4Cs expected amounts</h1>
+    <p class="lead">{{ summary }}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
+      <h2>Filters</h2>
+      <p class="form-note">Narrow by any column, then print. Totals follow the filtered list. Clear a filter to bring those rows back.</p>
+      <div class="portal-report-filters">
+        {% if show_unit_filter %}
+        <label class="portal-filter-label">
+          Unit
+          <select class="portal-select" name="unit">
+            <option value="">All units</option>
+            {% for slug, name in filter_options.units %}
+            <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="portal-filter-label">
+          Status
+          <select class="portal-select" name="status">
+            <option value="">All statuses</option>
+            {% for status in filter_options.statuses %}
+            <option value="{{ status }}"{% if report_filters.status == status %} selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          School
+          <select class="portal-select" name="school">
+            <option value="">All schools</option>
+            {% for school in filter_options.schools %}
+            <option value="{{ school }}"{% if report_filters.school == school %} selected{% endif %}>{{ school }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Grade
+          <select class="portal-select" name="grade">
+            <option value="">All grades</option>
+            {% for grade in filter_options.grades %}
+            <option value="{{ grade }}"{% if report_filters.grade == grade %} selected{% endif %}>{{ grade }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Program
+          <select class="portal-select" name="program">
+            <option value="">All programs</option>
+            {% for program in filter_options.programs %}
+            <option value="{{ program }}"{% if report_filters.program == program %} selected{% endif %}>{{ program }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Copay plan
+          <select class="portal-select" name="copay_cadence">
+            <option value="">All copay plans</option>
+            {% for value, label in filter_options.cadence_choices %}
+            <option value="{{ value }}"{% if report_filters.copay_cadence == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          4Cs cadence
+          <select class="portal-select" name="agency_cadence">
+            <option value="">All 4Cs cadences</option>
+            {% for value, label in filter_options.cadence_choices %}
+            <option value="{{ value }}"{% if report_filters.agency_cadence == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Scholarship
+          <select class="portal-select" name="scholarship">
+            <option value="">All</option>
+            {% for value, label in filter_options.scholarship_choices %}
+            <option value="{{ value }}"{% if report_filters.scholarship == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Scholarship type
+          <select class="portal-select" name="scholarship_fund">
+            <option value="">All types</option>
+            {% for pk, name in filter_options.scholarship_funds %}
+            <option value="{{ pk }}"{% if report_filters.scholarship_fund == pk %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Agency
+          <select class="portal-select" name="agency">
+            <option value="">All agencies</option>
+            {% for slug, name in filter_options.agencies %}
+            <option value="{{ slug }}"{% if report_filters.agency == slug %} selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          4Cs agency on file
+          <select class="portal-select" name="agency_status">
+            <option value="">All</option>
+            {% for value, label in filter_options.agency_status_choices %}
+            <option value="{{ value }}"{% if report_filters.agency_status == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="portal-filter-label">
+          Child or family
+          <input class="portal-input" type="search" name="q" value="{{ report_filters.q }}" placeholder="Search name">
+        </label>
+      </div>
+      <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
+        <button type="submit" class="btn btn-secondary">Apply filters</button>
+        <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+        <a class="btn btn-secondary" href="{{ request.get_full_path }}{% if '?' in request.get_full_path %}&amp;{% else %}?{% endif %}format=csv">Download CSV</a>
+        <a class="btn btn-secondary" href="{{ hub_url }}">Back to reports</a>
+      </div>
+    </form>
+
+    <div class="card portal-medical-report-sheet portal-four-cs-payout-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — 4Cs expected amounts</h2>
+          <p class="portal-medical-report-meta">{{ summary }}</p>
+        </div>
+      </header>
+
+      <div class="portal-four-cs-summary">
+        <section class="portal-four-cs-summary-group">
+          <h3>Members</h3>
+          <div class="portal-stat-row">
+            <div class="portal-stat card">
+              <span class="portal-stat-label">4Cs members</span>
+              <span class="portal-stat-value" id="four-cs-member-count">{{ totals.member_count }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Weekly copay for all 4Cs members</span>
+              <span class="portal-stat-value" id="four-cs-weekly-copay-all">${{ totals.weekly_copay_all }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Weekly 4Cs / agency for all members</span>
+              <span class="portal-stat-value" id="four-cs-weekly-agency-all">${{ totals.weekly_agency_all }}</span>
+            </div>
+          </div>
+        </section>
+        <section class="portal-four-cs-summary-group">
+          <h3>Copay I should collect (by the child’s payment plan)</h3>
+          <p class="form-note">Family pays after scholarship. Weekly plans are one week, bi-weekly is two weeks, monthly is four weeks.</p>
+          <div class="portal-stat-row">
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Weekly plans ({{ totals.weekly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-copay-weekly">${{ totals.copay_weekly_plans }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Bi-weekly plans ({{ totals.biweekly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-copay-biweekly">${{ totals.copay_biweekly_plans }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Monthly plans ({{ totals.monthly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-copay-monthly">${{ totals.copay_monthly_plans }}</span>
+            </div>
+          </div>
+        </section>
+        <section class="portal-four-cs-summary-group">
+          <h3>What 4Cs / agency will pay (same grouping; scholarship does not reduce this)</h3>
+          <p class="form-note">4Cs still pays weekly. Bi-weekly and monthly totals are two and four weeks of that child’s weekly agency rate.</p>
+          <div class="portal-stat-row">
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Weekly plans ({{ totals.weekly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-agency-weekly">${{ totals.agency_weekly_plans }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Bi-weekly plans ({{ totals.biweekly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-agency-biweekly">${{ totals.agency_biweekly_plans }}</span>
+            </div>
+            <div class="portal-stat card">
+              <span class="portal-stat-label">Monthly plans ({{ totals.monthly_count }})</span>
+              <span class="portal-stat-value" id="four-cs-agency-monthly">${{ totals.agency_monthly_plans }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-four-cs-payout-table">
+          <thead>
+            <tr>
+              <th>Child</th>
+              <th>Family</th>
+              <th>Status</th>
+              {% if show_unit_filter %}<th>Unit</th>{% endif %}
+              <th>School</th>
+              <th>Grade</th>
+              <th>Program</th>
+              <th>Copay plan</th>
+              <th>4Cs cadence</th>
+              <th>Scholarship</th>
+              <th class="portal-money-col">Copay before scholarship</th>
+              <th class="portal-money-col">Copay I should collect</th>
+              <th class="portal-money-col">Weekly copay</th>
+              <th class="portal-money-col">4Cs this cycle</th>
+              <th class="portal-money-col">Weekly 4Cs</th>
+              <th>Agency</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_rows %}
+            <tr>
+              <td>
+                {% if row.family_slug %}
+                  {% if portal_area == "admin" %}
+                  <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+                  {% else %}
+                  <a class="portal-no-print" href="{% url 'portal_staff_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+                  {% endif %}
+                {% else %}
+                {{ row.child }}
+                {% endif %}
+              </td>
+              <td>{{ row.family }}</td>
+              <td>{{ row.status }}</td>
+              {% if show_unit_filter %}<td>{{ row.unit }}</td>{% endif %}
+              <td>{{ row.school }}</td>
+              <td>{{ row.grade }}</td>
+              <td>{{ row.program }}</td>
+              <td>{{ row.copay_plan }}</td>
+              <td>{{ row.agency_cadence_label }}</td>
+              <td>{{ row.scholarship }}</td>
+              <td class="portal-money-col">${{ row.copay_before }}</td>
+              <td class="portal-money-col">${{ row.copay_cycle }}</td>
+              <td class="portal-money-col">${{ row.weekly_copay }}</td>
+              <td class="portal-money-col">${{ row.agency_cycle }}</td>
+              <td class="portal-money-col">${{ row.weekly_agency }}</td>
+              <td>{{ row.agency }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="{% if show_unit_filter %}16{% else %}15{% endif %}" class="form-note">No 4Cs members match these filters.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if report_rows %}
+          <tfoot>
+            <tr>
+              <th>Total ({{ totals.member_count }})</th>
+              <td></td>
+              <td></td>
+              {% if show_unit_filter %}<td></td>{% endif %}
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="portal-money-col">${{ totals.copay_before_all }}</td>
+              <td class="portal-money-col">${{ totals.copay_cycle_all }}</td>
+              <td class="portal-money-col">${{ totals.weekly_copay_all }}</td>
+              <td class="portal-money-col">${{ totals.agency_cycle_all }}</td>
+              <td class="portal-money-col">${{ totals.weekly_agency_all }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -47,8 +47,7 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_balances_export' %}">Download CSV</a>
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='families' %}">View families</a>
         {% elif report.slug == '4cs' %}
-        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_agency_copay_export' %}">Download CSV</a>
-        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_four_cs_payout_report' %}">Preview &amp; print</a>
         {% elif report.link_name and report.link_arg %}
         <a class="btn btn-primary btn-sm" href="{% url report.link_name page=report.link_arg %}">Open in portal</a>
         {% else %}

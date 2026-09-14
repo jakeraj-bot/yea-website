@@ -3378,6 +3378,66 @@ def _owed_weeks_filters(request):
     }
 
 
+FOUR_CS_PAYOUT_FILTER_KEYS = (
+    "q",
+    "unit",
+    "status",
+    "school",
+    "grade",
+    "program",
+    "copay_cadence",
+    "agency_cadence",
+    "scholarship",
+    "scholarship_fund",
+    "agency",
+    "agency_status",
+)
+
+
+def _four_cs_payout_filters(request):
+    filters = {key: request.GET.get(key, "").strip() for key in FOUR_CS_PAYOUT_FILTER_KEYS}
+    if "status" not in request.GET:
+        filters["status"] = "Active"
+    return filters
+
+
+def _empty_four_cs_payout_bundle(summary):
+    return {
+        "report_rows": [],
+        "filter_options": {
+            "schools": [],
+            "grades": [],
+            "programs": [],
+            "statuses": ["Active"],
+            "agencies": [],
+            "units": [],
+            "scholarship_funds": [],
+            "cadence_choices": (("weekly", "Weekly"), ("biweekly", "Bi-weekly"), ("monthly", "Monthly")),
+            "scholarship_choices": (("yes", "Yes"), ("no", "No")),
+            "agency_status_choices": (("yes", "Agency on file"), ("waiting", "Waiting for agency")),
+        },
+        "totals": {
+            "member_count": 0,
+            "copay_weekly_plans": "0.00",
+            "copay_biweekly_plans": "0.00",
+            "copay_monthly_plans": "0.00",
+            "weekly_copay_all": "0.00",
+            "agency_weekly_plans": "0.00",
+            "agency_biweekly_plans": "0.00",
+            "agency_monthly_plans": "0.00",
+            "weekly_agency_all": "0.00",
+            "copay_before_all": "0.00",
+            "copay_cycle_all": "0.00",
+            "agency_cycle_all": "0.00",
+            "weekly_count": 0,
+            "biweekly_count": 0,
+            "monthly_count": 0,
+        },
+        "summary": summary,
+        "columns": [],
+    }
+
+
 @staff_login_required
 @require_GET
 def staff_owed_weeks_report(request):
@@ -3412,6 +3472,40 @@ def staff_owed_weeks_report(request):
             show_unit_filter=False,
             report_filters=filters,
             report=report,
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
+def staff_four_cs_payout_report(request):
+    from .four_cs_report import four_cs_payout_csv_response, four_cs_payout_report_bundle
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _four_cs_payout_filters(request)
+    if _portal_data_live() and unit:
+        bundle = four_cs_payout_report_bundle(filters=filters, unit=unit, admin=False)
+    else:
+        bundle = _empty_four_cs_payout_bundle("Choose a unit to see 4Cs expected amounts.")
+    if request.GET.get("format") == "csv":
+        return four_cs_payout_csv_response(bundle)
+    return render(
+        request,
+        "portal/staff/four_cs_payout_report.html",
+        _staff_context(
+            "4Cs expected amounts",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="four-cs-payout",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
         ),
     )
 
@@ -4836,6 +4930,38 @@ def admin_owed_weeks_report(request):
                 show_unit_filter=True,
                 report_filters=filters,
                 report=report,
+            ),
+        ),
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_four_cs_payout_report(request):
+    from .four_cs_report import four_cs_payout_csv_response, four_cs_payout_report_bundle
+
+    filters = _four_cs_payout_filters(request)
+    if _portal_data_live():
+        bundle = four_cs_payout_report_bundle(filters=filters, admin=True)
+    else:
+        bundle = _empty_four_cs_payout_bundle("No live data in preview mode.")
+    if request.GET.get("format") == "csv":
+        return four_cs_payout_csv_response(bundle)
+    return render(
+        request,
+        "portal/staff/four_cs_payout_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "4Cs expected amounts",
+                admin_page_slug="reports",
+                page_guide_key="four-cs-payout",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
             ),
         ),
     )

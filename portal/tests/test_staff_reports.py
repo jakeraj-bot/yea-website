@@ -115,6 +115,7 @@ class StaffReportsTests(TestCase):
             reverse("portal_staff_pickup_report"),
             reverse("portal_staff_member_information_report"),
             reverse("portal_staff_emergency_contact_report"),
+            reverse("portal_staff_four_cs_payout_report"),
             reverse("portal_staff_program_roster", kwargs={"program_slug": "after-school-2026-27"}),
             reverse("portal_staff_balances_export"),
             reverse("portal_staff_agency_copay_export"),
@@ -384,6 +385,8 @@ class StaffEmergencyContactReportTests(TestCase):
         self.assertContains(hub, reverse("portal_staff_member_information_report"))
         self.assertContains(hub, "Weekly attendance")
         self.assertContains(hub, reverse("portal_staff_weekly_attendance_report"))
+        self.assertContains(hub, "4Cs expected amounts")
+        self.assertContains(hub, reverse("portal_staff_four_cs_payout_report"))
         self.assertNotContains(hub, "Attendance by grade")
 
 

@@ -723,6 +723,12 @@ ADMIN_REPORTS = [
         "report": "missing-plans",
     },
     {
+        "name": "4Cs expected amounts",
+        "description": "Copay you should collect and what 4Cs will pay — weekly, bi-weekly, and monthly — by child and in total. Filter every column.",
+        "format": "PDF / CSV",
+        "slug": "four-cs-payout",
+    },
+    {
         "name": "4Cs members & agencies",
         "description": "All 4Cs children with agency, daily amount, copay, and waiting status when no agency is on file yet",
         "format": "PDF / CSV",
@@ -1736,7 +1742,12 @@ STAFF_REPORTS = [
         "format": "PDF / CSV",
         "slug": "owed-weeks",
     },
-    {"name": "4Cs copay report", "description": "Weekly copays & agency remittance", "format": "PDF / Excel", "slug": "4cs", "link_name": "portal_staff_page", "link_arg": "agency"},
+    {
+        "name": "4Cs expected amounts",
+        "description": "Copay you should collect and what 4Cs will pay — weekly, bi-weekly, and monthly — by child and in total. Filter every column.",
+        "format": "PDF / CSV",
+        "slug": "4cs",
+    },
 ]
 
 PROGRAM_ROSTER = [
