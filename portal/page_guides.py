@@ -397,7 +397,7 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "If you can see billing, balance and 4Cs copay files download as CSV. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check.",
+                "body": "If you can see billing, balance files download as CSV and 4Cs expected amounts shows copay and agency totals by child. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check.",
             },
         ],
     },
@@ -412,6 +412,32 @@ GUIDES = {
             {
                 "title": "Filter by status",
                 "body": "The report starts on Active children who owe. Use Status to switch to waitlist, withdrawn, suspended, or all statuses. Apply filters, then print or download CSV.",
+            },
+        ],
+    },
+    "four-cs-payout": {
+        "title": "How to use 4Cs expected amounts",
+        "intro": "This is a forecast from 4Cs plans — what you should collect in copay, and what 4Cs will pay — not a dump of the ledger.",
+        "steps": [
+            {
+                "title": "Read the two money tracks",
+                "body": "Copay I should collect is the parent’s family-pays amount after scholarship. What 4Cs / agency will pay is the weekly agency rate and is never reduced by scholarship. Scholarship comes off parent copay only.",
+            },
+            {
+                "title": "Weekly, bi-weekly, and monthly copay totals",
+                "body": "Those cards group children by the child’s copay payment plan. Weekly-plan totals are one week of family-pays. Bi-weekly-plan totals are two weeks. Monthly-plan totals are four weeks. Each child also has a row with that same cadence amount.",
+            },
+            {
+                "title": "Weekly copay for all 4Cs members",
+                "body": "That column and card put everyone on a weekly copay, no matter their plan. It uses the plan’s weekly copay (daily × 5 school days, or the weekly override). If only a cycle amount exists, bi-weekly is divided by 2 and monthly by 4. After-scholarship family-pays is the number you should collect.",
+            },
+            {
+                "title": "What 4Cs will pay",
+                "body": "4Cs still pays weekly. The weekly 4Cs card is the sum of weekly agency rates. Bi-weekly and monthly 4Cs cards are two and four weeks of that weekly agency rate, grouped with the child’s copay plan so you can compare. Scholarship does not change agency amounts.",
+            },
+            {
+                "title": "Filter, then print",
+                "body": "The list starts on Active 4Cs children. Filter by unit, status, school, grade, program, copay plan, 4Cs cadence, scholarship, agency, or name. Totals follow the filtered rows. Child names open family billing. Print / Save PDF repeats the logo and title on every page.",
             },
         ],
     },

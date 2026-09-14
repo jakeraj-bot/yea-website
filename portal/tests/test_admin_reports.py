@@ -346,6 +346,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertContains(hub, "Billing plans")
         self.assertContains(hub, "Missing billing plans")
         self.assertContains(hub, "4Cs members")
+        self.assertContains(hub, "4Cs expected amounts")
+        self.assertContains(hub, reverse("portal_admin_four_cs_payout_report"))
         self.assertContains(hub, "Member information")
         self.assertContains(hub, "portal-reports-grid")
         self.assertContains(hub, "portal-report-card")

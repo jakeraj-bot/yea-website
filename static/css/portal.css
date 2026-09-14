@@ -5800,3 +5800,54 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   gap: 0.4rem;
   font-weight: 500;
 }
+
+.portal-four-cs-summary {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.portal-four-cs-summary-group h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.portal-four-cs-summary-group .form-note {
+  margin: 0 0 0.65rem;
+}
+
+.portal-four-cs-payout-table {
+  font-size: 0.78rem;
+}
+
+.portal-four-cs-payout-table th,
+.portal-four-cs-payout-table td {
+  white-space: nowrap;
+  padding: 0.35rem 0.45rem;
+}
+
+.portal-money-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-four-cs-payout-table tfoot th,
+.portal-four-cs-payout-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  font-weight: 700;
+  border-top: 2px solid var(--border, #ccc);
+}
+
+@media print {
+  .portal-four-cs-payout-sheet {
+    page: report-print;
+  }
+
+  .portal-four-cs-payout-table tfoot th,
+  .portal-four-cs-payout-table tfoot td {
+    position: static;
+  }
+}
+

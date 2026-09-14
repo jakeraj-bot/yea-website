@@ -144,6 +144,7 @@ class ReportPrintHeaderPageTests(TestCase):
             (reverse("portal_staff_pickup_report"), False),
             (reverse("portal_staff_weekly_attendance_report"), True),
             (reverse("portal_staff_signout_blank"), False),
+            (reverse("portal_staff_four_cs_payout_report"), False),
         ]
         for url, attendance in pages:
             with self.subTest(url=url):
@@ -156,6 +157,7 @@ class ReportPrintHeaderPageTests(TestCase):
             reverse("portal_admin_member_information_report"),
             reverse("portal_admin_emergency_contact_report"),
             reverse("portal_admin_financial_report"),
+            reverse("portal_admin_four_cs_payout_report"),
             reverse("portal_admin_data_report", kwargs={"report_slug": "payments"}),
         ]
         for url in printable:

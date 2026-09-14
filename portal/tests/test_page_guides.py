@@ -26,6 +26,7 @@ class PageGuideCatalogTests(TestCase):
             "support",
             "reports",
             "owed-weeks",
+            "four-cs-payout",
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
