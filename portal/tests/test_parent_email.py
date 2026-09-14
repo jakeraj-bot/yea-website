@@ -90,7 +90,8 @@ class FamilyEmailViewTests(TestCase):
         self.assertContains(email_page, "jakera@example.com")
         self.assertContains(email_page, "Upload")
         self.assertContains(email_page, "Emails sent")
-        self.assertContains(email_page, "portal-family-email-card portal-collapse-skip")
+        self.assertContains(email_page, 'class="card portal-family-email-card" data-collapse-open')
+        self.assertNotContains(email_page, "portal-collapse-skip")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     @patch("portal.member_admin.send_site_email", return_value=1)
@@ -159,7 +160,8 @@ class AdminFamilyEmailViewTests(TestCase):
         self.assertContains(email_page, "portal-family-tabs")
         self.assertContains(email_page, "Upload")
         self.assertContains(email_page, "Emails sent")
-        self.assertContains(email_page, "portal-family-email-card portal-collapse-skip")
+        self.assertContains(email_page, 'class="card portal-family-email-card" data-collapse-open')
+        self.assertNotContains(email_page, "portal-collapse-skip")
         self.assertNotContains(email_page, "Server Error")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)

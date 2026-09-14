@@ -9,7 +9,7 @@
 <section class="page-content">
   <div class="container">
     {% if first_day_template %}
-    <div class="portal-panel card">
+    <div class="card">
       <h2>First-day payment reminder</h2>
       <p class="form-note">School starts September 8th. This reminds families that accounts must be paid by the first day of program and includes the $20 yearly membership fee. Placeholders: <code>{family_name}</code> <code>{portal_url}</code>.</p>
       <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
@@ -43,7 +43,7 @@
     {% endif %}
 
     {% if balance_updated_template %}
-    <div class="portal-panel card">
+    <div class="card">
       <h2>Updated balance email</h2>
       <p class="form-note">Sent automatically when you change or remove a posted charge (checkbox is on by default). You can also send it from a family’s Billing tab. Placeholders: <code>{family_name}</code> <code>{owe_for}</code> <code>{child_name}</code> <code>{week}</code> <code>{previous_amount}</code> <code>{amount}</code> <code>{child_balance}</code> <code>{family_balance}</code> <code>{portal_url}</code>.</p>
       <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
@@ -69,7 +69,7 @@
     {% endif %}
 
     {% if late_payment_template %}
-    <div class="portal-panel card">
+    <div class="card">
       <h2>Friday late-payment reminder</h2>
       <p class="form-note">Payments are due Friday. If they do not pay, a ${{ late_fee_amount }} late fee is added as of Tuesday (one-day grace). Placeholders: <code>{family_name}</code> <code>{family_balance}</code> <code>{late_fee}</code> <code>{child_lines}</code> <code>{portal_url}</code>. A weekly command <code>send_late_payment_notices</code> can run each Friday; you can also send now to families who still owe.</p>
       <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
@@ -95,7 +95,9 @@
           <button type="submit" class="btn btn-secondary">Save late-payment template</button>
         </div>
       </form>
-      <h3>Families with a balance</h3>
+    </div>
+    <div class="card">
+      <h2>Families with a balance</h2>
       <p class="form-note">Preview, then send to those parents. Uncheck anyone you want to skip.</p>
       <form method="post" action="{% url 'portal_admin_member_ops' %}">
         {% csrf_token %}
@@ -117,20 +119,25 @@
     </div>
     {% endif %}
 
-    <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid card portal-panel" enctype="multipart/form-data">
+    <form method="post" action="{% url 'portal_admin_member_ops' %}" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="send_parent_emails">
-      <div class="form-group portal-form-full">
-        <label for="email-subject">Subject</label>
-        <input id="email-subject" name="subject" type="text" class="portal-input" required>
-      </div>
-      <div class="form-group portal-form-full">
-        <label for="email-body">Message</label>
-        <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
-      </div>
-      {% include "portal/includes/parent_email_upload.html" with upload_id="parent-emails" %}
-      <div class="form-group portal-form-full">
-        <label>Recipients</label>
+      <section class="card" data-collapse-open>
+        <h2>Compose</h2>
+        <div class="portal-form-grid">
+          <div class="form-group portal-form-full">
+            <label for="email-subject">Subject</label>
+            <input id="email-subject" name="subject" type="text" class="portal-input" required>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="email-body">Message</label>
+            <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
+          </div>
+          {% include "portal/includes/parent_email_upload.html" with upload_id="parent-emails" %}
+        </div>
+      </section>
+      <section class="card" data-collapse-open>
+        <h2>Recipients</h2>
         <p class="form-note">Search and check the parents you want to include. Unchecked parents will not receive the email.</p>
         <div class="portal-toolbar">
           <input type="search" class="portal-input" id="parent-email-search" placeholder="Search family or email" autocomplete="off">
@@ -147,10 +154,10 @@
           <p class="form-note">No parent emails on file yet.</p>
           {% endfor %}
         </div>
-      </div>
-      <div class="portal-form-actions portal-form-full">
-        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Send email</button>
-      </div>
+        <div class="portal-form-actions" style="margin-top:1rem;">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Send email</button>
+        </div>
+      </section>
     </form>
     {% include "portal/includes/parent_email_ledger.html" %}
   </div>

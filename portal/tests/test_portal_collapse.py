@@ -156,7 +156,8 @@ class PortalCollapseScriptTests(SimpleTestCase):
         self.assertIn('card.classList.contains("portal-report-filter-card")', source)
         self.assertIn('card.classList.contains("portal-school-bus-picker")', source)
         self.assertIn('content.querySelectorAll(".card")', source)
-        self.assertIn("pageState[key] : true", source)
+        self.assertIn("startsCollapsed", source)
+        self.assertIn("data-collapse-open", source)
         self.assertIn("Expand all", source)
         self.assertIn("Collapse all", source)
 
@@ -265,3 +266,38 @@ class PortalCollapsePageTests(TestCase):
             skip_snippets=("portal-report-filter-card portal-collapse-skip portal-no-print",),
         )
         self.assertEqual(contacts.content.decode().count("portal-collapse-skip"), 1)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_family_email_tab_sections_are_collapsible(self):
+        page = self.client.get(reverse("portal_admin_family_email", kwargs={"family_slug": "jacobs"}))
+        self._assert_collapse_ready(page, must_not_skip=("portal-collapse-skip",))
+        self.assertContains(page, "<h2>Compose</h2>")
+        self.assertContains(page, "<h2>Emails sent</h2>")
+        self.assertContains(page, 'class="card portal-family-email-card" data-collapse-open')
+        self.assertContains(page, "portal-email-ledger-card")
+        self.assertContains(page, "How to email a parent")
+        self.assertContains(page, "Collapse sections")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_email_parents_page_sections_are_collapsible(self):
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "parent-emails"}))
+        self._assert_collapse_ready(page, must_not_skip=("portal-collapse-skip", "portal-panel"))
+        html = page.content.decode()
+        for heading in (
+            "First-day payment reminder",
+            "Updated balance email",
+            "Friday late-payment reminder",
+            "Families with a balance",
+            "Compose",
+            "Recipients",
+            "Emails sent",
+        ):
+            self.assertIn(f"<h2>{heading}</h2>", html)
+        self.assertEqual(html.count("data-collapse-open"), 2)
+        self.assertIn("<h2>Compose</h2>", html.split("data-collapse-open")[1])
+        self.assertIn("<h2>Recipients</h2>", html.split("data-collapse-open")[2])
+        self.assertContains(page, "How to email parents")
+        self.assertContains(page, "Collapse sections")
+        self.assertContains(page, 'name="action" value="send_parent_emails"')
+        self.assertContains(page, 'name="attachments"')
+        self.assertContains(page, "portal-email-ledger-card")
