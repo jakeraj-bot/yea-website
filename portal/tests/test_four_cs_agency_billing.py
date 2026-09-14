@@ -25,16 +25,22 @@ from portal.agency_weeks import (
     week_monday_covered_by_thursday,
     weekly_from_daily,
 )
+from portal.admin_config import save_scholarship_fund
 from portal.models import (
     PortalAgencyProfile,
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
     PortalProgramCalendar,
+    PortalScholarshipAssignment,
     PortalStaffAccount,
     PortalUnit,
 )
-from portal.billing_services import run_due_plan_charges, update_child_billing_plan
+from portal.billing_services import (
+    parent_copay_after_scholarship,
+    run_due_plan_charges,
+    update_child_billing_plan,
+)
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 
 
@@ -825,3 +831,166 @@ class ProgramCalendarFourCsTests(TestCase):
         entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
         self.assertIn("9/14/26", entry.description)
         self.assertNotIn("9/8/26", entry.description)
+
+
+class FourCsPlanScholarshipTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="rivera", name="Rivera", billing_type="4Cs", status="Active"
+        )
+        self.child = PortalChild.objects.create(
+            family=self.family, name="Ada Rivera", is_active=True, billing_plan="Weekly"
+        )
+        self.profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 25),
+            daily_copay="5.30",
+            daily_agency_rate="22.00",
+        )
+        self.fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+        User = get_user_model()
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+
+    def _login_admin(self):
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "admin"
+        session.save()
+
+    def test_scholarship_ratio_scales_to_the_copay_period(self):
+        assignment = PortalScholarshipAssignment(
+            full_rate=Decimal("26.50"),
+            parent_amount=Decimal("10.00"),
+        )
+        family_pays, discount = parent_copay_after_scholarship(assignment, Decimal("26.50"))
+        self.assertEqual(family_pays, Decimal("10.00"))
+        self.assertEqual(discount, Decimal("16.50"))
+        family_pays, discount = parent_copay_after_scholarship(assignment, Decimal("53.00"))
+        self.assertEqual(family_pays, Decimal("20.00"))
+        self.assertEqual(discount, Decimal("33.00"))
+
+    def test_can_attach_scholarship_to_4cs_plan_and_post_reduced_copay(self):
+        today = date(2026, 9, 9)
+        agency_before = {
+            week.week_start: week.agency_amount
+            for week in self.profile.contract_weeks.all()
+        }
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=today,
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="26.50",
+                scholarship_parent_amount="10.00",
+            )
+        self.assertEqual(len(posted), 1)
+        child.refresh_from_db()
+        self.family.refresh_from_db()
+        assignment = PortalScholarshipAssignment.objects.get(child=child)
+        self.assertEqual(assignment.fund, self.fund)
+        self.assertEqual(assignment.full_rate, Decimal("26.50"))
+        self.assertEqual(assignment.parent_amount, Decimal("10.00"))
+        self.assertEqual(self.family.billing_type, "4Cs")
+        charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertEqual(charge.amount, Decimal("26.50"))
+        self.assertEqual(discount.amount, Decimal("-16.50"))
+        self.assertIn("YEA General Scholarship", discount.description)
+        self.assertEqual(self.family.balance, Decimal("10.00"))
+        self.assertFalse(
+            PortalLedgerEntry.objects.filter(family=self.family, amount=Decimal("110.00")).exists()
+        )
+        for week in self.profile.contract_weeks.all():
+            week.refresh_from_db()
+            self.assertEqual(week.agency_amount, agency_before[week.week_start])
+            self.assertEqual(week.agency_amount, Decimal("110.00"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_page_can_save_4cs_scholarship_from_the_copay_form(self):
+        self._login_admin()
+        plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(plans.status_code, 200)
+        self.assertContains(plans, "Scholarship type")
+        self.assertContains(plans, "Parent copay before scholarship")
+        self.assertContains(plans, "Family pays after scholarship")
+        self.assertContains(plans, "Comes off the parent copay only")
+        self.assertContains(plans, "Add a scholarship on a 4Cs plan")
+        today = date(2026, 9, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today), patch(
+            "portal.views_actions.timezone.localdate", return_value=today
+        ):
+            response = self.client.post(
+                reverse("portal_staff_billing_action", kwargs={"family_slug": "rivera"}),
+                {
+                    "portal_area": "admin",
+                    "action": "update_4cs_plan",
+                    "child_name": "Ada Rivera",
+                    "billing_plan": "Weekly",
+                    "auto_charge": "on",
+                    "post_today": "on",
+                    "scholarship_fund_id": str(self.fund.pk),
+                    "scholarship_full_rate": "26.50",
+                    "scholarship_parent_amount": "10.00",
+                    "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}),
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        assignment = PortalScholarshipAssignment.objects.get(child=self.child)
+        self.assertEqual(assignment.fund, self.fund)
+        self.assertEqual(assignment.parent_amount, Decimal("10.00"))
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("10.00"))
+        shown = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}))
+        self.assertContains(shown, "YEA General Scholarship")
+        self.assertContains(shown, "Scholarship off copay")
+        self.assertContains(shown, "10.00")
+        self.assertContains(shown, "Parent copay")
+        self.assertContains(shown, "4Cs agency")
+
+    def test_private_pay_scholarship_still_posts_full_rate_and_discount(self):
+        private_family = PortalFamily.objects.create(
+            unit=self.unit, slug="jacobs", name="Jacobs", billing_type="Private pay", status="Active"
+        )
+        PortalChild.objects.create(
+            family=private_family, name="Jordan Jacobs", is_active=True, billing_plan="Weekly"
+        )
+        today = date(2026, 9, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                private_family,
+                "Jordan Jacobs",
+                "Weekly",
+                billing_type="Scholarship",
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="70.00",
+                scholarship_parent_amount="50.00",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+            )
+        self.assertEqual(len(posted), 1)
+        child.refresh_from_db()
+        private_family.refresh_from_db()
+        self.assertEqual(child.billing_amount, Decimal("50.00"))
+        self.assertEqual(private_family.billing_type, "Scholarship")
+        types = list(PortalLedgerEntry.objects.filter(family=private_family).values_list("entry_type", "amount"))
+        self.assertIn(("charge", Decimal("70.00")), types)
+        self.assertIn(("discount", Decimal("-20.00")), types)
+        self.assertEqual(private_family.balance, Decimal("50.00"))

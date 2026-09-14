@@ -92,7 +92,6 @@ def _child_balances_from_ledger(family):
                 discount = assignment.full_rate - assignment.parent_amount
                 row.update(
                     {
-                        "type": "Scholarship",
                         "full_rate": f"{assignment.full_rate:.2f}",
                         "scholarship_discount": f"{discount:.2f}",
                         "scholarship_name": assignment.fund.name,
@@ -112,6 +111,8 @@ def _child_balances_from_ledger(family):
                 row["agency_profile_id"] = profile.pk
                 row["agency_name"] = profile.agency.name if profile.agency_id else ""
                 row["four_cs"] = True
+                row["agency_weekly"] = f"{profile.weekly_agency_rate:.2f}"
+                row["copay_weekly"] = f"{profile.weekly_copay:.2f}"
                 calendar = get_program_calendar()
                 row["program_start"] = (
                     calendar.program_start.isoformat() if calendar.program_start else ""
@@ -132,6 +133,8 @@ def _child_balances_from_ledger(family):
                 row["four_cs_weeks"] = [
                     serialize_week(week) for week in profile.contract_weeks.order_by("week_start")
                 ]
+            elif assignment:
+                row["type"] = "Scholarship"
             rows.append(row)
         return rows
 

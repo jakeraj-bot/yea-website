@@ -662,6 +662,10 @@ GUIDES = {
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
             },
             {
+                "title": "Add a scholarship on a 4Cs plan",
+                "body": "On this child’s 4Cs copay plan, choose a scholarship type, enter the parent copay before the scholarship, and enter how much the family pays. The scholarship comes off the parent copay only. 4Cs agency week amounts stay the same.",
+            },
+            {
                 "title": "When weekly 4Cs posts",
                 "body": "Weekly parent copay posts every Thursday for the next school week. Check Post today (or set the first charge date to today) to put that charge on the family ledger immediately.",
             },

@@ -1,6 +1,6 @@
 import calendar
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.db import transaction
 from django.utils import timezone
@@ -369,6 +369,51 @@ def active_scholarship_for_child(child, on_date=None):
     return None
 
 
+def parent_copay_after_scholarship(scholarship, copay_amount):
+    """Return (family_pays, discount) for a 4Cs parent copay period.
+
+    The scholarship ratio (family portion / amount before scholarship) scales
+    to this period's copay. Agency week amounts are never changed here.
+    """
+    copay = copay_amount or Decimal("0")
+    if copay <= 0 or not scholarship or not scholarship.full_rate:
+        return copay, Decimal("0")
+    full = scholarship.full_rate
+    parent = scholarship.parent_amount or Decimal("0")
+    if full <= 0 or parent >= full:
+        return copay, Decimal("0")
+    family_pays = (copay * parent / full).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if family_pays < 0:
+        family_pays = Decimal("0")
+    if family_pays > copay:
+        family_pays = copay
+    return family_pays, copay - family_pays
+
+
+def _apply_four_cs_plan_scholarship(
+    child,
+    scholarship_fund_id=None,
+    scholarship_full_rate=None,
+    scholarship_parent_amount=None,
+    fallback_full_rate=None,
+):
+    """Attach the existing per-child scholarship to a 4Cs plan (copay only)."""
+    if scholarship_fund_id in (None, ""):
+        return None
+    full_rate = scholarship_full_rate if scholarship_full_rate not in (None, "") else fallback_full_rate
+    if scholarship_parent_amount in (None, ""):
+        raise ValueError("Enter how much the family pays after the scholarship.")
+    if full_rate in (None, ""):
+        raise ValueError("Enter the parent copay before the scholarship.")
+    return apply_scholarship_to_child_plan(
+        child,
+        scholarship_fund_id,
+        full_rate,
+        scholarship_parent_amount,
+        start_date=timezone.localdate(),
+    )
+
+
 def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, start_date=None):
     fund = PortalScholarshipFund.objects.filter(pk=fund_id, is_active=True).first()
     if not fund:
@@ -376,7 +421,7 @@ def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, st
     full = _parse_amount(full_rate)
     parent = _parse_amount(parent_amount, allow_zero=True)
     if parent > full:
-        raise ValueError("Family portion cannot be more than the full program rate.")
+        raise ValueError("Family portion cannot be more than the amount before the scholarship.")
     assignment = (
         child.scholarships.filter(status="Active").select_related("fund").first()
         or child.scholarships.filter(fund=fund).first()
@@ -886,6 +931,9 @@ def _save_extra_billing_plan(
     charge_weekday=None,
     charge_month_day=None,
     description="",
+    scholarship_fund_id=None,
+    scholarship_full_rate=None,
+    scholarship_parent_amount=None,
 ):
     billing_label = (billing_type or "").strip()
     four_cs_profile = (
@@ -913,6 +961,14 @@ def _save_extra_billing_plan(
     row.description = (description or "").strip()
     row.billing_kind = billing_kind_from_type(billing_label) or row.billing_kind or "private"
     row.save()
+    if four_cs_profile:
+        _apply_four_cs_plan_scholarship(
+            child,
+            scholarship_fund_id=scholarship_fund_id,
+            scholarship_full_rate=scholarship_full_rate,
+            scholarship_parent_amount=scholarship_parent_amount,
+            fallback_full_rate=row.billing_amount,
+        )
     posted = []
     if row.auto_charge and row.next_charge_date and row.next_charge_date <= timezone.localdate():
         posted = run_due_plan_charges(child=child, plan=row)
@@ -966,6 +1022,9 @@ def update_child_billing_plan(
             charge_weekday=charge_weekday,
             charge_month_day=charge_month_day,
             description="" if description is None else description,
+            scholarship_fund_id=scholarship_fund_id,
+            scholarship_full_rate=scholarship_full_rate,
+            scholarship_parent_amount=scholarship_parent_amount,
         )
     child.billing_plan = plan.strip() or child.billing_plan
     billing_label = (billing_type or "").strip()
@@ -998,6 +1057,13 @@ def update_child_billing_plan(
             four_cs_profile,
             child.billing_plan,
             start_from=next_charge_date if four_cs_biweekly else None,
+        )
+        _apply_four_cs_plan_scholarship(
+            child,
+            scholarship_fund_id=scholarship_fund_id,
+            scholarship_full_rate=scholarship_full_rate,
+            scholarship_parent_amount=scholarship_parent_amount,
+            fallback_full_rate=child.billing_amount,
         )
         if four_cs_weekly and charge_weekday in (None, ""):
             charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
@@ -1144,6 +1210,16 @@ def _post_4cs_copay_period(locked, today, plan=None):
             ),
             is_manual=False,
         )
+        scholarship = active_scholarship_for_child(locked, charge_date)
+        _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
+        if discount > 0:
+            post_discount(
+                locked.family,
+                locked.name,
+                discount,
+                charge_date,
+                f"{scholarship.fund.name} scholarship",
+            )
     mark_parent_period_posted(period["weeks"], charge_date)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = _next_4cs_charge_date(
