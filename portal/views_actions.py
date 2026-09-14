@@ -1638,6 +1638,9 @@ def staff_billing_action(request, family_slug):
                 next_charge_date=next_charge_date,
                 charge_weekday=request.POST.get("charge_weekday"),
                 charge_month_day=request.POST.get("charge_month_day"),
+                scholarship_fund_id=request.POST.get("scholarship_fund_id"),
+                scholarship_full_rate=request.POST.get("scholarship_full_rate"),
+                scholarship_parent_amount=request.POST.get("scholarship_parent_amount"),
                 description=request.POST.get("plan_description"),
                 plan_id=request.POST.get("plan_id") or None,
             )

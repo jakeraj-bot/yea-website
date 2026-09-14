@@ -70,6 +70,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("new enrollment form", guide["steps"][1]["body"])
         self.assertIn("Confirm to save", guide["steps"][2]["body"])
 
+    def test_family_plans_guide_explains_4cs_scholarship(self):
+        guide = guide_for("family-plans")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Add a scholarship on a 4Cs plan", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("parent copay", bodies.lower())
+        self.assertIn("agency week amounts stay the same", bodies.lower())
+
     def test_family_profile_guide_explains_password_reset(self):
         guide = guide_for("family-profile")
         titles = [step["title"] for step in guide["steps"]]

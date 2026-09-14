@@ -64,7 +64,15 @@
         <dl class="portal-dl">
           <dt>Type</dt><dd>{{ child.type|default:"Private pay" }}</dd>
           <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}{% if child.description %} — {{ child.description }}{% endif %}</dd>
-          {% if child.full_rate %}
+          {% if child.four_cs %}
+          <dt>4Cs agency</dt><dd>{{ child.agency_name|default:"On file" }}{% if child.agency_weekly %} — ${{ child.agency_weekly }}/wk{% endif %}</dd>
+          <dt>Parent copay</dt><dd>{% if child.copay_weekly %}${{ child.copay_weekly }}/wk{% else %}{{ child.amount|default:"—" }}{% endif %}</dd>
+          {% if child.scholarship_name %}
+          <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
+          <dt>Scholarship off copay</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
+          <dt>Family pays</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
+          {% endif %}
+          {% elif child.full_rate %}
           <dt>Full rate</dt><dd>${{ child.full_rate }}</dd>
           <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
           <dt>Discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
@@ -75,9 +83,6 @@
           <dt>Auto charge</dt>
           <dd>{{ child.auto_charge_label|default:"Off" }}</dd>
           <dt>Balance</dt><dd>${{ child.balance }}</dd>
-          {% if child.four_cs %}
-          <dt>4Cs agency</dt><dd>{{ child.agency_name|default:"On file" }}</dd>
-          {% endif %}
         </dl>
         {% if child.four_cs_periods %}
         <h4>Copay schedule (from parent weeks)</h4>
@@ -114,6 +119,24 @@
             <input id="fourcs-start-{{ child.child_id }}" name="next_charge_date" type="date" class="portal-input" value="{{ child.next_charge_date|default:'' }}">
           </div>
           <p class="form-note">4Cs still pays from the contract date on the agency form. Parents bill from the program start in Settings → Program calendar. Example: program start 9/8 and a 9/1 contract — bi-weekly parent copay is 9/8/2026–9/18/2026, not 9/1–9/11, then every two weeks. Weekly copay still posts every Thursday for the next school week. Check Post today to put a charge on the family ledger right now.</p>
+          <div class="form-group portal-form-full">
+            <label for="fourcs-scholarship-{{ child.child_id }}">Scholarship type</label>
+            <select id="fourcs-scholarship-{{ child.child_id }}" name="scholarship_fund_id" class="portal-select">
+              <option value="">No scholarship</option>
+              {% for fund in scholarship_funds %}
+              <option value="{{ fund.pk }}"{% if child.scholarship_fund_id == fund.pk %} selected{% endif %}>{{ fund.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="form-note">Optional. Comes off the parent copay only — not the 4Cs agency amount. Add types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="fourcs-full-rate-{{ child.child_id }}">Parent copay before scholarship ($)</label>
+            <input id="fourcs-full-rate-{{ child.child_id }}" name="scholarship_full_rate" type="text" class="portal-input" value="{% if child.full_rate %}{{ child.full_rate }}{% elif child.copay_weekly %}{{ child.copay_weekly }}{% endif %}" placeholder="{{ child.copay_weekly|default:'26.50' }}">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="fourcs-parent-amount-{{ child.child_id }}">Family pays after scholarship ($)</label>
+            <input id="fourcs-parent-amount-{{ child.child_id }}" name="scholarship_parent_amount" type="text" class="portal-input" value="{{ child.parent_amount|default:'' }}" placeholder="10.00">
+          </div>
           {% if child.four_cs_weeks %}
           <div class="form-group portal-form-full">
             <input type="hidden" name="four_cs_weeks_posted" value="1">
@@ -179,7 +202,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2 id="edit-plan-heading">Edit billing plan</h2>
-      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier.</p>
+      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier. A scholarship on a 4Cs plan comes off the parent copay; agency week amounts stay the same.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -227,6 +250,7 @@
             {% endfor %}
           </select>
           <p class="form-note">Add new scholarship types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
+          <p class="form-note" id="plan-scholarship-4cs-note" hidden>On a 4Cs plan this comes off the parent copay only. Agency week amounts stay the same.</p>
         </div>
         <div class="form-group portal-form-full plan-scholarship-fields" hidden>
           <label for="plan-full-rate">Full program rate ($)</label>
@@ -377,14 +401,23 @@
   }
   function toggleScholarshipFields() {
     var typeSelect = document.getElementById("plan-type");
-    var isScholarship = typeSelect && typeSelect.value === "Scholarship";
+    var type = typeSelect ? typeSelect.value : "";
+    var isScholarship = type === "Scholarship";
+    var is4cs = type === "4Cs";
+    var showScholarship = isScholarship || is4cs;
     document.querySelectorAll(".plan-scholarship-fields").forEach(function (el) {
-      el.hidden = !isScholarship;
+      el.hidden = !showScholarship;
     });
     var amountField = document.querySelector(".plan-amount-field");
-    if (amountField) amountField.hidden = !!isScholarship;
+    if (amountField) amountField.hidden = isScholarship || is4cs;
     var fund = document.getElementById("plan-scholarship-fund");
     if (fund) fund.required = !!isScholarship;
+    var fullLabel = document.querySelector('label[for="plan-full-rate"]');
+    if (fullLabel) fullLabel.textContent = is4cs ? "Parent copay before scholarship ($)" : "Full program rate ($)";
+    var parentLabel = document.querySelector('label[for="plan-parent-amount"]');
+    if (parentLabel) parentLabel.textContent = is4cs ? "Family pays after scholarship ($)" : "Family pays ($)";
+    var fourCsNote = document.getElementById("plan-scholarship-4cs-note");
+    if (fourCsNote) fourCsNote.hidden = !is4cs;
   }
   function fillPlanForm(btn, isNew) {
     var panel = document.getElementById("edit-plan-panel");
