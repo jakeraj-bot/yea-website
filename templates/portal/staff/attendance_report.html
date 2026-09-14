@@ -26,8 +26,8 @@
           </p>
         </div>
       </header>
-      <div class="portal-table-wrap">
-        <table class="portal-table portal-blank-sheet-table portal-attendance-print-table">
+      <div class="portal-table-wrap portal-attendance-print-wrap">
+        <table class="portal-table portal-blank-sheet-table portal-attendance-print-table" data-print-row-chunk="16">
           <thead>
             {% include "portal/staff/includes/attendance_sheet_print_header.html" with colspan=6 sheet_title="Attendance sign-in sheet" sheet_subtitle=sheet_date_display %}
             <tr>

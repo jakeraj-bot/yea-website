@@ -16,6 +16,7 @@
   page: attendance-print;
 }
 </style>
+<script src="{% static 'js/portal-attendance-print.js' %}?v=1"></script>
 <script>
 document.addEventListener("beforeprint", function () {
   var stamp = new Date().toLocaleString();

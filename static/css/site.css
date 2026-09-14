@@ -33,12 +33,17 @@
 
 html {
   scroll-behavior: smooth;
-  overflow-x: clip;
+}
+
+@media screen {
+  html,
+  body {
+    overflow-x: clip;
+  }
 }
 
 body {
   margin: 0;
-  overflow-x: clip;
   font-family: var(--font);
   font-size: 1.0625rem;
   line-height: 1.7;

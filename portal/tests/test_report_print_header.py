@@ -39,8 +39,20 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         screen = css.split("@media print {\n  @page", 1)[0]
         self.assertIn(".portal-print-header-spacer", print_css)
         self.assertIn(".portal-print-title-row", screen)
-        self.assertIn("display: none", screen[screen.index(".portal-print-title-row"): screen.index(".portal-print-title-row") + 120])
+        hide_rule = ".portal-print-title-row,\n.portal-print-header-spacer"
+        self.assertIn(hide_rule, screen)
+        hide_at = screen.index(hide_rule)
+        self.assertIn("display: none", screen[hide_at: hide_at + 160])
         self.assertIn(".portal-report-print-frame", screen)
+        self.assertIn(".portal-attendance-print-wrap", screen)
+        self.assertIn("@media screen", screen)
+        self.assertIn("display: table-header-group !important", print_css)
+        self.assertIn("display: contents", print_css)
+        self.assertIn("page-break-inside: avoid", print_css)
+        self.assertIn("table:not(.portal-attendance-print-table) .portal-print-title-row", print_css)
+        attendance_thead = print_css.split(".portal-attendance-print-table thead {", 1)[1].split("}", 1)[0]
+        self.assertIn("table-header-group", attendance_thead)
+        self.assertNotIn("display: block", attendance_thead)
 
     def test_shared_print_template_and_script_are_wired(self):
         chrome = REPORT_PRINT_CHROME.read_text()

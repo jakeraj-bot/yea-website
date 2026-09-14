@@ -993,9 +993,44 @@ nav.portal-nav-admin-groups {
   border: 1px solid var(--border);
 }
 
-.portal-medical-report-sheet .portal-table-wrap,
+.portal-medical-report-sheet .portal-table-wrap:not(.portal-attendance-print-wrap),
 .portal-table-wrap--report {
   max-height: min(70vh, calc(100vh - 12rem));
+}
+
+/* Keep horizontal scroll on screen only. Print overflow:auto on a wrapper
+   stops Chrome from repeating <thead> (logo + sheet title) on later pages. */
+.portal-table-wrap.portal-attendance-print-wrap {
+  overflow: visible;
+  max-height: none;
+}
+
+@media screen {
+  .portal-table-wrap.portal-attendance-print-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .portal-attendance-print-table thead th {
+    position: sticky;
+  }
+
+  .portal-attendance-print-table .portal-print-title-row {
+    display: table-row;
+  }
+
+  .portal-attendance-print-table .portal-print-title-row th {
+    padding: 0;
+    border: none;
+    height: 0;
+    line-height: 0;
+    font-size: 0;
+    overflow: hidden;
+  }
+
+  .portal-attendance-print-table .portal-print-running-header {
+    display: none;
+  }
 }
 
 .portal-table-hscroll {
@@ -3222,7 +3257,7 @@ nav.portal-nav-admin-groups {
     display: none !important;
   }
 
-  body:has(.portal-report-print-running-bar) .portal-print-title-row {
+  body:has(.portal-report-print-running-bar) table:not(.portal-attendance-print-table) .portal-print-title-row {
     display: none !important;
   }
 
@@ -3445,8 +3480,63 @@ nav.portal-nav-admin-groups {
     padding-bottom: 0.35rem;
   }
 
+  .portal-attendance-print-sheet .portal-table-wrap,
+  .portal-attendance-print-wrap {
+    display: contents;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .portal-attendance-print-table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
   .portal-attendance-print-table thead {
-    display: table-header-group;
+    display: table-header-group !important;
+  }
+
+  .portal-attendance-print-table tbody {
+    display: table-row-group !important;
+  }
+
+  .portal-attendance-print-table .portal-print-title-row {
+    display: table-row !important;
+  }
+
+  .portal-attendance-print-table .portal-print-running-header {
+    display: flex;
+  }
+
+  .portal-attendance-print-table thead th {
+    position: static !important;
+  }
+
+  .portal-attendance-print-table .portal-print-title-row th {
+    height: auto;
+    line-height: inherit;
+    font-size: inherit;
+    overflow: visible;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid #222;
+  }
+
+  .portal-attendance-print-table tr,
+  .portal-attendance-print-table .portal-blank-sheet-row,
+  .portal-attendance-print-table th,
+  .portal-attendance-print-table td {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .portal-attendance-print-table[data-print-source] {
+    display: none !important;
+  }
+
+  .portal-attendance-print-page + .portal-attendance-print-page {
+    page-break-before: always;
+    break-before: page;
   }
 
   .portal-attendance-print-footer {
