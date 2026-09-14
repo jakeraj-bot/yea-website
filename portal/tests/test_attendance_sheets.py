@@ -228,3 +228,47 @@ class AttendanceSheetFilterTests(TestCase):
         self.assertContains(daily_blank, "Nia Lee")
         self.assertContains(daily_blank, "portal-day-kid-total")
         self.assertContains(daily_blank, "counter(page)")
+
+    def _assert_print_header_in_thead(self, html):
+        self.assertIn("<thead>", html)
+        thead = html.split("<thead>", 1)[1].split("</thead>", 1)[0]
+        self.assertIn("portal-print-title-row", thead)
+        self.assertIn("yea-logo.png", thead)
+        self.assertIn("portal-print-running-header", thead)
+        self.assertIn("Child name", thead)
+        self.assertIn("portal-attendance-print-wrap", html)
+        self.assertIn("portal-attendance-print-table", html)
+        self.assertIn("counter(page)", html)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_all_attendance_sheets_put_logo_title_in_thead(self):
+        self._login(self.staff_user, "staff")
+        pages = [
+            reverse("portal_staff_weekly_attendance_report"),
+            reverse("portal_staff_attendance_blank_weekly"),
+            reverse("portal_staff_attendance_report"),
+            reverse("portal_staff_attendance_blank_daily"),
+        ]
+        for url in pages:
+            with self.subTest(url=url):
+                page = self.client.get(url, {"date": self.today.isoformat()})
+                self.assertEqual(page.status_code, 200)
+                self._assert_print_header_in_thead(page.content.decode())
+
+    def test_print_css_repeats_attendance_thead_and_keeps_child_rows_whole(self):
+        css = (Path(__file__).resolve().parents[2] / "static" / "css" / "portal.css").read_text()
+        print_css = css.split("@media print {\n  @page", 1)[1]
+        self.assertIn(".portal-attendance-print-table thead", print_css)
+        self.assertIn("display: table-header-group !important", print_css)
+        self.assertIn(".portal-attendance-print-wrap", print_css)
+        self.assertIn("display: contents", print_css)
+        row_rule = print_css.split(".portal-attendance-print-table tr,", 1)[1].split("}", 1)[0]
+        self.assertIn("page-break-inside: avoid", row_rule)
+        self.assertIn("break-inside: avoid", row_rule)
+        thead_rule = print_css.split(".portal-attendance-print-table thead {", 1)[1].split("}", 1)[0]
+        self.assertNotIn("display: block", thead_rule)
+        screen_block = css.split("@media screen {", 1)[1].split("@media print", 1)[0]
+        self.assertIn("overflow-x: auto", screen_block.split(".portal-attendance-print-wrap", 1)[1])
+        js = (Path(__file__).resolve().parents[2] / "static" / "js" / "portal-report-print.js").read_text()
+        skip = js.split("portal-attendance-print-sheet", 1)[1].split("\n", 1)[0]
+        self.assertIn("continue", skip)
