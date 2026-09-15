@@ -378,6 +378,8 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     units_by_slug = _units_by_slug()
     rows = []
     for family in families:
+        if getattr(family, "slug", "") == "practice":
+            continue
         family_balances = balances.get(family.pk, {})
         household_children = _active_prefetched_children(family)
         apps = list(family.enrollment_applications.all())

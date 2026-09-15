@@ -257,3 +257,20 @@
     width: 100%;
   }
 }
+
+.portal-practice-parent-banner {
+  padding: 0.7rem 1.25rem;
+  background: #e8f5e9;
+  border-bottom: 2px solid var(--yea-green, #2e7d32);
+  color: var(--text-heading);
+  font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.portal-practice-end-form {
+  margin: 0;
+}

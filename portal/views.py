@@ -135,6 +135,7 @@ from .parent_auth import (
 )
 from .staff_auth import (
     admin_login_required,
+    admin_login_required_post,
     staff_login_required,
     staff_login_required_post,
     staff_or_admin_login_required_post,
@@ -621,12 +622,15 @@ def _family_billing_bundle(request, area, family_slug):
 
 def _finalize_admin_context(request, context):
     from .parent_auth import portal_preview_mode
+    from .practice_parent import practice_parent_available, practice_login_hint
     from .staff_auth import is_admin_portal_authenticated
 
     context["admin_authenticated"] = portal_preview_mode() or is_admin_portal_authenticated(request)
     from .staff_auth import portal_switch_flags
 
     context.update(portal_switch_flags(request.user))
+    context["practice_parent_available"] = practice_parent_available()
+    context["practice_parent_login"] = practice_login_hint() if context["practice_parent_available"] else None
     return context
 
 
@@ -1024,6 +1028,18 @@ def _parent_context(request, page_title, page_slug="", **extra):
         from .support_view import active_support_view
 
         support_view = active_support_view(account.family)
+    from .practice_parent import (
+        can_return_to_admin,
+        is_practice_parent_session,
+        practice_can_use_stripe_checkout,
+    )
+
+    practice_session = is_practice_parent_session(request, account)
+    practice_standin = practice_session and not practice_can_use_stripe_checkout()
+    parent_stripe_ok = (
+        practice_session
+        or (_parent_live_mode(request) and stripe_configured())
+    )
     context = _portal_context(
         "parent",
         page_title,
@@ -1037,7 +1053,10 @@ def _parent_context(request, page_title, page_slug="", **extra):
         account=account_data,
         policy_data=policy_data,
         policies_per_child=POLICIES_PER_CHILD,
-        parent_stripe_enabled=_parent_live_mode(request) and stripe_configured(),
+        parent_stripe_enabled=parent_stripe_ok,
+        practice_parent_session=practice_session,
+        practice_checkout_standin=practice_standin,
+        practice_can_return_to_admin=can_return_to_admin(request),
         parent_authenticated=parent_signed_in or portal_preview_mode(),
         parent_avatar=parent_avatar,
         parent_can_manage_photo=bool(account) and not portal_preview_mode(),
@@ -1645,11 +1664,20 @@ def parent_payment_success(request):
     session_id = request.GET.get("session_id")
     payment = None
     account = get_parent_account(request.user)
+    practice_payment_id = request.session.pop("practice_last_payment_id", None)
+    if practice_payment_id and account:
+        from .models import PortalPayment
+
+        payment = PortalPayment.objects.filter(
+            pk=practice_payment_id,
+            family=account.family,
+            status="paid",
+        ).first()
     if stripe_configured():
         from .stripe_services import confirm_checkout_payment, reconcile_pending_stripe_payments_for_family
 
         if session_id:
-            payment = confirm_checkout_payment(session_id)
+            payment = confirm_checkout_payment(session_id) or payment
         if not payment and account:
             reconciled = reconcile_pending_stripe_payments_for_family(account.family)
             if reconciled:
@@ -4637,6 +4665,7 @@ def admin_page(request, page):
         from .models import PortalOrgSetting
 
         context["program_director_can_see_billing"] = PortalOrgSetting.load().program_director_can_see_billing
+        context["practice_parent_enabled"] = PortalOrgSetting.load().practice_parent_enabled
         context["billing_permission_notes"] = [
             "Add charge — post fees to a member account.",
             "Delete charge — remove a posted charge.",
@@ -5349,6 +5378,64 @@ def admin_parent_preview_sample(request, page="dashboard"):
     if page == "emergency-contacts":
         context.update(_parent_emergency_contacts_extras(request, context))
     return render(request, template, _attach_parent_ui(request, context))
+
+
+@require_POST
+@admin_login_required_post
+def admin_practice_parent_open(request):
+    from .practice_parent import practice_parent_available, start_practice_parent_session
+
+    if not practice_parent_available():
+        messages.error(
+            request,
+            "Practice parent is off. Turn it on under Settings → Billing permissions, or set ALLOW_PORTAL_PRACTICE=True locally.",
+        )
+        return redirect("portal_admin_page", page="communications")
+    account = start_practice_parent_session(request)
+    messages.success(
+        request,
+        f"Practice parent — {account.family.name}. Test payments only, not a real family.",
+    )
+    return redirect("portal_parent_page", page="dashboard")
+
+
+@require_POST
+def admin_practice_parent_end(request):
+    from .practice_parent import restore_admin_from_practice
+
+    if restore_admin_from_practice(request):
+        messages.success(request, "Back in portal admin. Practice parent is closed.")
+        return redirect("portal_admin_page", page="dashboard")
+    messages.info(request, "Practice parent session ended.")
+    return redirect("portal_admin_login")
+
+
+@require_POST
+@admin_login_required_post
+def admin_practice_parent_toggle(request):
+    from .models import PortalOrgSetting
+    from .practice_parent import ensure_practice_parent_account
+
+    if not _admin_needs_live_for_practice(request):
+        return redirect("portal_admin_page", page="billing-permissions")
+    setting = PortalOrgSetting.load()
+    setting.practice_parent_enabled = request.POST.get("practice_parent_enabled") == "on"
+    setting.save(update_fields=["practice_parent_enabled"])
+    if setting.practice_parent_enabled:
+        ensure_practice_parent_account()
+        messages.success(request, "Practice parent is on. Open it from Parent comms or the header.")
+    else:
+        messages.success(request, "Practice parent is off. The sandbox family is unchanged.")
+    return redirect("portal_admin_page", page="billing-permissions")
+
+
+def _admin_needs_live_for_practice(request):
+    from .attendance_service import portal_is_live
+
+    if not portal_is_live():
+        messages.error(request, "Portal admin saves are disabled in preview mode.")
+        return False
+    return True
 
 
 @require_http_methods(["GET", "POST"])

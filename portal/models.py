@@ -1339,6 +1339,10 @@ class PortalOrgSetting(models.Model):
     """Singleton organization toggles for portal roles."""
 
     program_director_can_see_billing = models.BooleanField(default=False)
+    practice_parent_enabled = models.BooleanField(
+        default=False,
+        help_text="Show Open practice parent. Off on production unless an admin turns this on.",
+    )
 
     class Meta:
         verbose_name = "Portal organization setting"

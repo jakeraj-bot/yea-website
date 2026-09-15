@@ -1116,7 +1116,16 @@ def parent_payment_checkout(request):
         messages.error(request, "Sign in to your parent account to pay online.")
         return redirect("portal_parent_login")
 
-    if not stripe_configured():
+    from .practice_parent import (
+        complete_practice_test_payment,
+        is_practice_family,
+        practice_can_use_stripe_checkout,
+    )
+
+    practice = is_practice_family(account.family)
+    use_stripe = practice_can_use_stripe_checkout() if practice else stripe_configured()
+
+    if not practice and not stripe_configured():
         messages.error(
             request,
             "Online card payments are not enabled yet. Contact YEA at 609-357-8608 to pay in the office.",
@@ -1133,6 +1142,21 @@ def parent_payment_checkout(request):
     if amount < Decimal("0.50"):
         messages.error(request, "Enter at least $0.50 to pay by card.")
         return _pay_redirect("portal_parent_payment", amount=f"{amount:.2f}", **dropin_params)
+
+    if practice and not use_stripe:
+        payment = complete_practice_test_payment(
+            account,
+            amount,
+            is_dropin=is_dropin,
+            dropin={
+                "child": request.POST.get("child", ""),
+                "program": request.POST.get("program_label") or request.POST.get("program", ""),
+                "location": request.POST.get("location", ""),
+                "date": request.POST.get("date", ""),
+            },
+        )
+        request.session["practice_last_payment_id"] = payment.pk
+        return redirect("portal_parent_payment_success")
 
     payment = PortalPayment.objects.create(
         family=account.family,
@@ -1165,6 +1189,22 @@ def parent_payment_checkout(request):
         if not getattr(session, "url", None):
             raise ValueError("Stripe did not return a checkout page.")
     except Exception as exc:
+        if practice:
+            from .parent_services import record_successful_payment
+            from .processing_fees import apply_fee_to_payment
+
+            apply_fee_to_payment(payment)
+            payment = record_successful_payment(
+                payment,
+                method_label="Stripe test (practice)",
+                ledger_note="Practice parent test payment — Stripe test mode",
+            )
+            request.session["practice_last_payment_id"] = payment.pk
+            messages.info(
+                request,
+                "Stripe test checkout was unavailable, so this practice payment was recorded locally.",
+            )
+            return redirect("portal_parent_payment_success")
         payment.delete()
         messages.error(request, checkout_error_message(exc))
         return _pay_redirect(

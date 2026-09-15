@@ -142,6 +142,10 @@ class Command(BaseCommand):
         from portal.parent_services import seed_parent_accounts
 
         parent_logins = seed_parent_accounts(unit)
+        from portal.practice_parent import ensure_practice_parent_account, practice_parent_logins
+
+        ensure_practice_parent_account()
+        parent_logins = list(parent_logins) + practice_parent_logins()
         from portal.models import PortalStaffAccount
 
         from portal.usernames import portal_username

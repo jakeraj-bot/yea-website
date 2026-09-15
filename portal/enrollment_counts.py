@@ -42,7 +42,7 @@ def enrolled_children_qs(unit=None):
     """
     from .unit_visibility import child_unit_q
 
-    qs = PortalChild.objects.filter(is_active=True)
+    qs = PortalChild.objects.filter(is_active=True).exclude(family__slug="practice")
     if unit is not None:
         qs = qs.filter(child_unit_q(unit))
     return (
