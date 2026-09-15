@@ -206,7 +206,7 @@ _STRINGS = {
         "tax_statements_link": "Tax statements",
         "require_zero_balance": "require $0 balance.",
         "agency_payments_note": "4Cs agency payments between {agency} and YEA are handled separately by staff. You are only responsible for membership and your copay shown above.",
-        "preview_no_charge": "Parent view — this doesn't charge a card.",
+        "preview_no_charge": "Parent view — this does not charge a card.",
         "preview_no_action": "Parent view — this is shown so you can tell parents where to click.",
         "support_pay_hidden": "Buttons look the same as a parent's. They do not charge a card from this view. Card numbers stay hidden.",
         "expires": "Expires {date}",

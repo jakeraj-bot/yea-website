@@ -94,7 +94,7 @@ class ParentSupportViewTests(TestCase):
         self.assertContains(response, "Pay now")
         self.assertContains(response, "Add another child")
         self.assertContains(response, "portal-preview-action")
-        self.assertContains(response, "this doesn't charge a card")
+        self.assertContains(response, "this does not charge a card")
         self.assertNotContains(response, reverse("portal_parent_payment"))
         self.assertTrue(
             PortalSupportViewSession.objects.filter(family=self.family, ended_at__isnull=True).exists()
@@ -179,7 +179,7 @@ class ParentSupportViewTests(TestCase):
         self.assertContains(response, "Pay now")
         self.assertContains(response, "Add another child")
         self.assertContains(response, "portal-preview-action")
-        self.assertContains(response, "this doesn't charge a card")
+        self.assertContains(response, "this does not charge a card")
         self.assertNotContains(response, reverse("portal_parent_payment"))
         self.assertFalse(PortalSupportViewSession.objects.exists())
         missing = self.client.get(
