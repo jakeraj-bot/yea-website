@@ -4,10 +4,13 @@ from urllib.parse import urlparse
 
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
+from portal.forms import PortalPasswordResetForm
 
 from portal.member_admin import (
     send_parent_password_reset_link,
@@ -205,3 +208,172 @@ class ParentPasswordResetEmailTests(TestCase):
         self.parent_user.refresh_from_db()
         self.assertTrue(self.parent_user.check_password("ParentPass123"))
         self.assertTrue(self.parent_user.password.startswith("pbkdf2_"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    @patch("portal.member_admin.send_site_email", return_value=0)
+    def test_admin_reset_shows_error_when_email_not_sent(self, _send):
+        self._login_admin()
+        response = self.client.post(
+            reverse("portal_admin_family_parent_password", kwargs={"family_slug": "orengo"}),
+            {"action": "send_link"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "could not be sent")
+        self.assertNotContains(response, "Create-password email sent")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("ParentPass123"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_can_set_temporary_password_shown_once(self):
+        self._login_admin()
+        response = self.client.post(
+            reverse("portal_admin_family_parent_password", kwargs={"family_slug": "orengo"}),
+            {
+                "action": "set_password",
+                "password": "TempOncePass123!",
+                "confirm_password": "TempOncePass123!",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "TempOncePass123!")
+        self.assertContains(response, "copy it now")
+        self.assertContains(response, 'id="parent-password-once"')
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("TempOncePass123!"))
+        self.assertNotContains(response, self.parent_user.password)
+        again = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "orengo"}))
+        self.assertNotContains(again, "TempOncePass123!")
+
+
+class ParentForgotPasswordTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="orengo",
+            name="Orengo",
+            primary_contact="Alize Parent",
+            status="Active",
+        )
+        self.parent_user = User.objects.create_user(
+            username="parent:orengo",
+            password="ParentPass123",
+            email="alize@example.com",
+            first_name="Alize",
+            last_name="Parent",
+        )
+        PortalParentAccount.objects.create(user=self.parent_user, family=self.family)
+        self.staff_user = User.objects.create_user(
+            username="staff:front",
+            password="StaffPass123",
+            email="staff@example.com",
+        )
+        PortalStaffAccount.objects.create(
+            user=self.staff_user,
+            unit=self.unit,
+            display_name="Front Desk",
+            role="Staff",
+            is_active=True,
+        )
+
+    def _reset_url_from_message(self, message):
+        for line in message.splitlines():
+            line = line.strip()
+            if "/login/password-reset/confirm/" in line:
+                return line
+        self.fail("Email did not include a create-password link.")
+
+    def test_forgot_password_form_renders(self):
+        response = self.client.get(reverse("portal_parent_password_reset"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Forgot password")
+        self.assertContains(response, "Send reset link")
+        self.assertContains(response, reverse("portal_parent_login"))
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_parent_forgot_password_sends_email_token_changes_password(self):
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "alize@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_parent_password_reset_done"))
+        done = self.client.get(response.url)
+        self.assertEqual(done.status_code, 200)
+        self.assertContains(done, "Check your email")
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertEqual(sent.to, ["alize@example.com"])
+        self.assertIn("parent portal", sent.subject)
+        self.assertIn("/portal/login/password-reset/confirm/", sent.body)
+        self.assertIn("/portal/login/", sent.body)
+        self.assertIn("https://yeanj.org", sent.body)
+        self.assertNotIn("ParentPass123", sent.body)
+        self.assertNotIn("pbkdf2_", sent.body)
+        reset_url = self._reset_url_from_message(sent.body)
+        parsed = urlparse(reset_url)
+        self.assertTrue(parsed.path.startswith("/portal/login/password-reset/confirm/"))
+        confirm_get = self.client.get(parsed.path)
+        self.assertEqual(confirm_get.status_code, 302)
+        confirm_url = confirm_get["Location"]
+        confirm_post = self.client.post(
+            confirm_url,
+            {"new_password1": "ParentNewPass456!", "new_password2": "ParentNewPass456!"},
+        )
+        self.assertEqual(confirm_post.status_code, 302)
+        self.assertEqual(confirm_post.url, reverse("portal_parent_password_reset_complete"))
+        complete = self.client.get(confirm_post.url)
+        self.assertContains(complete, "Password updated")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("ParentNewPass456!"))
+        self.assertFalse(self.parent_user.check_password("ParentPass123"))
+        self.assertTrue(self.parent_user.password.startswith("pbkdf2_"))
+        login_ok = self.client.post(
+            reverse("portal_parent_login"),
+            {"username": "orengo", "password": "ParentNewPass456!"},
+        )
+        self.assertEqual(login_ok.status_code, 302)
+        self.assertTrue(authenticate(username="parent:orengo", password="ParentNewPass456!"))
+
+    def test_unknown_email_still_shows_check_email(self):
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "nobody@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_parent_password_reset_done"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_staff_email_does_not_reset_from_parent_form(self):
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "staff@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch.object(PortalPasswordResetForm, "save", side_effect=OSError("smtp down"))
+    def test_parent_reset_shows_error_when_email_fails(self, _save):
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "alize@example.com"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "could not send the reset email")
+        self.parent_user.refresh_from_db()
+        self.assertTrue(self.parent_user.check_password("ParentPass123"))
+
+    def test_staff_forgot_password_uses_staff_confirm_url(self):
+        response = self.client.post(
+            reverse("portal_staff_password_reset"),
+            {"email": "staff@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_staff_password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("/portal/staff/login/password-reset/confirm/", mail.outbox[0].body)
+        self.assertIn("/portal/staff/login/", mail.outbox[0].body)
+        self.assertNotIn("/portal/login/password-reset/confirm/", mail.outbox[0].body)

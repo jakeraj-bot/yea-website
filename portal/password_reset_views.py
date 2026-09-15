@@ -1,3 +1,6 @@
+import logging
+from urllib.parse import urlparse
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import (
@@ -11,6 +14,13 @@ from core.spam_protection import is_rate_limited, record_attempt
 
 from .forms import PortalPasswordResetForm
 
+logger = logging.getLogger(__name__)
+
+PASSWORD_RESET_SEND_ERROR = (
+    "We could not send the reset email right now. Try again in a few minutes, "
+    "or contact Youth Education Academy at info@yeanj.org / 609-357-8608."
+)
+
 
 class PortalPasswordResetView(PasswordResetView):
     form_class = PortalPasswordResetForm
@@ -23,6 +33,21 @@ class PortalPasswordResetView(PasswordResetView):
     reset_confirm_url_name = "portal_parent_password_reset_confirm"
     reset_done_url_name = "portal_parent_password_reset_done"
 
+    @property
+    def extra_email_context(self):
+        """Django reads this attribute (not get_extra_email_context) when sending mail."""
+        parsed = urlparse(getattr(settings, "SITE_URL", "") or "")
+        context = {
+            "portal_label": self.portal_label,
+            "reset_confirm_url_name": self.reset_confirm_url_name,
+            "login_url_name": self.login_url_name,
+        }
+        if parsed.netloc:
+            context["domain"] = parsed.netloc
+            if parsed.scheme:
+                context["protocol"] = parsed.scheme
+        return context
+
     def form_valid(self, form):
         limit = getattr(settings, "PORTAL_PASSWORD_RESET_RATE_LIMIT", 5)
         window = getattr(settings, "PORTAL_PASSWORD_RESET_RATE_WINDOW_SECONDS", 3600)
@@ -30,7 +55,12 @@ class PortalPasswordResetView(PasswordResetView):
             messages.error(self.request, "Too many password reset attempts. Please try again later.")
             return self.form_invalid(form)
         record_attempt(self.request, "portal-password-reset", window)
-        return super().form_valid(form)
+        try:
+            return super().form_valid(form)
+        except Exception:
+            logger.exception("Password reset email failed for %s portal", self.portal_type)
+            messages.error(self.request, PASSWORD_RESET_SEND_ERROR)
+            return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,12 +78,6 @@ class PortalPasswordResetView(PasswordResetView):
         from django.urls import reverse
 
         return reverse(self.reset_done_url_name)
-
-    def get_extra_email_context(self):
-        return {
-            "portal_label": self.portal_label,
-            "reset_confirm_url_name": self.reset_confirm_url_name,
-        }
 
 
 class PortalPasswordResetDoneView(PasswordResetDoneView):
@@ -107,6 +131,7 @@ class PortalPasswordResetCompleteView(PasswordResetCompleteView):
 class ParentPasswordResetView(PortalPasswordResetView):
     portal_type = "parent"
     portal_label = "parent portal"
+    login_url_name = "portal_parent_login"
     reset_confirm_url_name = "portal_parent_password_reset_confirm"
     reset_done_url_name = "portal_parent_password_reset_done"
 
@@ -132,6 +157,7 @@ class ParentPasswordResetCompleteView(PortalPasswordResetCompleteView):
 class StaffPasswordResetView(PortalPasswordResetView):
     portal_type = "staff"
     portal_label = "staff portal"
+    login_url_name = "portal_staff_login"
     reset_confirm_url_name = "portal_staff_password_reset_confirm"
     reset_done_url_name = "portal_staff_password_reset_done"
 
@@ -158,6 +184,7 @@ class StaffPasswordResetCompleteView(PortalPasswordResetCompleteView):
 class AdminPasswordResetView(PortalPasswordResetView):
     portal_type = "admin"
     portal_label = "portal admin"
+    login_url_name = "portal_admin_login"
     reset_confirm_url_name = "portal_admin_password_reset_confirm"
     reset_done_url_name = "portal_admin_password_reset_done"
 

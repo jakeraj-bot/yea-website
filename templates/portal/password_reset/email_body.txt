@@ -1,9 +1,12 @@
 Hello,
 
-You requested a password reset for your {{ portal_label }} account at {{ site_name }}.
+You requested a password reset for your {{ portal_label }} account at Youth Education Academy.
 
 Open this link to create a new password (this link expires and can be used once):
 {{ protocol }}://{{ domain }}{% url reset_confirm_url_name uidb64=uid token=token %}
+
+After you create a password, sign in here:
+{{ protocol }}://{{ domain }}{% url login_url_name %}
 
 If you did not request this, you can ignore this email.
 

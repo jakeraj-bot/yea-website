@@ -86,6 +86,9 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("cannot look up the current password", bodies)
         self.assertIn("one-time link to create a new password", bodies)
+        self.assertIn("Email create-password link", bodies)
+        self.assertIn("temporary password", bodies)
+        self.assertIn("Forgot password", bodies)
 
     def test_reports_exports_keep_owed_weeks_and_program_director_note(self):
         reports = guide_for("reports")
@@ -120,6 +123,8 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("cannot look up the old password", bodies)
         self.assertIn("one-time link to create a new password", bodies)
+        self.assertIn("Email create-password link", bodies)
+        self.assertIn("temporary password", bodies)
 
     def test_email_guides_explain_collapsing_sections(self):
         family = guide_for("family-email")
