@@ -17,32 +17,32 @@
 
     <div class="portal-stat-row">
       <div class="portal-stat card">
-        <span class="portal-stat-label">Request by</span>
+        <span class="portal-stat-label">{% pt "request_by" %}</span>
         <strong class="portal-stat-value">{{ drop_off.settings.cutoff_display }}</strong>
       </div>
       <div class="portal-stat card">
-        <span class="portal-stat-label">Book ahead</span>
-        <strong class="portal-stat-value">{{ drop_off.settings.book_ahead_days }} days</strong>
+        <span class="portal-stat-label">{% pt "book_ahead" %}</span>
+        <strong class="portal-stat-value">{% pt "days_count" count=drop_off.settings.book_ahead_days %}</strong>
       </div>
       <div class="portal-stat card">
-        <span class="portal-stat-label">Your requests</span>
+        <span class="portal-stat-label">{% pt "your_requests" %}</span>
         <strong class="portal-stat-value">{{ drop_off.bookings|length }}</strong>
       </div>
     </div>
 
     {% if drop_off.bookings %}
     <section class="card portal-dropoff-requests">
-      <h2>We have these requests</h2>
-      <p class="form-note">Staff see paid requests on their pickup list for that day.</p>
+      <h2>{% pt "your_requests" %}</h2>
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead>
             <tr>
-              <th>Child</th>
-              <th>Day</th>
-              <th>Time</th>
-              <th>Amount</th>
-              <th>Status</th>
+              <th>{% pt "child" %}</th>
+              <th>{% pt "date" %}</th>
+              <th>{% pt "time" %}</th>
+              <th>{% pt "amount" %}</th>
+              <th>{% pt "status" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -68,10 +68,10 @@
     {% endif %}
 
     <section class="card">
-      <h2>Book a drop-off day</h2>
+      <h2>{% pt "book_dropoff_day" %}</h2>
       <form method="get" class="portal-dropoff-date-form">
         <div class="form-group">
-          <label for="drop-off-date">Date</label>
+          <label for="drop-off-date">{% pt "date" %}</label>
           <input id="drop-off-date" type="date" name="date" class="portal-input" value="{{ drop_off.care_date }}" min="{{ drop_off.min_date }}" max="{{ drop_off.max_date }}" onchange="this.form.submit()">
         </div>
       </form>
@@ -97,23 +97,23 @@
             {% if drop_off.children|length == 1 %}
             <input type="hidden" name="child_id" value="{{ drop_off.children.0.id }}">
             {% else %}
-            <label class="visually-hidden" for="child-{{ slot.id }}">Child</label>
+            <label class="visually-hidden" for="child-{{ slot.id }}">{% pt "child" %}</label>
             <select id="child-{{ slot.id }}" name="child_id" class="portal-select" required>
               {% for child in drop_off.children %}
               <option value="{{ child.id }}">{{ child.name }}</option>
               {% endfor %}
             </select>
             {% endif %}
-            <button type="submit" class="btn btn-primary">Pay ${{ slot.price }} and request</button>
+            <button type="submit" class="btn btn-primary">{% pt "pay_now" %} ${{ slot.price }}</button>
           </form>
           {% elif not slot.available %}
-          <span class="portal-status">Not available</span>
+          <span class="portal-status">{% pt "none" %}</span>
           {% endif %}
         </article>
         {% endfor %}
       </div>
       {% else %}
-      <p class="form-note">No drop-off times are set for this day yet. If a school gets out early, that time has to be added in Drop-off settings first.</p>
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
       {% endif %}
     </section>
   </div>

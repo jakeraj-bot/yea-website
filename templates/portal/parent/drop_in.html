@@ -11,86 +11,60 @@
   <div class="container">
     {% if drop_in.status == 'pending' %}
     <div class="portal-callout card portal-callout-warning">
-      <p><strong>Registration pending staff review.</strong> You cannot book drop-in days until we approve your registration. We'll email you when you're approved.</p>
+      <p><strong>{% pt "dropin_pending" %}</strong></p>
     </div>
     {% elif drop_in.status == 'not_registered' %}
     {% if drop_in.offered %}
     <div class="portal-callout card">
-      <p><strong>Register for drop-in care</strong> to book individual days using your portal login.</p>
+      <p>{% pt "register_dropin" %}</p>
       {% if portal_live and parent_authenticated %}
       <form method="post" action="{% url 'portal_parent_dropin_register' %}">
         {% csrf_token %}
-        <button type="submit" class="btn btn-primary">Register for drop-in</button>
+        <button type="submit" class="btn btn-primary">{% pt "register_dropin_btn" %}</button>
       </form>
       {% endif %}
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
     </div>
     {% else %}
     <div class="portal-callout card">
-      <p><strong>Drop-in care is not set up yet.</strong> When your program enables drop-in booking, you'll register here and book individual days from this page.</p>
+      <p>{% pt "dropin_not_setup" %}</p>
     </div>
     {% endif %}
     {% elif drop_in.status == 'approved' %}
     <div class="portal-toolbar">
-      <button type="button" class="btn btn-primary" id="book-dropin-btn">+ Book a drop-in day</button>
-      <span class="portal-status portal-status-active">{{ drop_in.status_label }}</span>
+      <button type="button" class="btn btn-primary" id="book-dropin-btn">{% pt "book_dropin" %}</button>
+      <span class="portal-status portal-status-active">{% ptl drop_in.status_label %}</span>
     </div>
     {% endif %}
 
     {% if drop_in.show_program_details %}
     <div class="portal-stat-row">
       <div class="portal-stat card">
-        <span class="portal-stat-label">After-school drop-in</span>
+        <span class="portal-stat-label">{% pt "after_school_dropin" %}</span>
         <strong class="portal-stat-value">${{ drop_in.fees.after_school }}/day</strong>
       </div>
       <div class="portal-stat card">
-        <span class="portal-stat-label">Summer camp drop-in</span>
+        <span class="portal-stat-label">{% pt "summer_dropin" %}</span>
         <strong class="portal-stat-value">${{ drop_in.fees.summer_camp }}/day</strong>
       </div>
       <div class="portal-stat card">
-        <span class="portal-stat-label">Upcoming bookings</span>
+        <span class="portal-stat-label">{% pt "upcoming_bookings" %}</span>
         <strong class="portal-stat-value">{{ drop_in.bookings|length }}</strong>
       </div>
     </div>
+    <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
 
-    <div class="portal-profile-grid">
-      <section class="card">
-        <h2>How drop-in works</h2>
-        <ol class="portal-link-list portal-ordered-list">
-          <li>Register once (family info, emergency contact, medical, policies)</li>
-          <li>Staff approves your registration before first booking</li>
-          <li>Pick date, child, location, and pay online when space is available</li>
-          <li>Join the waitlist if the day is full — we contact families in order</li>
-        </ol>
-      </section>
-      <section class="card">
-        <h2>Sign-up deadlines</h2>
-        <dl class="portal-dl">
-          <dt>After-school</dt><dd>{{ drop_in.deadlines.after_school }}</dd>
-          <dt>Summer camp</dt><dd>{{ drop_in.deadlines.summer_camp }}</dd>
-        </dl>
-        <h3>Locations</h3>
-        <ul class="portal-link-list">
-          {% for loc in drop_in.locations %}
-          <li>{{ loc }}</li>
-          {% endfor %}
-        </ul>
-      </section>
-    </div>
-    {% endif %}
-
-    {% if drop_in.show_program_details %}
-    <h2>Your bookings</h2>
     {% if drop_in.bookings %}
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Child</th>
-            <th>Program</th>
-            <th>Location</th>
-            <th>Amount</th>
-            <th>Status</th>
+            <th>{% pt "date" %}</th>
+            <th>{% pt "child" %}</th>
+            <th>{% pt "program" %}</th>
+            <th>{% pt "location" %}</th>
+            <th>{% pt "amount" %}</th>
+            <th>{% pt "status" %}</th>
             <th></th>
           </tr>
         </thead>
@@ -99,33 +73,33 @@
           <tr>
             <td>{{ booking.date }}</td>
             <td>{{ booking.child }}</td>
-            <td>{{ booking.program }}</td>
+            <td>{% ptl booking.program %}</td>
             <td>{{ booking.location }}</td>
             <td>${{ booking.amount }}</td>
-            <td><span class="portal-status portal-status-{{ booking.status|slugify }}">{{ booking.status }}</span></td>
-            <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}">Receipt</a></td>
+            <td><span class="portal-status portal-status-{{ booking.status|slugify }}">{% ptl booking.status %}</span></td>
+            <td><a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_receipts_print' %}{{ parent_pay_query }}">{% pt "view_receipt" %}</a></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    <p class="form-note">No bookings yet — click <strong>Book a drop-in day</strong> when you're ready.</p>
+    <p class="form-note">{% pt "no_dropin_bookings" %}</p>
     {% endif %}
 
     {% if drop_in.waitlist %}
-    <h2>Waitlist</h2>
+    <h2>{% pt "status_waitlist" %}</h2>
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
-          <tr><th>Date</th><th>Child</th><th>Program</th><th>Location</th><th>Requested</th></tr>
+          <tr><th>{% pt "date" %}</th><th>{% pt "child" %}</th><th>{% pt "program" %}</th><th>{% pt "location" %}</th><th>{% pt "submitted_label" %}</th></tr>
         </thead>
         <tbody>
           {% for entry in drop_in.waitlist %}
           <tr>
             <td>{{ entry.date }}</td>
             <td>{{ entry.child }}</td>
-            <td>{{ entry.program }}</td>
+            <td>{% ptl entry.program %}</td>
             <td>{{ entry.location }}</td>
             <td>{{ entry.requested }}</td>
           </tr>
@@ -133,11 +107,11 @@
         </tbody>
       </table>
     </div>
-    <p class="form-note">If a spot opens from a cancellation, we'll contact waitlisted families in order.</p>
+    <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
     {% endif %}
 
     <div class="portal-panel card" id="book-dropin-panel" hidden>
-      <h2>Book a drop-in day</h2>
+      <h2>{% pt "book_dropin" %}</h2>
       <form class="portal-form-grid" id="book-dropin-form" {% if portal_live and parent_authenticated %}method="post" action="{% url 'portal_parent_dropin_book' %}"{% else %}action="{% url 'portal_parent_payment' %}{{ parent_pay_query }}" method="get"{% endif %}>
         {% if portal_live and parent_authenticated %}{% csrf_token %}{% else %}
         <input type="hidden" name="source" value="dropin">
@@ -145,7 +119,7 @@
         <input type="hidden" name="program_label" id="di-program-label" value="After-school drop-in">
         {% endif %}
         <div class="form-group">
-          <label for="di-child">Child</label>
+          <label for="di-child">{% pt "child" %}</label>
           <select id="di-child" name="child" class="portal-select" required>
             {% for child in parent_preview.profile.children %}
             <option>{{ child.name }}</option>
@@ -153,14 +127,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="di-program">Program</label>
+          <label for="di-program">{% pt "program" %}</label>
           <select id="di-program" name="program" class="portal-select" required>
-            <option value="after-school">After-school drop-in — ${{ drop_in.fees.after_school }}</option>
-            <option value="summer">Summer camp drop-in — ${{ drop_in.fees.summer_camp }}</option>
+            <option value="after-school">{% pt "after_school_dropin" %} — ${{ drop_in.fees.after_school }}</option>
+            <option value="summer">{% pt "summer_dropin" %} — ${{ drop_in.fees.summer_camp }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="di-location">Location</label>
+          <label for="di-location">{% pt "location" %}</label>
           <select id="di-location" name="location" class="portal-select" required>
             {% for loc in drop_in.locations %}
             <option>{{ loc }}</option>
@@ -168,14 +142,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="di-date">Date</label>
+          <label for="di-date">{% pt "date" %}</label>
           <input id="di-date" name="date" type="date" class="portal-input" required>
         </div>
         <div class="portal-form-actions portal-form-full">
-          <button type="submit" class="btn btn-primary">Continue to payment</button>
-          <button type="button" class="btn btn-secondary" id="cancel-dropin-book">Cancel</button>
+          <button type="submit" class="btn btn-primary">{% pt "continue_to_review" %}</button>
+          <button type="button" class="btn btn-secondary" id="cancel-dropin-book">{% pt "cancel" %}</button>
         </div>
-        <p class="form-note portal-form-full">{% if portal_live and parent_authenticated %}We check availability before payment. Full days join the waitlist automatically.{% elif show_dev_hints %}Preview flow — booking details carry to payment review.{% endif %}</p>
+        <p class="form-note portal-form-full"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
       </form>
     </div>
     {% endif %}

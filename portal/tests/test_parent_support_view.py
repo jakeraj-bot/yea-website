@@ -219,3 +219,25 @@ class ParentSupportViewTests(TestCase):
         self.assertIsNotNone(session.ended_at)
         after = parent_client.get(reverse("portal_parent_page", kwargs={"page": "dashboard"}))
         self.assertNotContains(after, "A YEA admin is viewing your portal")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_parent_view_support_stays_on_previewed_family(self):
+        self._login(self.admin, "admin")
+        support = self.client.get(
+            reverse("portal_admin_parent_preview_page", kwargs={"family_slug": "rivera", "page": "support"}),
+            {"id": self.family.pk},
+        )
+        self.assertEqual(support.status_code, 200)
+        self.assertContains(support, "Rivera")
+        self.assertNotContains(support, "Jacobs")
+        self.assertNotContains(support, "private-pay")
+        self.assertNotContains(support, "/portal/parent/support")
+        html = support.content.decode()
+        self.assertIn("Rivera", html)
+        self.assertIn("$0.00", html)
+        dashboard = self.client.get(
+            reverse("portal_admin_parent_preview_page", kwargs={"family_slug": "rivera", "page": "dashboard"}),
+            {"id": self.family.pk},
+        )
+        self.assertContains(dashboard, "Rivera")
+        self.assertContains(support, dashboard.context["parent_preview"]["family_name"])

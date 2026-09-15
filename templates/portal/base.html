@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=36">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=92">
-  {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=1">{% endif %}
+  {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=2">{% endif %}
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
     try {
@@ -34,16 +34,16 @@
   <div class="portal-preview-banner portal-support-view-banner" role="status">
     <div>
     {% if admin_preview_sample %}
-    <strong>Sample parent portal</strong> — no parent login needed · Card numbers hidden · Read-only
+    <strong>{% pt "sample_preview_banner" %}</strong>
     {% else %}
-    <strong>Support view</strong> — you are looking at the {{ preview_family_name|default:"Family" }} parent portal. Card numbers are hidden. The parent sees a notice while this view is open.
+    <strong>{% pt "support_view_banner" family=preview_family_name|default:"Family" %}</strong>
     {% endif %}
     </div>
     {% include "portal/includes/family_neighbor_nav.html" %}
   </div>
   {% elif parent_support_view_active %}
   <div class="portal-preview-banner portal-support-view-banner portal-support-view-banner-parent" role="status">
-    <strong>A YEA admin is viewing your portal</strong> to help with a support request. They can see the same screens you see. Your card numbers stay hidden.
+    <strong>{% pt "admin_viewing_banner" %}</strong>
   </div>
   {% endif %}
 
@@ -93,7 +93,7 @@
             <span class="portal-avatar-initials">{{ parent_avatar.initials }}</span>
             {% endif %}
           </div>
-          <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
+          <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {% if parent_preview.label %}{% ptl parent_preview.label %}{% else %}{% pt "parent_account" %}{% endif %}</span>
           {% if parent_header %}
           <div class="portal-header-balance{% if parent_header.has_credit %} is-credit{% elif parent_header.is_zero %} is-zero{% else %} is-due{% endif %}">
             <div class="portal-header-balance-copy">
@@ -151,13 +151,21 @@
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=7"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=4"></script>{% endif %}
-  <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
+  <script src="{% static 'js/portal-pending-review.js' %}?v=3"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=2"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-parent-email.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-family-search.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-delete-reason.js' %}?v=1"></script>{% endif %}
-  {% if page_guide %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
+  {% if page_guide and portal_area != 'parent' %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
+  {% if portal_area == 'parent' %}
+  <script>
+    window.YEA_PARENT_I18N = {
+      pending_review: "{% filter escapejs %}{% pt 'pending_review' %}{% endfilter %}",
+      currently_on_file: "{% filter escapejs %}{% pt 'currently_on_file' %}{% endfilter %}"
+    };
+  </script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

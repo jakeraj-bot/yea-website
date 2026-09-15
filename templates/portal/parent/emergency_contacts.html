@@ -35,7 +35,7 @@
             <tr>
               <td>{{ contact.name }}</td>
               <td>{{ contact.phone }}</td>
-              <td>{{ contact.relationship|default:"—" }}</td>
+              <td>{% ptl contact.relationship|default:"—" %}</td>
               <td>{% if contact.authorized_pickup %}{% pt "yes" %}{% else %}{% pt "no" %}{% endif %}</td>
               {% if can_edit_emergency_contacts %}
               <td>
@@ -50,7 +50,7 @@
               {% endif %}
             </tr>
             {% empty %}
-            <tr><td colspan="{% if can_edit_emergency_contacts %}5{% else %}4{% endif %}">No emergency contacts on file for {{ child.name }}.</td></tr>
+            <tr><td colspan="{% if can_edit_emergency_contacts %}5{% else %}4{% endif %}">{% pt "no_emergency_for_child" name=child.name %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -58,30 +58,30 @@
 
       {% if can_edit_emergency_contacts %}
         {% if child.can_add %}
-        <h3 class="portal-form-subheading">Add a contact for {{ child.name }}</h3>
+        <h3 class="portal-form-subheading">{% pt "add_contact_for" name=child.name %}</h3>
         <form method="post" action="{% url 'portal_parent_emergency_contact_add' %}" class="portal-form-grid">
           {% csrf_token %}
           <input type="hidden" name="child_id" value="{{ child.id }}">
           <div class="form-group">
-            <label for="first-name-{{ child.id }}">First name</label>
+            <label for="first-name-{{ child.id }}">{% pt "first_name" %}</label>
             <input id="first-name-{{ child.id }}" name="first_name" type="text" class="portal-input" required maxlength="80" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="last-name-{{ child.id }}">Last name</label>
+            <label for="last-name-{{ child.id }}">{% pt "last_name" %}</label>
             <input id="last-name-{{ child.id }}" name="last_name" type="text" class="portal-input" required maxlength="80" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="phone-{{ child.id }}">Phone</label>
+            <label for="phone-{{ child.id }}">{% pt "phone" %}</label>
             <input id="phone-{{ child.id }}" name="phone" type="text" class="portal-input" required maxlength="30" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="relationship-{{ child.id }}">Relationship to child</label>
+            <label for="relationship-{{ child.id }}">{% pt "relationship_to_child" %}</label>
             <input id="relationship-{{ child.id }}" name="relationship" type="text" class="portal-input" maxlength="80" autocomplete="off">
           </div>
           <div class="form-group portal-form-full">
             <label>
               <input type="checkbox" name="authorized_pickup" value="on">
-              Authorized to pick up
+              {% pt "authorized_to_pickup" %}
             </label>
           </div>
           <div class="portal-form-actions portal-form-full">
@@ -89,10 +89,10 @@
           </div>
         </form>
         {% else %}
-        <p class="form-note">We do not have an enrollment record for {{ child.name }} yet, so contacts cannot be saved here. Use <a href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a> and staff can add one.</p>
+        <p class="form-note">{% pt "no_enrollment_contacts" name=child.name %}</p>
         {% endif %}
       {% elif admin_support_preview %}
-      <p class="form-note">Parents add and delete contacts on this page. This support view is read-only.</p>
+      <p class="form-note">{% pt "support_readonly_contacts" %}</p>
       {% endif %}
     </section>
     {% endfor %}

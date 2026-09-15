@@ -215,6 +215,33 @@
   margin: 0;
 }
 
+.portal-area-parent .portal-support-view-banner {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.portal-area-parent .portal-sidebar-footer {
+  gap: 0.35rem;
+}
+
+.portal-area-parent .portal-sidebar-footer .btn {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.78rem;
+  min-height: 0;
+}
+
+.portal-area-parent .portal-hero .lead {
+  margin-bottom: 0.35rem;
+}
+
+.portal-area-parent .portal-callout {
+  padding: 0.55rem 0.8rem;
+}
+
+.portal-area-parent .portal-toolbar {
+  margin-bottom: 0.65rem;
+}
+
 @media (max-width: 640px) {
   .portal-dash-hero-balance,
   .portal-header-balance-copy {

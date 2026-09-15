@@ -139,7 +139,7 @@ class ParentEmergencyContactTests(TestCase):
         page = self.client.get(self._page_url())
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Emergency contacts")
-        self.assertContains(page, "How to use this page")
+        self.assertNotContains(page, "How to use this page")
         self.assertContains(page, "Add a contact for Jordan Rivera")
         self.assertContains(page, "Rosa Rivera")
         self.assertContains(page, "555-0199")
