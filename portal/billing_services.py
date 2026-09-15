@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.db import transaction
@@ -490,9 +490,26 @@ def staff_payment_note(method, note="", check_number="", money_order_number=""):
     return note, ""
 
 
+def datetime_for_entry_date(entry_date):
+    """Aware local noon on ``entry_date`` so receipts and reports keep that calendar day."""
+    if entry_date is None:
+        return timezone.now()
+    return timezone.make_aware(datetime.combine(entry_date, time(12, 0)))
+
+
+def payment_effective_date(payment):
+    """Calendar date this payment belongs on (local date of paid_at)."""
+    when = getattr(payment, "paid_at", None) or getattr(payment, "created_at", None)
+    if not when:
+        return None
+    return timezone.localtime(when).date()
+
+
 @transaction.atomic
 def post_payment(family, child_name, amount, entry_date, method_label, note="", reference_number=""):
     amount = _parse_amount(amount)
+    if entry_date is None:
+        entry_date = default_entry_date()
     description = note.strip() or f"In-person payment — {method_label}"
     reference = (reference_number or "").strip()
     PortalLedgerEntry.objects.create(
@@ -515,6 +532,7 @@ def post_payment(family, child_name, amount, entry_date, method_label, note="", 
         description,
         reference_number=reference,
         child_name=child_name,
+        paid_at=datetime_for_entry_date(entry_date),
     )
 
 
@@ -525,7 +543,9 @@ def _next_in_person_receipt_no():
     return f"{prefix}-{count:03d}"
 
 
-def _record_in_person_receipt(family, amount, method_label, description, reference_number="", child_name=""):
+def _record_in_person_receipt(
+    family, amount, method_label, description, reference_number="", child_name="", paid_at=None
+):
     from .payment_refs import clean_in_person_method_label
 
     reference = (reference_number or "").strip()
@@ -542,7 +562,7 @@ def _record_in_person_receipt(family, amount, method_label, description, referen
         payment_kind="balance",
         dropin_child=child_name or "",
         status=PortalPayment.STATUS_PAID,
-        paid_at=timezone.now(),
+        paid_at=paid_at or timezone.now(),
         stripe_bank_status="not_stripe",
     )
 

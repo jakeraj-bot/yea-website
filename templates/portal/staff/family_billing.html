@@ -149,7 +149,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="record-payment-panel" hidden>
       <h2>Record payment</h2>
-      <p class="form-note">Cash, check, or money order received in person. Check # and money order # stay in their own field — not in the description. For a card, use Take a card payment (Stripe collects the card).</p>
+      <p class="form-note">Cash, check, or money order received in person. Payment date is the day the money was received — the check date, or the day cash or a money order came in. It defaults to today. Check # and money order # stay in their own field — not in the description. For a card, use Take a card payment (Stripe collects the card and uses the charge time).</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -166,6 +166,11 @@
         <div class="form-group">
           <label for="pay-amount">Amount</label>
           <input id="pay-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="pay-date">Payment date</label>
+          <input id="pay-date" name="date" type="date" class="portal-input" value="{{ today }}">
+          <p class="form-note">The day the money was received. Defaults to today.</p>
         </div>
         <div class="form-group">
           <label for="pay-method">Payment method</label>

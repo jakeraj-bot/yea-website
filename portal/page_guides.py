@@ -287,6 +287,10 @@ GUIDES = {
                 "title": "Agency ledger is separate",
                 "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
             },
+            {
+                "title": "Record a parent copay date",
+                "body": "When you record a parent copay, Payment date is the day the money was received. It defaults to today.",
+            },
         ],
     },
     "agencies": {
@@ -312,6 +316,10 @@ GUIDES = {
             {
                 "title": "Agency ledger is separate",
                 "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
+            },
+            {
+                "title": "Record a parent copay date",
+                "body": "When you record a parent copay, Payment date is the day the money was received. It defaults to today.",
             },
         ],
     },
@@ -682,6 +690,10 @@ GUIDES = {
             {
                 "title": "Add a charge or record a payment",
                 "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or money order. Take a card payment opens Stripe Checkout so the card is entered on Stripe, not in this portal.",
+            },
+            {
+                "title": "Set the payment date",
+                "body": "Payment date is the day the money was received — the check date, or the day cash or a money order came in. It defaults to today. You can change it. Card payments through Stripe keep the time Stripe charged the card.",
             },
             {
                 "title": "Credits and deletes",

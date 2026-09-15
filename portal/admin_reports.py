@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from enrollment.models import EnrollmentApplication
@@ -23,6 +24,14 @@ def _money(value):
     if value is None:
         return "0.00"
     return f"{Decimal(value).quantize(Decimal('0.01')):.2f}"
+
+
+def _payment_calendar_date(payment):
+    """Local calendar date the payment belongs on (receipts and reports)."""
+    when = payment.paid_at or payment.created_at
+    if not when:
+        return None
+    return timezone.localtime(when).date()
 
 
 def _child_school(child):
@@ -305,7 +314,7 @@ def payment_report_rows(filters=None):
     for payment in payments:
         if is_placeholder_unit(payment.family.unit):
             continue
-        paid_on = (payment.paid_at.date() if payment.paid_at else payment.created_at.date()) if payment.paid_at or payment.created_at else None
+        paid_on = _payment_calendar_date(payment)
         children = [child.name for child in payment.family.children.all() if child.is_active]
         child = payment.dropin_child or (" · ".join(children) if children else "—")
         _tuition, fee, charged = payment_charged_totals(payment)
@@ -442,7 +451,7 @@ def _settlement_payment_row(payment):
     from .processing_fees import payment_charged_totals
     from .stripe_services import bank_status_label
 
-    paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+    paid_on = _payment_calendar_date(payment) or timezone.localdate()
     children = [child.name for child in payment.family.children.all() if child.is_active]
     child = payment.dropin_child or (" · ".join(children) if children else "—")
     _tuition, fee, charged = payment_charged_totals(payment)
@@ -562,7 +571,7 @@ def stripe_settlement_rows(filters=None):
     for payment in stripe_payments:
         if unit and payment.family.unit.slug != unit:
             continue
-        paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+        paid_on = _payment_calendar_date(payment) or timezone.localdate()
         if start and paid_on < start:
             continue
         if end and paid_on > end:
