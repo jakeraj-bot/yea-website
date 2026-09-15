@@ -323,6 +323,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}), html)
         self.assertContains(page, "How to use outstanding balances")
         self.assertContains(page, "Status is a filter")
+        self.assertContains(page, "after payments")
+        self.assertContains(page, "processing fee")
 
         waitlist_page = self.client.get(url, {"status": "Waitlist"})
         waitlist_html = waitlist_page.content.decode()

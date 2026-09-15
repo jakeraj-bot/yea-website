@@ -111,6 +111,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("child", bodies.lower())
         self.assertIn("status", bodies.lower())
         self.assertIn("filter", bodies.lower())
+        self.assertIn("payment", bodies.lower())
+        self.assertIn("fee", bodies.lower())
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")
