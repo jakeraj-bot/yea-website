@@ -1,5 +1,5 @@
 {% load static parent_i18n %}
-<div class="card card-accent portal-pay-howto" id="parent-pay-howto">
+<div class="card card-accent portal-pay-howto portal-collapse-skip" id="parent-pay-howto">
   <h2>{% if parent_lang == 'es' %}{% pt "how_to_pay" %} / {% pt "how_to_pay_es_title" %}{% else %}{% pt "how_to_pay" %} / Cómo pagar{% endif %}</h2>
   <video class="portal-pay-howto-video" controls playsinline preload="metadata" poster="{% static 'images/yea-logo.png' %}">
     <source src="{% static 'videos/parent-pay-howto.mp4' %}" type="video/mp4">

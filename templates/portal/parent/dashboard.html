@@ -48,7 +48,7 @@
     </div>
 
     <div class="portal-program-cards card-grid card-grid-3">
-      <article class="card card-accent">
+      <article class="card card-accent portal-collapse-skip">
         <h2>{% pt "program_after_school" %}</h2>
         <p class="form-note">{% pt "after_school_note" %}</p>
         {% if parent_authenticated %}
@@ -58,7 +58,7 @@
         {% endif %}
         <a class="btn btn-secondary btn-sm" href="{% url 'after_school' %}">{% pt "program_details" %}</a>
       </article>
-      <article class="card card-accent orange">
+      <article class="card card-accent orange portal-collapse-skip">
         <h2>{% pt "program_before_care" %}</h2>
         <p class="form-note">{% pt "before_care_note" %}</p>
         {% if parent_authenticated %}
@@ -68,7 +68,7 @@
         {% endif %}
         <a class="btn btn-secondary btn-sm" href="{% url 'school_18' %}#before-care">{% pt "learn_more" %}</a>
       </article>
-      <article class="card card-accent blue">
+      <article class="card card-accent blue portal-collapse-skip">
         <h2>{% pt "program_summer" %}</h2>
         <p class="form-note">{% pt "summer_note" %}</p>
         {% if parent_authenticated %}

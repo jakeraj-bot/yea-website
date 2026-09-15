@@ -24,7 +24,7 @@
     {% endif %}
 
     <div class="portal-profile-grid">
-      <section class="card portal-profile-full">
+      <section class="card portal-profile-full portal-collapse-skip">
         <h2>{% if is_dropin_payment %}{% pt "pay_for_dropin" %}{% else %}{% pt "choose_amount" %}{% endif %}</h2>
         <form id="parent-payment-form" class="portal-form-grid" method="get" action="{% url 'portal_parent_payment_preview' %}" data-fee-percent="{{ stripe_fee.percent_display|default:stripe_fee.percent }}" data-fee-flat="{{ stripe_fee.flat_display|default:'0.30' }}">
           {% if is_dropin_payment %}
