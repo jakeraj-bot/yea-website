@@ -250,9 +250,6 @@ def _attach_member_info(extra, family_slug, unit=None, family_id=None):
     if live_family:
         extra.setdefault("family_id", live_family.pk)
         extra["member_info"] = member_info_for_family(live_family)
-        from .profile_reviews import pending_profile_reviews_for_family
-
-        extra.setdefault("pending_profile_changes", pending_profile_reviews_for_family(live_family))
     return extra
 
 
@@ -1893,7 +1890,6 @@ def staff_page(request, page):
         "attendance": "portal/staff/attendance.html",
         "applications": "portal/staff/applications.html",
         "waitlist": "portal/staff/waitlist.html",
-        "pending-reviews": "portal/staff/pending_reviews.html",
         "create-application": "portal/staff/create_application.html",
         "families": "portal/staff/families.html",
         "member-policies": "portal/staff/member_policies.html",
@@ -2018,19 +2014,6 @@ def staff_page(request, page):
             context["applications"] = waitlist_for_staff(unit) if unit else []
         else:
             context["applications"] = _demo_waitlist_rows()
-    if page == "pending-reviews":
-        context["page_title"] = "Pending reviews"
-        context["applications_tab"] = "profile-changes"
-        context["page_guide_key"] = "pending-reviews"
-        if portal_is_live():
-            from .profile_reviews import pending_profile_reviews
-
-            context["pending_profile_changes"] = pending_profile_reviews(unit=_staff_unit(request))
-        else:
-            context["pending_profile_changes"] = []
-        from .page_guides import page_guide_from_context
-
-        context["page_guide"] = page_guide_from_context(context)
     if page == "agency":
         unit = _staff_unit(request)
         context["today"] = date.today().isoformat()
@@ -4226,7 +4209,6 @@ def admin_page(request, page):
         "families": "portal/admin/families.html",
         "applications": "portal/admin/applications.html",
         "waitlist": "portal/admin/waitlist.html",
-        "pending-reviews": "portal/staff/pending_reviews.html",
         "agencies": "portal/admin/agencies.html",
         "fees": "portal/admin/fees.html",
         "member-billing": "portal/admin/member_billing.html",
@@ -4622,19 +4604,6 @@ def admin_page(request, page):
             context["applications"] = _demo_waitlist_rows()
             context["units"] = UNITS
             context["applications_unit_filter"] = unit_filter
-    if page == "pending-reviews":
-        context["page_title"] = "Pending reviews"
-        context["applications_tab"] = "profile-changes"
-        context["page_guide_key"] = "pending-reviews"
-        if context.get("portal_live"):
-            from .profile_reviews import pending_profile_reviews
-
-            context["pending_profile_changes"] = pending_profile_reviews()
-        else:
-            context["pending_profile_changes"] = []
-        from .page_guides import page_guide_from_context
-
-        context["page_guide"] = page_guide_from_context(context)
     if page == "billing-permissions":
         if context.get("portal_live"):
             from .admin_config import get_charge_types_admin, get_default_billing_rules
