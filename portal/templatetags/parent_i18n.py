@@ -61,7 +61,6 @@ def parent_portal_href(context, page, **query):
 def parent_pay_url(context):
     from django.urls import reverse
 
-    request = context.get("request")
     pay_query = context.get("parent_pay_query") or ""
     if context.get("admin_preview_sample"):
         return reverse("portal_admin_parent_preview_sample_page", kwargs={"page": "billing"})
@@ -74,9 +73,4 @@ def parent_pay_url(context):
         if family_id:
             return f"{url}?id={family_id}"
         return url
-    if request:
-        try:
-            return reverse("portal_parent_payment") + pay_query
-        except Exception:
-            pass
-    return "#"
+    return reverse("portal_parent_payment") + pay_query
