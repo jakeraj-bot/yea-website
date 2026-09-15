@@ -123,10 +123,10 @@
               {% if row.type == 'discount' %}
               <span class="portal-ledger-type portal-ledger-type-discount">{% pt "discount" %}</span>
               {% else %}
-              {{ row.type|title }}
+              {% ptl row.type|title %}
               {% endif %}
             </td>
-            <td>{{ row.description }}</td>
+            <td>{% ptl row.description %}</td>
             <td>{% if row.reference_display %}{{ row.reference_display }}{% else %}—{% endif %}</td>
             <td class="{% if row.type == 'payment' or row.type == 'discount' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
               {% if row.type == 'payment' or row.type == 'discount' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}

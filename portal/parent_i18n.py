@@ -115,10 +115,15 @@ _VALUE_KEYS = {
     "open": "ticket_status_open",
     "resolved": "ticket_status_resolved",
     "weekly": "plan_weekly",
+    "weekly copay": "plan_weekly_copay",
+    "charge": "ledger_charge",
+    "payment": "ledger_payment",
+    "first login": "first_login",
     "scholarship": "scholarship",
 }
 
 _PREFIX_KEYS = (
+    ("weekly copay", "plan_weekly_copay"),
     ("after-school program", "program_after_school_full"),
     ("after-school drop-in", "after_school_dropin"),
     ("summer camp drop-in", "summer_dropin"),
@@ -173,6 +178,9 @@ def translate_label(lang, value):
     out = text
     for english, spanish in _MONTHS_EN_ES:
         out = out.replace(english, spanish)
+    out = out.replace(" at ", " a las ")
+    out = out.replace(" AM", " a.m.")
+    out = out.replace(" PM", " p.m.")
     return out
 
 
@@ -687,6 +695,10 @@ _STRINGS = {
         "breadcrumb_print": "Print",
         "print_slash_save": "Print / Save PDF",
         "plan_weekly": "Weekly",
+        "plan_weekly_copay": "Weekly copay",
+        "ledger_charge": "Charge",
+        "ledger_payment": "Payment",
+        "first_login": "First login",
         "spots_left": "{left} of {capacity} spots left",
     },
     "es": {
@@ -1161,6 +1173,10 @@ _STRINGS = {
         "breadcrumb_print": "Imprimir",
         "print_slash_save": "Imprimir / Guardar PDF",
         "plan_weekly": "Semanal",
+        "plan_weekly_copay": "Copago semanal",
+        "ledger_charge": "Cargo",
+        "ledger_payment": "Pago",
+        "first_login": "Primer acceso",
         "spots_left": "{left} de {capacity} cupos",
     },
 }
