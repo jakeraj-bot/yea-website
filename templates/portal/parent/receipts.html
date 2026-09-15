@@ -15,8 +15,10 @@
     </div>
 
     {% if last_receipt %}
-    <h2>{% pt "last_payment" %}</h2>
-    {% include "portal/parent/includes/paper_receipt.html" with receipt=last_receipt %}
+    <div class="card portal-collapse-skip portal-last-receipt">
+      <h2>{% pt "last_payment" %}</h2>
+      {% include "portal/parent/includes/paper_receipt.html" with receipt=last_receipt %}
+    </div>
     {% endif %}
 
     {% if receipts %}
