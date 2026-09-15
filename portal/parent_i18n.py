@@ -67,7 +67,7 @@ def is_parent_portal_request(request):
     if "/portal/admin/parent-preview" in path:
         return True
     if path.startswith("/portal/login"):
-        return False
+        return True
     return False
 
 
@@ -702,6 +702,18 @@ _STRINGS = {
         "ledger_payment": "Payment",
         "first_login": "First login",
         "spots_left": "{left} of {capacity} spots left",
+        "app_name": "YEA Parent Portal",
+        "nav_pay": "Pay",
+        "nav_more": "More",
+        "nav_contacts_short": "Contacts",
+        "a2hs_title": "Add YEA Parent Portal to your Home Screen",
+        "a2hs_body": "Open it like an app — pay, receipts, contacts, and help in one tap.",
+        "a2hs_ios": "iPhone: tap the Share button, then Add to Home Screen. Name it YEA Parent Portal.",
+        "a2hs_android": "Android: tap the browser menu, then Add to Home screen or Install app.",
+        "a2hs_dismiss": "Not now",
+        "a2hs_add": "Add",
+        "store_wrap_note": "App Store wrap later — $99/year when you list YEA Parent Portal.",
+        "store_wrap_help": "This is the phone Home Screen app. You do not need an Apple Developer account for this. A later store listing (Apple $99/year, Google Play $25) is optional.",
     },
     "es": {
         "lang_en": "EN",
@@ -1182,6 +1194,18 @@ _STRINGS = {
         "ledger_payment": "Pago",
         "first_login": "Primer acceso",
         "spots_left": "{left} de {capacity} cupos",
+        "app_name": "YEA Parent Portal",
+        "nav_pay": "Pagar",
+        "nav_more": "Más",
+        "nav_contacts_short": "Contactos",
+        "a2hs_title": "Agregue YEA Parent Portal a la pantalla de inicio",
+        "a2hs_body": "Ábralo como una app: pagar, recibos, contactos y ayuda en un toque.",
+        "a2hs_ios": "iPhone: pulse Compartir y luego Agregar a pantalla de inicio. El nombre es YEA Parent Portal.",
+        "a2hs_android": "Android: pulse el menú del navegador y luego Agregar a pantalla de inicio o Instalar app.",
+        "a2hs_dismiss": "Ahora no",
+        "a2hs_add": "Agregar",
+        "store_wrap_note": "La versión de App Store viene después — $99 al año cuando listen YEA Parent Portal.",
+        "store_wrap_help": "Esta es la app de pantalla de inicio. No necesita una cuenta de desarrollador de Apple para esto. Listar en tiendas (Apple $99 al año, Google Play $25) es opcional más adelante.",
     },
 }
 

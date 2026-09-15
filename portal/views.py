@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1044,6 +1044,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         pending_profile_changes=pending_profile_changes,
         parent_support_view_active=bool(support_view),
         show_drop_off_tab=show_drop_off_tab,
+        parent_pwa=True,
         **extra,
     )
     family = account.family if account else extra.get("preview_family")
@@ -1450,6 +1451,57 @@ def parent_set_language(request):
         next_url = reverse("portal_parent_page", kwargs={"page": "dashboard"})
     response = redirect(next_url)
     response.set_cookie(**language_cookie_kwargs(lang))
+    return response
+
+
+@require_GET
+def parent_web_manifest(request):
+    """Installable Home Screen app. Same name/icons for a later Capacitor wrap."""
+    from django.templatetags.static import static
+
+    payload = {
+        "id": "/portal/parent/dashboard/",
+        "name": "YEA Parent Portal",
+        "short_name": "YEA Parent",
+        "description": "Pay your balance, view receipts, update emergency contacts, and get help.",
+        "start_url": reverse("portal_parent_page", kwargs={"page": "dashboard"}),
+        "scope": "/portal/",
+        "display": "standalone",
+        "orientation": "portrait",
+        "background_color": "#ffffff",
+        "theme_color": "#1565c0",
+        "lang": "en",
+        "icons": [
+            {
+                "src": static("images/pwa/yea-parent-192.png"),
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": static("images/pwa/yea-parent-512.png"),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": static("images/pwa/yea-parent-512-maskable.png"),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "maskable",
+            },
+        ],
+    }
+    return JsonResponse(payload, content_type="application/manifest+json")
+
+
+@require_GET
+def parent_service_worker(request):
+    path = settings.BASE_DIR / "static" / "js" / "yea-parent-sw.js"
+    body = path.read_text(encoding="utf-8")
+    response = HttpResponse(body, content_type="application/javascript; charset=utf-8")
+    response["Service-Worker-Allowed"] = "/portal/"
+    response["Cache-Control"] = "no-cache"
     return response
 
 

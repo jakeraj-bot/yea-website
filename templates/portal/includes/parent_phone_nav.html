@@ -1,0 +1,22 @@
+{% load parent_i18n %}
+{% with url_name=request.resolver_match.url_name %}
+<nav class="portal-parent-phone-nav" aria-label="{% pt 'nav_parent_menu' %}">
+  <a class="portal-parent-phone-tab{% if parent_page_slug == 'dashboard' %} is-active{% endif %}" href="{% parent_portal_href 'dashboard' %}">{% pt "nav_dashboard" %}</a>
+  <a class="portal-parent-phone-tab{% if url_name == 'portal_parent_payment' or url_name == 'portal_parent_payment_preview' or url_name == 'portal_parent_payment_success' %} is-active{% endif %}" href="{% parent_pay_url %}">{% pt "nav_pay" %}</a>
+  <a class="portal-parent-phone-tab{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% parent_portal_href 'receipts' %}">{% pt "nav_receipts" %}</a>
+  <a class="portal-parent-phone-tab{% if parent_page_slug == 'emergency-contacts' %} is-active{% endif %}" href="{% parent_portal_href 'emergency-contacts' %}">{% pt "nav_contacts_short" %}</a>
+  <a class="portal-parent-phone-tab{% if parent_page_slug == 'help' %} is-active{% endif %}" href="{% parent_portal_href 'help' %}">{% pt "nav_help" %}</a>
+  <button type="button" class="portal-parent-phone-tab portal-parent-phone-more" data-parent-more aria-expanded="false" aria-controls="parent-more">{% pt "nav_more" %}</button>
+</nav>
+<div class="portal-parent-more" id="parent-more" hidden>
+  <div class="portal-parent-more-backdrop" data-parent-more-close></div>
+  <div class="portal-parent-more-panel" role="dialog" aria-labelledby="parent-more-title">
+    <div class="portal-parent-more-header">
+      <h2 id="parent-more-title">{% pt "nav_more" %}</h2>
+      <button type="button" class="btn btn-secondary btn-sm" data-parent-more-close>{% pt "cancel" %}</button>
+    </div>
+    {% include "portal/includes/parent_nav.html" %}
+    <p class="form-note portal-parent-store-note">{% pt "store_wrap_note" %}</p>
+  </div>
+</div>
+{% endwith %}

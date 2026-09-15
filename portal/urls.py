@@ -181,6 +181,16 @@ urlpatterns = [
         views.parent_set_language,
         name="portal_parent_set_language",
     ),
+    path(
+        "parent/manifest.webmanifest",
+        views.parent_web_manifest,
+        name="portal_parent_manifest",
+    ),
+    path(
+        "parent/sw.js",
+        views.parent_service_worker,
+        name="portal_parent_sw",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(

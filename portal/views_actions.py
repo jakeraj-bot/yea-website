@@ -1172,6 +1172,8 @@ def parent_payment_checkout(request):
             amount=f"{amount:.2f}",
             **dropin_params,
         )
+    # Plan B: a Capacitor shell should open this Stripe URL in the system
+    # browser (Safari/Chrome), not the in-app webview.
     checkout_redirect = HttpResponseRedirect(session.url)
     checkout_redirect.status_code = 303
     return checkout_redirect

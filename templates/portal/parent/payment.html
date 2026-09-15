@@ -14,7 +14,7 @@
     {% endif %}
   </div>
 </section>
-<section class="page-content">
+<section class="page-content portal-parent-pay-screen">
   <div class="container">
     {% if is_dropin_payment %}
     <div class="portal-callout card portal-callout-warning">
@@ -116,7 +116,7 @@
           </div>
 
           <div class="portal-form-actions portal-form-full">
-            <button type="submit" class="btn btn-primary">{% pt "continue_to_review" %}</button>
+            <button type="submit" class="btn btn-primary portal-parent-fat-btn">{% pt "continue_to_review" %}</button>
             <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">{% pt "cancel" %}</a>
           </div>
         </form>

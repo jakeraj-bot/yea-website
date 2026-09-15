@@ -35,7 +35,16 @@ Your partner gets a private link. The public website stays on WordPress until yo
 - [ ] Admin portal — units, programs, billing, comms
 - [ ] Staff portal — attendance, families, agency
 - [ ] Parent portal — billing, policies, drop-in
+- [ ] Phone Home Screen app — YEA Parent Portal (Add to Home Screen)
 - [ ] Anything that still feels like a “demo” or placeholder
+
+---
+
+## YEA Parent Portal (Home Screen app)
+
+Parents add **YEA Parent Portal** from Safari or Chrome (Share → Add to Home Screen / Install app). No Apple Developer account is needed for this.
+
+A later store wrap can reuse the same URLs, name, and icons. Keep Stripe Checkout in the **system browser** (not an in-app webview). Apple Developer is $99/year and Google Play is $25 one-time when you ask to list store apps.
 
 ---
 

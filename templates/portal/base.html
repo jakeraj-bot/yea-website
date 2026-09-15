@@ -3,10 +3,20 @@
 <html lang="{{ parent_lang|default:'en' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ page_title|default:"Portal" }} — YEA Portal{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ page_title|default:"Portal" }} — {% if portal_area == 'parent' or parent_pwa %}YEA Parent Portal{% else %}YEA Portal{% endif %}{% endblock %}</title>
   {% if preview_mode or staging_site %}
   <meta name="robots" content="noindex, nofollow">
+  {% endif %}
+  {% if portal_area == 'parent' or parent_pwa %}
+  <meta name="theme-color" content="#1565c0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="YEA Parent Portal">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="{% static 'images/pwa/yea-parent-180.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/pwa/yea-parent-192.png' %}">
+  <link rel="manifest" href="{% url 'portal_parent_manifest' %}">
   {% endif %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +24,7 @@
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=36">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=92">
-  {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=2">{% endif %}
+  {% if portal_area == 'parent' or parent_pwa %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=3">{% endif %}
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
     try {
@@ -51,7 +61,7 @@
     <div class="container header-inner">
       <a class="logo" href="{% url 'portal_home' %}">
         <img src="{% static 'images/yea-logo.png' %}" alt="">
-        <span class="logo-name">YEA Portal</span>
+        <span class="logo-name">{% if portal_area == 'parent' or parent_pwa %}{% pt "app_name" %}{% else %}YEA Portal{% endif %}</span>
       </a>
       <div class="portal-header-meta">
         {% if portal_area == 'staff' %}
@@ -118,8 +128,8 @@
           {% endif %}
         </div>
         {% endif %}
-        <a class="portal-back-link" href="{% url 'portal_home' %}">← {% if portal_area == 'parent' %}{% pt "all_portals" %}{% else %}All portals{% endif %}</a>
-        <a class="portal-back-link" href="{% url 'home' %}">{% if portal_area == 'parent' %}{% pt "public_site" %}{% else %}Public site{% endif %}</a>
+        <a class="portal-back-link portal-header-extra" href="{% url 'portal_home' %}">← {% if portal_area == 'parent' %}{% pt "all_portals" %}{% else %}All portals{% endif %}</a>
+        <a class="portal-back-link portal-header-extra" href="{% url 'home' %}">{% if portal_area == 'parent' %}{% pt "public_site" %}{% else %}Public site{% endif %}</a>
       </div>
     </div>
   </header>
@@ -144,6 +154,12 @@
     </main>
   </div>
   {% endwith %}
+  {% if portal_area == 'parent' %}
+  {% include "portal/includes/parent_phone_nav.html" %}
+  {% endif %}
+  {% if portal_area == 'parent' or parent_pwa %}
+  {% include "portal/includes/parent_a2hs.html" %}
+  {% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}
   {% include "portal/includes/delete_reason_modal.html" %}
   {% endif %}
@@ -165,6 +181,9 @@
       currently_on_file: "{% filter escapejs %}{% pt 'currently_on_file' %}{% endfilter %}"
     };
   </script>
+  {% endif %}
+  {% if portal_area == 'parent' or parent_pwa %}
+  <script src="{% static 'js/portal-parent-pwa.js' %}?v=1"></script>
   {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
