@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from core.email_service import email_is_configured, send_site_email
+from core.email_service import email_is_configured, portal_sending_email, send_site_email
 
 
 class Command(BaseCommand):
@@ -23,6 +23,7 @@ class Command(BaseCommand):
         self.stdout.write(f"EMAIL_HOST: {settings.EMAIL_HOST or '(not set)'}")
         self.stdout.write(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER or '(not set)'}")
         self.stdout.write(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        self.stdout.write(f"Portal sending email: {portal_sending_email()}")
         self.stdout.write(f"Configured: {email_is_configured()}")
 
         if not email_is_configured():

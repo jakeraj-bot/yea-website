@@ -8,6 +8,7 @@
 </section>
 <section class="page-content">
   <div class="container">
+    {% include "portal/includes/parent_email_identity_note.html" %}
     {% if first_day_template %}
     <div class="card">
       <h2>First-day payment reminder</h2>
@@ -134,6 +135,7 @@
             <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
           </div>
           {% include "portal/includes/parent_email_upload.html" with upload_id="parent-emails" %}
+          {% include "portal/includes/parent_email_cc.html" with form_id="parent-emails" %}
         </div>
       </section>
       <section class="card" data-collapse-open>

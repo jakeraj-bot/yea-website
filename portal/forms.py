@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
+from django.template import loader
 
 from core.forms import ContactForm
 
@@ -143,3 +145,28 @@ class PortalPasswordResetForm(PasswordResetForm):
         if self.portal_type == "admin":
             return is_portal_admin(user)
         return False
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        from core.email_service import formatted_portal_from, parent_copy_bcc
+
+        subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
+        body = loader.render_to_string(email_template_name, context)
+        email_message = EmailMultiAlternatives(
+            subject,
+            body,
+            from_email or formatted_portal_from(),
+            [to_email],
+            bcc=parent_copy_bcc(to_emails=[to_email]) or None,
+        )
+        if html_email_template_name is not None:
+            html_email = loader.render_to_string(html_email_template_name, context)
+            email_message.attach_alternative(html_email, "text/html")
+        email_message.send()

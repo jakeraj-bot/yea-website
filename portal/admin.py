@@ -194,7 +194,7 @@ class PortalActivityEventAdmin(admin.ModelAdmin):
 
 @admin.register(PortalOrgSetting)
 class PortalOrgSettingAdmin(admin.ModelAdmin):
-    list_display = ("program_director_can_see_billing",)
+    list_display = ("program_director_can_see_billing", "portal_sending_email", "portal_bcc_email")
 
 
 @admin.register(PortalOutsideProgram)

@@ -414,6 +414,37 @@ def admin_program_director_billing_toggle(request):
 
 @admin_login_required_post
 @require_POST
+def admin_email_settings_save(request):
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+
+    from .models import PortalOrgSetting
+
+    if not _admin_needs_live(request):
+        return redirect("portal_admin_page", page="email-settings")
+    sending = (request.POST.get("portal_sending_email") or "").strip()
+    bcc = (request.POST.get("portal_bcc_email") or "").strip()
+    try:
+        if sending:
+            validate_email(sending)
+        if bcc:
+            validate_email(bcc)
+    except ValidationError:
+        messages.error(request, "Enter a valid email address for the portal sending and copy fields.")
+        return redirect("portal_admin_page", page="email-settings")
+    setting = PortalOrgSetting.load()
+    setting.portal_sending_email = sending
+    setting.portal_bcc_email = bcc
+    setting.save(update_fields=["portal_sending_email", "portal_bcc_email"])
+    messages.success(
+        request,
+        "Portal email settings saved. Automated mail will use that From address, and copies of parent emails go to the BCC inbox.",
+    )
+    return redirect("portal_admin_page", page="email-settings")
+
+
+@admin_login_required_post
+@require_POST
 def admin_staff_invite(request):
     from .admin_services import invite_staff_user
 
@@ -1865,9 +1896,11 @@ def family_email_send(request, family_slug):
     if request.user.is_authenticated:
         reply_to = (request.user.email or "").strip()
     try:
+        from .member_admin import parse_compose_cc
         from .parent_email_log import collect_email_attachments
 
         attachments = collect_email_attachments(request.FILES.getlist("attachments"))
+        cc_emails = parse_compose_cc(request.POST)
         sent, total = send_family_parent_email(
             family,
             request.POST.get("subject"),
@@ -1875,6 +1908,8 @@ def family_email_send(request, family_slug):
             reply_to=reply_to or None,
             attachments=attachments,
             sender=request.user if request.user.is_authenticated else None,
+            cc=cc_emails,
+            staff_sender=request.user if request.user.is_authenticated else None,
         )
         if sent:
             messages.success(request, f"Email sent to {parent_email_for_family(family)}.")
@@ -2651,6 +2686,7 @@ def admin_member_ops(request):
         delete_family_record,
         link_application_to_family,
         link_prior_balance,
+        parse_compose_cc,
         resolve_family,
         save_discount_plan,
         send_parent_emails,
@@ -2855,13 +2891,19 @@ def admin_member_ops(request):
 
             emails = request.POST.getlist("emails")
             attachments = collect_email_attachments(request.FILES.getlist("attachments"))
+            reply_to = ""
+            if request.user.is_authenticated:
+                reply_to = (request.user.email or "").strip()
             sent, total = send_parent_emails(
                 request.POST.get("subject"),
                 request.POST.get("body"),
                 emails,
+                reply_to=reply_to or None,
                 attachments=attachments,
                 sender=request.user if request.user.is_authenticated else None,
                 source=PortalParentEmail.SOURCE_BULK,
+                cc=parse_compose_cc(request.POST),
+                staff_sender=request.user if request.user.is_authenticated else None,
             )
             messages.success(request, f"Sent {sent} of {total} parent email(s).")
             next_url = _portal_next_url(request, reverse("portal_admin_page", kwargs={"page": "parent-emails"}))

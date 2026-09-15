@@ -4,11 +4,12 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+
+from core.email_service import send_site_email
 
 from portal.fee_config import get_fee_amount, get_fee_display
 from portal.models import PortalChild, PortalFamily, PortalLedgerEntry
@@ -43,12 +44,12 @@ def _application_detail_url(app):
 
 def _email_parent(app, subject, body):
     try:
-        send_mail(
+        send_site_email(
             subject=subject,
             message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[app.primary_email],
             fail_silently=False,
+            copy_to_portal=True,
         )
     except Exception:
         logger.exception("Failed to email parent about application %s", app.reference)
@@ -480,7 +481,7 @@ def resubmit_application(app):
         + reverse("portal_staff_application_detail", kwargs={"app_slug": str(app.reference)})
     )
     try:
-        send_mail(
+        send_site_email(
             subject=f"[YEA] Application updated — {child_name}",
             message=(
                 f"A family resubmitted an enrollment application after your change request.\n\n"
@@ -490,13 +491,13 @@ def resubmit_application(app):
                 f"Reference: {app.reference}\n\n"
                 f"Review in the staff portal:\n{staff_url}\n"
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[
                 email.strip()
                 for email in settings.ENROLLMENT_NOTIFICATION_EMAIL.split(",")
                 if email.strip()
             ],
             fail_silently=False,
+            copy_to_portal=False,
         )
     except Exception:
         logger.exception("Failed to notify staff about resubmitted application %s", app.reference)

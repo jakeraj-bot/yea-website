@@ -1,0 +1,39 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Email</h1>
+    <p class="lead">Choose the portal mailbox that sends automated mail and receives copies of what goes out to parents.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-callout card">
+      <h2>How outgoing mail works</h2>
+      <ul>
+        <li><strong>Portal sending email</strong> is the From address for password resets, invoices, late-fee notices, charge emails, reminders, and other automatic mail. Create a new mailbox (not your personal inbox) and type it here when you have it.</li>
+        <li>When a staff person uses <strong>Email parent</strong> or <strong>Email parents</strong>, the parent still replies to that staff person. The message is sent through the portal address so it delivers reliably, and Reply-To is the staff login email (assistant sends → parent replies go to the assistant).</li>
+        <li><strong>Always BCC</strong> puts a copy of every parent email in the portal mailbox so you can see what went out without filling your personal inbox. Leave BCC blank to use the same address as Portal sending email.</li>
+        <li>On the compose screens, check extra staff (assistant, business partner) or type an address to <strong>CC</strong> them. Parents can see who was included.</li>
+      </ul>
+    </div>
+
+    <form method="post" action="{% if portal_live %}{% url 'portal_admin_email_settings_save' %}{% else %}#{% endif %}" class="card portal-form-grid">
+      {% if portal_live %}{% csrf_token %}{% endif %}
+      <div class="form-group portal-form-full">
+        <label for="portal-sending-email">Portal sending email</label>
+        <input id="portal-sending-email" name="portal_sending_email" type="email" class="portal-input" value="{{ email_settings.portal_sending_email }}" placeholder="{{ portal_sending_email_default }}"{% if not portal_live %} disabled{% endif %}>
+        <p class="form-note">From address for automated and basic mail. Current default if you leave this blank: <strong>{{ portal_sending_email_default }}</strong>.</p>
+      </div>
+      <div class="form-group portal-form-full">
+        <label for="portal-bcc-email">Always BCC this address on mail to parents</label>
+        <input id="portal-bcc-email" name="portal_bcc_email" type="email" class="portal-input" value="{{ email_settings.portal_bcc_email }}" placeholder="{{ portal_bcc_email_default }}"{% if not portal_live %} disabled{% endif %}>
+        <p class="form-note">Copies of staff-composed and system emails to parents go here. Leave blank to use the portal sending email.</p>
+      </div>
+      <div class="portal-form-actions portal-form-full">
+        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save email settings</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

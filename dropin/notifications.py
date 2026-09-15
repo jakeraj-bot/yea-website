@@ -1,6 +1,6 @@
 import logging
 
-from django.core.mail import send_mail
+from core.email_service import send_site_email
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +9,7 @@ def notify_staff_new_registration(profile):
     try:
         from django.conf import settings
 
-        send_mail(
+        send_site_email(
             subject=f"Drop-in registration to review — {profile.family_name}",
             message=(
                 f"A family completed drop-in registration and needs your approval before they can book.\n\n"
@@ -18,9 +18,9 @@ def notify_staff_new_registration(profile):
                 f"Phone: {profile.primary_phone}\n\n"
                 f"Approve in Django admin → Drop-in family profiles."
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[settings.CONTACT_EMAIL],
             fail_silently=False,
+            copy_to_portal=False,
         )
     except Exception:
         logger.exception("Failed to send drop-in registration notification")
@@ -30,7 +30,7 @@ def notify_parent_approved(profile):
     try:
         from django.conf import settings
 
-        send_mail(
+        send_site_email(
             subject="Your YEA drop-in registration is approved",
             message=(
                 f"Hi {profile.primary_first_name},\n\n"
@@ -41,9 +41,9 @@ def notify_parent_approved(profile):
                 f"Summer camp drop-in: $35/day (sign up by 7:30 AM the day of care)\n\n"
                 f"Youth Education Academy"
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[profile.primary_email],
             fail_silently=False,
+            copy_to_portal=True,
         )
     except Exception:
         logger.exception("Failed to send drop-in approval email to parent")
@@ -53,7 +53,7 @@ def notify_staff_new_booking(booking):
     try:
         from django.conf import settings
 
-        send_mail(
+        send_site_email(
             subject=f"Drop-in booking — {booking.child} on {booking.date}",
             message=(
                 f"Paid drop-in booking.\n\n"
@@ -64,9 +64,9 @@ def notify_staff_new_booking(booking):
                 f"Family: {booking.profile.family_name}\n"
                 f"Phone: {booking.profile.primary_phone}\n"
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[settings.CONTACT_EMAIL],
             fail_silently=False,
+            copy_to_portal=False,
         )
     except Exception:
         logger.exception("Failed to send drop-in booking notification")

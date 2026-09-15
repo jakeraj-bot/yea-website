@@ -384,6 +384,16 @@ def _attach_email_ledger(extra, request, *, area, family_slug=None, family_id=No
     )
 
 
+def _attach_email_compose(extra):
+    from core.email_service import portal_bcc_email, portal_sending_email
+
+    from .member_admin import staff_email_cc_choices
+
+    extra.setdefault("staff_cc_choices", staff_email_cc_choices())
+    extra.setdefault("portal_sending_email", portal_sending_email())
+    extra.setdefault("portal_bcc_email", portal_bcc_email())
+
+
 def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
     if unit is None and request is not None:
         unit = _staff_unit(request)
@@ -436,6 +446,7 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
             family_id=extra.get("family_id"),
             unit=unit,
         )
+        _attach_email_compose(extra)
     return _staff_context(
         page_title,
         request=request,
@@ -506,6 +517,7 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
             family_id=extra.get("family_id"),
             unit=unit,
         )
+        _attach_email_compose(extra)
     if area == "admin":
         if _portal_families_live():
             from .member_admin import resolve_family
@@ -4164,6 +4176,7 @@ def admin_page(request, page):
         "member-billing": "portal/admin/member_billing.html",
         "billing-settings": "portal/admin/billing_settings.html",
         "billing-permissions": "portal/admin/billing_permissions.html",
+        "email-settings": "portal/admin/email_settings.html",
         "scholarships": "portal/admin/scholarships.html",
         "discounts": "portal/admin/discounts.html",
         "collections": "portal/admin/collections.html",
@@ -4577,6 +4590,18 @@ def admin_page(request, page):
             "Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal.",
             "Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
         ]
+    if page == "email-settings":
+        from core.email_service import portal_bcc_email, portal_sending_email
+
+        from .models import PortalOrgSetting
+
+        setting = PortalOrgSetting.load()
+        context["email_settings"] = setting
+        context["portal_sending_email"] = setting.portal_sending_email or portal_sending_email()
+        context["portal_bcc_email"] = setting.portal_bcc_email
+        context["portal_sending_email_default"] = portal_sending_email()
+        context["portal_bcc_email_default"] = portal_bcc_email()
+        context["page_title"] = "Email"
     if page == "scholarships":
         if context.get("portal_live"):
             from .admin_config import get_scholarships_admin
@@ -4675,6 +4700,7 @@ def admin_page(request, page):
             context["late_fee_amount"] = "15.00"
         context["preselect_family_id"] = request.GET.get("family_id", "")
         _attach_email_ledger(context, request, area="admin", full=False)
+        _attach_email_compose(context)
     if page == "emails-sent":
         context["page_title"] = "Emails sent"
         _attach_email_ledger(

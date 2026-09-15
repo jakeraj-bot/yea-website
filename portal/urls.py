@@ -367,6 +367,11 @@ urlpatterns = [
         name="portal_admin_program_director_billing",
     ),
     path(
+        "admin/email-settings/save/",
+        views_actions.admin_email_settings_save,
+        name="portal_admin_email_settings_save",
+    ),
+    path(
         "admin/staff/invite/",
         views_actions.admin_staff_invite,
         name="portal_admin_staff_invite",
