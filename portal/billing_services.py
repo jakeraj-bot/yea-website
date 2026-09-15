@@ -1465,7 +1465,6 @@ def get_scheduled_plan_charges(limit=50):
                 primary.description if primary else "",
             )
         )
-        seen_primary.add(child.pk)
     extras = (
         PortalChildBillingPlan.objects.select_related("child", "child__family", "child__family__unit")
         .filter(
