@@ -400,7 +400,7 @@ def get_admin_alerts_live():
             {
                 "text": f"{pending_profiles} parent profile change(s) awaiting review",
                 "link_name": "portal_admin_page",
-                "link_arg": "dashboard",
+                "link_arg": "pending-reviews",
             }
         )
     unread = count_messages_unread_live(for_admin=True)
@@ -427,11 +427,9 @@ def get_admin_alerts_live():
 
 
 def get_pending_profile_changes_admin():
-    return list(
-        PortalProfileChangeRequest.objects.filter(status=PortalProfileChangeRequest.STATUS_PENDING)
-        .select_related("account__family", "account__user")
-        .order_by("-submitted_at")[:20]
-    )
+    from .profile_reviews import pending_profile_reviews
+
+    return pending_profile_reviews()
 
 
 def save_billing_permissions(
@@ -652,24 +650,10 @@ def update_staff_user(staff_id, data):
     return account, new_password if new_password else None
 
 
-def approve_profile_change(change_id, reviewer="Admin", approve=True, notes=""):
-    change = PortalProfileChangeRequest.objects.filter(pk=change_id).select_related("account__family").first()
-    if not change:
-        raise ValueError("Change request not found.")
-    if approve:
-        family = change.account.family
-        data = change.changes
-        if data.get("primary_name"):
-            family.primary_contact = data["primary_name"]
-            family.save(update_fields=["primary_contact"])
-        change.status = PortalProfileChangeRequest.STATUS_APPROVED
-    else:
-        change.status = PortalProfileChangeRequest.STATUS_REJECTED
-    change.reviewed_at = timezone.now()
-    change.reviewed_by = reviewer
-    change.notes = notes
-    change.save()
-    return change
+def approve_profile_change(change_id, reviewer="Admin", approve=True, notes="", unit=None):
+    from .profile_reviews import approve_profile_change as _approve
+
+    return _approve(change_id, reviewer=reviewer, approve=approve, notes=notes, unit=unit)
 
 
 def _format_login(user):

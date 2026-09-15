@@ -423,6 +423,17 @@ def build_dashboard_live(unit, program):
                 "link_arg": "messages",
             }
         )
+    from .profile_reviews import pending_profile_change_count
+
+    pending_profiles = pending_profile_change_count(unit)
+    if pending_profiles:
+        alerts.append(
+            {
+                "text": f"{pending_profiles} parent profile change{'s' if pending_profiles != 1 else ''} awaiting review",
+                "link_name": "portal_staff_page",
+                "link_arg": "pending-reviews",
+            }
+        )
     from .drop_off_services import pickup_rows
 
     drop_off_today = pickup_rows(unit=unit, care_date=today)

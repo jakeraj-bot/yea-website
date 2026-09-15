@@ -6,7 +6,7 @@ from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.http import require_POST
 
 from .parent_auth import parent_login_required_post
-from .staff_auth import admin_login_required_post, staff_login_required_post
+from .staff_auth import admin_login_required_post, staff_login_required_post, staff_or_admin_login_required_post
 
 from .attendance_service import portal_is_live, get_unit
 from .live_services import (
@@ -1051,24 +1051,48 @@ def admin_newsletter_delete(request):
     return redirect("portal_admin_page", page="communications")
 
 
-@admin_login_required_post
+@staff_or_admin_login_required_post
 @require_POST
 def admin_profile_change_action(request):
+    from .activity_log import actor_display_name
     from .admin_services import approve_profile_change
+    from .staff_auth import get_portal_auth, is_admin_portal_authenticated
 
-    if not _admin_needs_live(request):
-        return redirect("portal_admin_page", page="dashboard")
+    if not _needs_live(request):
+        area = get_portal_auth(request)
+        if area == "admin":
+            return redirect("portal_admin_page", page="pending-reviews")
+        return redirect("portal_staff_page", page="pending-reviews")
     change_id = request.POST.get("change_id")
     action = request.POST.get("action", "approve")
+    area = get_portal_auth(request)
+    if area != "admin" and not is_admin_portal_authenticated(request):
+        area = "staff"
+    unit = None
+    if area != "admin":
+        from .staff_auth import resolve_staff_unit
+
+        unit = resolve_staff_unit(request)
+    reviewer = actor_display_name(request.user) or ("Admin" if area == "admin" else "Staff")
     try:
-        change = approve_profile_change(change_id, approve=action == "approve")
+        change = approve_profile_change(
+            change_id,
+            reviewer=reviewer,
+            approve=action == "approve",
+            unit=unit,
+        )
         if action == "approve":
             messages.success(request, f"Profile change approved for {change.account.family.name}.")
         else:
             messages.info(request, f"Profile change declined for {change.account.family.name}.")
     except Exception as exc:
         messages.error(request, str(exc))
-    return redirect("portal_admin_page", page="dashboard")
+    fallback = (
+        reverse("portal_admin_page", kwargs={"page": "pending-reviews"})
+        if area == "admin"
+        else reverse("portal_staff_page", kwargs={"page": "pending-reviews"})
+    )
+    return redirect(_portal_next_url(request, fallback))
 
 
 @require_POST
@@ -2310,38 +2334,16 @@ def agency_week_received(request):
 @require_POST
 @parent_login_required_post
 def parent_profile_save(request):
-    import json
-
     from .parent_auth import get_parent_account, portal_preview_mode
-    from .parent_services import submit_profile_change_request
+    from .profile_reviews import submit_profile_change_request
 
     if portal_preview_mode():
         return redirect("portal_parent_page", page="profile")
     account = get_parent_account(request.user)
     if not account:
         return redirect("portal_parent_login")
-
-    changes = {}
-    for key in (
-        "home_address",
-        "primary_name",
-        "primary_phone",
-        "primary_email",
-        "secondary_name",
-        "secondary_phone",
-        "secondary_email",
-    ):
-        value = request.POST.get(key, "").strip()
-        if value:
-            changes[key] = value
-    emergency = request.POST.get("emergency_contacts_json", "")
-    if emergency:
-        try:
-            changes["emergency_contacts"] = json.loads(emergency)
-        except json.JSONDecodeError:
-            pass
     try:
-        submit_profile_change_request(account, changes)
+        submit_profile_change_request(account, request.POST)
         messages.success(request, "Profile changes submitted for staff review.")
         _log_activity(
             request,

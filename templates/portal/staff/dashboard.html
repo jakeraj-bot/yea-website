@@ -46,6 +46,7 @@
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='messages' %}">Team messages{% if messages_unread_count %} ({{ messages_unread_count }}){% endif %}</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='incidents' %}?log=1">Log incident</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='applications' %}">Applications</a>
+      <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='pending-reviews' %}">Pending reviews</a>
       <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='families' %}">Families</a>
     </div>
   </div>

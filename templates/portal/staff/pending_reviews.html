@@ -1,0 +1,83 @@
+{% extends "portal/base.html" %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>Pending reviews</h1>
+    <p class="lead">{% if portal_area == 'admin' %}Parent Family Profile changes waiting for approval. Oldest first.{% else %}{{ staff_unit }} — parent Family Profile changes waiting for approval. Oldest first.{% endif %} Applications still have their own Review all queue.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    {% include "portal/includes/application_tabs.html" %}
+    <div class="portal-toolbar">
+      <a class="btn btn-primary" href="#pending-profile-reviews">Review all (oldest pending)</a>
+    </div>
+
+    <div class="portal-callout card portal-callout-warning">
+      <p><strong>How to approve a profile change.</strong> Open the family if you need more context, then Approve to put the new information on file or Decline to keep what is already approved. The parent keeps seeing a pending badge until you decide.</p>
+    </div>
+
+    <div class="portal-table-wrap" id="pending-profile-reviews">
+      <table class="portal-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Unit</th>
+            <th>Submitted</th>
+            <th>Changes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for change in pending_profile_changes %}
+          <tr data-submitted="{{ change.submitted_sort }}">
+            <td>
+              <strong>{{ change.family_name }}</strong>
+              {% if change.parent_email %}<div class="portal-table-meta">{{ change.parent_email }}</div>{% endif %}
+            </td>
+            <td>{{ change.unit_name }}</td>
+            <td>{{ change.submitted_at|date:"M j, Y g:i A" }}</td>
+            <td>
+              {% for row in change.rows %}
+              <div class="portal-table-meta"><strong>{{ row.label }}</strong>: {{ row.old }} → {{ row.new }}</div>
+              {% empty %}
+              <span class="portal-table-meta">{{ change.summary }}</span>
+              {% endfor %}
+            </td>
+            <td class="portal-table-actions portal-row-actions">
+              {% if change.family_slug %}
+              {% if portal_area == 'admin' %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_family_detail' family_slug=change.family_slug %}{% if change.family_id %}?id={{ change.family_id }}{% endif %}">Account</a>
+              {% else %}
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=change.family_slug %}{% if change.family_id %}?id={{ change.family_id }}{% endif %}">Account</a>
+              {% endif %}
+              {% endif %}
+              {% if portal_live %}
+              <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_profile_change' %}{% else %}{% url 'portal_staff_profile_change' %}{% endif %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change_id" value="{{ change.pk }}">
+                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+              </form>
+              <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_profile_change' %}{% else %}{% url 'portal_staff_profile_change' %}{% endif %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change_id" value="{{ change.pk }}">
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Decline</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="form-note">No parent profile changes waiting for review{% if portal_area != 'admin' %} at this unit{% endif %}.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

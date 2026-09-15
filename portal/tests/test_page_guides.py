@@ -15,6 +15,7 @@ class PageGuideCatalogTests(TestCase):
             "attendance",
             "drop-off-pickup",
             "applications",
+            "pending-reviews",
             "waitlist",
             "create-application",
             "families",

@@ -54,6 +54,49 @@
     </section>
     {% endif %}
 
+    {% if pending_profile_changes %}
+    <section class="card portal-profile-full portal-collapse-skip portal-callout-warning" id="pending-profile-reviews">
+      <h2>Pending profile reviews</h2>
+      <p class="form-note">This parent submitted Family Profile changes. Approve to update what is on file, or Decline to keep the current information.</p>
+      {% for change in pending_profile_changes %}
+      <div class="portal-table-wrap">
+        <table class="portal-table">
+          <thead><tr><th>Field</th><th>Currently on file</th><th>Requested</th></tr></thead>
+          <tbody>
+            {% for row in change.rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>{{ row.old }}</td>
+              <td><strong>{{ row.new }}</strong></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">{{ change.summary }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if portal_live %}
+      <div class="portal-form-actions">
+        <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_profile_change' %}{% else %}{% url 'portal_staff_profile_change' %}{% endif %}" style="display:inline;">
+          {% csrf_token %}
+          <input type="hidden" name="change_id" value="{{ change.pk }}">
+          <input type="hidden" name="action" value="approve">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+        </form>
+        <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_profile_change' %}{% else %}{% url 'portal_staff_profile_change' %}{% endif %}" style="display:inline;">
+          {% csrf_token %}
+          <input type="hidden" name="change_id" value="{{ change.pk }}">
+          <input type="hidden" name="action" value="reject">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Decline</button>
+        </form>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </section>
+    {% endif %}
+
     <div class="portal-profile-grid">
       {% if member_info %}
       <section class="card portal-profile-full portal-collapse-skip" id="edit-member-info">

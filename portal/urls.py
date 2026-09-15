@@ -559,6 +559,11 @@ urlpatterns = [
         name="portal_staff_review_all",
     ),
     path(
+        "staff/profile-change/",
+        views_actions.admin_profile_change_action,
+        name="portal_staff_profile_change",
+    ),
+    path(
         "staff/application/<slug:app_slug>/review/",
         views_actions.staff_application_review,
         name="portal_staff_application_review",

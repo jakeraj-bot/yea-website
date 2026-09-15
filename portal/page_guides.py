@@ -167,6 +167,28 @@ GUIDES = {
                 "title": "Know what you can approve",
                 "body": "Some staff can only view or request changes. If Approve is missing, an admin (or a portal admin using Staff portal) needs to finish the decision.",
             },
+            {
+                "title": "Parent profile changes are a different list",
+                "body": "Family Profile edits from a parent are on Pending reviews, next to Applications. Review all here is for enrollment applications only.",
+            },
+        ],
+    },
+    "pending-reviews": {
+        "title": "How to review parent profile changes",
+        "intro": "This queue is Family Profile edits a parent submitted. It is not the enrollment application list.",
+        "steps": [
+            {
+                "title": "Start with the oldest pending",
+                "body": "The list is oldest first. Review all jumps to the top of this same list so the first family that submitted a change is first.",
+            },
+            {
+                "title": "Read what they changed",
+                "body": "Each row shows the field, what is on file now, and the new value. Open Account if you need the full family profile.",
+            },
+            {
+                "title": "Approve or decline",
+                "body": "Approve writes the new information onto the family account and clears the parent's pending badge. Decline keeps the current information and still clears the pending request.",
+            },
         ],
     },
     "waitlist": {

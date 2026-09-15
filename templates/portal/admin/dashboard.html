@@ -103,15 +103,22 @@
     {% if portal_live and pending_profile_changes %}
     <div class="portal-alerts card">
       <h2>Parent profile changes pending review</h2>
+      <p class="form-note">These are Family Profile edits parents submitted. Approve them here or open <a href="{% url 'portal_admin_page' page='pending-reviews' %}">Pending reviews</a>.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead><tr><th>Family</th><th>Submitted</th><th>Changes</th><th></th></tr></thead>
           <tbody>
             {% for change in pending_profile_changes %}
             <tr>
-              <td>{{ change.account.family.name }}</td>
+              <td>{{ change.family_name }}</td>
               <td>{{ change.submitted_at|date:"M j, Y g:i A" }}</td>
-              <td>{% for key, val in change.changes.items %}<span class="portal-table-meta">{{ key }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+              <td>
+                {% for row in change.rows %}
+                <span class="portal-table-meta">{{ row.label }}</span>{% if not forloop.last %}; {% endif %}
+                {% empty %}
+                {{ change.summary }}
+                {% endfor %}
+              </td>
               <td class="portal-table-actions">
                 <form method="post" action="{% url 'portal_admin_profile_change' %}" style="display:inline;">
                   {% csrf_token %}

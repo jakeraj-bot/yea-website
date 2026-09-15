@@ -15,7 +15,7 @@ from .demo_data import (
     TAX_STATEMENT_SETTINGS,
     enrich_receipt_for_print,
 )
-from .models import PortalLedgerEntry, PortalParentAccount, PortalPayment, PortalProfileChangeRequest
+from .models import PortalLedgerEntry, PortalParentAccount, PortalPayment
 
 SEED_FAMILY_SLUGS = frozenset({"jacobs", "martinez", "williams"})
 SEED_PREVIEW_KEYS = {
@@ -367,11 +367,18 @@ def _profile_from_application(family, account):
         }
 
     enrolled_names = set()
+    from .medical import application_for_child, medical_from_application
+    from .unit_visibility import unit_label_for_child
+
     for child in family.children.filter(is_active=True):
         enrolled_names.add(child.name.lower())
-        from .unit_visibility import unit_label_for_child
-
         unit_name, _slug = unit_label_for_child(child)
+        app = application_for_child(child=child)
+        medical = medical_from_application(app) if app else {}
+        medications = medical.get("medications") or ""
+        explain = (app.medical_condition_explain or "").strip() if app else ""
+        if "Medications:" in explain:
+            medications = explain.split("Medications:", 1)[-1].strip() or medications
         profile["children"].append(
             {
                 "name": child.name,
@@ -379,8 +386,8 @@ def _profile_from_application(family, account):
                 "grade": child.grade,
                 "location": unit_name or (family.unit.name if getattr(family, "unit_id", None) else "School 18"),
                 "program": family.program_label or "After-school program",
-                "allergies": "",
-                "medications": "",
+                "allergies": medical.get("allergies") or "",
+                "medications": medications,
                 "child_id": child.pk,
             }
         )
@@ -847,17 +854,15 @@ def get_tax_statement_data(family):
 
 
 def get_pending_profile_changes(account):
-    return list(
-        account.change_requests.filter(status=PortalProfileChangeRequest.STATUS_PENDING).values(
-            "pk", "changes", "submitted_at"
-        )
-    )
+    from .profile_reviews import get_pending_profile_changes as _pending
+
+    return _pending(account)
 
 
 def submit_profile_change_request(account, changes):
-    if not changes:
-        raise ValueError("No changes to submit.")
-    return PortalProfileChangeRequest.objects.create(account=account, changes=changes)
+    from .profile_reviews import submit_profile_change_request as _submit
+
+    return _submit(account, changes)
 
 
 def update_account_settings(account, data):
