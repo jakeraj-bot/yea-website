@@ -1075,36 +1075,14 @@ def admin_profile_change_action(request):
 @parent_login_required_post
 def parent_payment_checkout(request):
     from decimal import Decimal, InvalidOperation
-    from urllib.parse import urlencode
-
-    from django.urls import reverse
 
     from .models import PortalPayment
     from .parent_auth import get_parent_account, portal_preview_mode
     from .stripe_services import (
-        checkout_error_message,
         create_balance_checkout_session,
         create_dropin_checkout_session,
         stripe_configured,
     )
-
-    def _pay_redirect(url_name, **params):
-        query = urlencode({key: value for key, value in params.items() if value not in (None, "")})
-        url = reverse(url_name)
-        return redirect(f"{url}?{query}" if query else url)
-
-    is_dropin = request.POST.get("source") == "dropin"
-    amount_raw = request.POST.get("amount", "0")
-    dropin_params = {}
-    if is_dropin:
-        dropin_params = {
-            "source": "dropin",
-            "child": request.POST.get("child", ""),
-            "program_label": request.POST.get("program_label") or request.POST.get("program", ""),
-            "location": request.POST.get("location", ""),
-            "date": request.POST.get("date", ""),
-            "booking_id": request.POST.get("booking_id", ""),
-        }
 
     if portal_preview_mode():
         messages.info(request, "Parent view — this does not charge a card.")
@@ -1125,22 +1103,17 @@ def parent_payment_checkout(request):
     use_stripe = practice_can_use_stripe_checkout() if practice else stripe_configured()
 
     if not use_stripe and not practice:
-        messages.error(
-            request,
-            "Online card payments are not enabled yet. Contact YEA at 609-357-8608 to pay in the office.",
-        )
-        return _pay_redirect("portal_parent_payment", amount=amount_raw, **dropin_params)
+        messages.error(request, "Stripe is not configured yet. Add MEMBER_STRIPE keys to your .env file.")
+        return redirect("portal_parent_page", page="billing")
 
+    is_dropin = request.POST.get("source") == "dropin"
     try:
-        amount = Decimal(str(amount_raw).replace(",", ""))
+        amount = Decimal(str(request.POST.get("amount", "0")).replace(",", ""))
     except (InvalidOperation, TypeError):
         amount = Decimal("0")
     if amount <= 0:
         messages.error(request, "Enter an amount to pay or add as account credit.")
         return redirect("portal_parent_payment")
-    if amount < Decimal("0.50"):
-        messages.error(request, "Enter at least $0.50 to pay by card.")
-        return _pay_redirect("portal_parent_payment", amount=f"{amount:.2f}", **dropin_params)
 
     if practice and not use_stripe:
         payment = complete_practice_test_payment(
@@ -1205,12 +1178,8 @@ def parent_payment_checkout(request):
             )
             return redirect("portal_parent_payment_success")
         payment.delete()
-        messages.error(request, checkout_error_message(exc))
-        return _pay_redirect(
-            "portal_parent_payment_preview",
-            amount=f"{amount:.2f}",
-            **dropin_params,
-        )
+        messages.error(request, str(exc))
+        return redirect("portal_parent_payment_preview")
     return redirect(session.url, code=303)
 
 
