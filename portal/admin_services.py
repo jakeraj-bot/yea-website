@@ -31,11 +31,13 @@ def get_admin_dashboard_live():
 
     enrollment = dashboard_enrollment_totals()
     enrolled = enrollment["total_enrolled"]
-    families = PortalFamily.objects.exclude(unit__slug__in=("main-location", "main_location")).count()
+    families = PortalFamily.objects.exclude(unit__slug__in=("main-location", "main_location")).exclude(
+        slug="practice"
+    ).count()
     open_apps = EnrollmentApplication.objects.filter(
         status__in=("under_review", "pending_documents", "waitlist")
     ).count()
-    overdue_qs = PortalFamily.objects.filter(balance__gt=0)
+    overdue_qs = PortalFamily.objects.filter(balance__gt=0).exclude(slug="practice")
     overdue_total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")
     staff_count = PortalStaffAccount.objects.filter(is_active=True).count()
     signed_apps = EnrollmentApplication.objects.filter(status="enrolled").count()
@@ -206,9 +208,10 @@ def get_member_families_live():
     from .unit_visibility import unit_label_for_child
 
     families = list(
-        PortalFamily.objects.select_related("unit").prefetch_related("children", "children__unit").order_by(
-            "unit__name", "name"
-        )
+        PortalFamily.objects.exclude(slug="practice")
+        .select_related("unit")
+        .prefetch_related("children", "children__unit")
+        .order_by("unit__name", "name")
     )
     household_totals = household_ledger_totals([family.pk for family in families])
     rows = []
@@ -240,7 +243,7 @@ def get_member_policy_summaries_live():
     from .parent_services import get_parent_policy_data_live
 
     summaries = []
-    for family in PortalFamily.objects.select_related("unit").order_by("unit__name", "name"):
+    for family in PortalFamily.objects.exclude(slug="practice").select_related("unit").order_by("unit__name", "name"):
         data = get_parent_policy_data_live(family)
         if not data:
             continue
@@ -337,7 +340,7 @@ def delete_staff_login(staff_account_id, *, current_user_id=None):
 def get_admin_families_live():
     from .family_list import live_family_child_rows, prefetch_family_table_queryset
 
-    families = prefetch_family_table_queryset(PortalFamily.objects.order_by("name"))
+    families = prefetch_family_table_queryset(PortalFamily.objects.exclude(slug="practice").order_by("name"))
     return live_family_child_rows(families, include_parent_login=True)
 
 
@@ -381,7 +384,7 @@ def get_admin_alerts_live():
                 "link_arg": "applications",
             }
         )
-    overdue_qs = PortalFamily.objects.filter(balance__gt=0)
+    overdue_qs = PortalFamily.objects.filter(balance__gt=0).exclude(slug="practice")
     overdue = overdue_qs.count()
     if overdue:
         total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")

@@ -48,7 +48,11 @@
 
         {% if parent_stripe_enabled %}
         <div class="portal-callout card">
+          {% if practice_checkout_standin %}
+          <p><strong>{% pt "practice_pay_standin_body" %}</strong></p>
+          {% else %}
           <p><strong>{% pt "secure_checkout_body" %}</strong></p>
+          {% endif %}
         </div>
         <form method="post" action="{% url 'portal_parent_payment_checkout' %}" class="portal-form-actions">
           {% csrf_token %}
@@ -61,7 +65,11 @@
           <input type="hidden" name="date" value="{{ dropin.date }}">
           {% endif %}
           <input type="hidden" name="booking_id" value="{{ request.GET.booking_id|default:'' }}">
+          {% if practice_checkout_standin %}
+          <button type="submit" class="btn btn-primary">{% pt "pay_practice_test" total=payment_totals.total %}</button>
+          {% else %}
           <button type="submit" class="btn btn-primary">{% pt "pay_with_stripe" total=payment_totals.total %}</button>
+          {% endif %}
           <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{% append_query parent_pay_query amount=payment_amount source=is_dropin_payment|yesno:'dropin,' child=dropin.child program_label=dropin.program location=dropin.location date=dropin.date %}">{% pt "back_to_edit" %}</a>
           <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">{% pt "cancel" %}</a>
         </form>

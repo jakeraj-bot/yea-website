@@ -5851,3 +5851,13 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   }
 }
 
+.portal-practice-open-form {
+  display: inline;
+  margin: 0;
+}
+
+.portal-sidebar-footer .portal-practice-open-form {
+  display: block;
+  margin-top: 0.5rem;
+}
+

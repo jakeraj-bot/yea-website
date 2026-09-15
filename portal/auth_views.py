@@ -370,7 +370,12 @@ def _staff_login_redirect(request):
 
 @require_GET
 def parent_logout(request):
+    from .practice_parent import is_practice_parent_session, restore_admin_from_practice
     from .staff_auth import clear_portal_auth
+
+    if is_practice_parent_session(request) and restore_admin_from_practice(request):
+        messages.success(request, "Practice parent closed. You are back in portal admin.")
+        return redirect("portal_admin_page", page="dashboard")
 
     clear_portal_auth(request)
     logout(request)

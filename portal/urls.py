@@ -434,6 +434,21 @@ urlpatterns = [
         name="portal_admin_parent_preview_sample_page",
     ),
     path(
+        "admin/practice-parent/open/",
+        views.admin_practice_parent_open,
+        name="portal_admin_practice_parent_open",
+    ),
+    path(
+        "admin/practice-parent/end/",
+        views.admin_practice_parent_end,
+        name="portal_admin_practice_parent_end",
+    ),
+    path(
+        "admin/practice-parent/toggle/",
+        views.admin_practice_parent_toggle,
+        name="portal_admin_practice_parent_toggle",
+    ),
+    path(
         "admin/parent-preview/<slug:family_slug>/end/",
         views.admin_parent_preview_end,
         name="portal_admin_parent_preview_end",

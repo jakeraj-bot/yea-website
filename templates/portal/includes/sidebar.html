@@ -30,6 +30,11 @@
     </form>
     {% elif admin_support_preview %}
     <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_page' page='communications' %}">{% pt "back_to_admin" %}</a>
+    {% elif practice_parent_session and practice_can_return_to_admin %}
+    <form method="post" action="{% url 'portal_admin_practice_parent_end' %}" class="portal-sidebar-end-view">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary btn-sm portal-signout-btn">{% pt "back_to_admin" %}</button>
+    </form>
     {% elif parent_authenticated %}
     <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
     {% else %}
@@ -158,6 +163,13 @@
   {% if can_open_staff_portal %}
   <div class="portal-sidebar-footer">
     <a class="btn btn-secondary btn-sm portal-switch-btn" href="{% url 'portal_area_switch' area='staff' %}">Switch to staff</a>
+    {% if practice_parent_available %}
+    {% include "portal/includes/practice_parent_open.html" with button_class="btn-primary" button_size="btn-sm" %}
+    {% endif %}
+  </div>
+  {% elif practice_parent_available %}
+  <div class="portal-sidebar-footer">
+    {% include "portal/includes/practice_parent_open.html" with button_class="btn-primary" button_size="btn-sm" %}
   </div>
   {% endif %}
   {% endif %}

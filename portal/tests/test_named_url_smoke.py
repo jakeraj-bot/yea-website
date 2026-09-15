@@ -196,6 +196,9 @@ SKIP_WALK_NAMES = {
     "portal_staff_logout",
     "portal_admin_logout",
     "dropin_logout",
+    "portal_admin_practice_parent_open",
+    "portal_admin_practice_parent_end",
+    "portal_admin_practice_parent_toggle",
 }
 
 

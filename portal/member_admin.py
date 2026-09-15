@@ -693,7 +693,7 @@ def delete_application_record(application):
 def parent_email_recipients():
     rows = []
     seen = set()
-    for family in PortalFamily.objects.select_related("unit", "parent_account__user").order_by("name"):
+    for family in PortalFamily.objects.exclude(slug="practice").select_related("unit", "parent_account__user").order_by("name"):
         email = parent_email_for_family(family)
         if not email or email.lower() in seen:
             continue
