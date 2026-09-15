@@ -100,7 +100,7 @@ class ChargeNoticeEmailTests(TestCase):
         self.assertIn("Yearly membership fee", kwargs["message"])
         self.assertIn("20.00", kwargs["message"])
         self.assertIn("Ada Rivera", kwargs["message"])
-        self.assertIn("/portal/login/", kwargs["message"])
+        self.assertIn("/portal/parent/payment/", kwargs["message"])
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_charge_template_can_be_edited(self, send_email):

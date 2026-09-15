@@ -20,18 +20,95 @@ def _stripe():
     return member_stripe()
 
 
+def _valid_customer_email(value):
+    email = (value or "").strip()
+    if "@" in email and "." in email.split("@")[-1]:
+        return email
+    return ""
+
+
+def parent_checkout_email(account=None, family=None):
+    """Email Stripe can accept. Blank parent User.email used to fail Checkout for some families."""
+    if account and getattr(account, "user", None):
+        email = _valid_customer_email(account.user.email)
+        if email:
+            return email
+    family = family or getattr(account, "family", None)
+    if not family:
+        return ""
+    from .member_admin import parent_email_for_family
+
+    return _valid_customer_email(parent_email_for_family(family))
+
+
+def checkout_error_message(exc):
+    raw = str(exc or "").strip()
+    lowered = raw.lower()
+    if "email" in lowered:
+        return (
+            "We could not start card checkout because this account has no valid email. "
+            "Add an email under Account settings, or contact YEA at 609-357-8608."
+        )
+    if "no such customer" in lowered or "resource_missing" in lowered:
+        return "We could not start card checkout. Try Pay with Stripe again. If it still fails, contact YEA."
+    if "amount" in lowered and any(word in lowered for word in ("invalid", "zero", "minimum", "positive")):
+        return "Enter at least $0.50 to pay by card."
+    if raw and getattr(settings, "DEBUG", False):
+        return f"We could not start Stripe checkout: {raw}"
+    return (
+        "We could not start Stripe checkout. Try again, or contact YEA at 609-357-8608 "
+        "to pay in the office."
+    )
+
+
 def get_or_create_customer(account):
     stripe = _stripe()
+    email = parent_checkout_email(account)
     if account.stripe_customer_id:
-        return stripe.Customer.retrieve(account.stripe_customer_id)
-    customer = stripe.Customer.create(
-        email=account.user.email,
-        name=account.family.name,
-        metadata={"family_slug": account.family.slug, "portal": "parent"},
-    )
+        try:
+            customer = stripe.Customer.retrieve(account.stripe_customer_id)
+            if getattr(customer, "deleted", False):
+                raise ValueError("deleted Stripe customer")
+            if email and not (getattr(customer, "email", None) or ""):
+                try:
+                    stripe.Customer.modify(customer.id, email=email)
+                except Exception:
+                    pass
+            return customer
+        except Exception:
+            account.stripe_customer_id = ""
+            account.save(update_fields=["stripe_customer_id"])
+    create_kwargs = {
+        "name": account.family.name,
+        "metadata": {"family_slug": account.family.slug, "portal": "parent"},
+    }
+    if email:
+        create_kwargs["email"] = email
+    customer = stripe.Customer.create(**create_kwargs)
     account.stripe_customer_id = customer.id
     account.save(update_fields=["stripe_customer_id"])
     return customer
+
+
+def _family_parent_account(family):
+    try:
+        return family.parent_account
+    except Exception:
+        return None
+
+
+def checkout_customer_kwargs(family, account=None):
+    """Attach a Stripe customer when possible; never block card checkout on a missing email."""
+    account = account or _family_parent_account(family)
+    if account:
+        try:
+            return {"customer": get_or_create_customer(account).id}
+        except Exception:
+            pass
+    email = parent_checkout_email(account, family)
+    if email:
+        return {"customer_email": email}
+    return {}
 
 
 def list_saved_payment_methods(customer_id):
@@ -66,7 +143,6 @@ def create_balance_checkout_session(request, payment):
     )
     session = stripe.checkout.Session.create(
         mode="payment",
-        customer=get_or_create_customer(payment.family.parent_account).id,
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/"),
@@ -75,6 +151,7 @@ def create_balance_checkout_session(request, payment):
             "family_slug": payment.family.slug,
             "payment_kind": payment.payment_kind,
         },
+        **checkout_customer_kwargs(payment.family),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
@@ -93,7 +170,6 @@ def create_dropin_checkout_session(request, payment):
     )
     session = stripe.checkout.Session.create(
         mode="payment",
-        customer=get_or_create_customer(payment.family.parent_account).id,
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/?source=dropin"),
@@ -102,6 +178,7 @@ def create_dropin_checkout_session(request, payment):
             "family_slug": payment.family.slug,
             "payment_kind": "dropin",
         },
+        **checkout_customer_kwargs(payment.family),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
@@ -118,7 +195,6 @@ def create_field_trip_checkout_session(request, payment, signup):
     )
     session = stripe.checkout.Session.create(
         mode="payment",
-        customer=get_or_create_customer(payment.family.parent_account).id,
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/field-trips/"),
@@ -128,6 +204,7 @@ def create_field_trip_checkout_session(request, payment, signup):
             "payment_kind": "field_trip",
             "field_trip_signup_id": str(signup.pk),
         },
+        **checkout_customer_kwargs(payment.family),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
@@ -144,7 +221,6 @@ def create_drop_off_checkout_session(request, payment, booking):
     )
     session = stripe.checkout.Session.create(
         mode="payment",
-        customer=get_or_create_customer(payment.family.parent_account).id,
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/drop-off/"),
@@ -154,17 +230,11 @@ def create_drop_off_checkout_session(request, payment, booking):
             "payment_kind": "drop_off",
             "drop_off_booking_id": str(booking.pk),
         },
+        **checkout_customer_kwargs(payment.family),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
     return session
-
-
-def _family_parent_account(family):
-    try:
-        return family.parent_account
-    except Exception:
-        return None
 
 
 def create_staff_balance_checkout_session(request, payment, *, success_url, cancel_url, note="", child_name=""):
@@ -189,9 +259,7 @@ def create_staff_balance_checkout_session(request, payment, *, success_url, canc
             "child_name": (child_name or "")[:120],
         },
     }
-    account = _family_parent_account(payment.family)
-    if account:
-        create_kwargs["customer"] = get_or_create_customer(account).id
+    create_kwargs.update(checkout_customer_kwargs(payment.family, _family_parent_account(payment.family)))
     session = stripe.checkout.Session.create(**create_kwargs)
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
