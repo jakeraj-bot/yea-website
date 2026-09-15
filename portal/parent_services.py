@@ -929,8 +929,7 @@ def send_payment_receipt_email(payment):
     user = account.user
     if not user.email:
         return
-    from django.conf import settings
-    from django.core.mail import send_mail
+    from core.email_service import send_site_email
 
     subject = f"Youth Education Academy payment receipt — {payment.receipt_no}"
     body = (
@@ -940,7 +939,7 @@ def send_payment_receipt_email(payment):
         f"Description: {_payment_description(payment)}\n\n"
         f"View all receipts in your parent portal."
     )
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True)
+    send_site_email(subject, body, [user.email], fail_silently=True, copy_to_portal=True)
 
 
 def _drop_in_offered():

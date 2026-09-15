@@ -132,6 +132,20 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Compose starts open", family_text)
         self.assertIn("Recipients start open", bulk_text)
         self.assertIn("Expand all", bulk_text)
+        self.assertIn("replies to you", family_text)
+        self.assertIn("CC extra staff", [step["title"] for step in family["steps"]])
+        self.assertIn("CC extra staff", [step["title"] for step in bulk["steps"]])
+        self.assertIn("Always BCC", bulk_text)
+
+    def test_email_settings_guide_explains_portal_mailbox(self):
+        guide = guide_for("email-settings")
+        self.assertIsNotNone(guide)
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Portal sending email", titles)
+        self.assertIn("Always BCC", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("password reset", bodies.lower())
+        self.assertIn("assistant", bodies.lower())
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")

@@ -104,6 +104,7 @@ ADMIN_PAGES = [
     "member-billing",
     "billing-settings",
     "billing-permissions",
+    "email-settings",
     "scholarships",
     "discounts",
     "collections",

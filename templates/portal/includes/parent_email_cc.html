@@ -1,0 +1,18 @@
+<div class="form-group portal-form-full">
+  <label>CC staff</label>
+  <p class="form-note">Parents can see these addresses. Use this to include your assistant or business partner on the send.</p>
+  <div class="portal-email-recipients">
+    {% for person in staff_cc_choices %}
+    <label class="portal-check-label">
+      <input type="checkbox" name="cc_staff" value="{{ person.email }}">
+      <span><strong>{{ person.name }}</strong> · {{ person.email }}{% if person.role %} · {{ person.role }}{% endif %}</span>
+    </label>
+    {% empty %}
+    <p class="form-note">No other staff emails are on file yet. You can still type an address below.</p>
+    {% endfor %}
+  </div>
+</div>
+<div class="form-group portal-form-full">
+  <label for="{{ form_id|default:'parent-email' }}-cc-extra">Extra CC email</label>
+  <input id="{{ form_id|default:'parent-email' }}-cc-extra" name="cc_extra" type="email" class="portal-input" placeholder="name@email.com" autocomplete="off">
+</div>

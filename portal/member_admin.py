@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 
@@ -724,6 +725,66 @@ def parent_email_recipients():
     return rows
 
 
+def staff_email_cc_choices():
+    """Active staff/admin logins with an email, for compose CC checklists."""
+    from .models import PortalStaffAccount
+
+    rows = []
+    seen = set()
+    accounts = (
+        PortalStaffAccount.objects.select_related("user", "unit")
+        .filter(is_active=True)
+        .order_by("display_name")
+    )
+    for account in accounts:
+        email = (account.user.email or "").strip()
+        key = email.lower()
+        if not email or key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            {
+                "id": account.pk,
+                "name": account.display_name,
+                "email": email,
+                "role": account.role,
+                "unit": account.unit.name if account.unit_id else "",
+            }
+        )
+    return rows
+
+
+def parse_compose_cc(post):
+    """Staff checklist plus optional extra addresses from an Email parent form."""
+    chosen = []
+    seen = set()
+    invalid = []
+
+    def _add(raw):
+        cleaned = (raw or "").strip()
+        if not cleaned:
+            return
+        try:
+            validate_email(cleaned)
+        except ValidationError:
+            invalid.append(cleaned)
+            return
+        key = cleaned.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        chosen.append(cleaned)
+
+    for value in post.getlist("cc_staff"):
+        _add(value)
+    extra = post.get("cc_extra") or ""
+    for part in extra.replace(";", ",").split(","):
+        _add(part.strip())
+    if invalid:
+        raise ValueError("Enter a valid extra CC email address.")
+    return chosen
+
+
 def send_parent_emails(
     subject,
     body,
@@ -735,6 +796,8 @@ def send_parent_emails(
     unit=None,
     sender=None,
     source=None,
+    cc=None,
+    staff_sender=None,
 ):
     from .models import PortalParentEmail
     from .parent_email_log import record_sent_parent_email
@@ -754,7 +817,11 @@ def send_parent_emails(
         raise ValueError("Choose at least one parent.")
     sent = 0
     delivered = []
-    replies = [reply_to] if reply_to else None
+    if isinstance(reply_to, str):
+        replies = [reply_to] if reply_to else None
+    else:
+        replies = list(reply_to) if reply_to else None
+    identity_user = staff_sender
     for email in unique:
         if send_site_email(
             subject=subject,
@@ -762,6 +829,9 @@ def send_parent_emails(
             recipient_list=[email],
             reply_to=replies,
             attachments=attachments,
+            cc=cc,
+            sender=identity_user,
+            copy_to_portal=True,
         ):
             sent += 1
             delivered.append(email)
@@ -781,7 +851,16 @@ def send_parent_emails(
     return sent, len(unique)
 
 
-def send_family_parent_email(family, subject, body, reply_to=None, attachments=None, sender=None):
+def send_family_parent_email(
+    family,
+    subject,
+    body,
+    reply_to=None,
+    attachments=None,
+    sender=None,
+    cc=None,
+    staff_sender=None,
+):
     from .models import PortalParentEmail
 
     email = parent_email_for_family(family)
@@ -797,6 +876,8 @@ def send_family_parent_email(family, subject, body, reply_to=None, attachments=N
         unit=getattr(family, "unit", None),
         sender=sender,
         source=PortalParentEmail.SOURCE_FAMILY,
+        cc=cc,
+        staff_sender=staff_sender if staff_sender is not None else sender,
     )
 
 

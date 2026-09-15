@@ -989,11 +989,19 @@ GUIDES = {
     },
     "family-email": {
         "title": "How to email a parent",
-        "intro": "This sends to the primary parent email on the account. You can attach files, and every send is saved in Emails sent. Click a section heading to fold it up or open it.",
+        "intro": "This sends to the primary parent email on the account. You can attach files, CC other staff, and every send is saved in Emails sent. Click a section heading to fold it up or open it.",
         "steps": [
             {
                 "title": "Write the message",
                 "body": "Compose starts open. The address is filled from the profile. Keep the subject clear so the parent can find it later.",
+            },
+            {
+                "title": "Who the parent replies to",
+                "body": "The parent replies to you — the staff person who clicks Send — using your login email. The message is sent through the portal mailbox so it delivers. A hidden copy also goes to the portal sending / BCC address in Settings → Email.",
+            },
+            {
+                "title": "CC extra staff",
+                "body": "Check your assistant, business partner, or another staff person, or type an extra address. Those people are copied on the email and the parent can see they were included.",
             },
             {
                 "title": "Upload if needed",
@@ -1011,11 +1019,19 @@ GUIDES = {
     },
     "parent-emails": {
         "title": "How to email parents",
-        "intro": "Send one message to selected parents. Uploaded files go out with the email, and a copy is saved in Emails sent. Click a section heading to fold it up or open it.",
+        "intro": "Send one message to selected parents. Uploaded files go out with the email, you can CC other staff, and a copy is saved in Emails sent. Click a section heading to fold it up or open it.",
         "steps": [
             {
                 "title": "Write and choose parents",
                 "body": "Compose and Recipients start open. Enter the subject and message. Search the list and check only the parents who should get this email.",
+            },
+            {
+                "title": "Who replies, and where copies go",
+                "body": "Parents reply to the staff person who clicked Send. A copy of every parent email also goes to the portal mailbox (Settings → Email → Always BCC). Change that address there when you create a new portal inbox — you do not need a developer.",
+            },
+            {
+                "title": "CC extra staff",
+                "body": "Check staff with emails, or type another address, to include your assistant or business partner on the send. They appear as CC, so parents can see they were included.",
             },
             {
                 "title": "Upload documents",
@@ -1028,6 +1044,24 @@ GUIDES = {
             {
                 "title": "Collapse sections",
                 "body": "Click a heading (templates, Compose, Recipients, Emails sent) to hide that block. Expand all / Collapse all is at the top. The page remembers which sections you left open.",
+            },
+        ],
+    },
+    "email-settings": {
+        "title": "How to set the portal mailbox",
+        "intro": "Use this page when you create a new email for the portal, so automated mail and copies stop filling your personal inbox.",
+        "steps": [
+            {
+                "title": "Portal sending email",
+                "body": "Type the new mailbox here. Password resets, invoices, late-fee notices, charge emails, reminders, and other automatic mail will show this address as From.",
+            },
+            {
+                "title": "Always BCC",
+                "body": "Copies of mail to parents (staff-composed and system) go to this address so you can see what was sent. Leave it blank to use the same address as Portal sending email.",
+            },
+            {
+                "title": "Staff-composed replies",
+                "body": "Email parent and Email parents still let the parent reply to the staff person who sent it. Check extra staff as CC on those screens when you want your assistant or business partner on the thread.",
             },
         ],
     },

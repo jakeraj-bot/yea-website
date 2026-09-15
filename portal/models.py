@@ -1339,6 +1339,14 @@ class PortalOrgSetting(models.Model):
     """Singleton organization toggles for portal roles."""
 
     program_director_can_see_billing = models.BooleanField(default=False)
+    portal_sending_email = models.EmailField(
+        blank=True,
+        help_text="From address for automated portal mail. Leave blank to keep the current server default.",
+    )
+    portal_bcc_email = models.EmailField(
+        blank=True,
+        help_text="Always BCC this address on mail to parents. Leave blank to use the portal sending email.",
+    )
 
     class Meta:
         verbose_name = "Portal organization setting"
