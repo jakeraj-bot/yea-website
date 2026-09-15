@@ -263,7 +263,8 @@ class ParentPortalCompactI18nTests(TestCase):
             for phrase in leftover:
                 self.assertNotIn(phrase, html, f"{slug}: {phrase}")
         dashboard = self.client.get(reverse("portal_parent_page", kwargs={"page": "dashboard"}))
-        self.assertContains(dashboard, "Aprobado")
+        self.assertContains(dashboard, "Inscrito")
+        self.assertContains(dashboard, "Estado de la solicitud")
         profile = self.client.get(reverse("portal_parent_page", kwargs={"page": "profile"}))
         self.assertContains(profile, "Hogar")
         self.assertContains(profile, "Cerrar menú")

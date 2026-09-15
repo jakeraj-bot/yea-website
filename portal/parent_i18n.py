@@ -625,7 +625,9 @@ _STRINGS = {
         "application_for": "Application",
         "no_dropin_bookings": "No bookings yet.",
         "membership_fee_agreed": "Membership fee ($20)",
-        "time": "Time",
+        "contact_topic_billing": "Billing and portal questions",
+        "contact_topic_programming": "Programming questions",
+        "contact_topic_general": "General",
     },
     "es": {
         "lang_en": "EN",
@@ -1054,7 +1056,9 @@ _STRINGS = {
         "application_for": "Solicitud",
         "no_dropin_bookings": "Aún no hay reservas.",
         "membership_fee_agreed": "Cuota de membresía ($20)",
-        "time": "Hora",
+        "contact_topic_billing": "Preguntas de facturación y del portal",
+        "contact_topic_programming": "Preguntas de programación",
+        "contact_topic_general": "General",
     },
 }
 

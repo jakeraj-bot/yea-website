@@ -868,7 +868,7 @@ def _parent_live_mode(request):
 PARENT_CONTACT_EMAIL = "Jakeraj@yeanj.org"
 
 
-def _parent_contact_form(data=None, account=None):
+def _parent_contact_form(data=None, account=None, lang="en"):
     from .forms import ParentContactForm
 
     initial = {}
@@ -880,13 +880,15 @@ def _parent_contact_form(data=None, account=None):
         email = (user.email if user else "") or ""
         initial = {"name": name, "email": email}
     if data is not None:
-        return ParentContactForm(data, initial=initial)
-    return ParentContactForm(initial=initial)
+        return ParentContactForm(data, initial=initial, lang=lang)
+    return ParentContactForm(initial=initial, lang=lang)
 
 
 def _parent_contact_page_extras(request, account=None):
+    from .parent_i18n import get_parent_language
+
     return {
-        "contact_form": _parent_contact_form(account=account),
+        "contact_form": _parent_contact_form(account=account, lang=get_parent_language(request)),
         "contact_submitted": request.GET.get("sent") == "1",
         "parent_contact_email": PARENT_CONTACT_EMAIL,
     }
@@ -1457,8 +1459,11 @@ def parent_contact_submit(request):
     from core.email_service import send_site_email
     from core.spam_protection import is_honeypot_triggered
 
+    from .forms import ParentContactForm
+    from .parent_i18n import get_parent_language
+
     account = get_parent_account(request.user) if request.user.is_authenticated else None
-    form = _parent_contact_form(request.POST, account=account)
+    form = _parent_contact_form(request.POST, account=account, lang=get_parent_language(request))
     if not form.is_valid():
         context = _parent_context(request, "Contact us", page_slug="contact-us")
         context.update(
@@ -1476,7 +1481,7 @@ def parent_contact_submit(request):
     name = form.cleaned_data["name"]
     email = form.cleaned_data["email"]
     topic_label = form.cleaned_data.get("topic")
-    topic_display = dict(form.fields["topic"].choices).get(topic_label, topic_label)
+    topic_display = dict(ParentContactForm.TOPIC_CHOICES).get(topic_label, topic_label)
     family_name = account.family.name if account and account.family else ""
     body = (
         f"Name: {name}\n"
