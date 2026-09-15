@@ -4,7 +4,6 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Sum
 from django.utils import timezone
 
 from enrollment.models import EnrollmentApplication
@@ -35,8 +34,14 @@ def get_admin_dashboard_live():
     open_apps = EnrollmentApplication.objects.filter(
         status__in=("under_review", "pending_documents", "waitlist")
     ).count()
-    overdue_qs = PortalFamily.objects.filter(balance__gt=0)
-    overdue_total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")
+    from .family_list import overdue_ledger_summary
+
+    overdue_ids = list(
+        PortalFamily.objects.exclude(slug="practice")
+        .exclude(unit__slug__in=("main-location", "main_location"))
+        .values_list("pk", flat=True)
+    )
+    overdue_count, overdue_total, _owing = overdue_ledger_summary(overdue_ids)
     staff_count = PortalStaffAccount.objects.filter(is_active=True).count()
     signed_apps = EnrollmentApplication.objects.filter(status="enrolled").count()
     total_apps = max(EnrollmentApplication.objects.count(), 1)
@@ -53,7 +58,7 @@ def get_admin_dashboard_live():
         "total_enrolled": enrolled,
         "total_families": families,
         "open_applications": open_apps,
-        "overdue_families": overdue_qs.count(),
+        "overdue_families": overdue_count,
         "overdue_amount": f"{overdue_total:.2f}",
         "policy_completion_pct": policy_pct,
         "staff_count": staff_count,
@@ -381,10 +386,15 @@ def get_admin_alerts_live():
                 "link_arg": "applications",
             }
         )
-    overdue_qs = PortalFamily.objects.filter(balance__gt=0)
-    overdue = overdue_qs.count()
+    from .family_list import overdue_ledger_summary
+
+    overdue_ids = list(
+        PortalFamily.objects.exclude(slug="practice")
+        .exclude(unit__slug__in=("main-location", "main_location"))
+        .values_list("pk", flat=True)
+    )
+    overdue, total, _owing = overdue_ledger_summary(overdue_ids)
     if overdue:
-        total = overdue_qs.aggregate(total=Sum("balance"))["total"] or Decimal("0")
         alerts.append(
             {
                 "text": f"{overdue} families with overdue balances (${total:.2f} total)",

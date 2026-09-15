@@ -384,7 +384,10 @@ def build_dashboard_live(unit, program):
     session = build_session_context(unit, program, today, roster) if unit and program else {}
     apps = applications_for_staff(unit) if unit else []
     open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents", "Waitlist")]
-    past_due = families_qs_for_unit(unit).filter(balance__gt=Decimal("0")).count()
+    from .family_list import overdue_ledger_summary
+
+    unit_family_ids = list(families_qs_for_unit(unit).values_list("pk", flat=True))
+    past_due, _overdue_total, owing = overdue_ledger_summary(unit_family_ids)
     unread = count_messages_unread_live(for_admin=False)
 
     alerts = []
@@ -404,13 +407,16 @@ def build_dashboard_live(unit, program):
                 "link_arg": "families",
             }
         )
-    overdue_family = (
-        families_qs_for_unit(unit).filter(balance__gt=Decimal("0")).order_by("-balance").first()
-    )
+    overdue_family = None
+    overdue_amount = Decimal("0")
+    if owing:
+        top_id = max(owing, key=owing.get)
+        overdue_family = families_qs_for_unit(unit).filter(pk=top_id).first()
+        overdue_amount = owing[top_id]
     if overdue_family:
         alerts.append(
             {
-                "text": f"{overdue_family.name} — ${overdue_family.balance:.2f} balance due",
+                "text": f"{overdue_family.name} — ${overdue_amount:.2f} balance due",
                 "link_name": "portal_staff_family_billing",
                 "link_kw": {"family_slug": overdue_family.slug},
             }
