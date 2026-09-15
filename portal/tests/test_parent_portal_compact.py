@@ -198,3 +198,95 @@ class ParentPortalCompactI18nTests(TestCase):
 
         missing = sorted(set(_STRINGS["en"]) - set(_STRINGS["es"]))
         self.assertEqual(missing, [])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_spanish_parent_pages_drop_circled_english(self):
+        from portal.parent_i18n import COOKIE_NAME
+
+        post_charge(
+            self.family,
+            "Ada Rivera",
+            "tuition",
+            "12.82",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        self._login_parent()
+        self.client.cookies[COOKIE_NAME] = "es"
+        pages = [
+            "dashboard",
+            "profile",
+            "account",
+            "support",
+            "policies",
+            "applications",
+            "emergency-contacts",
+            "drop-in",
+            "field-trips",
+            "tax-statements",
+            "billing",
+            "help",
+            "contact-us",
+            "receipts",
+        ]
+        leftover = [
+            "Collapse menu",
+            "Expand all",
+            "Collapse all",
+            "How to use this page",
+            "End support view",
+            "Household",
+            "Family name",
+            "Home address",
+            "Primary parent / guardian",
+            "Secondary parent / guardian",
+            "Login &amp; security",
+            "Login & security",
+            "Save preferences",
+            "Email me a receipt after each payment",
+            "No field trips are assigned to your children right now.",
+            "Register for drop-in care to book individual days using your portal login.",
+            "After-school program",
+            "Parents add and delete contacts on this page.",
+            "Pay your remaining balance before downloading your tax statement.",
+            "+ New ticket",
+            "No support tickets yet.",
+            "0 unread replies",
+            "Each child signs all",
+            "Sign in to your parent account to add a profile photo",
+        ]
+        for slug in pages:
+            page = self.client.get(reverse("portal_parent_page", kwargs={"page": slug}))
+            self.assertEqual(page.status_code, 200, slug)
+            html = page.content.decode()
+            for phrase in leftover:
+                self.assertNotIn(phrase, html, f"{slug}: {phrase}")
+        dashboard = self.client.get(reverse("portal_parent_page", kwargs={"page": "dashboard"}))
+        self.assertContains(dashboard, "Inscrito")
+        self.assertContains(dashboard, "Estado de la solicitud")
+        profile = self.client.get(reverse("portal_parent_page", kwargs={"page": "profile"}))
+        self.assertContains(profile, "Hogar")
+        self.assertContains(profile, "Cerrar menú")
+        self.assertContains(profile, "Atrás")
+        account = self.client.get(reverse("portal_parent_page", kwargs={"page": "account"}))
+        self.assertContains(account, "Inicio de sesión y seguridad")
+        support = self.client.get(reverse("portal_parent_page", kwargs={"page": "support"}))
+        self.assertContains(support, "Ticket nuevo")
+        policies = self.client.get(reverse("portal_parent_page", kwargs={"page": "policies"}))
+        self.assertNotContains(policies, "before care waitlist uses the same signatures")
+        help_page = self.client.get(reverse("portal_parent_page", kwargs={"page": "help"}))
+        self.assertContains(help_page, "12 firmas")
+        self.assertIn('data-collapse-label="Cerrar menú"', profile.content.decode())
+        self.assertIn('data-expand-label="Abrir menú"', profile.content.decode())
+
+    def test_translate_label_program_and_status(self):
+        from portal.parent_i18n import translate_label
+
+        self.assertEqual(translate_label("es", "Approved"), "Aprobado")
+        self.assertEqual(translate_label("es", "After-school program"), "Programa después de la escuela")
+        self.assertEqual(translate_label("es", "After-School 2026–27"), "Después de la escuela 2026–27")
+        self.assertEqual(translate_label("es", "Mother"), "Madre")
+        self.assertEqual(translate_label("es", "Private pay"), "Pago privado")
+        self.assertEqual(translate_label("en", "After-School 2026–27"), "After-School 2026–27")
+

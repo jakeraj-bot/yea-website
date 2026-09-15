@@ -10,22 +10,22 @@
 <section class="page-content">
   <div class="container portal-profile-grid">
     <div class="portal-callout card portal-callout-warning portal-profile-full" id="account-pending-banner" hidden role="status">
-      <p><strong>Changes pending staff review</strong> — your account updates were submitted. You'll see pending values below with a <span class="portal-pending-badge">Pending review</span> badge until staff confirms.</p>
+      <p><strong>{% pt "pending_review" %}</strong> — {% pt "pending_review_short" %}</p>
     </div>
 
     <section class="card portal-profile-full" id="account-pending-panel" hidden>
-      <h2>Pending review</h2>
-      <p class="form-note">These account changes are waiting for staff approval.</p>
+      <h2>{% pt "pending_review" %}</h2>
+      <p class="form-note">{% pt "pending_review_short" %}</p>
       <div class="portal-table-wrap">
         <table class="portal-table" id="account-pending-table">
-          <thead><tr><th>Field</th><th>Current (approved)</th><th>Your change</th><th>Status</th></tr></thead>
+          <thead><tr><th>{% pt "field" %}</th><th>{% pt "current_approved" %}</th><th>{% pt "your_change" %}</th><th>{% pt "status" %}</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </section>
 
     <section class="card portal-profile-full">
-      <h2>Profile photo</h2>
+      <h2>{% pt "profile_photo" %}</h2>
       <div class="portal-profile-photo-row">
         <div class="portal-avatar portal-avatar-lg" aria-hidden="true">
           {% if parent_avatar.photo_url %}
@@ -39,181 +39,181 @@
           <form method="post" action="{% url 'portal_parent_profile_photo_upload' %}" enctype="multipart/form-data" class="portal-form-grid">
             {% csrf_token %}
             <div class="form-group portal-form-full">
-              <label for="profile-photo-input">Upload a photo</label>
+              <label for="profile-photo-input">{% pt "upload_photo" %}</label>
               <input id="profile-photo-input" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif" class="portal-input">
-              <p class="form-note">Optional — JPG, PNG, WebP, or GIF up to 5 MB. Shown in your sidebar and header.</p>
+              <p class="form-note">{% pt "photo_note" %}</p>
             </div>
             <div class="portal-form-actions portal-form-full">
-              <button type="submit" class="btn btn-primary btn-sm">Save photo</button>
+              <button type="submit" class="btn btn-primary btn-sm">{% pt "save_photo" %}</button>
             </div>
           </form>
           {% if parent_avatar.photo_url %}
           <form method="post" action="{% url 'portal_parent_profile_photo_remove' %}" style="margin-top:0.75rem;">
             {% csrf_token %}
-            <button type="submit" class="btn btn-secondary btn-sm">Remove photo</button>
+            <button type="submit" class="btn btn-secondary btn-sm">{% pt "remove_photo" %}</button>
           </form>
           {% endif %}
           {% else %}
-          <p class="form-note">Sign in to your parent account to add a profile photo.</p>
+          <p class="form-note">{% pt "sign_in_for_photo" %}</p>
           {% endif %}
         </div>
       </div>
     </section>
 
     <section class="card portal-profile-full">
-      <h2>Login &amp; security</h2>
+      <h2>{% pt "login_security" %}</h2>
       {% if parent_authenticated %}
-      <p class="form-note">Signed in as <strong>{{ account.username }}</strong>{% if parent_stripe_enabled %} · Stripe checkout enabled{% endif %}.</p>
+      <p class="form-note">{% pt "signed_in_as" name=account.username %}</p>
       {% endif %}
       <dl class="portal-dl portal-dl-2col">
-        <dt>Email (login)</dt><dd id="account-email-display">{{ account.login_email }}</dd>
-        <dt>Username</dt><dd>{{ account.username }}</dd>
-        <dt>Password</dt>
+        <dt>{% pt "email_login" %}</dt><dd id="account-email-display">{{ account.login_email }}</dd>
+        <dt>{% pt "username" %}</dt><dd>{{ account.username }}</dd>
+        <dt>{% pt "password" %}</dt>
         <dd class="portal-password-row">
           <span id="password-display" class="portal-password-masked">••••••••••••</span>
           {% if not hide_card_details and not admin_support_preview %}
-          <button type="button" class="btn btn-secondary btn-sm" id="toggle-password-display" aria-pressed="false">Show password</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="toggle-password-display" aria-pressed="false">{% pt "show_password" %}</button>
           {% endif %}
         </dd>
-        <dt>Last login</dt><dd>{{ account.last_login }}</dd>
+        <dt>{% pt "last_login" %}</dt><dd>{% ptl account.last_login %}</dd>
       </dl>
       {% if not hide_card_details and not admin_support_preview %}
-      <p class="form-note">Show password helps if you forgot what you set — only visible to you while logged in.</p>
+      <p class="form-note">{% pt "show_password_note" %}</p>
       <div class="portal-form-actions">
-        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-password-panel">Change password</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-email-panel">Change email</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-password-panel">{% pt "change_password" %}</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-preview-panel="change-email-panel">{% pt "change_email" %}</button>
       </div>
       <div class="portal-panel card" id="change-password-panel" hidden style="margin-top:1rem;">
-        <h3>Change password</h3>
+        <h3>{% pt "change_password" %}</h3>
         <form class="portal-form-grid portal-account-form" id="change-password-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
           {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="password">{% endif %}
-          <div class="form-group portal-form-full"><label>Current password</label><input type="password" name="current_password" class="portal-input" id="current-password-input"></div>
-          <div class="form-group"><label>New password</label><input type="password" name="new_password" class="portal-input" id="new-password-input"></div>
-          <div class="form-group"><label>Confirm new password</label><input type="password" name="confirm_password" class="portal-input" id="confirm-password-input"></div>
-          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Update password</button></div>
+          <div class="form-group portal-form-full"><label>{% pt "current_password" %}</label><input type="password" name="current_password" class="portal-input" id="current-password-input"></div>
+          <div class="form-group"><label>{% pt "new_password" %}</label><input type="password" name="new_password" class="portal-input" id="new-password-input"></div>
+          <div class="form-group"><label>{% pt "confirm_password" %}</label><input type="password" name="confirm_password" class="portal-input" id="confirm-password-input"></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">{% pt "update_password" %}</button></div>
         </form>
       </div>
       <div class="portal-panel card" id="change-email-panel" hidden style="margin-top:1rem;">
-        <h3>Change email</h3>
+        <h3>{% pt "change_email" %}</h3>
         <form class="portal-form-grid portal-account-form" id="change-email-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
           {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="email">{% endif %}
           <div class="form-group portal-form-full">
-            <label>New email</label>
-            <input type="email" name="email" class="portal-input" value="{{ account.login_email }}" data-label="Login email" data-target="account-email-display" data-original="{{ account.login_email }}">
+            <label>{% pt "new_email" %}</label>
+            <input type="email" name="email" class="portal-input" value="{{ account.login_email }}" data-label="{% pt 'email_login' %}" data-target="account-email-display" data-original="{{ account.login_email }}">
           </div>
-          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save email</button></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">{% pt "save_email" %}</button></div>
         </form>
       </div>
       {% endif %}
       {% if parent_authenticated and not admin_support_preview %}
       <div class="portal-form-actions" style="margin-top:1rem;">
-        <a class="btn btn-secondary" href="{% url 'portal_parent_logout' %}">Sign out</a>
+        <a class="btn btn-secondary" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
       </div>
       {% endif %}
     </section>
 
     <section class="card">
-      <h2>Autopay</h2>
+      <h2>{% pt "autopay" %}</h2>
       <p class="portal-autopay-status" id="autopay-status-text">
         {% if account.autopay_enabled %}
-        <strong>Autopay is on.</strong> <span id="autopay-charge-day-display">{{ account.autopay_day }}</span>.
+        <strong>{% pt "autopay_on" %}</strong> <span id="autopay-charge-day-display">{% ptl account.autopay_day %}</span>.
         {% else %}
-        <strong>Autopay is off</strong> — you pay manually or in person.
+        <strong>{% pt "autopay_off" %}</strong>
         {% endif %}
       </p>
-      <button type="button" class="btn btn-secondary btn-sm" id="toggle-autopay-btn">{% if account.autopay_enabled %}Manage autopay{% else %}Turn on autopay{% endif %}</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="toggle-autopay-btn">{% if account.autopay_enabled %}{% pt "manage_autopay" %}{% else %}{% pt "turn_on_autopay" %}{% endif %}</button>
       <div class="portal-panel card" id="autopay-panel" hidden style="margin-top:1rem;">
         <form class="portal-form-grid portal-account-form" id="autopay-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
           {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="settings">{% endif %}
           <div class="form-group portal-form-full">
             <label class="portal-check-label">
-              <input type="checkbox" id="autopay-enabled-input" name="autopay_enabled" {% if account.autopay_enabled %}checked{% endif %} data-label="Autopay" data-original="{% if account.autopay_enabled %}On{% else %}Off{% endif %}">
-              Enable autopay on balance due dates
+              <input type="checkbox" id="autopay-enabled-input" name="autopay_enabled" {% if account.autopay_enabled %}checked{% endif %} data-label="{% pt 'autopay' %}" data-original="{% if account.autopay_enabled %}On{% else %}Off{% endif %}">
+              {% pt "enable_autopay" %}
             </label>
           </div>
           <div class="form-group">
-            <label for="autopay-charge-day-input">Charge day</label>
-            <select class="portal-select" id="autopay-charge-day-input" name="autopay_day" data-label="Autopay charge day" data-target="autopay-charge-day-display" data-original="{{ account.autopay_day|default:'Monday each week' }}">
-              <option {% if account.autopay_day == 'Monday each week' or not account.autopay_day %}selected{% endif %}>Monday each week</option>
-              <option {% if account.autopay_day == 'Friday before each billing week' %}selected{% endif %}>Friday before each billing week</option>
-              <option {% if account.autopay_day == '1st of month' %}selected{% endif %}>1st of month</option>
+            <label for="autopay-charge-day-input">{% pt "charge_day" %}</label>
+            <select class="portal-select" id="autopay-charge-day-input" name="autopay_day" data-label="{% pt 'charge_day' %}" data-target="autopay-charge-day-display" data-original="{{ account.autopay_day|default:'Monday each week' }}">
+              <option value="Monday each week" {% if account.autopay_day == 'Monday each week' or not account.autopay_day %}selected{% endif %}>{% pt "monday_each_week" %}</option>
+              <option value="Friday before each billing week" {% if account.autopay_day == 'Friday before each billing week' %}selected{% endif %}>{% pt "friday_before_week" %}</option>
+              <option value="1st of month" {% if account.autopay_day == '1st of month' %}selected{% endif %}>{% pt "first_of_month" %}</option>
             </select>
           </div>
-          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save autopay</button></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">{% pt "save_autopay" %}</button></div>
         </form>
       </div>
     </section>
 
     <section class="card">
-      <h2>Payment methods</h2>
+      <h2>{% pt "payment_methods" %}</h2>
       <ul class="portal-payment-method-list" id="payment-method-list">
         {% for pm in account.payment_methods %}
         <li class="portal-payment-method card" data-card-label="{{ pm.label }}">
           <div>
             <strong id="display-card-{{ forloop.counter0 }}">{{ pm.label }}</strong>
-            {% if pm.expires %}<span class="form-note">Expires {{ pm.expires }}</span>{% endif %}
-            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">Default</span>{% endif %}
+            {% if pm.expires %}<span class="form-note">{% pt "expires" date=pm.expires %}</span>{% endif %}
+            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">{% pt "default" %}</span>{% endif %}
           </div>
           {% if not hide_card_details and not admin_support_preview %}
-          <button type="button" class="btn btn-secondary btn-sm portal-remove-card-btn" data-card-label="{{ pm.label }}">Remove</button>
+          <button type="button" class="btn btn-secondary btn-sm portal-remove-card-btn" data-card-label="{{ pm.label }}">{% pt "remove_card" %}</button>
           {% endif %}
         </li>
         {% empty %}
-        <li class="form-note" id="no-cards-note">No card on file — add one for autopay or online payments.</li>
+        <li class="form-note" id="no-cards-note">{% pt "no_card" %}</li>
         {% endfor %}
       </ul>
       {% if not hide_card_details and not admin_support_preview %}
-      <button type="button" class="btn btn-primary btn-sm" data-preview-panel="account-add-card-panel">+ Add payment method</button>
+      <button type="button" class="btn btn-primary btn-sm" data-preview-panel="account-add-card-panel">{% pt "add_payment_method" %}</button>
       {% if parent_stripe_enabled %}
       <form method="post" action="{% url 'portal_parent_card_setup' %}" style="display:inline;margin-left:0.5rem;">
         {% csrf_token %}
-        <button type="submit" class="btn btn-secondary btn-sm">Add card with Stripe</button>
+        <button type="submit" class="btn btn-secondary btn-sm">{% pt "add_card" %}</button>
       </form>
       {% endif %}
       <div class="portal-panel card" id="account-add-card-panel" hidden style="margin-top:1rem;">
         <form class="portal-form-grid portal-account-form" id="add-card-form">
-          <div class="form-group portal-form-full"><label>Name on card</label><input type="text" class="portal-input" id="add-card-name"></div>
-          <div class="form-group portal-form-full"><label>Card number</label><input type="text" class="portal-input" id="add-card-number" placeholder="4242 4242 4242 4242"></div>
-          <div class="form-group"><label>Expiration</label><input type="text" class="portal-input" id="add-card-exp" placeholder="MM/YY"></div>
-          <div class="form-group"><label>CVC</label><input type="text" class="portal-input" id="add-card-cvc"></div>
-          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">Save card</button></div>
+          <div class="form-group portal-form-full"><label>{% pt "name_on_card" %}</label><input type="text" class="portal-input" id="add-card-name"></div>
+          <div class="form-group portal-form-full"><label>{% pt "card_number" %}</label><input type="text" class="portal-input" id="add-card-number" placeholder="4242 4242 4242 4242"></div>
+          <div class="form-group"><label>{% pt "expiration" %}</label><input type="text" class="portal-input" id="add-card-exp" placeholder="MM/YY"></div>
+          <div class="form-group"><label>{% pt "cvc" %}</label><input type="text" class="portal-input" id="add-card-cvc"></div>
+          <div class="portal-form-actions portal-form-full"><button type="submit" class="btn btn-primary btn-sm">{% pt "save_card" %}</button></div>
         </form>
       </div>
       {% endif %}
-      <p class="form-note">Cards are stored securely via Stripe.</p>
+      <p class="form-note">{% pt "cards_via_stripe" %}</p>
     </section>
 
     <section class="card portal-profile-full">
-      <h2>Notifications</h2>
+      <h2>{% pt "notifications" %}</h2>
         <form class="portal-form-grid portal-account-form" id="notifications-form"{% if portal_live and parent_authenticated %} method="post" action="{% url 'portal_parent_account_update' %}"{% endif %}>
         {% if portal_live and parent_authenticated %}{% csrf_token %}<input type="hidden" name="action" value="settings">{% endif %}
         <div class="form-group portal-form-full portal-check-row">
           <label class="portal-check-label">
-            <input type="checkbox" name="email_receipts" {% if account.email_receipts %}checked{% endif %} data-label="Email receipts after payment" data-original="{% if account.email_receipts %}On{% else %}Off{% endif %}">
-            Email me a receipt after each payment
+            <input type="checkbox" name="email_receipts" {% if account.email_receipts %}checked{% endif %} data-label="{% pt 'email_receipts_label' %}" data-original="{% if account.email_receipts %}On{% else %}Off{% endif %}">
+            {% pt "email_receipts_label" %}
           </label>
         </div>
         <div class="form-group portal-form-full portal-check-row">
           <label class="portal-check-label">
-            <input type="checkbox" name="email_reminders" {% if account.email_reminders %}checked{% endif %} data-label="Email balance reminders" data-original="{% if account.email_reminders %}On{% else %}Off{% endif %}">
-            Email balance reminders before due dates
+            <input type="checkbox" name="email_reminders" {% if account.email_reminders %}checked{% endif %} data-label="{% pt 'email_reminders_label' %}" data-original="{% if account.email_reminders %}On{% else %}Off{% endif %}">
+            {% pt "email_reminders_label" %}
           </label>
         </div>
         <div class="form-group portal-form-full portal-check-row">
           <label class="portal-check-label">
-            <input type="checkbox" name="sms_reminders" {% if account.sms_reminders %}checked{% endif %} data-label="SMS balance reminders" data-original="{% if account.sms_reminders %}On{% else %}Off{% endif %}">
-            Text (SMS) balance reminders
+            <input type="checkbox" name="sms_reminders" {% if account.sms_reminders %}checked{% endif %} data-label="{% pt 'sms_reminders_label' %}" data-original="{% if account.sms_reminders %}On{% else %}Off{% endif %}">
+            {% pt "sms_reminders_label" %}
           </label>
         </div>
         <div class="portal-form-actions portal-form-full">
-          <button type="submit" class="btn btn-primary">Save preferences</button>
+          <button type="submit" class="btn btn-primary">{% pt "save_preferences" %}</button>
         </div>
       </form>
     </section>
 
     <section class="card portal-profile-full">
-      <h2>Profile changes</h2>
-      <p>Update address, phone, or emergency contacts on your <a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a>. Sensitive changes may require staff approval.</p>
+      <h2>{% pt "profile_changes" %}</h2>
+      <p>{% pt "profile_changes_short" %} <a href="{% parent_portal_href 'profile' %}">{% pt "nav_profile" %}</a></p>
     </section>
   </div>
 </section>
@@ -246,8 +246,8 @@
     var newText = newOn ? ("On — " + newDay) : "Off";
     statusEl.innerHTML =
       '<span class="portal-pending-value">' + newText + '</span> ' +
-      '<span class="portal-pending-badge">Pending review</span><br>' +
-      '<span class="portal-approved-value">Currently on file: ' + oldText + '</span>';
+      '<span class="portal-pending-badge">' + ((window.YEA_PARENT_I18N && window.YEA_PARENT_I18N.pending_review) || "Pending review") + '</span><br>' +
+      '<span class="portal-approved-value">' + ((window.YEA_PARENT_I18N && window.YEA_PARENT_I18N.currently_on_file) || "Currently on file") + ': ' + oldText + '</span>';
   }
 
   var baseRender = pending.render.bind(pending);

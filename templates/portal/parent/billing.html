@@ -83,9 +83,9 @@
       {% for child in billing.children %}
       <article class="card {% if child.type == 'Scholarship' %}card-accent purple{% endif %}">
         <h3>{{ child.name }}</h3>
-        <span class="portal-payment-badge portal-payment-badge-sm">{{ child.type|default:"Private pay" }}</span>
+        <span class="portal-payment-badge portal-payment-badge-sm">{% ptl child.type|default:"Private pay" %}</span>
         <dl class="portal-dl">
-          <dt>{% pt "plan" %}</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
+          <dt>{% pt "plan" %}</dt><dd>{% ptl child.plan|default:"Weekly" %}</dd>
           {% if child.full_rate %}
           <dt>{% pt "full_program_rate" %}</dt><dd>${{ child.full_rate }}</dd>
           <dt>{% pt "scholarship_discount" %}</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
@@ -123,10 +123,10 @@
               {% if row.type == 'discount' %}
               <span class="portal-ledger-type portal-ledger-type-discount">{% pt "discount" %}</span>
               {% else %}
-              {{ row.type|title }}
+              {% ptl row.type|title %}
               {% endif %}
             </td>
-            <td>{{ row.description }}</td>
+            <td>{% ptl row.description %}</td>
             <td>{% if row.reference_display %}{{ row.reference_display }}{% else %}—{% endif %}</td>
             <td class="{% if row.type == 'payment' or row.type == 'discount' %}portal-amount-credit{% else %}portal-amount-debit{% endif %}">
               {% if row.type == 'payment' or row.type == 'discount' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}

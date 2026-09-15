@@ -1,31 +1,32 @@
-<h2>Program</h2>
+{% load parent_i18n %}
+<h2>{% pt "program" %}</h2>
 <dl class="portal-dl portal-dl-2col">
-  <dt>Program</dt><dd>{{ application.program }}</dd>
-  <dt>Location</dt><dd>{{ application.location }}</dd>
-  <dt>School attending</dt><dd>{{ application.student_school|default:"—" }}</dd>
+  <dt>{% pt "program" %}</dt><dd>{% ptl application.program %}</dd>
+  <dt>{% pt "location" %}</dt><dd>{{ application.location }}</dd>
+  <dt>{% pt "school_attending" %}</dt><dd>{{ application.student_school|default:"—" }}</dd>
 </dl>
-<h2>Student</h2>
+<h2>{% pt "student" %}</h2>
 <dl class="portal-dl portal-dl-2col">
-  <dt>Child</dt><dd>{{ application.child_name }}</dd>
-  <dt>Date of birth</dt><dd>{{ application.student_dob }}</dd>
-  <dt>Grade</dt><dd>{{ application.grade }}</dd>
+  <dt>{% pt "child" %}</dt><dd>{{ application.child_name }}</dd>
+  <dt>{% pt "date_of_birth" %}</dt><dd>{% ptl application.student_dob %}</dd>
+  <dt>{% pt "grade" %}</dt><dd>{{ application.grade }}</dd>
 </dl>
-<h2>Family &amp; guardians</h2>
+<h2>{% pt "family_guardians" %}</h2>
 <dl class="portal-dl portal-dl-2col">
-  <dt>Family name</dt><dd>{{ application.family_name }}</dd>
-  <dt>Home address</dt><dd>{{ application.home_address }}</dd>
-  <dt>Primary parent</dt><dd>{{ application.primary_parent }}</dd>
-  <dt>Email</dt><dd>{{ application.primary_email }}</dd>
-  <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
+  <dt>{% pt "family_name_label" %}</dt><dd>{{ application.family_name }}</dd>
+  <dt>{% pt "home_address" %}</dt><dd>{{ application.home_address }}</dd>
+  <dt>{% pt "primary_parent" %}</dt><dd>{{ application.primary_parent }}</dd>
+  <dt>{% pt "email" %}</dt><dd>{{ application.primary_email }}</dd>
+  <dt>{% pt "phone" %}</dt><dd>{{ application.primary_phone }}</dd>
 </dl>
-<h2>Billing preferences</h2>
+<h2>{% pt "billing_preferences" %}</h2>
 <dl class="portal-dl portal-dl-2col">
-  <dt>Payment method</dt><dd>{{ application.payment_method }}{% if application.payment_method_other %} — {{ application.payment_method_other }}{% endif %}</dd>
-  <dt>Payment plan</dt><dd>{{ application.payment_plan }}</dd>
-  <dt>Membership fee ($20)</dt><dd>{{ application.membership_fee_agreed }}</dd>
+  <dt>{% pt "payment_method" %}</dt><dd>{% ptl application.payment_method %}{% if application.payment_method_other %} — {{ application.payment_method_other }}{% endif %}</dd>
+  <dt>{% pt "payment_plan" %}</dt><dd>{{ application.payment_plan }}</dd>
+  <dt>{% pt "membership_fee_agreed" %}</dt><dd>{{ application.membership_fee_agreed }}</dd>
 </dl>
 {% if application.emergency_contacts %}
-<h2>Emergency contacts</h2>
+<h2>{% pt "emergency_contacts_heading" %}</h2>
 <ul class="portal-link-list">
   {% for c in application.emergency_contacts %}
   <li>{{ c.name }} — {{ c.phone }}</li>

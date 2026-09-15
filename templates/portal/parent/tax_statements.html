@@ -4,7 +4,8 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>{% pt "tax_title" %}</h1>
-    <p class="lead">{% pt "tax_year_lead" year=tax_settings.tax_year available=tax_settings.available_from %}</p>
+    {% ptl tax_settings.available_from as tax_available %}
+    <p class="lead">{% pt "tax_year_lead" year=tax_settings.tax_year available=tax_available %}</p>
   </div>
 </section>
 <section class="page-content">
@@ -22,7 +23,7 @@
       {% if portal_live and parent_authenticated %}
       <a class="btn btn-primary" href="{% url 'portal_parent_tax_statement_print' %}">{% pt "download_statement" %}</a>
       {% else %}
-      <button type="button" class="btn btn-primary" disabled>Download PDF (preview)</button>
+      <button type="button" class="btn btn-primary" disabled>{% pt "download_pdf_preview" %}</button>
       {% endif %}
       <p class="form-note">{% pt "shows_qualifying_payments" %}</p>
     </section>
@@ -30,7 +31,7 @@
     <section class="card portal-callout-warning">
       <h2>{% pt "statement_unavailable" %}</h2>
       <p>{% pt "current_balance" %}: <strong>${{ tax_eligibility.balance }}</strong></p>
-      <p>{{ tax_eligibility.reason }}</p>
+      <p>{% ptl tax_eligibility.reason %}</p>
       <a class="btn btn-primary" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">{% pt "go_to_billing" %}</a>
     </section>
     {% endif %}

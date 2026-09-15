@@ -1,6 +1,6 @@
 {% load parent_i18n %}
 <aside class="portal-sidebar{% if portal_area == 'staff' %} portal-sidebar-staff{% elif portal_area == 'admin' %} portal-sidebar-admin{% endif %}" id="portal-sidebar" aria-label="Portal navigation">
-  <button type="button" class="portal-sidebar-toggle" id="portal-sidebar-toggle" aria-expanded="true" aria-controls="portal-sidebar">
+  <button type="button" class="portal-sidebar-toggle" id="portal-sidebar-toggle" aria-expanded="true" aria-controls="portal-sidebar" data-collapse-label="{% if portal_area == 'parent' %}{% pt 'collapse_menu' %}{% else %}Collapse menu{% endif %}" data-expand-label="{% if portal_area == 'parent' %}{% pt 'expand_menu' %}{% else %}Expand menu{% endif %}">
     <span class="portal-sidebar-toggle-icon" aria-hidden="true"></span>
     <span class="portal-sidebar-toggle-label">{% if portal_area == 'parent' %}{% pt "collapse_menu" %}{% else %}Collapse menu{% endif %}</span>
   </button>
@@ -15,21 +15,21 @@
     </div>
     <div class="portal-sidebar-user-meta">
       <strong class="portal-sidebar-user-name">{{ parent_avatar.display_name }}</strong>
-      <span class="portal-sidebar-user-role">{{ parent_preview.label|default:"Parent account" }}</span>
+      <span class="portal-sidebar-user-role">{% if parent_preview.label %}{% ptl parent_preview.label %}{% else %}{% pt "parent_account" %}{% endif %}</span>
     </div>
   </div>
   <p class="portal-sidebar-label">{% pt "nav_parent_menu" %}</p>
   {% include "portal/includes/parent_nav.html" %}
   <div class="portal-sidebar-footer">
     {% if admin_support_preview and admin_preview_family_slug %}
-    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_family_detail' family_slug=admin_preview_family_slug %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">← Family account</a>
+    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_family_detail' family_slug=admin_preview_family_slug %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">{% pt "family_account_link" %}</a>
     <form method="post" action="{% url 'portal_admin_parent_preview_end' family_slug=admin_preview_family_slug %}" class="portal-sidebar-end-view">
       {% csrf_token %}
       {% if admin_preview_family_id %}<input type="hidden" name="family_id" value="{{ admin_preview_family_id }}">{% endif %}
-      <button type="submit" class="btn btn-secondary btn-sm portal-signout-btn">End support view</button>
+      <button type="submit" class="btn btn-secondary btn-sm portal-signout-btn">{% pt "end_support_view" %}</button>
     </form>
     {% elif admin_support_preview %}
-    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_page' page='communications' %}">← Back to admin</a>
+    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_page' page='communications' %}">{% pt "back_to_admin" %}</a>
     {% elif parent_authenticated %}
     <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
     {% else %}

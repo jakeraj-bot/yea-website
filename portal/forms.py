@@ -16,11 +16,21 @@ class ParentContactForm(ContactForm):
         ("summer_camp", "Summer camp"),
         ("general", "General"),
     ]
+    TOPIC_KEYS = [
+        ("billing", "contact_topic_billing"),
+        ("programming", "contact_topic_programming"),
+        ("after_school", "program_after_school_full"),
+        ("summer_camp", "program_summer"),
+        ("general", "contact_topic_general"),
+    ]
 
     topic = forms.ChoiceField(choices=TOPIC_CHOICES)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, lang="en", **kwargs):
         super().__init__(*args, **kwargs)
+        from .parent_i18n import translate
+
+        self.fields["topic"].choices = [(value, translate(lang, key)) for value, key in self.TOPIC_KEYS]
         for name, field in self.fields.items():
             if name == "company":
                 continue

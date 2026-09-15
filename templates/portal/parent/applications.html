@@ -20,10 +20,10 @@
           {% for app in parent_applications %}
           <tr>
             <td>{{ app.child_name }}</td>
-            <td>{{ app.program }}</td>
+            <td>{% ptl app.program %}</td>
             <td>{{ app.location }}</td>
-            <td>{{ app.submitted }}</td>
-            <td><span class="portal-status portal-status-{{ app.status_slug }}">{{ app.status }}</span></td>
+            <td>{% ptl app.submitted %}</td>
+            <td><span class="portal-status portal-status-{{ app.status_slug }}">{% ptl app.status %}</span></td>
             <td>
               {% if app.demo %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}">{% pt "view" %}</a>

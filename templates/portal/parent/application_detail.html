@@ -1,84 +1,84 @@
 {% extends "portal/base.html" %}
-{% load portal_tags %}
+{% load portal_tags parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> / {{ application.child_name }}</p>
-    <h1>Application — {{ application.child_name }}</h1>
-    <p class="lead">Submitted {{ application.submitted }} · Ref {{ application.reference }}</p>
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">{% pt "applications_title" %}</a> / {{ application.child_name }}</p>
+    <h1>{% pt "application_for" %} — {{ application.child_name }}</h1>
+    <p class="lead">{% pt "submitted_label" %} {% ptl application.submitted %} · Ref {{ application.reference }}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="portal-toolbar">
-      <span class="portal-status portal-status-{{ application.status_slug|default:'under-review' }}">{{ application.status }}</span>
-      <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{% append_query parent_pay_query ref=application.reference %}">Download PDF</a>
+      <span class="portal-status portal-status-{{ application.status_slug|default:'under-review' }}">{% ptl application.status %}</span>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_application_print' %}{% append_query parent_pay_query ref=application.reference %}">{% pt "download_pdf" %}</a>
       {% if application.can_add_after_school %}
-      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_after_care' reference=application.reference %}">+ After-care</a>
+      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_after_care' reference=application.reference %}">{% pt "add_after_care" %}</a>
       {% endif %}
       {% if application.can_add_before_care %}
-      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_before_care' reference=application.reference %}">+ Before care</a>
+      <a class="btn btn-secondary" href="{% url 'enrollment_apply_add_before_care' reference=application.reference %}">{% pt "add_before_care" %}</a>
       {% endif %}
     </div>
 
     {% if application.staff_message %}
     <div class="portal-callout card {% if application.status_slug == 'declined' %}portal-callout-danger{% else %}portal-callout-warning{% endif %}">
-      <p><strong>{% if application.status_slug == 'declined' %}Message from YEA staff{% elif application.status_slug == 'pending-documents' %}Action needed{% else %}Note from YEA staff{% endif %}</strong></p>
+      <p><strong>{% if application.status_slug == 'declined' %}{% pt "staff_message_heading" %}{% elif application.status_slug == 'pending-documents' %}{% pt "action_needed" %}{% else %}{% pt "note_from_staff" %}{% endif %}</strong></p>
       <p>{{ application.staff_message|linebreaksbr }}</p>
       {% if application.status_slug == 'pending-documents' %}
-      <p class="form-note">Reply through portal Support or use <strong>Edit &amp; resubmit application</strong> to update your answers online and send them back for review.</p>
+      <p class="form-note">{% pt "pending_docs_reply" %}</p>
       {% endif %}
     </div>
     {% endif %}
 
     <div class="portal-application card">
-      <h2>Program</h2>
+      <h2>{% pt "program" %}</h2>
       <dl class="portal-dl portal-dl-2col">
-        <dt>Program</dt><dd>{{ application.program }}</dd>
-        <dt>Location</dt><dd>{{ application.location }}</dd>
+        <dt>{% pt "program" %}</dt><dd>{% ptl application.program %}</dd>
+        <dt>{% pt "location" %}</dt><dd>{{ application.location }}</dd>
       </dl>
 
-      <h2>Student</h2>
+      <h2>{% pt "student" %}</h2>
       <dl class="portal-dl portal-dl-2col">
-        <dt>Child</dt><dd>{{ application.child_name }}</dd>
-        <dt>Date of birth</dt><dd>{{ application.student_dob }}</dd>
-        <dt>Grade</dt><dd>{{ application.grade }}</dd>
+        <dt>{% pt "child" %}</dt><dd>{{ application.child_name }}</dd>
+        <dt>{% pt "date_of_birth" %}</dt><dd>{% ptl application.student_dob %}</dd>
+        <dt>{% pt "grade" %}</dt><dd>{{ application.grade }}</dd>
       </dl>
 
-      <h2>Family &amp; guardians</h2>
+      <h2>{% pt "family_guardians" %}</h2>
       <dl class="portal-dl portal-dl-2col">
-        <dt>Family name</dt><dd>{{ application.family_name }}</dd>
-        <dt>Home address</dt><dd>{{ application.home_address }}</dd>
-        <dt>Primary parent</dt><dd>{{ application.primary_parent }}</dd>
-        <dt>Email</dt><dd>{{ application.primary_email }}</dd>
-        <dt>Phone</dt><dd>{{ application.primary_phone }}</dd>
+        <dt>{% pt "family_name_label" %}</dt><dd>{{ application.family_name }}</dd>
+        <dt>{% pt "home_address" %}</dt><dd>{{ application.home_address }}</dd>
+        <dt>{% pt "primary_parent" %}</dt><dd>{{ application.primary_parent }}</dd>
+        <dt>{% pt "email" %}</dt><dd>{{ application.primary_email }}</dd>
+        <dt>{% pt "phone" %}</dt><dd>{{ application.primary_phone }}</dd>
       </dl>
 
-      <h2>Billing preferences</h2>
+      <h2>{% pt "billing_preferences" %}</h2>
       <dl class="portal-dl portal-dl-2col">
-        <dt>Payment method</dt><dd>{{ application.payment_method }}</dd>
-        <dt>Payment plan</dt><dd>{{ application.payment_plan }}</dd>
-        <dt>Membership fee ($20)</dt><dd>{{ application.membership_fee_agreed }}</dd>
+        <dt>{% pt "payment_method" %}</dt><dd>{{ application.payment_method }}</dd>
+        <dt>{% pt "plan" %}</dt><dd>{{ application.payment_plan }}</dd>
+        <dt>{% pt "membership_fee_agreed" %}</dt><dd>{{ application.membership_fee_agreed }}</dd>
       </dl>
 
-      <h2>Emergency contacts</h2>
+      <h2>{% pt "emergency_contacts_heading" %}</h2>
       <ul class="portal-link-list">
         {% for c in application.emergency_contacts %}
         <li>{{ c.name }} — {{ c.phone }}</li>
         {% endfor %}
       </ul>
 
-      <h2>Signed policies</h2>
-      <p class="form-note">{{ application.policies_signed }} of {{ application.policies_total }} policies signed electronically at submission.</p>
+      <h2>{% pt "signed_policies" %}</h2>
+      <p class="form-note">{% pt "policies_signed_at_submit" signed=application.policies_signed total=application.policies_total %}</p>
       {% include "portal/includes/policy_view_sections.html" with policies=application.signed_policies child_name=application.child_name print_expand=True %}
     </div>
       {% if application.status_slug == 'pending-documents' %}
-      <p class="form-note">Update the application online with the requested changes, then resubmit for staff review.</p>
-      <a class="btn btn-primary" href="{% url 'enrollment_apply_edit' reference=application.reference %}">Edit &amp; resubmit application</a>
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
+      <a class="btn btn-primary" href="{% url 'enrollment_apply_edit' reference=application.reference %}">{% pt "edit" %}</a>
       {% elif application.status_slug == 'declined' %}
-      <p class="form-note">If you have questions, please contact us through the office.</p>
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">{% pt "contact_us" %}</a></p>
       {% else %}
-      <p class="form-note">After approval, this child moves to your <a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a> and billing begins in the portal.</p>
+      <p class="form-note"><a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">{% pt "nav_profile" %}</a></p>
       {% endif %}
   </div>
 </section>
