@@ -1,0 +1,11 @@
+{% load parent_i18n %}
+{% if admin_support_preview or admin_preview_sample %}
+<button type="button"
+        class="btn btn-primary{% if button_class %} {{ button_class }}{% endif %} portal-preview-action portal-parent-pay-now"
+        data-preview-message="{% pt 'preview_no_charge' %}"
+        aria-disabled="true">
+  {% pt "pay_now" %}
+</button>
+{% else %}
+<a class="btn btn-primary{% if button_class %} {{ button_class }}{% endif %} portal-parent-pay-now" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
+{% endif %}

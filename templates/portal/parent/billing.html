@@ -12,9 +12,9 @@
         <span class="portal-stat-label">{% if billing.has_credit %}{% pt "account_credit" %}{% else %}{% pt "family_running_balance" %}{% endif %}</span>
         <strong class="portal-dash-hero-balance-amount">{% if billing.has_credit %}{% pt "credit_amount" credit=billing.account_credit %}{% else %}${{ billing.running_balance }}{% endif %}</strong>
       </div>
-      {% if not hide_card_details and not admin_support_preview or admin_preview_sample %}
-      <a class="btn btn-primary" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
-      {% endif %}
+      <div class="portal-parent-hero-pay">
+        {% include "portal/includes/parent_pay_now.html" %}
+      </div>
     </div>
   </div>
 </section>
@@ -31,7 +31,9 @@
     <section class="card portal-profile-full">
       <div class="portal-toolbar">
         <h2 style="margin:0;">{% pt "payment_methods" %}</h2>
-        {% if not hide_card_details and not admin_support_preview %}
+        {% if hide_card_details or admin_support_preview %}
+        <button type="button" class="btn btn-primary btn-sm portal-preview-action" data-preview-message="{% pt 'preview_no_charge' %}" aria-disabled="true">+ {% pt "add_card" %}</button>
+        {% else %}
         <button type="button" class="btn btn-primary btn-sm" id="billing-add-card-btn">+ {% pt "add_card" %}</button>
         {% endif %}
       </div>

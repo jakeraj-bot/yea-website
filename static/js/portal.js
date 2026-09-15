@@ -59,7 +59,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll(".portal-preview-action").forEach(function (button) {
-    button.addEventListener("click", function () {
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
       window.portalPreviewToast(button.getAttribute("data-preview-message") || "Updated for preview.");
     });
   });

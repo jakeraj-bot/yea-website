@@ -43,6 +43,8 @@ class ParentPortalCompactI18nTests(TestCase):
         self.assertContains(page, "Pay now")
         self.assertContains(page, reverse("portal_parent_payment"))
         self.assertContains(page, "Add another child")
+        self.assertContains(page, "portal-parent-hero-pay")
+        self.assertNotContains(page, "portal-preview-action")
         self.assertNotContains(page, "Enrolling another child?")
         self.assertNotContains(page, "Already applied for after-school?")
         self.assertNotContains(page, "+ Before care")
