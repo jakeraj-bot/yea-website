@@ -390,6 +390,31 @@ def parent_copay_after_scholarship(scholarship, copay_amount):
     return family_pays, copay - family_pays
 
 
+def _apply_plan_scholarship(
+    child,
+    scholarship_fund_id=None,
+    scholarship_full_rate=None,
+    scholarship_parent_amount=None,
+    fallback_full_rate=None,
+    full_rate_error="Enter the plan rate before the scholarship.",
+):
+    """Attach the per-child scholarship to a plan. Empty fund means no change."""
+    if scholarship_fund_id in (None, ""):
+        return None
+    full_rate = scholarship_full_rate if scholarship_full_rate not in (None, "") else fallback_full_rate
+    if scholarship_parent_amount in (None, ""):
+        raise ValueError("Enter how much the family pays after the scholarship.")
+    if full_rate in (None, ""):
+        raise ValueError(full_rate_error)
+    return apply_scholarship_to_child_plan(
+        child,
+        scholarship_fund_id,
+        full_rate,
+        scholarship_parent_amount,
+        start_date=timezone.localdate(),
+    )
+
+
 def _apply_four_cs_plan_scholarship(
     child,
     scholarship_fund_id=None,
@@ -398,19 +423,13 @@ def _apply_four_cs_plan_scholarship(
     fallback_full_rate=None,
 ):
     """Attach the existing per-child scholarship to a 4Cs plan (copay only)."""
-    if scholarship_fund_id in (None, ""):
-        return None
-    full_rate = scholarship_full_rate if scholarship_full_rate not in (None, "") else fallback_full_rate
-    if scholarship_parent_amount in (None, ""):
-        raise ValueError("Enter how much the family pays after the scholarship.")
-    if full_rate in (None, ""):
-        raise ValueError("Enter the parent copay before the scholarship.")
-    return apply_scholarship_to_child_plan(
+    return _apply_plan_scholarship(
         child,
-        scholarship_fund_id,
-        full_rate,
-        scholarship_parent_amount,
-        start_date=timezone.localdate(),
+        scholarship_fund_id=scholarship_fund_id,
+        scholarship_full_rate=scholarship_full_rate,
+        scholarship_parent_amount=scholarship_parent_amount,
+        fallback_full_rate=fallback_full_rate,
+        full_rate_error="Enter the parent copay before the scholarship.",
     )
 
 
@@ -969,6 +988,14 @@ def _save_extra_billing_plan(
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=row.billing_amount,
         )
+    else:
+        _apply_plan_scholarship(
+            child,
+            scholarship_fund_id=scholarship_fund_id,
+            scholarship_full_rate=scholarship_full_rate,
+            scholarship_parent_amount=scholarship_parent_amount,
+            fallback_full_rate=row.billing_amount if row.billing_amount is not None else amount,
+        )
     posted = []
     if row.auto_charge and row.next_charge_date and row.next_charge_date <= timezone.localdate():
         posted = run_due_plan_charges(child=child, plan=row)
@@ -1028,6 +1055,7 @@ def update_child_billing_plan(
         )
     child.billing_plan = plan.strip() or child.billing_plan
     billing_label = (billing_type or "").strip()
+    four_cs_profile = agency_profile_for(child) if billing_label.lower() == "4cs" or "4cs" in billing_label.lower() else None
     if billing_label.lower() == "scholarship":
         parent_amount = scholarship_parent_amount if scholarship_parent_amount not in (None, "") else amount
         assignment = apply_scholarship_to_child_plan(
@@ -1038,9 +1066,20 @@ def update_child_billing_plan(
             start_date=timezone.localdate(),
         )
         child.billing_amount = assignment.parent_amount
+    elif not four_cs_profile:
+        assignment = _apply_plan_scholarship(
+            child,
+            scholarship_fund_id=scholarship_fund_id,
+            scholarship_full_rate=scholarship_full_rate,
+            scholarship_parent_amount=scholarship_parent_amount,
+            fallback_full_rate=amount if amount not in (None, "") else child.billing_amount,
+        )
+        if assignment:
+            child.billing_amount = assignment.parent_amount
+        elif amount not in (None, ""):
+            child.billing_amount = _parse_amount(amount)
     elif amount not in (None, ""):
         child.billing_amount = _parse_amount(amount)
-    four_cs_profile = agency_profile_for(child) if billing_label.lower() == "4cs" or "4cs" in billing_label.lower() else None
     if four_cs_profile:
         from .agency_weeks import (
             FOUR_CS_WEEKLY_POST_WEEKDAY,

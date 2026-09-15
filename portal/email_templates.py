@@ -34,7 +34,7 @@ DEFAULT_TEMPLATES = {
             "Date: {date}\n\n"
             "Current balance for {child_name}: ${child_balance}\n"
             "Family balance (what the household owes): ${family_balance}\n\n"
-            "You can review and pay in the parent portal:\n"
+            "You can review and pay now in the parent portal:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
         ),
@@ -47,7 +47,7 @@ DEFAULT_TEMPLATES = {
             "School starts September 8th. All accounts need to be paid by the first day of "
             "program for your child to begin.\n\n"
             "Please also remember the $20 membership fee for the year.\n\n"
-            "Sign in to review your balance and pay:\n"
+            "Sign in to review your balance and pay now:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
         ),
@@ -65,7 +65,7 @@ DEFAULT_TEMPLATES = {
             "New charge amount: ${amount}\n\n"
             "Current balance for {child_name}: ${child_balance}\n"
             "Family balance (what the household owes): ${family_balance}\n\n"
-            "You can review and pay in the parent portal:\n"
+            "You can review and pay now in the parent portal:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
         ),
@@ -79,7 +79,7 @@ DEFAULT_TEMPLATES = {
             "added as of Tuesday (one-day grace: due Friday, fee Tuesday).\n\n"
             "Your current family balance is ${family_balance}.\n"
             "{child_lines}\n"
-            "Please pay in the parent portal:\n"
+            "Please pay now in the parent portal:\n"
             "{portal_url}\n\n"
             "Youth Education Academy\n"
         ),
@@ -133,7 +133,7 @@ def absolute_portal_url(url_name):
 
 
 def parent_portal_url():
-    return absolute_portal_url("portal_parent_login")
+    return absolute_portal_url("portal_parent_payment")
 
 
 def welcome_portal_url(portal_type):

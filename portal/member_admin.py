@@ -837,12 +837,15 @@ def apply_discount_to_family(family, plan_id, child_name=""):
     if child_name:
         label = f"{label} ({child_name})"
     if plan.kind == PortalDiscountPlan.KIND_PERCENT:
+        from .family_list import family_balance
+
         child = family.children.filter(name=child_name).first() if child_name else family.children.filter(is_active=True).first()
         base = Decimal("0")
+        ledger_total = family_balance(family)
         if child and child.billing_amount:
             base = child.billing_amount
-        elif family.balance > 0:
-            base = family.balance
+        elif ledger_total > 0:
+            base = ledger_total
         credit_amount = (base * plan.value / Decimal("100")).quantize(Decimal("0.01"))
         if credit_amount <= 0:
             raise ValueError("Percent discounts need a child plan amount or a family balance to calculate from.")

@@ -864,7 +864,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Outstanding balances",
-        "lead": "Children who still owe, largest balance first. Use status to include waitlist or withdrawn accounts.",
+        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist or withdrawn accounts.",
         "columns": [
             ("child", "Child"),
             ("unit", "Unit"),

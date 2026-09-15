@@ -403,11 +403,11 @@ GUIDES = {
     },
     "outstanding-balances": {
         "title": "How to use outstanding balances",
-        "intro": "This list is one row per child who still owes. Child names open the family billing account. Status is a filter, not a column.",
+        "intro": "This list is one row per child who still owes after payments. Child names open the family billing account. Status is a filter, not a column.",
         "steps": [
             {
                 "title": "Read child names and amounts",
-                "body": "Each row is a child with that child's outstanding amount, not the household last name. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
+                "body": "Each row is a child with that child's remaining amount after payments, not the household last name. Parent card, check, or money order payments drop this number by the tuition applied — Stripe's processing fee is not still owed. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
             },
             {
                 "title": "Filter by status",
@@ -447,7 +447,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Read the weeks",
-                "body": "Weeks come from the charge description (plan notes, 4Cs week dates, or the school week of the charge date). Family-level payments count toward the household balance.",
+                "body": "Weeks come from the charge description (plan notes, 4Cs week dates, or the school week of the charge date). Amounts are remaining after payments, including family-level payments with no child on the row. Children at $0 stay off the list.",
             },
             {
                 "title": "Charge a late fee only if you pick them",
@@ -700,6 +700,10 @@ GUIDES = {
             {
                 "title": "4Cs vs private pay",
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
+            },
+            {
+                "title": "Add a scholarship on a regular plan",
+                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount.",
             },
             {
                 "title": "Add a scholarship on a 4Cs plan",

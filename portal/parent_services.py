@@ -133,8 +133,6 @@ def _child_balances_from_ledger(family):
                 row["four_cs_weeks"] = [
                     serialize_week(week) for week in profile.contract_weeks.order_by("week_start")
                 ]
-            elif assignment:
-                row["type"] = "Scholarship"
             rows.append(row)
         return rows
 
@@ -793,9 +791,12 @@ def get_parent_announcement_live(family):
 def get_tax_eligibility_live(family):
     preview_key = SEED_PREVIEW_KEYS.get(family.slug, family.slug)
     demo = TAX_STATEMENT_ELIGIBILITY.get(preview_key) if _parent_demo_fallbacks_enabled() else None
-    balance = f"{family.balance:.2f}"
+    from .family_list import family_balance
+
+    ledger_total = family_balance(family)
+    balance = f"{ledger_total:.2f}"
     require_zero = TAX_STATEMENT_SETTINGS.get("require_zero_balance", True)
-    if require_zero and family.balance > 0:
+    if require_zero and ledger_total > 0:
         return {
             "eligible": False,
             "balance": balance,

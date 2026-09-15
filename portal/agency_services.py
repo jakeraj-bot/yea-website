@@ -173,8 +173,12 @@ def agency_page_data(unit):
         .order_by("child__name")
     )
     if profiles.exists():
+        from .family_list import household_ledger_totals
+
         children = []
+        copay_totals = household_ledger_totals([profile.family_id for profile in profiles])
         for profile in profiles:
+            copay_balance = copay_totals.get(profile.family_id, Decimal("0"))
             children.append(
                 {
                     "slug": profile.child.name.lower().replace(" ", "-"),
@@ -191,7 +195,7 @@ def agency_page_data(unit):
                     "weekly_copay": f"{profile.weekly_copay:.2f}",
                     "agency_rate": f"{profile.weekly_agency_rate:.2f}",
                     "agency_name": profile.agency.name if profile.agency_id else "Passaic County 4Cs",
-                    "copay_balance": f"{profile.family.balance:.2f}",
+                    "copay_balance": f"{copay_balance:.2f}",
                     "agency_balance": f"{profile.agency_balance:.2f}",
                     "last_agency_payment": "",
                     "agency_payment_amount": f"{profile.weekly_agency_rate:.2f}",
@@ -617,15 +621,22 @@ def post_agency_remittance(unit, remittance_date, reference, total_amount, alloc
 
 
 def copay_report_rows(unit):
+    from .family_list import household_ledger_totals
+
     rows = []
-    for profile in PortalAgencyProfile.objects.filter(unit=unit).select_related("child", "family"):
+    profiles = list(
+        PortalAgencyProfile.objects.filter(unit=unit).select_related("child", "family")
+    )
+    totals = household_ledger_totals([profile.family_id for profile in profiles])
+    for profile in profiles:
+        copay_balance = totals.get(profile.family_id, Decimal("0"))
         rows.append(
             {
                 "child": profile.child.name,
                 "family": profile.family.name,
                 "family_slug": profile.family.slug,
                 "weekly_copay": f"{profile.weekly_copay:.2f}",
-                "copay_balance": f"{profile.family.balance:.2f}",
+                "copay_balance": f"{copay_balance:.2f}",
                 "agency_balance": f"{profile.agency_balance:.2f}",
                 "auth_number": profile.auth_number,
             }
@@ -634,11 +645,15 @@ def copay_report_rows(unit):
 
 
 def balances_report_rows(unit):
+    from .family_list import household_ledger_totals
     from .unit_visibility import families_qs_for_unit
 
     rows = []
-    for family in families_qs_for_unit(unit).order_by("name"):
-        if family.balance <= 0:
+    families = list(families_qs_for_unit(unit).order_by("name"))
+    totals = household_ledger_totals([family.pk for family in families])
+    for family in families:
+        total = totals.get(family.pk, Decimal("0"))
+        if total <= 0:
             continue
         rows.append(
             {
@@ -646,7 +661,7 @@ def balances_report_rows(unit):
                 "slug": family.slug,
                 "contact": family.primary_contact,
                 "billing_type": family.billing_type,
-                "balance": f"{family.balance:.2f}",
+                "balance": f"{total:.2f}",
                 "program": family.program_label,
             }
         )

@@ -55,12 +55,15 @@
               </label>
             </div>
           </div>
+          <input type="hidden" id="pay-amount-hidden" name="amount" value="{% if billing.balance_due and billing.balance_due != '0.00' %}{{ payment_amount|default:billing.balance_due }}{% endif %}">
           <div class="form-group" id="custom-amount-wrap"{% if billing.balance_due and billing.balance_due != "0.00" %} hidden{% endif %}>
             <label for="pay-amount">{% pt "payment_amount" %}</label>
             <div class="portal-input-prefix">
               <span>$</span>
-              <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" class="portal-input" value="{% if billing.balance_due and billing.balance_due != '0.00' %}{{ payment_amount|default:billing.balance_due }}{% endif %}" required>
+              <input id="pay-amount" type="number" min="0.01" step="0.01" class="portal-input" inputmode="decimal" value="{% if billing.balance_due and billing.balance_due != '0.00' %}{{ payment_amount|default:billing.balance_due }}{% endif %}" {% if not billing.balance_due or billing.balance_due == "0.00" %}placeholder="0.00"{% endif %}>
             </div>
+            <p class="form-note" id="pay-ahead-hint">{% if billing.has_credit or billing.balance_due == "0.00" %}{% pt "enter_pay_ahead" %}{% endif %}</p>
+            <p class="form-note portal-flash portal-flash-error" id="pay-amount-error" hidden>{% pt "enter_pay_amount" %}</p>
             <p class="form-note" id="credit-note">{% if billing.has_credit %}{% pt "already_have_credit" credit=billing.account_credit %}{% endif %}</p>
           </div>
           {% endif %}
@@ -72,6 +75,10 @@
             {% else %}
             <p><strong>{% pt "secure_card" %}</strong></p>
             {% endif %}
+          </div>
+          {% elif portal_live and parent_authenticated %}
+          <div class="portal-callout card portal-callout-warning portal-form-full">
+            <p>{% pt "online_payments_disabled" amount=billing.balance_due|default:payment_amount %}</p>
           </div>
           {% else %}
           <div class="form-group portal-form-full">
@@ -154,6 +161,8 @@
   var form = document.getElementById("parent-payment-form");
   var customWrap = document.getElementById("custom-amount-wrap");
   var amountInput = document.getElementById("pay-amount");
+  var amountHidden = document.getElementById("pay-amount-hidden");
+  var amountError = document.getElementById("pay-amount-error");
   var creditNote = document.getElementById("credit-note");
   var methodSelect = document.getElementById("pay-method");
   var addCardPanel = document.getElementById("add-card-panel");
@@ -202,15 +211,30 @@
     }
   }
 
-  form.querySelectorAll('input[name="amount_choice"]').forEach(function (radio) {
-    radio.addEventListener("change", function () {
-      customWrap.hidden = radio.value !== "custom";
-      if (radio.value === "full") amountInput.value = balance.toFixed(2);
+  function setAmountValue(amount) {
+    var value = isNaN(amount) || amount < 0 ? "" : amount.toFixed(2);
+    if (amountInput) amountInput.value = value;
+    if (amountHidden) amountHidden.value = value;
+  }
+
+  if (form) {
+    form.querySelectorAll('input[name="amount_choice"]').forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        customWrap.hidden = radio.value !== "custom";
+        if (radio.value === "full") setAmountValue(balance);
+        if (amountError) amountError.hidden = true;
+        updateSummary();
+      });
+    });
+  }
+
+  if (amountInput) {
+    amountInput.addEventListener("input", function () {
+      if (amountHidden) amountHidden.value = amountInput.value;
+      if (amountError) amountError.hidden = true;
       updateSummary();
     });
-  });
-
-  if (amountInput) amountInput.addEventListener("input", updateSummary);
+  }
 
   if (methodSelect) {
     methodSelect.addEventListener("change", function () {
@@ -233,8 +257,17 @@
   }
 
   if (form) {
-    form.addEventListener("submit", function () {
-      if (amountInput) amountInput.value = selectedAmount().toFixed(2);
+    form.addEventListener("submit", function (event) {
+      var amount = selectedAmount();
+      if (isNaN(amount) || amount < 0.01) {
+        event.preventDefault();
+        if (customWrap) customWrap.hidden = false;
+        if (amountError) amountError.hidden = false;
+        if (amountInput) amountInput.focus();
+        return;
+      }
+      if (amountError) amountError.hidden = true;
+      setAmountValue(amount);
     });
   }
   updateSummary();

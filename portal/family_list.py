@@ -66,6 +66,26 @@ def household_ledger_totals(family_ids):
     return totals
 
 
+def ledger_owing_by_family(family_ids):
+    """{family_id: Decimal} households whose ledger net is still over $0."""
+    return {
+        family_id: amount
+        for family_id, amount in household_ledger_totals(family_ids).items()
+        if amount > 0
+    }
+
+
+def overdue_ledger_summary(family_ids):
+    """Count and tuition-only total of households that still owe.
+
+    Uses the live ledger (charges minus tuition payments). Stripe fees and a
+    stale ``PortalFamily.balance`` cache do not inflate these numbers.
+    """
+    owing = ledger_owing_by_family(family_ids)
+    total = sum(owing.values(), Decimal("0"))
+    return len(owing), total, owing
+
+
 def household_balance_from_child_map(family_balances):
     """Sum of a per-child map. Prefer household_ledger_totals for family display."""
     if not family_balances:

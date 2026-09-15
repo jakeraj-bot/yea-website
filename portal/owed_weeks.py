@@ -12,7 +12,7 @@ from django.utils import timezone
 from .family_list import (
     child_balance_from_map,
     child_balance_maps,
-    household_balance_from_child_map,
+    household_ledger_totals,
 )
 from .member_admin import is_placeholder_unit
 from .models import PortalChild, PortalFamily, PortalLateFeeSetting, PortalLedgerEntry
@@ -114,7 +114,7 @@ def ledger_balance_context(family, child_name=""):
     maps = child_balance_maps([family.pk] if family and family.pk else [])
     family_map = maps.get(getattr(family, "pk", None), {})
     child_total = child_balance_from_map(family_map, child_name) if child_name else Decimal("0")
-    family_total = household_balance_from_child_map(family_map)
+    family_total = household_ledger_totals([family.pk]).get(family.pk, Decimal("0")) if family and family.pk else Decimal("0")
     return {
         "child_balance": _money(child_total),
         "family_balance": _money(family_total),
@@ -228,6 +228,7 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
             family_ids.append(family.pk)
 
     maps = child_balance_maps(family_ids)
+    family_totals = household_ledger_totals(family_ids)
     family_entries = {}
     for family_id in family_ids:
         family_entries[family_id] = _entries_oldest_first(
@@ -241,30 +242,22 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
         family = child.family
         family_map = maps.get(family.pk, {})
         child_total = child_balance_from_map(family_map, child.name)
-        family_total = household_balance_from_child_map(family_map)
+        if child_total <= 0:
+            continue
+        family_total = family_totals.get(family.pk, Decimal("0"))
         entries = family_entries.get(family.pk, [])
         named = [row for row in entries if (row.child_name or "").strip().lower() == child.name.strip().lower()]
         unpaid = _unpaid_charges(named)
-        unlabeled = [
-            row
-            for row in entries
-            if not (row.child_name or "").strip() and row.entry_type in CREDIT_TYPES and _money(row.amount) < 0
-        ]
-        # Unlabeled credits are applied once per household below.
         weeks = []
         seen_weeks = set()
-        week_remaining = Decimal("0")
         for charge in unpaid:
             label = charge["week"] or format_school_week(charge["date"])
-            week_remaining += charge["remaining"]
             if label not in seen_weeks:
                 seen_weeks.add(label)
                 weeks.append(label)
-        if child_total <= 0 and not unpaid:
-            continue
         unit_name, child_unit_slug = unit_label_for_child(child)
         programs.add(child_program)
-        outstanding += child_total if child_total > 0 else Decimal("0")
+        outstanding += child_total
         rows.append(
             {
                 "child_id": child.pk,
@@ -344,10 +337,10 @@ def families_with_balance(*, unit=None):
         family_ids = set(children_for_unit(unit, active_only=True).values_list("family_id", flat=True))
         families = families.filter(pk__in=family_ids)
     families = [family for family in families if not is_placeholder_unit(family.unit)]
-    maps = child_balance_maps([family.pk for family in families])
+    totals = household_ledger_totals([family.pk for family in families])
     rows = []
     for family in families:
-        total = household_balance_from_child_map(maps.get(family.pk, {}))
+        total = totals.get(family.pk, Decimal("0"))
         if total <= 0:
             continue
         rows.append({"family": family, "balance": _money(total)})
