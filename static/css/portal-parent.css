@@ -280,8 +280,9 @@
   box-shadow: 0 10px 30px rgba(21, 101, 192, 0.18);
 }
 
-.portal-a2hs[hidden] {
-  display: none;
+.portal-a2hs[hidden],
+.portal-a2hs [hidden] {
+  display: none !important;
 }
 
 .portal-a2hs-icon {
