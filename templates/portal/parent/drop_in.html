@@ -175,7 +175,7 @@
   var amountInput = document.getElementById("di-amount");
   var programLabelInput = document.getElementById("di-program-label");
   var fees = { "after-school": "{{ drop_in.fees.after_school }}", summer: "{{ drop_in.fees.summer_camp }}" };
-  var labels = { "after-school": "After-school drop-in", summer: "Summer camp drop-in" };
+  var labels = { "after-school": "{% filter escapejs %}{% pt 'after_school_dropin' %}{% endfilter %}", summer: "{% filter escapejs %}{% pt 'summer_dropin' %}{% endfilter %}" };
   if (programSelect && amountInput) {
     programSelect.addEventListener("change", function () {
       amountInput.value = fees[programSelect.value] || fees["after-school"];

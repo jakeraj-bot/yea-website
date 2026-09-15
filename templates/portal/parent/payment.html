@@ -6,7 +6,7 @@
     {% if is_dropin_payment %}
     <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">{% pt "dropin_title" %}</a> / {% pt "pay_for_dropin" %}</p>
     <h1>{% pt "pay_for_dropin" %}</h1>
-    <p class="lead">{{ dropin.child }} · {{ dropin.program }} · {{ dropin.location }}{% if dropin.date %} · {{ dropin.date }}{% endif %}</p>
+    <p class="lead">{{ dropin.child }} · {% ptl dropin.program %} · {{ dropin.location }}{% if dropin.date %} · {% ptl dropin.date %}{% endif %}</p>
     {% else %}
     <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">{% pt "breadcrumb_billing" %}</a> / {% pt "breadcrumb_pay_balance" %}</p>
     <h1>{% pt "pay_or_credit" %}</h1>
@@ -37,7 +37,7 @@
           <div class="form-group portal-form-full">
             <label>{% pt "dropin_fee" %}</label>
             <p class="portal-balance-total" style="font-size:1.5rem;">${{ dropin.fee }}</p>
-            <p class="form-note">One-day drop-in rate for {{ dropin.program|lower }}.</p>
+            <p class="form-note">{% pt "one_day_dropin_rate" %} {% ptl dropin.program %}</p>
           </div>
           {% else %}
           <div class="form-group portal-form-full">
@@ -100,12 +100,12 @@
             <dl class="portal-dl portal-payment-summary">
               <dt>{% if is_dropin_payment %}{% pt "dropin_fee" %}{% else %}{% pt "program_fees_payment" %}{% endif %}</dt>
               <dd id="summary-subtotal">${{ payment_totals.subtotal }}</dd>
-              <dt>{{ stripe_fee.label }}</dt>
+              <dt>{% pt "card_processing_fee" %}</dt>
               <dd id="summary-fee">${{ payment_totals.fee }}</dd>
               <dt><strong>{% pt "total_charged" %}</strong></dt>
               <dd><strong id="summary-total">${{ payment_totals.total }}</strong></dd>
             </dl>
-            <p class="form-note">{{ stripe_fee.note }}</p>
+            <p class="form-note">{% pt "card_processing_note" percent=stripe_fee.percent_display flat=stripe_fee.flat_display %}</p>
           </div>
 
           <div class="portal-form-actions portal-form-full">
@@ -120,7 +120,7 @@
         <h2>{% pt "booking_summary" %}</h2>
         <dl class="portal-dl">
           <dt>{% pt "child" %}</dt><dd>{{ dropin.child }}</dd>
-          <dt>{% pt "program" %}</dt><dd>{{ dropin.program }}</dd>
+          <dt>{% pt "program" %}</dt><dd>{% ptl dropin.program %}</dd>
           <dt>{% pt "location" %}</dt><dd>{{ dropin.location }}</dd>
           {% if dropin.date %}<dt>{% pt "date" %}</dt><dd>{{ dropin.date }}</dd>{% endif %}
           <dt>{% pt "dropin_fee" %}</dt><dd><strong>${{ dropin.fee }}</strong></dd>

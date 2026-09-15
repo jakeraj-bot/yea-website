@@ -86,7 +86,7 @@
         <article class="portal-dropoff-slot{% if not slot.available %} is-full{% endif %}">
           <div>
             <strong>{{ slot.label }}</strong>
-            <p class="form-note">{{ slot.start_display }} · ${{ slot.price }} · {{ slot.spots_left }} of {{ slot.capacity }} spots left</p>
+            <p class="form-note">{{ slot.start_display }} · ${{ slot.price }} · {% pt "spots_left" left=slot.spots_left capacity=slot.capacity %}</p>
             {% if slot.school_note %}<p class="form-note">{{ slot.school_note }}</p>{% endif %}
           </div>
           {% if slot.available and portal_live and parent_authenticated %}

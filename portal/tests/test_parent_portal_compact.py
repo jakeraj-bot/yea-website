@@ -277,3 +277,16 @@ class ParentPortalCompactI18nTests(TestCase):
         self.assertNotContains(policies, "before care waitlist uses the same signatures")
         help_page = self.client.get(reverse("portal_parent_page", kwargs={"page": "help"}))
         self.assertContains(help_page, "12 firmas")
+        self.assertIn('data-collapse-label="Cerrar menú"', profile.content.decode())
+        self.assertIn('data-expand-label="Abrir menú"', profile.content.decode())
+
+    def test_translate_label_program_and_status(self):
+        from portal.parent_i18n import translate_label
+
+        self.assertEqual(translate_label("es", "Approved"), "Aprobado")
+        self.assertEqual(translate_label("es", "After-school program"), "Programa después de la escuela")
+        self.assertEqual(translate_label("es", "After-School 2026–27"), "Después de la escuela 2026–27")
+        self.assertEqual(translate_label("es", "Mother"), "Madre")
+        self.assertEqual(translate_label("es", "Private pay"), "Pago privado")
+        self.assertEqual(translate_label("en", "After-School 2026–27"), "After-School 2026–27")
+

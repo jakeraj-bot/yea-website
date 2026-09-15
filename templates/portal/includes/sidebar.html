@@ -1,6 +1,6 @@
 {% load parent_i18n %}
 <aside class="portal-sidebar{% if portal_area == 'staff' %} portal-sidebar-staff{% elif portal_area == 'admin' %} portal-sidebar-admin{% endif %}" id="portal-sidebar" aria-label="Portal navigation">
-  <button type="button" class="portal-sidebar-toggle" id="portal-sidebar-toggle" aria-expanded="true" aria-controls="portal-sidebar">
+  <button type="button" class="portal-sidebar-toggle" id="portal-sidebar-toggle" aria-expanded="true" aria-controls="portal-sidebar" data-collapse-label="{% if portal_area == 'parent' %}{% pt 'collapse_menu' %}{% else %}Collapse menu{% endif %}" data-expand-label="{% if portal_area == 'parent' %}{% pt 'expand_menu' %}{% else %}Expand menu{% endif %}">
     <span class="portal-sidebar-toggle-icon" aria-hidden="true"></span>
     <span class="portal-sidebar-toggle-label">{% if portal_area == 'parent' %}{% pt "collapse_menu" %}{% else %}Collapse menu{% endif %}</span>
   </button>

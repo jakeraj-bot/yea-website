@@ -23,10 +23,10 @@
 
     {% if application.staff_message %}
     <div class="portal-callout card {% if application.status_slug == 'declined' %}portal-callout-danger{% else %}portal-callout-warning{% endif %}">
-      <p><strong>{% if application.status_slug == 'declined' %}Message from YEA staff{% elif application.status_slug == 'pending-documents' %}Action needed{% else %}Note from YEA staff{% endif %}</strong></p>
+      <p><strong>{% if application.status_slug == 'declined' %}{% pt "staff_message_heading" %}{% elif application.status_slug == 'pending-documents' %}{% pt "action_needed" %}{% else %}{% pt "note_from_staff" %}{% endif %}</strong></p>
       <p>{{ application.staff_message|linebreaksbr }}</p>
       {% if application.status_slug == 'pending-documents' %}
-      <p class="form-note">Reply through portal Support or use <strong>Edit &amp; resubmit application</strong> to update your answers online and send them back for review.</p>
+      <p class="form-note">{% pt "pending_docs_reply" %}</p>
       {% endif %}
     </div>
     {% endif %}

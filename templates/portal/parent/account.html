@@ -246,8 +246,8 @@
     var newText = newOn ? ("On — " + newDay) : "Off";
     statusEl.innerHTML =
       '<span class="portal-pending-value">' + newText + '</span> ' +
-      '<span class="portal-pending-badge">Pending review</span><br>' +
-      '<span class="portal-approved-value">Currently on file: ' + oldText + '</span>';
+      '<span class="portal-pending-badge">' + ((window.YEA_PARENT_I18N && window.YEA_PARENT_I18N.pending_review) || "Pending review") + '</span><br>' +
+      '<span class="portal-approved-value">' + ((window.YEA_PARENT_I18N && window.YEA_PARENT_I18N.currently_on_file) || "Currently on file") + ': ' + oldText + '</span>';
   }
 
   var baseRender = pending.render.bind(pending);

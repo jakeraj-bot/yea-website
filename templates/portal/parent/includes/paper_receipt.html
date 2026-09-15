@@ -30,7 +30,7 @@
       <p class="portal-paper-receipt-field"><span>{% pt "received_from" %}</span> <strong>{{ receipt.received_from }}</strong></p>
       <p class="portal-paper-receipt-field"><span>{% pt "amount_in_words" %}</span> <strong>{{ receipt.amount_in_words }}</strong></p>
       <p class="portal-paper-receipt-field"><span>{% pt "for_payment_of" %}</span> <strong>{{ receipt.payment_for }}</strong></p>
-      <p class="portal-paper-receipt-field"><span>{% pt "program" %}</span> <strong>{{ receipt.program }}</strong></p>
+      <p class="portal-paper-receipt-field"><span>{% pt "program" %}</span> <strong>{% ptl receipt.program %}</strong></p>
       {% if receipt.child %}<p class="portal-paper-receipt-field"><span>{% pt "child" %}</span> <strong>{{ receipt.child }}</strong></p>{% endif %}
       <dl class="portal-paper-receipt-amounts">
         <div><dt>{% pt "amount_due" %}</dt><dd>${{ receipt.amount_due }}</dd></div>

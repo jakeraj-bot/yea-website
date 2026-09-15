@@ -39,7 +39,7 @@
               <td>{% if contact.authorized_pickup %}{% pt "yes" %}{% else %}{% pt "no" %}{% endif %}</td>
               {% if can_edit_emergency_contacts %}
               <td>
-                <form method="post" action="{% url 'portal_parent_emergency_contact_delete' %}" class="portal-inline-form" onsubmit="return confirm('Remove {{ contact.name }} as an emergency contact for {{ child.name }}? Staff will be emailed.');">
+                <form method="post" action="{% url 'portal_parent_emergency_contact_delete' %}" class="portal-inline-form" onsubmit="return confirm('{% filter escapejs %}{% pt 'confirm_remove_contact' name=contact.name child=child.name %}{% endfilter %}');">
                   {% csrf_token %}
                   <input type="hidden" name="child_id" value="{{ child.id }}">
                   <input type="hidden" name="contact_id" value="{{ contact.id }}">

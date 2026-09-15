@@ -162,7 +162,7 @@
           <dt>{% pt "grade" %}</dt><dd>{{ child.grade }}</dd>
           <dt>{% pt "location" %}</dt><dd>{{ child.location }}</dd>
           <dt>{% pt "current_program" %}</dt><dd>{% ptl child.program %}</dd>
-          {% if child.payment_type %}<dt>{% pt "payment_type" %}</dt><dd>{{ child.payment_type }}</dd>{% endif %}
+          {% if child.payment_type %}<dt>{% pt "payment_type" %}</dt><dd>{% ptl child.payment_type %}</dd>{% endif %}
           <dt>{% pt "allergies" %}</dt><dd id="display-child-allergies-{{ forloop.counter0 }}">{% if child.allergies %}{{ child.allergies }}{% else %}{% pt "none" %}{% endif %}</dd>
           <dt>{% pt "medications" %}</dt><dd id="display-child-medications-{{ forloop.counter0 }}">{% if child.medications %}{{ child.medications }}{% else %}{% pt "none" %}{% endif %}</dd>
         </dl>
