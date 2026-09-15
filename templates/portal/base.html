@@ -104,9 +104,7 @@
               <strong class="portal-header-balance-amount">${{ parent_header.amount }}</strong>
               {% endif %}
             </div>
-            {% if not admin_support_preview or admin_preview_sample %}
-            <a class="btn btn-primary btn-sm" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
-            {% endif %}
+            {% include "portal/includes/parent_pay_now.html" with button_class="btn-sm" %}
           </div>
           {% endif %}
             <form class="portal-lang-switch" method="post" action="{% url 'portal_parent_set_language' %}" role="group" aria-label="{% pt 'lang_group' %}" data-lang-cookie="yea_parent_lang">

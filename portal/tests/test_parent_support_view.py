@@ -91,6 +91,11 @@ class ParentSupportViewTests(TestCase):
         self.assertContains(response, "Support view")
         self.assertContains(response, "Rivera")
         self.assertContains(response, "Card numbers are hidden")
+        self.assertContains(response, "Pay now")
+        self.assertContains(response, "Add another child")
+        self.assertContains(response, "portal-preview-action")
+        self.assertContains(response, "this does not charge a card")
+        self.assertNotContains(response, reverse("portal_parent_payment"))
         self.assertTrue(
             PortalSupportViewSession.objects.filter(family=self.family, ended_at__isnull=True).exists()
         )
@@ -159,7 +164,11 @@ class ParentSupportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "ending 4242")
         self.assertContains(response, "ending ••••")
-        self.assertContains(response, "Pay and add-card actions are hidden in support view")
+        self.assertContains(response, "Pay now")
+        self.assertContains(response, "portal-preview-action")
+        self.assertContains(response, "+ Add card")
+        self.assertContains(response, "They do not charge a card from this view")
+        self.assertNotContains(response, reverse("portal_parent_payment"))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_sample_parent_portal_does_not_need_parent_account(self):
@@ -167,6 +176,11 @@ class ParentSupportViewTests(TestCase):
         response = self.client.get(reverse("portal_admin_parent_preview_sample"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sample parent portal")
+        self.assertContains(response, "Pay now")
+        self.assertContains(response, "Add another child")
+        self.assertContains(response, "portal-preview-action")
+        self.assertContains(response, "this does not charge a card")
+        self.assertNotContains(response, reverse("portal_parent_payment"))
         self.assertFalse(PortalSupportViewSession.objects.exists())
         missing = self.client.get(
             reverse("portal_admin_parent_preview_sample_page", kwargs={"page": "not-a-page"})

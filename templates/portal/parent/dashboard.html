@@ -8,7 +8,6 @@
       <p class="lead">{% pt "dashboard_welcome" family=parent_preview.family_name %}</p>
     </div>
     <div class="portal-dash-hero-actions">
-      {% include "portal/includes/add_child_button.html" with button_class="btn-sm" %}
       <div class="portal-dash-hero-balance{% if dashboard.has_credit or parent_preview.billing.has_credit %} is-credit{% elif dashboard.balance == '0.00' %} is-zero{% else %} is-due{% endif %}" aria-label="{% pt 'family_balance' %}">
         <span class="portal-stat-label">{% pt "family_balance" %}</span>
         {% if dashboard.has_credit or parent_preview.billing.has_credit %}
@@ -16,10 +15,11 @@
         {% else %}
         <strong class="portal-dash-hero-balance-amount">${{ dashboard.balance }}</strong>
         {% endif %}
-        {% if not admin_support_preview or admin_preview_sample %}
-        <a class="btn btn-primary btn-sm" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
-        {% endif %}
+        <div class="portal-parent-hero-pay">
+          {% include "portal/includes/parent_pay_now.html" %}
+        </div>
       </div>
+      {% include "portal/includes/add_child_button.html" %}
     </div>
   </div>
 </section>

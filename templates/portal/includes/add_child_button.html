@@ -1,4 +1,13 @@
 {% load parent_i18n %}
-{% if parent_authenticated %}
+{% if parent_authenticated or admin_support_preview or admin_preview_sample %}
+{% if admin_support_preview or admin_preview_sample %}
+<button type="button"
+        class="btn btn-primary btn-sm{% if button_class %} {{ button_class }}{% endif %} portal-preview-action"
+        data-preview-message="{% pt 'preview_no_action' %}"
+        aria-disabled="true">
+  {% pt "add_another_child" %}
+</button>
+{% else %}
 <a class="btn btn-primary btn-sm{% if button_class %} {{ button_class }}{% endif %}" href="{% url 'enrollment_apply_add_child' %}">{% pt "add_another_child" %}</a>
+{% endif %}
 {% endif %}
