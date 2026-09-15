@@ -1,4 +1,4 @@
-{% load static %}
+{% load static parent_i18n %}
 <article class="portal-paper-receipt portal-paper-receipt-embedded">
   <header class="portal-paper-receipt-header">
     <div class="portal-paper-receipt-brand">
@@ -11,7 +11,7 @@
       </div>
     </div>
     <div class="portal-paper-receipt-location">
-      <span class="portal-paper-receipt-location-label">Program location</span>
+      <span class="portal-paper-receipt-location-label">{% pt "program_location" %}</span>
       <strong>{{ receipt.location_name }}</strong>
       <p>{{ receipt.location_address }}</p>
     </div>
@@ -19,38 +19,38 @@
 
   <div class="portal-paper-receipt-title-row">
     <div class="portal-paper-receipt-meta-left">
-      <p><span>Receipt No.</span> <strong>{{ receipt.receipt_no }}</strong></p>
-      <p><span>Date</span> <strong>{{ receipt.date_display }}</strong></p>
+      <p><span>{% pt "receipt_no" %}</span> <strong>{{ receipt.receipt_no }}</strong></p>
+      <p><span>{% pt "date" %}</span> <strong>{{ receipt.date_display }}</strong></p>
     </div>
-    <h2 class="portal-paper-receipt-title">Payment Receipt</h2>
+    <h2 class="portal-paper-receipt-title">{% pt "payment_receipt" %}</h2>
   </div>
 
   <div class="portal-paper-receipt-body">
     <div class="portal-paper-receipt-main">
-      <p class="portal-paper-receipt-field"><span>Received From</span> <strong>{{ receipt.received_from }}</strong></p>
-      <p class="portal-paper-receipt-field"><span>Amount in Words</span> <strong>{{ receipt.amount_in_words }}</strong></p>
-      <p class="portal-paper-receipt-field"><span>For Payment of</span> <strong>{{ receipt.payment_for }}</strong></p>
-      <p class="portal-paper-receipt-field"><span>Program</span> <strong>{{ receipt.program }}</strong></p>
-      {% if receipt.child %}<p class="portal-paper-receipt-field"><span>Child</span> <strong>{{ receipt.child }}</strong></p>{% endif %}
+      <p class="portal-paper-receipt-field"><span>{% pt "received_from" %}</span> <strong>{{ receipt.received_from }}</strong></p>
+      <p class="portal-paper-receipt-field"><span>{% pt "amount_in_words" %}</span> <strong>{{ receipt.amount_in_words }}</strong></p>
+      <p class="portal-paper-receipt-field"><span>{% pt "for_payment_of" %}</span> <strong>{{ receipt.payment_for }}</strong></p>
+      <p class="portal-paper-receipt-field"><span>{% pt "program" %}</span> <strong>{{ receipt.program }}</strong></p>
+      {% if receipt.child %}<p class="portal-paper-receipt-field"><span>{% pt "child" %}</span> <strong>{{ receipt.child }}</strong></p>{% endif %}
       <dl class="portal-paper-receipt-amounts">
-        <div><dt>Amount Due</dt><dd>${{ receipt.amount_due }}</dd></div>
-        <div><dt>Amount Received</dt><dd>${{ receipt.amount_received }}</dd></div>
-        <div><dt>Balance Due</dt><dd>${{ receipt.balance_due }}</dd></div>
+        <div><dt>{% pt "amount_due" %}</dt><dd>${{ receipt.amount_due }}</dd></div>
+        <div><dt>{% pt "amount_received" %}</dt><dd>${{ receipt.amount_received }}</dd></div>
+        <div><dt>{% pt "balance_due" %}</dt><dd>${{ receipt.balance_due }}</dd></div>
       </dl>
     </div>
     <aside class="portal-paper-receipt-side">
-      <div class="portal-paper-receipt-amount-box"><span>Amount of</span> <strong>${{ receipt.amount }}</strong></div>
+      <div class="portal-paper-receipt-amount-box"><span>{% pt "amount_of" %}</span> <strong>${{ receipt.amount }}</strong></div>
       <div class="portal-paper-receipt-paid-through">
-        <span>Paid Through</span>
+        <span>{% pt "paid_through" %}</span>
         <ul>
-          <li><span class="portal-paper-check {% if receipt.paid_through == 'Cash' %}is-checked{% endif %}"></span> Cash</li>
-          <li><span class="portal-paper-check {% if receipt.paid_through == 'Check' %}is-checked{% endif %}"></span> Check{% if receipt.paid_through == 'Check' and receipt.payment_reference %} #{{ receipt.payment_reference }}{% endif %}</li>
-          <li><span class="portal-paper-check {% if receipt.paid_through == 'Money order' %}is-checked{% endif %}"></span> Money order{% if receipt.paid_through == 'Money order' and receipt.payment_reference %} #{{ receipt.payment_reference }}{% endif %}</li>
-          <li><span class="portal-paper-check {% if receipt.paid_through == 'Card' or receipt.paid_through == 'Other' %}is-checked{% endif %}"></span> Card</li>
+          <li><span class="portal-paper-check {% if receipt.paid_through == 'Cash' %}is-checked{% endif %}"></span> {% pt "cash" %}</li>
+          <li><span class="portal-paper-check {% if receipt.paid_through == 'Check' %}is-checked{% endif %}"></span> {% pt "check" %}{% if receipt.paid_through == 'Check' and receipt.payment_reference %} #{{ receipt.payment_reference }}{% endif %}</li>
+          <li><span class="portal-paper-check {% if receipt.paid_through == 'Money order' %}is-checked{% endif %}"></span> {% pt "money_order" %}{% if receipt.paid_through == 'Money order' and receipt.payment_reference %} #{{ receipt.payment_reference }}{% endif %}</li>
+          <li><span class="portal-paper-check {% if receipt.paid_through == 'Card' or receipt.paid_through == 'Other' %}is-checked{% endif %}"></span> {% pt "card" %}</li>
         </ul>
       </div>
       <div class="portal-paper-receipt-signature">
-        <span>Received By</span>
+        <span>{% pt "received_by" %}</span>
         <div class="portal-paper-signature-box">{{ receipt.received_by }}</div>
       </div>
     </aside>

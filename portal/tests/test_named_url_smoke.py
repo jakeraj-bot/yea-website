@@ -66,6 +66,7 @@ PARENT_PAGES = [
     "drop-in",
     "drop-off",
     "field-trips",
+    "help",
     "support",
     "contact-us",
     "account",

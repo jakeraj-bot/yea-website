@@ -1,7 +1,8 @@
+{% load parent_i18n %}
 <aside class="portal-sidebar{% if portal_area == 'staff' %} portal-sidebar-staff{% elif portal_area == 'admin' %} portal-sidebar-admin{% endif %}" id="portal-sidebar" aria-label="Portal navigation">
   <button type="button" class="portal-sidebar-toggle" id="portal-sidebar-toggle" aria-expanded="true" aria-controls="portal-sidebar">
     <span class="portal-sidebar-toggle-icon" aria-hidden="true"></span>
-    <span class="portal-sidebar-toggle-label">Collapse menu</span>
+    <span class="portal-sidebar-toggle-label">{% if portal_area == 'parent' %}{% pt "collapse_menu" %}{% else %}Collapse menu{% endif %}</span>
   </button>
   {% if portal_area == 'parent' %}
   <div class="portal-sidebar-user">
@@ -17,55 +18,8 @@
       <span class="portal-sidebar-user-role">{{ parent_preview.label|default:"Parent account" }}</span>
     </div>
   </div>
-  <p class="portal-sidebar-label">Parent menu</p>
-  <ul class="portal-nav portal-nav-parent">
-    {% if admin_preview_sample %}
-    <li><a class="portal-nav-link portal-nav-dashboard{% if parent_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='dashboard' %}">Dashboard</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'profile' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='profile' %}">Family profile</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'emergency-contacts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='emergency-contacts' %}">Emergency contacts</a></li>
-    <li><a class="portal-nav-link portal-nav-applications{% if parent_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='applications' %}">Applications</a></li>
-    <li><a class="portal-nav-link portal-nav-policies{% if parent_page_slug == 'policies' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='policies' %}">Policy library</a></li>
-    <li><a class="portal-nav-link portal-nav-billing{% if parent_page_slug == 'billing' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='billing' %}">Billing &amp; balance</a></li>
-    <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='tax-statements' %}">Tax statements</a></li>
-    <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='receipts' %}">Receipts</a></li>
-    <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='drop-in' %}">Drop-in care</a></li>
-    {% if show_drop_off_tab %}<li><a class="portal-nav-link portal-nav-dropoff{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='drop-off' %}" title="Drop-off">Drop-off</a></li>{% endif %}
-    <li><a class="portal-nav-link portal-nav-fieldtrips{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='field-trips' %}" title="Field trips">Field trips</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='support' %}">Support</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'contact-us' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a></li>
-    <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_sample_page' page='account' %}">Account settings</a></li>
-    {% elif admin_support_preview and admin_preview_family_slug %}
-    <li><a class="portal-nav-link portal-nav-dashboard{% if parent_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='dashboard' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Dashboard</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'profile' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='profile' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Family profile</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'emergency-contacts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='emergency-contacts' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Emergency contacts</a></li>
-    <li><a class="portal-nav-link portal-nav-applications{% if parent_page_slug == 'applications' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='applications' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Applications</a></li>
-    <li><a class="portal-nav-link portal-nav-policies{% if parent_page_slug == 'policies' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='policies' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Policy library</a></li>
-    <li><a class="portal-nav-link portal-nav-billing{% if parent_page_slug == 'billing' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='billing' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Billing &amp; balance</a></li>
-    <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='tax-statements' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Tax statements</a></li>
-    <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='receipts' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Receipts</a></li>
-    <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-in' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Drop-in care</a></li>
-    {% if show_drop_off_tab %}<li><a class="portal-nav-link portal-nav-dropoff{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-off' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}" title="Drop-off">Drop-off</a></li>{% endif %}
-    <li><a class="portal-nav-link portal-nav-fieldtrips{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='field-trips' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}" title="Field trips">Field trips</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='support' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Support</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'contact-us' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a></li>
-    <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='account' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Account settings</a></li>
-    {% else %}
-    <li><a class="portal-nav-link portal-nav-dashboard{% if parent_page_slug == 'dashboard' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='dashboard' %}{{ parent_pay_query }}">Dashboard</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'profile' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a></li>
-    <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'emergency-contacts' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='emergency-contacts' %}{{ parent_pay_query }}">Emergency contacts</a></li>
-    <li><a class="portal-nav-link portal-nav-applications{% if parent_page_slug == 'applications' or parent_page_slug == 'application' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a></li>
-    <li><a class="portal-nav-link portal-nav-policies{% if parent_page_slug == 'policies' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policy library</a></li>
-    <li><a class="portal-nav-link portal-nav-billing{% if parent_page_slug == 'billing' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing &amp; balance</a></li>
-    <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a></li>
-    <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Receipts</a></li>
-    <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
-    {% if show_drop_off_tab %}<li><a class="portal-nav-link portal-nav-dropoff{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='drop-off' %}{{ parent_pay_query }}" title="Drop-off">Drop-off</a></li>{% endif %}
-    <li><a class="portal-nav-link portal-nav-fieldtrips{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}" title="Field trips">Field trips</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='support' %}{{ parent_pay_query }}">Support</a></li>
-    <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'contact-us' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a></li>
-    <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
-    {% endif %}
-  </ul>
+  <p class="portal-sidebar-label">{% pt "nav_parent_menu" %}</p>
+  {% include "portal/includes/parent_nav.html" %}
   <div class="portal-sidebar-footer">
     {% if admin_support_preview and admin_preview_family_slug %}
     <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_family_detail' family_slug=admin_preview_family_slug %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">← Family account</a>
@@ -77,9 +31,9 @@
     {% elif admin_support_preview %}
     <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_admin_page' page='communications' %}">← Back to admin</a>
     {% elif parent_authenticated %}
-    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_logout' %}">Sign out</a>
+    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
     {% else %}
-    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_login' %}">Sign in</a>
+    <a class="btn btn-secondary btn-sm portal-signout-btn" href="{% url 'portal_parent_login' %}">{% pt "sign_in" %}</a>
     {% endif %}
   </div>
   {% elif portal_area == 'staff' %}

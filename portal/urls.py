@@ -176,6 +176,11 @@ urlpatterns = [
         views_actions.parent_emergency_contact_delete,
         name="portal_parent_emergency_contact_delete",
     ),
+    path(
+        "parent/set-language/",
+        views.parent_set_language,
+        name="portal_parent_set_language",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(
@@ -557,6 +562,11 @@ urlpatterns = [
         "staff/applications/review-all/",
         views.staff_review_all_applications,
         name="portal_staff_review_all",
+    ),
+    path(
+        "staff/profile-change/",
+        views_actions.admin_profile_change_action,
+        name="portal_staff_profile_change",
     ),
     path(
         "staff/application/<slug:app_slug>/review/",

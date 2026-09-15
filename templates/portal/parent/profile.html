@@ -1,17 +1,18 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Family profile</h1>
-    <p class="lead">Your household information — always available, not buried in old applications.</p>
+    <h1>{% pt "profile_title" %}</h1>
+    <p class="lead">{% pt "profile_lead" %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="portal-toolbar">
       {% include "portal/includes/add_child_button.html" %}
-      <button type="button" class="btn btn-secondary" id="toggle-edit-profile">Edit profile</button>
-      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a>
+      <button type="button" class="btn btn-secondary" id="toggle-edit-profile">{% pt "edit_profile" %}</button>
+      <a class="btn btn-secondary" href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">{% pt "account_settings" %}</a>
     </div>
 
     <div class="portal-callout card portal-callout-warning" id="pending-review-banner" hidden role="status">

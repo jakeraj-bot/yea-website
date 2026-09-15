@@ -1,39 +1,40 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Contact us</h1>
-    <p class="lead">Billing and portal questions go to Jakera Jacobs. Programming questions go to Janice Gomez. You can also send Jakera a message with the form on this page.</p>
+    <h1>{% pt "contact_title" %}</h1>
+    <p class="lead">{% pt "contact_lead" %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="card-grid">
       <div class="card portal-collapse-skip">
-        <h2>Billing and portal questions — Jakera Jacobs</h2>
-        <p>Email: <a href="mailto:Jakeraj@yeanj.org">Jakeraj@yeanj.org</a></p>
-        <p>Cell (call or text): <a href="tel:8628664744">862-866-4744</a></p>
+        <h2>{% pt "contact_jakera_heading" %}</h2>
+        <p>{% pt "email" %}: <a href="mailto:Jakeraj@yeanj.org">Jakeraj@yeanj.org</a></p>
+        <p>{% pt "contact_cell" %}: <a href="tel:8628664744">862-866-4744</a></p>
         <ul>
-          <li>Text: 9:00am–7:00pm</li>
-          <li>Phone: 4:00pm–7:00pm</li>
+          <li>{% pt "contact_text_hours" %}</li>
+          <li>{% pt "contact_phone_hours" %}</li>
         </ul>
       </div>
       <div class="card portal-collapse-skip">
-        <h2>Programming questions — Janice Gomez</h2>
-        <p>Email: <a href="mailto:janiceg@yeanj.org">janiceg@yeanj.org</a></p>
-        <p>Cell (call or text): <a href="tel:6093578608">609-357-8608</a></p>
+        <h2>{% pt "contact_janice_heading" %}</h2>
+        <p>{% pt "email" %}: <a href="mailto:janiceg@yeanj.org">janiceg@yeanj.org</a></p>
+        <p>{% pt "contact_cell" %}: <a href="tel:6093578608">609-357-8608</a></p>
       </div>
     </div>
 
     <div class="card portal-collapse-skip" style="margin-top:1.25rem">
-      <h2>Send a message</h2>
-      <p class="form-note">This form emails <strong>Jakera Jacobs</strong> at <a href="mailto:{{ parent_contact_email }}">{{ parent_contact_email }}</a>. Use it for billing and portal questions, or anything you want Jakera to see. For programming questions, email or text Janice above.</p>
+      <h2>{% pt "send_message" %}</h2>
+      <p class="form-note">{% pt "contact_form_note" email=parent_contact_email %}</p>
       {% if contact_submitted %}
       <div class="form-success">
-        <p><strong>Thank you!</strong> Your message was sent to Jakera Jacobs at {{ parent_contact_email }}. We'll get back to you soon.</p>
+        <p><strong>{% pt "thank_you" %}</strong> {% pt "message_sent" email=parent_contact_email %}</p>
       </div>
       {% elif admin_support_preview %}
-      <p class="form-note">The contact form is available to parents on their portal. This support view is read-only.</p>
+      <p class="form-note">{% pt "contact_support_readonly" %}</p>
       {% else %}
       <form method="post" action="{% url 'portal_parent_contact' %}">
         {% csrf_token %}
@@ -45,26 +46,26 @@
           {{ contact_form.company }}
         </div>
         <div class="form-group">
-          <label for="{{ contact_form.name.id_for_label }}">Your name</label>
+          <label for="{{ contact_form.name.id_for_label }}">{% pt "your_name" %}</label>
           {{ contact_form.name }}
           {{ contact_form.name.errors }}
         </div>
         <div class="form-group">
-          <label for="{{ contact_form.email.id_for_label }}">Email</label>
+          <label for="{{ contact_form.email.id_for_label }}">{% pt "email" %}</label>
           {{ contact_form.email }}
           {{ contact_form.email.errors }}
         </div>
         <div class="form-group">
-          <label for="{{ contact_form.topic.id_for_label }}">I have a question about</label>
+          <label for="{{ contact_form.topic.id_for_label }}">{% pt "question_about" %}</label>
           {{ contact_form.topic }}
           {{ contact_form.topic.errors }}
         </div>
         <div class="form-group">
-          <label for="{{ contact_form.message.id_for_label }}">Message</label>
+          <label for="{{ contact_form.message.id_for_label }}">{% pt "message" %}</label>
           {{ contact_form.message }}
           {{ contact_form.message.errors }}
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="submit" class="btn btn-primary">{% pt "submit" %}</button>
       </form>
       {% endif %}
     </div>

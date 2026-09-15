@@ -1,8 +1,8 @@
 {% extends "portal/base.html" %}
-{% load portal_tags %}
+{% load portal_tags parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
-    <div class="container"><h1>Applications</h1><p class="lead">Enrollment status for each child and program. If a child is on the before-care waitlist and you also need after-school, use <strong>+ After-care</strong> — no new application. Tap <strong>How to use this page</strong> for the steps.</p></div>
+    <div class="container"><h1>{% pt "applications_title" %}</h1><p class="lead">{% pt "applications_lead" %}</p></div>
 </section>
 <section class="page-content">
   <div class="container">
@@ -14,7 +14,7 @@
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
-          <tr><th>Child</th><th>Program</th><th>Location</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>{% pt "child" %}</th><th>{% pt "program" %}</th><th>{% pt "location" %}</th><th>{% pt "submitted" %}</th><th>{% pt "status" %}</th><th></th></tr>
         </thead>
         <tbody>
           {% for app in parent_applications %}
@@ -26,17 +26,17 @@
             <td><span class="portal-status portal-status-{{ app.status_slug }}">{{ app.status }}</span></td>
             <td>
               {% if app.demo %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}">View</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{{ parent_pay_query }}">{% pt "view" %}</a>
               {% else %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{% append_query parent_pay_query ref=app.reference %}">View</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'portal_parent_page' page='application' %}{% append_query parent_pay_query ref=app.reference %}">{% pt "view" %}</a>
               {% if app.can_edit %}
-              <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_edit' reference=app.reference %}">Edit</a>
+              <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_edit' reference=app.reference %}">{% pt "edit" %}</a>
               {% endif %}
               {% if app.can_add_before_care %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_before_care' reference=app.reference %}">+ Before care</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_before_care' reference=app.reference %}">{% pt "add_before_care" %}</a>
               {% endif %}
               {% if app.can_add_after_school %}
-              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_after_care' reference=app.reference %}">+ After-care</a>
+              <a class="btn btn-secondary btn-sm" href="{% url 'enrollment_apply_add_after_care' reference=app.reference %}">{% pt "add_after_care" %}</a>
               {% endif %}
               {% endif %}
             </td>
@@ -47,11 +47,11 @@
     </div>
     {% else %}
     <div class="portal-callout card">
-      <p>No applications yet. When you apply online, your submissions will appear here.</p>
+      <p>{% pt "no_applications" %}</p>
       {% include "portal/includes/add_child_button.html" %}
     </div>
     {% endif %}
-    <p class="form-note">Need to enroll a sibling? Use <a href="{% url 'enrollment_apply_add_child' %}">Add another child</a>. Applying for after-school and before care together is one application — before care is added to the waitlist automatically. Already applied for after-school only? Use <strong>+ Before care</strong> on that child's row. Already on the before-care waitlist and now need after-school? Use <strong>+ After-care</strong> — you do not start a new application.</p>
+    <p class="form-note"><a href="{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}">{% pt "open_help" %}</a></p>
   </div>
 </section>
 {% endblock %}

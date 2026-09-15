@@ -1,0 +1,211 @@
+/* Parent portal compact layout and header tools. Keep braces balanced. */
+
+.portal-area-parent .portal-header-parent {
+  gap: 0.45rem;
+}
+
+.portal-header-balance {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.portal-header-balance-copy {
+  text-align: right;
+  line-height: 1.15;
+}
+
+.portal-header-balance-copy .portal-stat-label {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.portal-header-balance-amount {
+  display: block;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+.portal-header-balance.is-credit .portal-header-balance-amount {
+  color: var(--yea-green);
+}
+
+.portal-lang-switch {
+  display: inline-flex;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.portal-lang-switch .btn {
+  min-width: 2.25rem;
+  padding: 0.2rem 0.45rem;
+  font-weight: 700;
+}
+
+.portal-lang-switch .btn.is-active {
+  background: var(--yea-yellow, #ffcc00);
+  border-color: var(--yea-orange, #ff9800);
+  color: #222;
+}
+
+.portal-dash-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1.25rem;
+}
+
+.portal-dash-hero-copy {
+  min-width: min(100%, 14rem);
+  flex: 1 1 14rem;
+}
+
+.portal-dash-hero-copy h1,
+.portal-dash-hero-copy .lead {
+  margin-bottom: 0.25rem;
+}
+
+.portal-dash-hero-copy .lead {
+  margin-bottom: 0;
+}
+
+.portal-dash-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.portal-dash-hero-balance {
+  text-align: right;
+  min-width: 8.5rem;
+}
+
+.portal-dash-hero-balance .portal-stat-label {
+  margin-bottom: 0.1rem;
+}
+
+.portal-dash-hero-balance-amount {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+}
+
+.portal-dash-hero-balance.is-credit .portal-dash-hero-balance-amount {
+  color: var(--yea-green);
+}
+
+.portal-parent-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  align-items: start;
+}
+
+.portal-parent-compact-grid > .card {
+  margin: 0;
+}
+
+.portal-pay-howto {
+  background: var(--yea-yellow-soft, #fff8e1);
+  border-color: var(--yea-yellow, #ffcc00);
+  padding: 0.85rem 1rem;
+}
+
+.portal-pay-howto h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.portal-pay-howto video,
+.portal-pay-howto .portal-pay-howto-video {
+  width: 100%;
+  max-height: 14rem;
+  border-radius: 0.5rem;
+  background: #111;
+}
+
+.portal-pay-howto-caption {
+  margin: 0.45rem 0 0;
+  font-size: 0.875rem;
+}
+
+.portal-parent-announcement {
+  padding: 0.55rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.portal-parent-announcement p {
+  margin: 0.2rem 0 0;
+}
+
+.portal-billing-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1.25rem;
+}
+
+.portal-area-parent .portal-balance-banner {
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.portal-area-parent .portal-balance-total {
+  font-size: 1.65rem;
+  margin: 0.1rem 0;
+}
+
+.portal-billing-compact .portal-toolbar {
+  margin-bottom: 0.4rem;
+}
+
+.portal-billing-compact .card.portal-profile-full {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.portal-help-cats {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.portal-help-cats details {
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: #fff;
+  padding: 0.35rem 0.85rem 0.65rem;
+}
+
+.portal-help-cats summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.5rem 0;
+}
+
+.portal-help-cats details[open] summary {
+  margin-bottom: 0.25rem;
+}
+
+.portal-help-cats p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .portal-dash-hero-balance,
+  .portal-header-balance-copy {
+    text-align: left;
+  }
+
+  .portal-header-balance {
+    width: 100%;
+  }
+}

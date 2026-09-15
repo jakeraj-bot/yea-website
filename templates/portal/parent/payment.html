@@ -1,15 +1,16 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     {% if is_dropin_payment %}
-    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a> / Pay for drop-in</p>
-    <h1>Pay for drop-in</h1>
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">{% pt "dropin_title" %}</a> / {% pt "pay_for_dropin" %}</p>
+    <h1>{% pt "pay_for_dropin" %}</h1>
     <p class="lead">{{ dropin.child }} · {{ dropin.program }} · {{ dropin.location }}{% if dropin.date %} · {{ dropin.date }}{% endif %}</p>
     {% else %}
-    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing</a> / Pay balance</p>
-    <h1>Pay or add credit</h1>
-    <p class="lead">{{ parent_preview.family_name }} family · {% if billing.has_credit %}${{ billing.account_credit }} credit on account{% else %}balance due ${{ billing.balance_due|default:billing.running_balance }}{% endif %}</p>
+    <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">{% pt "breadcrumb_billing" %}</a> / {% pt "breadcrumb_pay_balance" %}</p>
+    <h1>{% pt "pay_or_credit" %}</h1>
+    <p class="lead">{{ parent_preview.family_name }} {% pt "family" %} · {% if billing.has_credit %}{% pt "family_credit_lead" credit=billing.account_credit %}{% else %}{% pt "family_balance_lead" amount=billing.balance_due|default:billing.running_balance %}{% endif %}</p>
     {% endif %}
   </div>
 </section>
@@ -17,14 +18,14 @@
   <div class="container">
     {% if is_dropin_payment %}
     <div class="portal-callout card portal-callout-warning">
-      <p><strong>Drop-in payment only — ${{ dropin.fee }}</strong></p>
-      <p>Your family account balance is <strong>${{ billing.running_balance }}</strong>. That balance is separate — this checkout is only for the drop-in day you booked. Paying here does not clear your program balance.</p>
+      <p><strong>{% pt "dropin_only" fee=dropin.fee %}</strong></p>
+      <p>{% pt "dropin_balance_separate" balance=billing.running_balance %}</p>
     </div>
     {% endif %}
 
     <div class="portal-profile-grid">
       <section class="card portal-profile-full">
-        <h2>{% if is_dropin_payment %}Drop-in payment{% else %}Choose payment amount{% endif %}</h2>
+        <h2>{% if is_dropin_payment %}{% pt "pay_for_dropin" %}{% else %}{% pt "choose_amount" %}{% endif %}</h2>
         <form id="parent-payment-form" class="portal-form-grid" method="get" action="{% url 'portal_parent_payment_preview' %}" data-fee-percent="{{ stripe_fee.percent_display|default:stripe_fee.percent }}" data-fee-flat="{{ stripe_fee.flat_display|default:'0.30' }}">
           {% if is_dropin_payment %}
           <input type="hidden" name="source" value="dropin">
@@ -34,43 +35,43 @@
           <input type="hidden" name="date" value="{{ dropin.date }}">
           <input type="hidden" name="amount" value="{{ dropin.fee }}">
           <div class="form-group portal-form-full">
-            <label>Drop-in fee</label>
+            <label>{% pt "dropin_fee" %}</label>
             <p class="portal-balance-total" style="font-size:1.5rem;">${{ dropin.fee }}</p>
             <p class="form-note">One-day drop-in rate for {{ dropin.program|lower }}.</p>
           </div>
           {% else %}
           <div class="form-group portal-form-full">
-            <label>How much would you like to pay?</label>
+            <label>{% pt "how_much" %}</label>
             <div class="portal-payment-amount-options">
               {% if billing.balance_due and billing.balance_due != "0.00" %}
               <label class="portal-payment-amount-option">
                 <input type="radio" name="amount_choice" value="full" checked data-amount="{{ billing.balance_due }}">
-                Pay full balance — <strong>${{ billing.balance_due }}</strong>
+                {% pt "pay_full_balance" amount=billing.balance_due %}
               </label>
               {% endif %}
               <label class="portal-payment-amount-option">
                 <input type="radio" name="amount_choice" value="custom"{% if not billing.balance_due or billing.balance_due == "0.00" %} checked{% endif %}>
-                {% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead (adds account credit){% else %}Pay a different amount (partial or extra for account credit){% endif %}
+                {% if billing.has_credit or billing.balance_due == "0.00" %}{% pt "pay_ahead_credit" %}{% else %}{% pt "pay_different" %}{% endif %}
               </label>
             </div>
           </div>
           <div class="form-group" id="custom-amount-wrap"{% if billing.balance_due and billing.balance_due != "0.00" %} hidden{% endif %}>
-            <label for="pay-amount">Payment amount</label>
+            <label for="pay-amount">{% pt "payment_amount" %}</label>
             <div class="portal-input-prefix">
               <span>$</span>
               <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" class="portal-input" value="{% if billing.balance_due and billing.balance_due != '0.00' %}{{ payment_amount|default:billing.balance_due }}{% endif %}" required>
             </div>
-            <p class="form-note" id="credit-note">{% if billing.has_credit %}You already have ${{ billing.account_credit }} credit. This payment will add more.{% endif %}</p>
+            <p class="form-note" id="credit-note">{% if billing.has_credit %}{% pt "already_have_credit" credit=billing.account_credit %}{% endif %}</p>
           </div>
           {% endif %}
 
           {% if parent_stripe_enabled %}
           <div class="portal-callout card portal-form-full">
-            <p><strong>Secure card checkout.</strong> You will enter your card once on Stripe’s checkout page on the next step — no need to add card details here.</p>
+            <p><strong>{% pt "secure_card" %}</strong></p>
           </div>
           {% else %}
           <div class="form-group portal-form-full">
-            <label for="pay-method">Payment method</label>
+            <label for="pay-method">{% pt "payment_method" %}</label>
             <select id="pay-method" name="method" class="portal-select">
               {% if account.payment_methods %}
               {% for pm in account.payment_methods %}
@@ -79,60 +80,60 @@
               {% else %}
               <option value="Visa ending 4242">Visa ending 4242</option>
               {% endif %}
-              <option value="__add_card__">+ Add new card</option>
+              <option value="__add_card__">{% pt "add_new_card" %}</option>
             </select>
           </div>
 
           <div class="portal-panel card portal-form-full" id="add-card-panel" hidden>
-            <h3>Add card</h3>
+            <h3>{% pt "add_card" %}</h3>
             <div class="portal-form-grid">
-              <div class="form-group portal-form-full"><label for="card-name">Name on card</label><input id="card-name" type="text" class="portal-input"></div>
-              <div class="form-group portal-form-full"><label for="card-number">Card number</label><input id="card-number" type="text" class="portal-input" placeholder="4242 4242 4242 4242"></div>
-              <div class="form-group"><label for="card-exp">Expiration</label><input id="card-exp" type="text" class="portal-input" placeholder="MM/YY"></div>
-              <div class="form-group"><label for="card-cvc">CVC</label><input id="card-cvc" type="text" class="portal-input" placeholder="123"></div>
+              <div class="form-group portal-form-full"><label for="card-name">{% pt "name_on_card" %}</label><input id="card-name" type="text" class="portal-input"></div>
+              <div class="form-group portal-form-full"><label for="card-number">{% pt "card_number" %}</label><input id="card-number" type="text" class="portal-input" placeholder="4242 4242 4242 4242"></div>
+              <div class="form-group"><label for="card-exp">{% pt "expiration" %}</label><input id="card-exp" type="text" class="portal-input" placeholder="MM/YY"></div>
+              <div class="form-group"><label for="card-cvc">{% pt "cvc" %}</label><input id="card-cvc" type="text" class="portal-input" placeholder="123"></div>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="save-card-btn">Save card for this payment</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="save-card-btn">{% pt "save_card_this_payment" %}</button>
           </div>
           {% endif %}
 
           <div class="portal-callout card portal-form-full">
             <dl class="portal-dl portal-payment-summary">
-              <dt>{% if is_dropin_payment %}Drop-in fee{% else %}Program fees (this payment){% endif %}</dt>
+              <dt>{% if is_dropin_payment %}{% pt "dropin_fee" %}{% else %}{% pt "program_fees_payment" %}{% endif %}</dt>
               <dd id="summary-subtotal">${{ payment_totals.subtotal }}</dd>
               <dt>{{ stripe_fee.label }}</dt>
               <dd id="summary-fee">${{ payment_totals.fee }}</dd>
-              <dt><strong>Total charged to card</strong></dt>
+              <dt><strong>{% pt "total_charged" %}</strong></dt>
               <dd><strong id="summary-total">${{ payment_totals.total }}</strong></dd>
             </dl>
             <p class="form-note">{{ stripe_fee.note }}</p>
           </div>
 
           <div class="portal-form-actions portal-form-full">
-            <button type="submit" class="btn btn-primary">Continue to review</button>
-            <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
+            <button type="submit" class="btn btn-primary">{% pt "continue_to_review" %}</button>
+            <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">{% pt "cancel" %}</a>
           </div>
         </form>
       </section>
 
       <section class="card">
         {% if is_dropin_payment %}
-        <h2>Booking summary</h2>
+        <h2>{% pt "booking_summary" %}</h2>
         <dl class="portal-dl">
-          <dt>Child</dt><dd>{{ dropin.child }}</dd>
-          <dt>Program</dt><dd>{{ dropin.program }}</dd>
-          <dt>Location</dt><dd>{{ dropin.location }}</dd>
-          {% if dropin.date %}<dt>Date</dt><dd>{{ dropin.date }}</dd>{% endif %}
-          <dt>Drop-in fee</dt><dd><strong>${{ dropin.fee }}</strong></dd>
+          <dt>{% pt "child" %}</dt><dd>{{ dropin.child }}</dd>
+          <dt>{% pt "program" %}</dt><dd>{{ dropin.program }}</dd>
+          <dt>{% pt "location" %}</dt><dd>{{ dropin.location }}</dd>
+          {% if dropin.date %}<dt>{% pt "date" %}</dt><dd>{{ dropin.date }}</dd>{% endif %}
+          <dt>{% pt "dropin_fee" %}</dt><dd><strong>${{ dropin.fee }}</strong></dd>
         </dl>
-        <p class="form-note">Account balance (${{ billing.running_balance }}) is shown for reference only.</p>
+        <p class="form-note">{% pt "account_balance_ref" balance=billing.running_balance %}</p>
         {% else %}
-        <h2>Balance by child</h2>
+        <h2>{% pt "balance_by_child" %}</h2>
         <ul class="portal-link-list">
           {% for child in billing.children %}
-          <li><strong>{{ child.name }}</strong> — ${{ child.balance }} due</li>
+          <li><strong>{{ child.name }}</strong> — {% pt "amount_due_child" amount=child.balance %}</li>
           {% endfor %}
         </ul>
-        <p class="form-note">Paying more than your balance adds a credit to your family account for future charges.</p>
+        <p class="form-note">{% pt "pay_more_credit_note" %}</p>
         {% endif %}
       </section>
     </div>

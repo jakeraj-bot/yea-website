@@ -1,13 +1,14 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>{% if portal_area == 'admin' %}Support inbox{% else %}Support{% endif %}</h1>
+    <h1>{% if portal_area == 'admin' %}Support inbox{% else %}{% pt "support_title" %}{% endif %}</h1>
     <p class="lead">
       {% if portal_area == 'admin' %}
       Messages from parents and staff — with screenshots so you can troubleshoot quickly.
       {% else %}
-      Message YEA admin directly. Attach a photo or screenshot so we can see what's wrong.
+      {% pt "support_parent_lead" %}
       {% endif %}
     </p>
   </div>
@@ -16,7 +17,7 @@
   <div class="container">
     {% if portal_area == 'parent' %}
     <div class="portal-callout card">
-      <p><strong>Where tickets go:</strong> When you submit a ticket, it appears in the <strong>Admin → Support inbox</strong> for YEA staff. Your unit team can see tickets you open from the parent portal. Attach screenshots so we can troubleshoot billing, check-in, or portal issues faster.</p>
+      <p>{% pt "support_tickets_go" %}</p>
     </div>
     {% elif not portal_live %}
     <div class="portal-callout card">

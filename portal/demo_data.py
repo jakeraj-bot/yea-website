@@ -3,10 +3,10 @@
 from enrollment.policies_data import POLICIES as ENROLLMENT_POLICIES
 
 YEA_COMPANY = {
-    "name": "Youth Enrichment Academy",
+    "name": "Youth Education Academy",
     "address_line1": "279 Belmont Ave",
     "city_state_zip": "Haledon, NJ 07508",
-    "phone": "973-555-0100",
+    "phone": "609-357-8608",
     "website": "yeanj.org",
 }
 
@@ -2168,7 +2168,7 @@ def enrich_receipt_for_print(receipt, preview_key, family=None):
         **receipt,
         "receipt_no": receipt.get("reference", ""),
         "date_display": date_display,
-        "received_from": f'{profile["primary"]["name"]} ({preview["family_name"]} family)',
+        "received_from": YEA_COMPANY["name"],
         "amount_due": amount_due,
         "amount_received": amount_received,
         "balance_due": balance_due,
@@ -2177,7 +2177,7 @@ def enrich_receipt_for_print(receipt, preview_key, family=None):
         "program": program,
         "paid_through": paid_through,
         "paid_through_detail": method if paid_through in ("Other", "Card") else "",
-        "received_by": receipt.get("received_by") or _received_by_label(manager_name),
+        "received_by": YEA_COMPANY["name"],
         "location_name": getattr(live_unit, "name", None) or unit["name"],
         "location_address": (
             ", ".join(part for part in [getattr(live_unit, "address", ""), getattr(live_unit, "city", "")] if part)

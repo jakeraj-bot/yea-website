@@ -932,9 +932,9 @@ def send_payment_receipt_email(payment):
     from django.conf import settings
     from django.core.mail import send_mail
 
-    subject = f"YEA payment receipt — {payment.receipt_no}"
+    subject = f"Youth Education Academy payment receipt — {payment.receipt_no}"
     body = (
-        f"Thank you for your payment.\n\n"
+        f"Thank you for your payment to Youth Education Academy.\n\n"
         f"Receipt: {payment.receipt_no}\n"
         f"Amount: ${payment.total_charged or payment.amount:.2f}\n"
         f"Description: {_payment_description(payment)}\n\n"
