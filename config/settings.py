@@ -68,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "portal.middleware.ParentLanguageMiddleware",
     "portal.middleware.PortalActivityMiddleware",
 ]
 
@@ -85,6 +86,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.site_settings",
                 "core.context_processors.portal_deploy",
+                "portal.parent_i18n.parent_language_context",
             ],
         },
     },

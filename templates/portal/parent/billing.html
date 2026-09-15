@@ -1,38 +1,38 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
-  <div class="container">
-    <h1>Billing &amp; balance</h1>
-    <p class="lead">{{ billing.payment_type }} · running balance, charges, and payments — per child.</p>
-  </div>
-</section>
-<section class="page-content">
-  <div class="container">
-    {% if billing.payment_type_note %}
-    <div class="portal-callout card">
-      <p>{{ billing.payment_type_note }}</p>
+  <div class="container portal-billing-hero">
+    <div>
+      <h1>{% pt "billing_title" %}</h1>
+      <p class="lead">{% pt "billing_lead" %}</p>
     </div>
-    {% endif %}
-
-    <div class="portal-balance-banner card card-accent">
-      <div>
-        <span class="portal-stat-label">{% if billing.has_credit %}Account credit{% else %}Family running balance{% endif %}</span>
-        <p class="portal-balance-total">{% if billing.has_credit %}${{ billing.account_credit }} credit{% else %}${{ billing.running_balance }}{% endif %}</p>
-        <span class="portal-payment-badge portal-payment-badge-{{ billing.payment_type|slugify }}">{{ billing.payment_type }}</span>
+    <div class="portal-dash-hero-actions">
+      <div class="portal-dash-hero-balance{% if billing.has_credit %} is-credit{% elif billing.running_balance == '0.00' %} is-zero{% else %} is-due{% endif %}">
+        <span class="portal-stat-label">{% if billing.has_credit %}{% pt "account_credit" %}{% else %}{% pt "family_running_balance" %}{% endif %}</span>
+        <strong class="portal-dash-hero-balance-amount">{% if billing.has_credit %}{% pt "credit_amount" credit=billing.account_credit %}{% else %}${{ billing.running_balance }}{% endif %}</strong>
       </div>
-      {% if not hide_card_details and not admin_support_preview %}
-      <a class="btn btn-primary" href="{% url 'portal_parent_payment' %}{{ parent_pay_query }}">{% if billing.has_credit or billing.balance_due == "0.00" %}Pay ahead{% else %}Pay balance{% endif %}</a>
+      {% if not hide_card_details and not admin_support_preview or admin_preview_sample %}
+      <a class="btn btn-primary" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
       {% endif %}
     </div>
+  </div>
+</section>
+<section class="page-content portal-billing-compact">
+  <div class="container">
+    {% if billing.payment_type_note %}
+    <p class="form-note">{{ billing.payment_type_note }}</p>
+    {% endif %}
+
     {% if hide_card_details or admin_support_preview %}
-    <p class="form-note portal-support-view-note">Pay and add-card actions are hidden in support view. Card numbers stay hidden.</p>
+    <p class="form-note portal-support-view-note">{% pt "support_pay_hidden" %}</p>
     {% endif %}
 
     <section class="card portal-profile-full">
       <div class="portal-toolbar">
-        <h2 style="margin:0;">Payment methods</h2>
+        <h2 style="margin:0;">{% pt "payment_methods" %}</h2>
         {% if not hide_card_details and not admin_support_preview %}
-        <button type="button" class="btn btn-primary btn-sm" id="billing-add-card-btn">+ Add card</button>
+        <button type="button" class="btn btn-primary btn-sm" id="billing-add-card-btn">+ {% pt "add_card" %}</button>
         {% endif %}
       </div>
       {% if account.payment_methods %}
@@ -41,75 +41,75 @@
         <li class="portal-payment-method card">
           <div>
             <strong>{{ pm.label }}</strong>
-            {% if pm.expires %}<span class="form-note">Expires {{ pm.expires }}</span>{% endif %}
-            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">Default</span>{% endif %}
+            {% if pm.expires %}<span class="form-note">{% pt "expires" date=pm.expires %}</span>{% endif %}
+            {% if pm.default %}<span class="portal-policy-badge portal-policy-badge-signed">{% pt "default" %}</span>{% endif %}
           </div>
         </li>
         {% endfor %}
       </ul>
       {% else %}
-      <p class="form-note">No card on file — add one for online payments or autopay.</p>
+      <p class="form-note">{% pt "no_card" %}</p>
       {% endif %}
       {% if not hide_card_details and not admin_support_preview %}
       <div class="portal-panel card" id="billing-add-card-panel" hidden style="margin-top:1rem;">
-        <h3>Add card</h3>
+        <h3>{% pt "add_card" %}</h3>
         <div class="portal-form-grid">
           <div class="form-group portal-form-full">
-            <label for="billing-card-name">Name on card</label>
+            <label for="billing-card-name">{% pt "name_on_card" %}</label>
             <input id="billing-card-name" type="text" class="portal-input">
           </div>
           <div class="form-group portal-form-full">
-            <label for="billing-card-number">Card number</label>
+            <label for="billing-card-number">{% pt "card_number" %}</label>
             <input id="billing-card-number" type="text" class="portal-input" placeholder="4242 4242 4242 4242">
           </div>
           <div class="form-group">
-            <label for="billing-card-exp">Expiration</label>
+            <label for="billing-card-exp">{% pt "expiration" %}</label>
             <input id="billing-card-exp" type="text" class="portal-input" placeholder="MM/YY">
           </div>
           <div class="form-group">
-            <label for="billing-card-cvc">CVC</label>
+            <label for="billing-card-cvc">{% pt "cvc" %}</label>
             <input id="billing-card-cvc" type="text" class="portal-input" placeholder="123">
           </div>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="billing-save-card-btn">Save card</button>
+        <button type="button" class="btn btn-primary btn-sm" id="billing-save-card-btn">{% pt "save_card" %}</button>
       </div>
       {% endif %}
     </section>
 
-    <h2>Balance by child</h2>
+    <h2>{% pt "balance_by_child" %}</h2>
     <div class="portal-child-billing-grid">
       {% for child in billing.children %}
       <article class="card {% if child.type == 'Scholarship' %}card-accent purple{% endif %}">
         <h3>{{ child.name }}</h3>
         <span class="portal-payment-badge portal-payment-badge-sm">{{ child.type|default:"Private pay" }}</span>
         <dl class="portal-dl">
-          <dt>Plan</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
+          <dt>{% pt "plan" %}</dt><dd>{{ child.plan|default:"Weekly" }}</dd>
           {% if child.full_rate %}
-          <dt>Full program rate</dt><dd>${{ child.full_rate }}</dd>
-          <dt>Scholarship discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
-          <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
-          <dt>You pay</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
+          <dt>{% pt "full_program_rate" %}</dt><dd>${{ child.full_rate }}</dd>
+          <dt>{% pt "scholarship_discount" %}</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
+          <dt>{% pt "scholarship" %}</dt><dd>{{ child.scholarship_name }}</dd>
+          <dt>{% pt "you_pay" %}</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
           {% elif child.amount %}
-          <dt>Amount</dt><dd>{{ child.amount }}</dd>
+          <dt>{% pt "amount" %}</dt><dd>{{ child.amount }}</dd>
           {% endif %}
-          <dt>Balance due</dt><dd>${{ child.balance }}</dd>
+          <dt>{% pt "balance_due" %}</dt><dd>${{ child.balance }}</dd>
         </dl>
       </article>
       {% endfor %}
     </div>
 
-    <h2>Charges &amp; payments</h2>
+    <h2>{% pt "charges_payments" %}</h2>
     <div class="portal-table-wrap">
       <table class="portal-table">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Child</th>
-            <th>Type</th>
-            <th>Description</th>
-            <th>Check # / Money order #</th>
-            <th>Amount</th>
-            <th>Processing fee</th>
+            <th>{% pt "date" %}</th>
+            <th>{% pt "child" %}</th>
+            <th>{% pt "type" %}</th>
+            <th>{% pt "description" %}</th>
+            <th>{% pt "check_money_order" %}</th>
+            <th>{% pt "amount" %}</th>
+            <th>{% pt "processing_fee" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -119,7 +119,7 @@
             <td>{{ row.child }}</td>
             <td>
               {% if row.type == 'discount' %}
-              <span class="portal-ledger-type portal-ledger-type-discount">Discount</span>
+              <span class="portal-ledger-type portal-ledger-type-discount">{% pt "discount" %}</span>
               {% else %}
               {{ row.type|title }}
               {% endif %}
@@ -138,11 +138,11 @@
 
     {% if billing.payment_type == '4Cs' %}
     <div class="portal-callout card portal-callout-muted">
-      <p><strong>4Cs agency payments</strong> between {{ billing.agency_name|default:"your agency" }} and YEA are handled separately by staff. You are only responsible for membership and your copay shown above.</p>
+      <p>{% pt "agency_payments_note" agency=billing.agency_name|default:"your agency" %}</p>
     </div>
     {% endif %}
 
-    <p class="form-note">Online payments use saved cards via Stripe. Pay any amount — overpayments become account credit. <a href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a> require $0 balance.</p>
+    <p class="form-note">{% pt "billing_note" %} <a href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">{% pt "tax_statements_link" %}</a> {% pt "require_zero_balance" %}</p>
   </div>
 </section>
 {% endblock %}

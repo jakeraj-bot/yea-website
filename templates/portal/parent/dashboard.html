@@ -1,182 +1,92 @@
 {% extends "portal/base.html" %}
+{% load static parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container portal-dash-hero">
     <div class="portal-dash-hero-copy">
-      <h1>Dashboard</h1>
-      <p class="lead">Welcome back, {{ parent_preview.family_name }} family — {{ parent_preview.label }} account.</p>
+      <h1>{% pt "dashboard_title" %}</h1>
+      <p class="lead">{% pt "dashboard_welcome" family=parent_preview.family_name %}</p>
     </div>
-    <div class="portal-dash-hero-balance{% if dashboard.has_credit or parent_preview.billing.has_credit %} is-credit{% elif dashboard.balance == '0.00' %} is-zero{% else %} is-due{% endif %}" aria-label="Family balance">
-      <span class="portal-stat-label">Family balance</span>
-      {% if dashboard.has_credit or parent_preview.billing.has_credit %}
-      <strong class="portal-dash-hero-balance-amount">${{ dashboard.account_credit|default:parent_preview.billing.account_credit }} credit</strong>
-      {% else %}
-      <strong class="portal-dash-hero-balance-amount">${{ dashboard.balance }}</strong>
-      {% endif %}
+    <div class="portal-dash-hero-actions">
+      {% include "portal/includes/add_child_button.html" with button_class="btn-sm" %}
+      <div class="portal-dash-hero-balance{% if dashboard.has_credit or parent_preview.billing.has_credit %} is-credit{% elif dashboard.balance == '0.00' %} is-zero{% else %} is-due{% endif %}" aria-label="{% pt 'family_balance' %}">
+        <span class="portal-stat-label">{% pt "family_balance" %}</span>
+        {% if dashboard.has_credit or parent_preview.billing.has_credit %}
+        <strong class="portal-dash-hero-balance-amount">{% pt "credit_amount" credit=dashboard.account_credit|default:parent_preview.billing.account_credit %}</strong>
+        {% else %}
+        <strong class="portal-dash-hero-balance-amount">${{ dashboard.balance }}</strong>
+        {% endif %}
+        {% if not admin_support_preview or admin_preview_sample %}
+        <a class="btn btn-primary btn-sm" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </section>
-<style>
-  .portal-dash-hero {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem 1.5rem;
-  }
-  .portal-dash-hero-copy {
-    min-width: min(100%, 16rem);
-    flex: 1 1 16rem;
-  }
-  .portal-dash-hero-copy h1,
-  .portal-dash-hero-copy .lead {
-    margin-bottom: 0.35rem;
-  }
-  .portal-dash-hero-copy .lead {
-    margin-bottom: 0;
-  }
-  .portal-dash-hero-balance {
-    margin-left: auto;
-    text-align: right;
-    min-width: 9.5rem;
-  }
-  .portal-dash-hero-balance .portal-stat-label {
-    margin-bottom: 0.15rem;
-  }
-  .portal-dash-hero-balance-amount {
-    display: block;
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.15;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-heading);
-  }
-  .portal-dash-hero-balance.is-credit .portal-dash-hero-balance-amount {
-    color: var(--yea-green);
-  }
-  @media (max-width: 640px) {
-    .portal-dash-hero-balance {
-      margin-left: 0;
-      text-align: left;
-      width: 100%;
-    }
-  }
-</style>
 <section class="page-content">
   <div class="container">
     {% if parent_announcement.active %}
     <div class="portal-parent-announcement portal-parent-announcement-{{ parent_announcement.style }}">
       <strong>{{ parent_announcement.title }}</strong>
       <p>{{ parent_announcement.body }}</p>
-      <span class="form-note">Posted {{ parent_announcement.posted }} · {{ parent_announcement.unit }}</span>
     </div>
     {% endif %}
 
-    {% include "portal/parent/includes/payment_walkthrough.html" %}
+    <div class="portal-parent-compact-grid">
+      {% include "portal/parent/includes/payment_walkthrough.html" %}
 
-    <div class="portal-callout card card-accent">
-      <div class="portal-add-child-callout-inner">
-        <div>
-          <h2 style="margin:0 0 0.35rem">Contact us</h2>
-          <p class="form-note" style="margin:0">Billing and portal questions — Jakera Jacobs. Programming questions — Janice Gomez. Send Jakera a message from the Contact us page.</p>
+      <div class="portal-stat-row">
+        <div class="portal-stat card">
+          <span class="portal-stat-label">{% pt "stat_application_status" %}</span>
+          <strong class="portal-stat-value">{{ dashboard.application_status }}</strong>
         </div>
-        {% if admin_preview_sample %}
-        <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a>
-        {% elif admin_support_preview and admin_preview_family_slug %}
-        <a class="btn btn-primary" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a>
-        {% else %}
-        <a class="btn btn-primary" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a>
-        {% endif %}
-      </div>
-    </div>
-
-    {% if parent_authenticated %}
-    <div class="portal-callout card card-accent portal-add-child-callout">
-      <div class="portal-add-child-callout-inner">
-        <div>
-          <h2 style="margin:0 0 0.35rem">Enrolling another child?</h2>
-          <p class="form-note" style="margin:0">Use your existing family account — no new login required. Household info is prefilled from your profile.</p>
+        <div class="portal-stat card">
+          <span class="portal-stat-label">{% pt "stat_policies_signed" %}</span>
+          <strong class="portal-stat-value">{{ dashboard.policies_signed }}</strong>
         </div>
-        {% include "portal/includes/add_child_button.html" %}
-      </div>
-    </div>
-    {% endif %}
-
-    <div class="portal-stat-row">
-      <div class="portal-stat card">
-        <span class="portal-stat-label">Running balance</span>
-        <strong class="portal-stat-value">${{ dashboard.balance }}</strong>
-      </div>
-      <div class="portal-stat card">
-        <span class="portal-stat-label">Application status</span>
-        <strong class="portal-stat-value">{{ dashboard.application_status }}</strong>
-      </div>
-      <div class="portal-stat card">
-        <span class="portal-stat-label">Policies signed</span>
-        <strong class="portal-stat-value">{{ dashboard.policies_signed }}</strong>
       </div>
     </div>
 
     <div class="portal-program-cards card-grid card-grid-3">
-      <article class="card card-accent">
-        <h2>After-school</h2>
-        <p class="form-note">Paterson school sites · Ages 2½–13 · Starts Sept 8, 2026</p>
+      <article class="card card-accent portal-collapse-skip">
+        <h2>{% pt "program_after_school" %}</h2>
+        <p class="form-note">{% pt "after_school_note" %}</p>
         {% if parent_authenticated %}
-        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for a child</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_add_child' %}">{% pt "apply_for_child" %}</a>
         {% else %}
-        <a class="btn btn-primary" href="{% url 'apply' %}">Start application</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'apply' %}">{% pt "start_application" %}</a>
         {% endif %}
-        <a class="btn btn-secondary" href="{% url 'after_school' %}">Program details</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'after_school' %}">{% pt "program_details" %}</a>
       </article>
-      <article class="card card-accent orange">
-        <h2>Before care</h2>
-        <p class="form-note">School 18 &amp; School 26 · 7:00am – 8:30am · Waitlist open</p>
+      <article class="card card-accent orange portal-collapse-skip">
+        <h2>{% pt "program_before_care" %}</h2>
+        <p class="form-note">{% pt "before_care_note" %}</p>
         {% if parent_authenticated %}
-        <a class="btn btn-primary" href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Join waitlist</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">{% pt "join_waitlist" %}</a>
         {% else %}
-        <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=before_care">Join waitlist</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=before_care">{% pt "join_waitlist" %}</a>
         {% endif %}
-        <a class="btn btn-secondary" href="{% url 'school_18' %}#before-care">Learn more</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'school_18' %}#before-care">{% pt "learn_more" %}</a>
       </article>
-      <article class="card card-accent blue">
-        <h2>Summer camp</h2>
-        <p class="form-note">Caldwell University · July 6 – Aug 14, 2026 · Ages 2–13</p>
+      <article class="card card-accent blue portal-collapse-skip">
+        <h2>{% pt "program_summer" %}</h2>
+        <p class="form-note">{% pt "summer_note" %}</p>
         {% if parent_authenticated %}
-        <a class="btn btn-primary" href="{% url 'enrollment_apply_add_child' %}">Apply for a child</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply_add_child' %}">{% pt "apply_for_child" %}</a>
         {% else %}
-        <a class="btn btn-primary" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=summer_camp">Start application</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'enrollment_apply' step='family' %}?new=1&amp;program=summer_camp">{% pt "start_application" %}</a>
         {% endif %}
-        <a class="btn btn-secondary" href="{% url 'summer_camp' %}">Camp details</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'summer_camp' %}">{% pt "camp_details" %}</a>
       </article>
     </div>
-    {% if parent_authenticated %}
-    <p class="form-note portal-program-cards-note">Already applied for after-school? Open <a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a> and use <strong>+ Before care</strong> on that child's row to join the waitlist at School 18 or School 26 without starting over. Already on the before-care waitlist and now need after-school? Use <strong>+ After-care</strong> on that same row — no new application.</p>
-    {% endif %}
     {% if pending_field_trips %}
     <div class="portal-callout card card-accent">
-      <p><strong>{{ pending_field_trips }} field trip{{ pending_field_trips|pluralize }} need a signature or payment.</strong> <a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Open field trips</a></p>
+      <p>
+        <strong>{% if pending_field_trips == 1 %}{% pt "field_trip_need" count=pending_field_trips %}{% else %}{% pt "field_trip_need_plural" count=pending_field_trips %}{% endif %}</strong>
+        <a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">{% pt "open_field_trips" %}</a>
+      </p>
     </div>
     {% endif %}
-
-    <div class="portal-quick-links card">
-      <h2>Quick links</h2>
-      <ul class="portal-link-list">
-        <li><a href="{% url 'portal_parent_page' page='applications' %}{{ parent_pay_query }}">Applications</a></li>
-        {% if parent_authenticated %}
-        <li><a href="{% url 'enrollment_apply_add_child' %}"><strong>+ Add another child</strong></a></li>
-        {% endif %}
-        <li><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing &amp; balance</a> — {{ parent_preview.label }}</li>
-        <li><a href="{% url 'portal_parent_page' page='tax-statements' %}{{ parent_pay_query }}">Tax statements</a></li>
-        <li><a href="{% url 'portal_parent_page' page='receipts' %}{{ parent_pay_query }}">Receipts</a></li>
-        <li><a href="{% url 'portal_parent_page' page='profile' %}{{ parent_pay_query }}">Family profile</a></li>
-        <li><a href="{% url 'portal_parent_page' page='emergency-contacts' %}{{ parent_pay_query }}">Emergency contacts</a> — add or delete, and staff gets an email</li>
-        <li><a href="{% url 'portal_parent_page' page='policies' %}{{ parent_pay_query }}">Policies</a> ({{ dashboard.policies_signed }}/{{ dashboard.policies_total }})</li>
-        <li><a href="{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}">Drop-in care</a></li>
-        <li><a href="{% url 'portal_parent_page' page='field-trips' %}{{ parent_pay_query }}">Field trips</a></li>
-        <li><a href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}"><strong>Contact us</strong></a> — Jakera (billing/portal) and Janice (programming)</li>
-        <li><a href="{% url 'portal_parent_page' page='account' %}{{ parent_pay_query }}">Account settings</a></li>
-      </ul>
-    </div>
   </div>
 </section>
 {% endblock %}

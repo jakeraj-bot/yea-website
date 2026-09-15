@@ -6,7 +6,7 @@ from django.utils.text import slugify
 from .models import PortalChild, PortalFieldTrip, PortalFieldTripSignup, PortalPayment, PortalUnit
 
 DEFAULT_PERMISSION_SLIP = (
-    "I give permission for my child to attend this Youth Enrichment Academy field trip. "
+    "I give permission for my child to attend this Youth Education Academy field trip. "
     "I understand the date, destination, and fee. I authorize YEA staff to seek emergency "
     "medical care if needed. I have read this permission slip and agree to its terms."
 )

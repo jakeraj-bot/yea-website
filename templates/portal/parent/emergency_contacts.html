@@ -1,17 +1,18 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Emergency contacts</h1>
-    <p class="lead">People we can call for your children. Add someone new, or delete a contact who is out of date. Staff gets an email when you add or delete.</p>
+    <h1>{% pt "emergency_title" %}</h1>
+    <p class="lead">{% pt "emergency_lead" %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     {% if not emergency_children %}
     <section class="card">
-      <h2>No children on this account</h2>
-      <p class="form-note">Emergency contacts are saved per child. When a child is on your family account, you can add or delete contacts here.</p>
+      <h2>{% pt "no_children_account" %}</h2>
+      <p class="form-note">{% pt "emergency_empty_note" %}</p>
     </section>
     {% endif %}
 
@@ -22,10 +23,10 @@
         <table class="portal-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Relationship</th>
-              <th>Authorized pickup</th>
+              <th>{% pt "name" %}</th>
+              <th>{% pt "phone" %}</th>
+              <th>{% pt "relationship" %}</th>
+              <th>{% pt "authorized_pickup" %}</th>
               {% if can_edit_emergency_contacts %}<th></th>{% endif %}
             </tr>
           </thead>
@@ -35,7 +36,7 @@
               <td>{{ contact.name }}</td>
               <td>{{ contact.phone }}</td>
               <td>{{ contact.relationship|default:"—" }}</td>
-              <td>{% if contact.authorized_pickup %}Yes{% else %}No{% endif %}</td>
+              <td>{% if contact.authorized_pickup %}{% pt "yes" %}{% else %}{% pt "no" %}{% endif %}</td>
               {% if can_edit_emergency_contacts %}
               <td>
                 <form method="post" action="{% url 'portal_parent_emergency_contact_delete' %}" class="portal-inline-form" onsubmit="return confirm('Remove {{ contact.name }} as an emergency contact for {{ child.name }}? Staff will be emailed.');">
@@ -43,7 +44,7 @@
                   <input type="hidden" name="child_id" value="{{ child.id }}">
                   <input type="hidden" name="contact_id" value="{{ contact.id }}">
                   <input type="hidden" name="confirm_delete" value="1">
-                  <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+                  <button type="submit" class="btn btn-secondary btn-sm">{% pt "delete" %}</button>
                 </form>
               </td>
               {% endif %}
@@ -84,7 +85,7 @@
             </label>
           </div>
           <div class="portal-form-actions portal-form-full">
-            <button type="submit" class="btn btn-primary">Add emergency contact</button>
+            <button type="submit" class="btn btn-primary">{% pt "add_contact" %}</button>
           </div>
         </form>
         {% else %}

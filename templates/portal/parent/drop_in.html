@@ -1,9 +1,10 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Drop-in care</h1>
-    <p class="lead">Book individual days — same login as the rest of your portal.</p>
+    <h1>{% pt "dropin_title" %}</h1>
+    <p class="lead">{% pt "dropin_lead" %}</p>
   </div>
 </section>
 <section class="page-content">

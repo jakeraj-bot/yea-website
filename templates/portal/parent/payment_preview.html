@@ -1,5 +1,5 @@
 {% extends "portal/base.html" %}
-{% load portal_tags %}
+{% load portal_tags parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
@@ -8,7 +8,7 @@
     <h1>Review drop-in payment</h1>
     {% else %}
     <p class="portal-breadcrumb"><a href="{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}">Billing</a> / Review</p>
-    <h1>Review payment</h1>
+    <h1>{% pt "review_payment" %}</h1>
     {% endif %}
     <p class="lead">{% if parent_stripe_enabled %}Confirm details before paying with Stripe.{% elif is_dropin_payment %}Confirm drop-in details before submitting.{% else %}Confirm details before submitting your payment.{% endif %}</p>
   </div>
@@ -23,7 +23,7 @@
 
     <div class="portal-profile-grid">
       <section class="card portal-profile-full">
-        <h2>Payment summary</h2>
+        <h2>{% pt "payment_summary" %}</h2>
         <dl class="portal-dl portal-dl-2col">
           <dt>Family</dt><dd>{{ parent_preview.family_name }}</dd>
           {% if is_dropin_payment %}
@@ -61,7 +61,7 @@
           <input type="hidden" name="date" value="{{ dropin.date }}">
           {% endif %}
           <input type="hidden" name="booking_id" value="{{ request.GET.booking_id|default:'' }}">
-          <button type="submit" class="btn btn-primary">Pay ${{ payment_totals.total }} with Stripe</button>
+          <button type="submit" class="btn btn-primary">{% pt "pay_with_stripe" total=payment_totals.total %}</button>
           <a class="btn btn-secondary" href="{% url 'portal_parent_payment' %}{% append_query parent_pay_query amount=payment_amount source=is_dropin_payment|yesno:'dropin,' child=dropin.child program_label=dropin.program location=dropin.location date=dropin.date %}">Back to edit</a>
           <a class="btn btn-secondary" href="{% if is_dropin_payment %}{% url 'portal_parent_page' page='drop-in' %}{{ parent_pay_query }}{% else %}{% url 'portal_parent_page' page='billing' %}{{ parent_pay_query }}{% endif %}">Cancel</a>
         </form>

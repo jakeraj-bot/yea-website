@@ -1,9 +1,10 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Drop-off</h1>
-    <p class="lead">Pick a day and time we have a spot, then pay the drop-off rate to confirm pickup.</p>
+    <h1>{% pt "dropoff_title" %}</h1>
+    <p class="lead">{% pt "dropoff_lead" %}</p>
   </div>
 </section>
 <section class="page-content">

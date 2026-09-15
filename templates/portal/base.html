@@ -1,6 +1,6 @@
-{% load static %}
+{% load static parent_i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ parent_lang|default:'en' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=36">
   <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=92">
+  {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=1">{% endif %}
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
     try {
@@ -93,20 +94,34 @@
             {% endif %}
           </div>
           <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
-          {% if admin_preview_sample %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a>
-          {% elif admin_support_preview and admin_preview_family_slug %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a>
-          {% else %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a>
+          {% if parent_header %}
+          <div class="portal-header-balance{% if parent_header.has_credit %} is-credit{% elif parent_header.is_zero %} is-zero{% else %} is-due{% endif %}">
+            <div class="portal-header-balance-copy">
+              <span class="portal-stat-label">{% pt "family_balance" %}</span>
+              {% if parent_header.has_credit %}
+              <strong class="portal-header-balance-amount">{% pt "credit_amount" credit=parent_header.credit %}</strong>
+              {% else %}
+              <strong class="portal-header-balance-amount">${{ parent_header.amount }}</strong>
+              {% endif %}
+            </div>
+            {% if not admin_support_preview or admin_preview_sample %}
+            <a class="btn btn-primary btn-sm" href="{% parent_pay_url %}">{% pt "pay_now" %}</a>
+            {% endif %}
+          </div>
           {% endif %}
+            <form class="portal-lang-switch" method="post" action="{% url 'portal_parent_set_language' %}" role="group" aria-label="{% pt 'lang_group' %}" data-lang-cookie="yea_parent_lang">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" name="lang" value="en" class="btn btn-secondary btn-sm{% if parent_lang != 'es' %} is-active{% endif %}">{% pt "lang_en" %}</button>
+            <button type="submit" name="lang" value="es" class="btn btn-secondary btn-sm{% if parent_lang == 'es' %} is-active{% endif %}">{% pt "lang_es" %}</button>
+          </form>
           {% if parent_authenticated and not admin_support_preview %}
-          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">Sign out</a>
+          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
           {% endif %}
         </div>
         {% endif %}
-        <a class="portal-back-link" href="{% url 'portal_home' %}">← All portals</a>
-        <a class="portal-back-link" href="{% url 'home' %}">Public site</a>
+        <a class="portal-back-link" href="{% url 'portal_home' %}">← {% if portal_area == 'parent' %}{% pt "all_portals" %}{% else %}All portals{% endif %}</a>
+        <a class="portal-back-link" href="{% url 'home' %}">{% if portal_area == 'parent' %}{% pt "public_site" %}{% else %}Public site{% endif %}</a>
       </div>
     </div>
   </header>

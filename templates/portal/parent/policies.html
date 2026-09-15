@@ -1,15 +1,16 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Policy library</h1>
+    <h1>{% pt "policies_title" %}</h1>
     <p class="lead">{{ policies_signed_count }} of {{ policies_total }} signed · {{ policies_per_child }} policies per child.</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     <div class="portal-toolbar">
-      <a class="btn btn-primary" href="{% url 'portal_parent_policies_print' %}{{ parent_pay_query }}">Print all policies</a>
+      <a class="btn btn-primary" href="{% url 'portal_parent_policies_print' %}{{ parent_pay_query }}">{% pt "print_all_policies" %}</a>
     </div>
 
     <div class="portal-callout card">

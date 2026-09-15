@@ -1,9 +1,10 @@
 {% extends "portal/base.html" %}
+{% load parent_i18n %}
 {% block portal_content %}
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
-    <h1>Field trips</h1>
-    <p class="lead">Sign the permission slip, then pay the trip fee if there is one.</p>
+    <h1>{% pt "fieldtrips_title" %}</h1>
+    <p class="lead">{% pt "fieldtrips_lead" %}</p>
   </div>
 </section>
 <section class="page-content">

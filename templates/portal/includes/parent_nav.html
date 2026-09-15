@@ -1,0 +1,67 @@
+{% load parent_i18n %}
+{% if admin_preview_sample %}
+  {% url 'portal_admin_parent_preview_sample_page' page='dashboard' as parent_nav_dashboard %}
+  {% url 'portal_admin_parent_preview_sample_page' page='profile' as parent_nav_profile %}
+  {% url 'portal_admin_parent_preview_sample_page' page='emergency-contacts' as parent_nav_emergency %}
+  {% url 'portal_admin_parent_preview_sample_page' page='applications' as parent_nav_applications %}
+  {% url 'portal_admin_parent_preview_sample_page' page='policies' as parent_nav_policies %}
+  {% url 'portal_admin_parent_preview_sample_page' page='billing' as parent_nav_billing %}
+  {% url 'portal_admin_parent_preview_sample_page' page='tax-statements' as parent_nav_tax %}
+  {% url 'portal_admin_parent_preview_sample_page' page='receipts' as parent_nav_receipts %}
+  {% url 'portal_admin_parent_preview_sample_page' page='drop-in' as parent_nav_dropin %}
+  {% url 'portal_admin_parent_preview_sample_page' page='drop-off' as parent_nav_dropoff %}
+  {% url 'portal_admin_parent_preview_sample_page' page='field-trips' as parent_nav_fieldtrips %}
+  {% url 'portal_admin_parent_preview_sample_page' page='help' as parent_nav_help %}
+  {% url 'portal_admin_parent_preview_sample_page' page='support' as parent_nav_support %}
+  {% url 'portal_admin_parent_preview_sample_page' page='contact-us' as parent_nav_contact %}
+  {% url 'portal_admin_parent_preview_sample_page' page='account' as parent_nav_account %}
+{% elif admin_support_preview and admin_preview_family_slug %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='dashboard' as parent_nav_dashboard %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='profile' as parent_nav_profile %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='emergency-contacts' as parent_nav_emergency %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='applications' as parent_nav_applications %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='policies' as parent_nav_policies %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='billing' as parent_nav_billing %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='tax-statements' as parent_nav_tax %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='receipts' as parent_nav_receipts %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-in' as parent_nav_dropin %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='drop-off' as parent_nav_dropoff %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='field-trips' as parent_nav_fieldtrips %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='help' as parent_nav_help %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='support' as parent_nav_support %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' as parent_nav_contact %}
+  {% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='account' as parent_nav_account %}
+{% else %}
+  {% url 'portal_parent_page' page='dashboard' as parent_nav_dashboard %}
+  {% url 'portal_parent_page' page='profile' as parent_nav_profile %}
+  {% url 'portal_parent_page' page='emergency-contacts' as parent_nav_emergency %}
+  {% url 'portal_parent_page' page='applications' as parent_nav_applications %}
+  {% url 'portal_parent_page' page='policies' as parent_nav_policies %}
+  {% url 'portal_parent_page' page='billing' as parent_nav_billing %}
+  {% url 'portal_parent_page' page='tax-statements' as parent_nav_tax %}
+  {% url 'portal_parent_page' page='receipts' as parent_nav_receipts %}
+  {% url 'portal_parent_page' page='drop-in' as parent_nav_dropin %}
+  {% url 'portal_parent_page' page='drop-off' as parent_nav_dropoff %}
+  {% url 'portal_parent_page' page='field-trips' as parent_nav_fieldtrips %}
+  {% url 'portal_parent_page' page='help' as parent_nav_help %}
+  {% url 'portal_parent_page' page='support' as parent_nav_support %}
+  {% url 'portal_parent_page' page='contact-us' as parent_nav_contact %}
+  {% url 'portal_parent_page' page='account' as parent_nav_account %}
+{% endif %}
+<ul class="portal-nav portal-nav-parent">
+  <li><a class="portal-nav-link portal-nav-dashboard{% if parent_page_slug == 'dashboard' %} is-active{% endif %}" href="{{ parent_nav_dashboard }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_dashboard" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'profile' %} is-active{% endif %}" href="{{ parent_nav_profile }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_profile" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-profile{% if parent_page_slug == 'emergency-contacts' %} is-active{% endif %}" href="{{ parent_nav_emergency }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_emergency" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-applications{% if parent_page_slug == 'applications' or parent_page_slug == 'application' %} is-active{% endif %}" href="{{ parent_nav_applications }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_applications" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-policies{% if parent_page_slug == 'policies' %} is-active{% endif %}" href="{{ parent_nav_policies }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_policies" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-billing{% if parent_page_slug == 'billing' %} is-active{% endif %}" href="{{ parent_nav_billing }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_billing" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-tax{% if parent_page_slug == 'tax-statements' %} is-active{% endif %}" href="{{ parent_nav_tax }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_tax" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-receipts{% if parent_page_slug == 'receipts' %} is-active{% endif %}" href="{{ parent_nav_receipts }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_receipts" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-dropin{% if parent_page_slug == 'drop-in' %} is-active{% endif %}" href="{{ parent_nav_dropin }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_dropin" %}</a></li>
+  {% if show_drop_off_tab %}<li><a class="portal-nav-link portal-nav-dropoff{% if parent_page_slug == 'drop-off' %} is-active{% endif %}" href="{{ parent_nav_dropoff }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}" title="{% pt 'nav_dropoff' %}">{% pt "nav_dropoff" %}</a></li>{% endif %}
+  <li><a class="portal-nav-link portal-nav-fieldtrips{% if parent_page_slug == 'field-trips' %} is-active{% endif %}" href="{{ parent_nav_fieldtrips }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}" title="{% pt 'nav_fieldtrips' %}">{% pt "nav_fieldtrips" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-help{% if parent_page_slug == 'help' %} is-active{% endif %}" href="{{ parent_nav_help }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_help" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'support' %} is-active{% endif %}" href="{{ parent_nav_support }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_support" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-support{% if parent_page_slug == 'contact-us' %} is-active{% endif %}" href="{{ parent_nav_contact }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "contact_us" %}</a></li>
+  <li><a class="portal-nav-link portal-nav-account{% if parent_page_slug == 'account' %} is-active{% endif %}" href="{{ parent_nav_account }}{% if admin_support_preview and admin_preview_family_id and not admin_preview_sample %}?id={{ admin_preview_family_id }}{% else %}{{ parent_pay_query }}{% endif %}">{% pt "nav_account" %}</a></li>
+</ul>

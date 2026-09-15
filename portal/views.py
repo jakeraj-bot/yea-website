@@ -945,6 +945,40 @@ def _parent_pay_query(request):
     return f"?pay={demo_key}"
 
 
+def _attach_parent_ui(request, context, family=None):
+    from .parent_i18n import (
+        SUPPORTED_LANGUAGES,
+        YEA_ORG_NAME,
+        get_parent_language,
+        header_balance,
+        last_paid_receipt,
+        page_title_for,
+        translations,
+    )
+
+    lang = get_parent_language(request)
+    context["parent_lang"] = lang
+    context["parent_languages"] = SUPPORTED_LANGUAGES
+    context["yea_org_name"] = YEA_ORG_NAME
+    slug = context.get("parent_page_slug") or ""
+    if slug:
+        context["page_title"] = page_title_for(lang, slug, context.get("page_title") or "")
+    context["parent_header"] = header_balance(context.get("parent_preview"))
+    preview_key = context.get("parent_preview_key")
+    raw = last_paid_receipt(context.get("receipts"))
+    if raw:
+        if raw.get("company_name"):
+            context["last_receipt"] = raw
+        else:
+            context["last_receipt"] = enrich_receipt_for_print(
+                raw, preview_key or _parent_preview_key(request), family=family
+            )
+    else:
+        context["last_receipt"] = None
+    context.pop("receipt_previews", None)
+    return context
+
+
 def _parent_context(request, page_title, page_slug="", **extra):
     preview_key = _parent_preview_key(request)
     account = get_parent_account(request.user) if request.user.is_authenticated else None
@@ -988,7 +1022,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         from .support_view import active_support_view
 
         support_view = active_support_view(account.family)
-    return _portal_context(
+    context = _portal_context(
         "parent",
         page_title,
         parent_preview_key=preview_key,
@@ -1010,6 +1044,8 @@ def _parent_context(request, page_title, page_slug="", **extra):
         show_drop_off_tab=show_drop_off_tab,
         **extra,
     )
+    family = account.family if account else extra.get("preview_family")
+    return _attach_parent_ui(request, context, family=family)
 
 
 def _staff_attendance_context(request):
@@ -1227,14 +1263,15 @@ def parent_page(request, page):
         "support": "portal/support/support.html",
         "contact-us": "portal/parent/contact.html",
         "emergency-contacts": "portal/parent/emergency_contacts.html",
+        "help": "portal/parent/help.html",
     }
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
 
-    page_title = "Contact us" if page == "contact-us" else page.replace("-", " ").title()
-    if page == "emergency-contacts":
-        page_title = "Emergency contacts"
+    from .parent_i18n import get_parent_language, page_title_for
+
+    page_title = page_title_for(get_parent_language(request), page, page.replace("-", " ").title())
     context = _parent_context(request, page_title, page_slug=page)
     if page == "billing":
         context["billing"] = context["parent_preview"]["billing"]
@@ -1363,15 +1400,6 @@ def parent_page(request, page):
         else:
             preview_key = _parent_preview_key(request)
             context["tax_eligibility"] = TAX_STATEMENT_ELIGIBILITY.get(preview_key, {})
-    if page == "receipts":
-        preview_key = _parent_preview_key(request)
-        account = get_parent_account(request.user) if request.user.is_authenticated else None
-        family = None
-        if _parent_live_mode(request) and account:
-            preview_key = preview_key_for_family(account.family)
-            family = account.family
-        paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
-        context["receipt_previews"] = [enrich_receipt_for_print(r, preview_key, family=family) for r in paid_receipts[:2]]
     if page == "support":
         preview_key = _parent_preview_key(request)
         family_slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
@@ -1385,7 +1413,29 @@ def parent_page(request, page):
         context.update(_parent_contact_page_extras(request, account))
     if page == "emergency-contacts":
         context.update(_parent_emergency_contacts_extras(request, context))
+    family = None
+    account = get_parent_account(request.user) if request.user.is_authenticated else None
+    if account:
+        family = account.family
+    context = _attach_parent_ui(request, context, family=family)
     return render(request, template, context)
+
+
+@require_POST
+def parent_set_language(request):
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from .parent_i18n import language_cookie_kwargs, set_parent_language
+
+    lang = set_parent_language(request, request.POST.get("lang"))
+    next_url = request.POST.get("next") or ""
+    if not url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        next_url = reverse("portal_parent_page", kwargs={"page": "dashboard"})
+    response = redirect(next_url)
+    response.set_cookie(**language_cookie_kwargs(lang))
+    return response
 
 
 @require_POST
@@ -2012,7 +2062,7 @@ def staff_page(request, page):
         if portal_is_live():
             from .staff_services import build_dashboard_live
 
-            if unit and program:
+            if unit:
                 context.update(build_dashboard_live(unit, program))
             else:
                 today = date.today()
@@ -5045,6 +5095,7 @@ PARENT_PREVIEW_TEMPLATES = {
     "support": "portal/support/support.html",
     "contact-us": "portal/parent/contact.html",
     "emergency-contacts": "portal/parent/emergency_contacts.html",
+    "help": "portal/parent/help.html",
 }
 
 
@@ -5114,7 +5165,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
                 "display_name": family.primary_contact or family.name,
             },
             parent_can_manage_photo=False,
-            pending_profile_changes=[],
+            pending_profile_changes=get_pending_profile_changes(account) if account else [],
             preview_family_name=family.name,
         )
         context.update(
@@ -5160,11 +5211,6 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         if page == "tax-statements":
             context["tax_settings"] = TAX_STATEMENT_SETTINGS
             context["tax_eligibility"] = get_tax_eligibility_live(family)
-        if page == "receipts":
-            paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
-            context["receipt_previews"] = [
-                enrich_receipt_for_print(r, preview_key_for_family(family), family=family) for r in paid_receipts[:2]
-            ]
         if page == "support":
             context = _support_context("parent", "Support", request, preview_family=family.slug)
             context["admin_support_preview"] = True
@@ -5189,7 +5235,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             context.update(_parent_contact_page_extras(request, account))
         if page == "emergency-contacts":
             context.update(_parent_emergency_contacts_extras(request, context))
-        return render(request, template, context)
+        return render(request, template, _attach_parent_ui(request, context, family=family))
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
     request.GET = request.GET.copy()
@@ -5239,7 +5285,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             parent_page=page,
         )
     )
-    return render(request, template, context)
+    return render(request, template, _attach_parent_ui(request, context))
 
 
 @require_GET
@@ -5277,7 +5323,7 @@ def admin_parent_preview_sample(request, page="dashboard"):
         context.update(_parent_contact_page_extras(request))
     if page == "emergency-contacts":
         context.update(_parent_emergency_contacts_extras(request, context))
-    return render(request, template, context)
+    return render(request, template, _attach_parent_ui(request, context))
 
 
 @require_http_methods(["GET", "POST"])

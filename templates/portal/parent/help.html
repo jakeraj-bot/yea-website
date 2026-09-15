@@ -1,0 +1,55 @@
+{% extends "portal/base.html" %}
+{% load parent_i18n %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact">
+  <div class="container">
+    <h1>{% pt "help_title" %}</h1>
+    <p class="lead">{% pt "help_lead" %}</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container portal-help-cats">
+    <details open>
+      <summary>{% pt "help_cat_applications" %}</summary>
+      <p>{% pt "help_applications_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_before" %}</summary>
+      <p>{% pt "help_before_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_after" %}</summary>
+      <p>{% pt "help_after_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_billing" %}</summary>
+      <p>{% pt "help_billing_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_payments" %}</summary>
+      <p>{% pt "help_payments_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_profile" %}</summary>
+      <p>{% pt "help_profile_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_emergency" %}</summary>
+      <p>{% pt "help_emergency_body" %}</p>
+    </details>
+    <details>
+      <summary>{% pt "help_cat_contact" %}</summary>
+      <p>{% pt "help_contact_body" %}</p>
+      <p style="margin-top:0.65rem">
+        {% if admin_preview_sample %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">{% pt "open_contact_page" %}</a>
+        {% elif admin_support_preview and admin_preview_family_slug %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">{% pt "open_contact_page" %}</a>
+        {% else %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">{% pt "open_contact_page" %}</a>
+        {% endif %}
+      </p>
+    </details>
+  </div>
+</section>
+{% endblock %}
