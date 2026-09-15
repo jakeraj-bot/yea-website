@@ -702,6 +702,10 @@ GUIDES = {
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
             },
             {
+                "title": "Add a scholarship on a regular plan",
+                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount.",
+            },
+            {
                 "title": "Add a scholarship on a 4Cs plan",
                 "body": "On this child’s 4Cs copay plan, choose a scholarship type, enter the parent copay before the scholarship, and enter how much the family pays. The scholarship comes off the parent copay only. 4Cs agency week amounts stay the same.",
             },

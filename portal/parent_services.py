@@ -133,8 +133,6 @@ def _child_balances_from_ledger(family):
                 row["four_cs_weeks"] = [
                     serialize_week(week) for week in profile.contract_weeks.order_by("week_start")
                 ]
-            elif assignment:
-                row["type"] = "Scholarship"
             rows.append(row)
         return rows
 
