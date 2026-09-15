@@ -73,9 +73,9 @@
           <dt>Family pays</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
           {% endif %}
           {% elif child.full_rate %}
-          <dt>Full rate</dt><dd>${{ child.full_rate }}</dd>
+          <dt>Plan rate</dt><dd>${{ child.full_rate }}</dd>
           <dt>Scholarship</dt><dd>{{ child.scholarship_name }}</dd>
-          <dt>Discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
+          <dt>Scholarship discount</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
           <dt>Family pays</dt><dd><strong>${{ child.parent_amount }}</strong></dd>
           {% else %}
           <dt>Amount</dt><dd>{{ child.amount|default:"—" }}</dd>
@@ -166,6 +166,45 @@
           </div>
           <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save 4Cs copay plan</button>
         </form>
+        {% else %}
+        {% with plan=child.plans.0 %}
+        <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="margin-top: 0.75rem;">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+          <input type="hidden" name="action" value="update_plan">
+          <input type="hidden" name="child_name" value="{{ child.name }}">
+          {% if plan.id %}<input type="hidden" name="plan_id" value="{{ plan.id }}">{% endif %}
+          <input type="hidden" name="billing_plan" value="{{ plan.plan|default:child.plan|default:'Weekly' }}">
+          <input type="hidden" name="billing_type" value="{{ plan.billing_type|default:child.type|default:'Private pay' }}">
+          <input type="hidden" name="billing_amount" value="{{ plan.amount|default:'' }}">
+          <input type="hidden" name="plan_description" value="{{ plan.description|default:child.description|default:'' }}">
+          <input type="hidden" name="next_charge_date" value="{{ plan.next_charge_date|default:child.next_charge_date|default:'' }}">
+          <input type="hidden" name="charge_weekday" value="{{ plan.charge_weekday }}">
+          <input type="hidden" name="charge_month_day" value="{{ plan.charge_month_day }}">
+          {% if plan.auto_charge or child.auto_charge %}<input type="hidden" name="auto_charge" value="on">{% endif %}
+          <div class="form-group portal-form-full">
+            <label for="plan-card-scholarship-{{ child.child_id }}">Scholarship type</label>
+            <select id="plan-card-scholarship-{{ child.child_id }}" name="scholarship_fund_id" class="portal-select">
+              <option value="">No scholarship</option>
+              {% for fund in scholarship_funds %}
+              <option value="{{ fund.pk }}"{% if child.scholarship_fund_id == fund.pk %} selected{% endif %}>{{ fund.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="form-note">Optional. Comes off this plan’s rate — the ledger posts the full rate and a scholarship discount so the family owes the family-pays amount. Add types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="plan-card-full-rate-{{ child.child_id }}">Plan rate before scholarship ($)</label>
+            <input id="plan-card-full-rate-{{ child.child_id }}" name="scholarship_full_rate" type="text" class="portal-input" value="{% if child.full_rate %}{{ child.full_rate }}{% elif plan.amount %}{{ plan.amount }}{% endif %}" placeholder="70.00">
+          </div>
+          <div class="form-group portal-form-full">
+            <label for="plan-card-parent-amount-{{ child.child_id }}">Family pays after scholarship ($)</label>
+            <input id="plan-card-parent-amount-{{ child.child_id }}" name="scholarship_parent_amount" type="text" class="portal-input" value="{{ child.parent_amount|default:'' }}" placeholder="50.00">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save scholarship</button>
+        </form>
+        {% endwith %}
         {% endif %}
         {% if child.plans %}
         <h4>This child’s plans</h4>
@@ -202,7 +241,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2 id="edit-plan-heading">Edit billing plan</h2>
-      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier. A scholarship on a 4Cs plan comes off the parent copay; agency week amounts stay the same.</p>
+      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier. A scholarship on a regular (private pay) plan comes off that plan’s rate — the ledger posts the full rate and a scholarship discount so the family owes the family-pays amount. On a 4Cs plan the scholarship comes off the parent copay; agency week amounts stay the same.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -241,23 +280,24 @@
             <option value="Monthly">Monthly</option>
           </select>
         </div>
-        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
+        <div class="form-group portal-form-full plan-scholarship-fields">
           <label for="plan-scholarship-fund">Scholarship type</label>
           <select id="plan-scholarship-fund" name="scholarship_fund_id" class="portal-select">
-            <option value="">Select scholarship…</option>
+            <option value="">No scholarship</option>
             {% for fund in scholarship_funds %}
             <option value="{{ fund.pk }}">{{ fund.name }}</option>
             {% endfor %}
           </select>
-          <p class="form-note">Add new scholarship types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
+          <p class="form-note">Optional on private pay and 4Cs. Required when billing type is Scholarship. Add types on <a href="{% url 'portal_admin_page' page='scholarships' %}">Scholarships</a> first.</p>
           <p class="form-note" id="plan-scholarship-4cs-note" hidden>On a 4Cs plan this comes off the parent copay only. Agency week amounts stay the same.</p>
+          <p class="form-note" id="plan-scholarship-private-note">On a regular plan this comes off the plan rate. The ledger posts the full rate and a scholarship discount so the family owes the family-pays amount.</p>
         </div>
-        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
-          <label for="plan-full-rate">Full program rate ($)</label>
+        <div class="form-group portal-form-full plan-scholarship-fields">
+          <label for="plan-full-rate">Plan rate before scholarship ($)</label>
           <input id="plan-full-rate" name="scholarship_full_rate" type="text" class="portal-input" placeholder="70.00">
         </div>
-        <div class="form-group portal-form-full plan-scholarship-fields" hidden>
-          <label for="plan-parent-amount">Family pays ($)</label>
+        <div class="form-group portal-form-full plan-scholarship-fields">
+          <label for="plan-parent-amount">Family pays after scholarship ($)</label>
           <input id="plan-parent-amount" name="scholarship_parent_amount" type="text" class="portal-input" placeholder="50.00">
         </div>
         <div class="form-group portal-form-full plan-amount-field">
@@ -404,20 +444,21 @@
     var type = typeSelect ? typeSelect.value : "";
     var isScholarship = type === "Scholarship";
     var is4cs = type === "4Cs";
-    var showScholarship = isScholarship || is4cs;
     document.querySelectorAll(".plan-scholarship-fields").forEach(function (el) {
-      el.hidden = !showScholarship;
+      el.hidden = false;
     });
     var amountField = document.querySelector(".plan-amount-field");
     if (amountField) amountField.hidden = isScholarship || is4cs;
     var fund = document.getElementById("plan-scholarship-fund");
     if (fund) fund.required = !!isScholarship;
     var fullLabel = document.querySelector('label[for="plan-full-rate"]');
-    if (fullLabel) fullLabel.textContent = is4cs ? "Parent copay before scholarship ($)" : "Full program rate ($)";
+    if (fullLabel) fullLabel.textContent = is4cs ? "Parent copay before scholarship ($)" : "Plan rate before scholarship ($)";
     var parentLabel = document.querySelector('label[for="plan-parent-amount"]');
-    if (parentLabel) parentLabel.textContent = is4cs ? "Family pays after scholarship ($)" : "Family pays ($)";
+    if (parentLabel) parentLabel.textContent = "Family pays after scholarship ($)";
     var fourCsNote = document.getElementById("plan-scholarship-4cs-note");
     if (fourCsNote) fourCsNote.hidden = !is4cs;
+    var privateNote = document.getElementById("plan-scholarship-private-note");
+    if (privateNote) privateNote.hidden = !!is4cs;
   }
   function fillPlanForm(btn, isNew) {
     var panel = document.getElementById("edit-plan-panel");
