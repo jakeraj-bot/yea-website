@@ -24,6 +24,7 @@
 <section class="page-content">
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
+    {% include "portal/includes/child_program_status.html" %}
 
     {% if parent_password_reset %}
     <section class="card portal-password-once portal-profile-full portal-collapse-skip" id="parent-password-once">
@@ -192,37 +193,6 @@
         </dl>
       </section>
       {% endif %}
-      {% endif %}
-
-      {% if portal_live %}
-      <section class="card portal-profile-full portal-collapse-skip" id="child-program-status">
-        <h2>Children in program</h2>
-        <p class="form-note">Make a child inactive when they stop attending. The family account, ledger, receipts, and parent login stay. Parents can still pay and download tax statements. Make them active again if they return.</p>
-        <div class="portal-table-wrap">
-          <table class="portal-table">
-            <thead><tr><th>Child</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              {% for child in profile.children %}
-              {% if child.child_id %}
-              <tr>
-                <td><strong>{{ child.name }}</strong></td>
-                <td>{% if child.is_active %}Active{% else %}Inactive{% endif %}</td>
-                <td>
-                  {% if child.is_active %}
-                  {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=0 %}
-                  {% else %}
-                  {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=1 %}
-                  {% endif %}
-                </td>
-              </tr>
-              {% endif %}
-              {% empty %}
-              <tr><td colspan="3">No children on this family account.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
       {% endif %}
 
       {% for child in profile.children %}

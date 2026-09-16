@@ -689,6 +689,13 @@ ADMIN_REPORTS = [
         "report": "balances",
     },
     {
+        "name": "Inactive children",
+        "description": "Who is inactive and any remaining balance — accounts stay on file",
+        "format": "PDF / CSV",
+        "slug": "inactive-children",
+        "report": "inactive-children",
+    },
+    {
         "name": "Who still owes — by week",
         "description": "Families and children with a balance, which weeks they still owe, and a $15 late fee you pick per child",
         "format": "PDF / CSV",
@@ -1736,6 +1743,12 @@ STAFF_REPORTS = [
     {"name": "Application (blank)", "description": "Printable enrollment form", "format": "PDF", "slug": "application-blank"},
     {"name": "Application (filled)", "description": "From submitted application", "format": "PDF", "slug": "application-filled", "link_arg": "jordan-jacobs"},
     {"name": "Outstanding balances", "description": "Families with balance due", "format": "PDF / Excel", "slug": "balances", "link_name": "portal_staff_page", "link_arg": "families"},
+    {
+        "name": "Inactive children",
+        "description": "Who is inactive at this unit and any remaining balance",
+        "format": "PDF / CSV",
+        "slug": "inactive-children",
+    },
     {
         "name": "Who still owes — by week",
         "description": "Children with a balance and the weeks they still owe. Pick who gets a $15 late fee.",

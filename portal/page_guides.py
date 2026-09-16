@@ -11,7 +11,7 @@ GUIDES = {
             },
             {
                 "title": "Open what needs attention",
-                "body": "If a Needs attention list appears, tap a line to go straight to that family, application, or message.",
+                "body": "If a Needs attention list appears, tap a line to go straight to that family, application, or message. Overdue balances on this page count active children only. Inactive children who still owe are on the Inactive children report, not this card.",
             },
             {
                 "title": "Use the yellow buttons",
@@ -38,6 +38,10 @@ GUIDES = {
             {
                 "title": "Come back to admin anytime",
                 "body": "Use Admin portal in the header when you need billing settings, staff accounts, or organization reports.",
+            },
+            {
+                "title": "Enrollment and overdue hide inactive children",
+                "body": "Children enrolled and overdue balances count active children only. When a child is inactive they leave those numbers. Review them on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
             },
         ],
     },
@@ -417,7 +421,25 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "If you can see billing, balance files download as CSV and 4Cs expected amounts shows copay and agency totals by child. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check.",
+                "body": "If you can see billing, balance files download as CSV and 4Cs expected amounts shows copay and agency totals by child. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check. Inactive children is who left the program and any remaining balance — they stay off other reports unless Status is Inactive or All.",
+            },
+        ],
+    },
+    "inactive-children": {
+        "title": "How to review inactive children",
+        "intro": "This list is children marked inactive. Accounts stay on file. Remaining balance is that child's live tuition (charges minus payments; Stripe card fees do not count as still owed).",
+        "steps": [
+            {
+                "title": "Read who left and what they still owe",
+                "body": "Each row is an inactive child. Child names open the family profile. Remaining balance is that child's tuition after payments. Parents can still Pay now and download tax statements.",
+            },
+            {
+                "title": "Filter the list",
+                "body": "Search by child or family. Still owes Yes keeps only children with a remaining balance. Unit is for admin across sites. Apply, then print or download CSV.",
+            },
+            {
+                "title": "Make them active again",
+                "body": "Open the child name, then use Make active on Program status at the top of the profile. They return to All families, attendance, and Overview counts.",
             },
         ],
     },
@@ -633,7 +655,7 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Use Make inactive when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They appear on the Inactive tab on All families. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements.",
+                "body": "Program status is at the top of this profile, under the tabs. Use Make inactive when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They leave Overview balances, enrollment, attendance, and Active family lists. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements.",
             },
             {
                 "title": "Reset parent password",

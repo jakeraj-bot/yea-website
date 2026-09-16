@@ -92,10 +92,9 @@ def _cadence_from_schedule(schedule):
 def _family_status(family, child=None):
     if family.is_suspended:
         return "Suspended"
-    status = (family.status or "Active").strip() or "Active"
-    if child is not None and not child.is_active and status.lower() == "active":
-        return "Withdrawn"
-    return status
+    if child is not None and not child.is_active:
+        return "Inactive"
+    return (family.status or "Active").strip() or "Active"
 
 
 def _is_4cs_plan_row(plan):
@@ -308,6 +307,9 @@ def four_cs_payout_options(rows):
     grades = sorted({row["grade"] for row in rows if row.get("grade") and row["grade"] != BLANK}, key=str.lower)
     programs = sorted({name for row in rows for name in (row.get("program_types") or [])}, key=str.lower)
     statuses = sorted({row["status"] for row in rows if row.get("status")}, key=str.lower)
+    if "Inactive" not in statuses:
+        statuses.append("Inactive")
+        statuses.sort(key=str.lower)
     agencies = []
     seen_agencies = set()
     for row in rows:

@@ -249,6 +249,11 @@ urlpatterns = [
         name="portal_staff_owed_weeks_report",
     ),
     path(
+        "staff/reports/inactive-children/",
+        views.staff_inactive_children_report,
+        name="portal_staff_inactive_children_report",
+    ),
+    path(
         "staff/reports/four-cs-payout/",
         views.staff_four_cs_payout_report,
         name="portal_staff_four_cs_payout_report",

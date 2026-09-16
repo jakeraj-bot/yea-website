@@ -1433,6 +1433,14 @@ nav.portal-nav-admin-groups {
   color: #455a64;
 }
 
+.portal-program-status {
+  margin: 1.25rem 0 0;
+}
+
+.portal-program-status .form-note {
+  max-width: 46rem;
+}
+
 .portal-status-under-review,
 .portal-status-pending-membership {
   background: #fff8e1;

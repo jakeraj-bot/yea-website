@@ -153,6 +153,7 @@ STAFF_REPORTS = [
     "portal_staff_attendance_blank_weekly",
     "portal_staff_signout_blank",
     "portal_staff_owed_weeks_report",
+    "portal_staff_inactive_children_report",
     "portal_staff_four_cs_payout_report",
     "portal_staff_balances_export",
     "portal_staff_agency_copay_export",

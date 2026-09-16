@@ -36,14 +36,14 @@ def get_admin_dashboard_live():
     open_apps = EnrollmentApplication.objects.filter(
         status__in=("under_review", "pending_documents", "waitlist")
     ).count()
-    from .family_list import overdue_ledger_summary
+    from .family_list import overdue_active_children_summary
 
     overdue_ids = list(
         PortalFamily.objects.exclude(slug="practice")
         .exclude(unit__slug__in=("main-location", "main_location"))
         .values_list("pk", flat=True)
     )
-    overdue_count, overdue_total, _owing = overdue_ledger_summary(overdue_ids)
+    overdue_count, overdue_total, _owing = overdue_active_children_summary(overdue_ids)
     staff_count = PortalStaffAccount.objects.filter(is_active=True).count()
     signed_apps = EnrollmentApplication.objects.filter(status="enrolled").count()
     total_apps = max(EnrollmentApplication.objects.count(), 1)
@@ -209,7 +209,7 @@ def get_staff_users_live():
 
 
 def get_member_families_live():
-    from .family_list import household_ledger_totals
+    from .family_list import child_balance_from_map, child_balance_maps
     from .unit_visibility import unit_label_for_child
 
     families = list(
@@ -218,11 +218,18 @@ def get_member_families_live():
         .prefetch_related("children", "children__unit")
         .order_by("unit__name", "name")
     )
-    household_totals = household_ledger_totals([family.pk for family in families])
+    maps = child_balance_maps([family.pk for family in families])
     rows = []
     for family in families:
         active_children = [child for child in family.children.all() if child.is_active]
+        if not active_children:
+            continue
         child_names = [child.name for child in active_children]
+        family_map = maps.get(family.pk, {})
+        active_balance = sum(
+            (child_balance_from_map(family_map, child.name) for child in active_children),
+            Decimal("0"),
+        )
         units = []
         for child in active_children:
             label, _slug = unit_label_for_child(child)
@@ -236,7 +243,7 @@ def get_member_families_live():
                 "unit": " · ".join(units) if units else family.unit.name,
                 "primary_contact": family.primary_contact or "—",
                 "children": child_names,
-                "balance": f"{household_totals.get(family.pk, Decimal('0')):.2f}",
+                "balance": f"{active_balance:.2f}",
                 "billing_type": family.billing_type or "Private pay",
                 "status": "Suspended" if family.is_suspended else family.status,
             }
@@ -389,14 +396,14 @@ def get_admin_alerts_live():
                 "link_arg": "applications",
             }
         )
-    from .family_list import overdue_ledger_summary
+    from .family_list import overdue_active_children_summary
 
     overdue_ids = list(
         PortalFamily.objects.exclude(slug="practice")
         .exclude(unit__slug__in=("main-location", "main_location"))
         .values_list("pk", flat=True)
     )
-    overdue, total, _owing = overdue_ledger_summary(overdue_ids)
+    overdue, total, _owing = overdue_active_children_summary(overdue_ids)
     if overdue:
         alerts.append(
             {
