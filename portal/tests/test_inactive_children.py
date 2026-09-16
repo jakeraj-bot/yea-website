@@ -262,7 +262,7 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertContains(page, "Jordan Jacobs")
         self.assertIn('id="child-program-status"', html)
         self.assertIn("portal-collapse-skip", html)
-        self.assertLess(html.find("Program status"), html.find("Edit member info"))
+        self.assertLess(html.find('id="child-program-status"'), html.find('id="edit-member-info"'))
         self.assertRegex(
             html,
             r'id="child-program-status"[^>]*portal-collapse-skip|portal-collapse-skip[^>]*id="child-program-status"',
