@@ -56,7 +56,7 @@ def _child_balances_from_ledger(family):
                 row["program_label"] = "Drop-off" if row["is_drop_off"] else "After-school"
             return children
 
-    portal_children = list(family.children.filter(is_active=True))
+    portal_children = list(family.children.all().order_by("-is_active", "name"))
     if portal_children:
         from .agency_weeks import cadence_key, get_program_calendar, parent_charge_periods, serialize_week
         from .billing_services import (
@@ -87,6 +87,7 @@ def _child_balances_from_ledger(family):
                 "auto_charge_label": plan_repeat_label(child),
                 "is_drop_off": child.is_drop_off,
                 "program_label": "Drop-off" if child.is_drop_off else "After-school",
+                "is_active": child.is_active,
             }
             if assignment:
                 discount = assignment.full_rate - assignment.parent_amount
@@ -365,7 +366,7 @@ def _profile_from_application(family, account):
         }
 
     enrolled_names = set()
-    for child in family.children.filter(is_active=True):
+    for child in family.children.all().order_by("-is_active", "name"):
         enrolled_names.add(child.name.lower())
         from .unit_visibility import unit_label_for_child
 
@@ -376,10 +377,11 @@ def _profile_from_application(family, account):
                 "dob": "",
                 "grade": child.grade,
                 "location": unit_name or (family.unit.name if getattr(family, "unit_id", None) else "School 18"),
-                "program": family.program_label or "After-school program",
+                "program": (family.program_label or "After-school program") if child.is_active else "Inactive",
                 "allergies": "",
                 "medications": "",
                 "child_id": child.pk,
+                "is_active": child.is_active,
             }
         )
 
@@ -466,13 +468,16 @@ def _dashboard_status_for_family(family):
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import STATUS_LABELS
 
+    has_active = family.children.filter(is_active=True).exists()
+    if not has_active and family.children.filter(is_active=False).exists():
+        return "Inactive"
     apps = EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
     latest = apps.first()
     if latest:
         return STATUS_LABELS.get(latest.status, "Under review")
     if family.status == "Pending enrollment":
         return "Under review"
-    if family.children.filter(is_active=True).exists():
+    if has_active:
         return "Enrolled"
     return "No active application"
 

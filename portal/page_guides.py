@@ -233,11 +233,23 @@ GUIDES = {
     },
     "families": {
         "title": "How to use the families list",
-        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household.",
+        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household. Inactive children have their own tab.",
         "steps": [
             {
                 "title": "Search or filter",
-                "body": "Search by name. Filters help you find balances, billing type, or status.",
+                "body": "Search by family name, child name, or parent phone. (201) 456-5698 and 2014565698 both work. Filters help you find balances, billing type, or status.",
+            },
+            {
+                "title": "Inactive tab",
+                "body": "When a child stops attending, make them inactive on the family account. They move to the Inactive tab. The family account, ledger, and parent login stay. If a household has one active child and one inactive child, the active child stays on this list and the inactive child is on the Inactive tab.",
+            },
+            {
+                "title": "Make them active again",
+                "body": "Open the Inactive tab and use Make active, or open the family account and use Make active there. They return to this list and to attendance.",
+            },
+            {
+                "title": "Parents can still pay and get tax forms",
+                "body": "Inactive does not delete anything. Parents can still see the balance, use Pay now if they owe, download receipts, and get tax statements.",
             },
             {
                 "title": "Save school attending",
@@ -419,7 +431,7 @@ GUIDES = {
             },
             {
                 "title": "Filter by status",
-                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, withdrawn, suspended, or all statuses. Apply filters, then print or download CSV.",
+                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, inactive, withdrawn, suspended, or all statuses. Inactive children who still owe stay on this report when you choose Inactive or All. Apply filters, then print or download CSV.",
             },
         ],
     },
@@ -618,6 +630,10 @@ GUIDES = {
             {
                 "title": "Correct parent info",
                 "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets.",
+            },
+            {
+                "title": "Make a child inactive or active",
+                "body": "Use Make inactive when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They appear on the Inactive tab on All families. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements.",
             },
             {
                 "title": "Reset parent password",

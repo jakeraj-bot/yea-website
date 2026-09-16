@@ -342,11 +342,11 @@ def delete_staff_login(staff_account_id, *, current_user_id=None):
     return label
 
 
-def get_admin_families_live():
+def get_admin_families_live(inactive=False):
     from .family_list import live_family_child_rows, prefetch_family_table_queryset
 
     families = prefetch_family_table_queryset(PortalFamily.objects.exclude(slug="practice").order_by("name"))
-    return live_family_child_rows(families, include_parent_login=True)
+    return live_family_child_rows(families, include_parent_login=True, inactive=inactive)
 
 
 def get_agencies_admin_live():
