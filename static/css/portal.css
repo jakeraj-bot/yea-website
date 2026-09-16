@@ -4598,6 +4598,23 @@ nav.portal-nav-admin-groups {
   margin-top: 1rem;
 }
 
+.portal-attendance-child-switcher {
+  margin: 0 0 1rem;
+}
+
+.portal-attendance-child-tabs {
+  margin-bottom: 0;
+}
+
+.portal-attendance-inactive {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .portal-family-tabs {
   display: flex;
   flex-wrap: wrap;

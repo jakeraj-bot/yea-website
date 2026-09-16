@@ -15,7 +15,7 @@
     </p>
     </div>
     <h1>{% if attendance_child %}{{ attendance_child.name }} — Attendance{% else %}{{ account_heading_name|default:profile.family_name }} — Attendance{% endif %}</h1>
-    <p class="lead">Month calendar for this child only. Present, absent, and not marked come from saved attendance.</p>
+    <p class="lead">{% if show_attendance_child_switcher %}Use the names under Attendance to switch calendars. {% endif %}Month calendar for this child only. Present, absent, and not marked come from saved attendance.</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}
     </div>
@@ -24,6 +24,23 @@
 <section class="page-content">
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
+
+    {% if show_attendance_child_switcher %}
+    <nav class="portal-attendance-child-switcher" aria-label="Switch child attendance">
+      <p class="form-note">This household has more than one child. Use a name to open that child’s calendar.</p>
+      <div class="portal-family-tabs portal-family-tabs-scroll portal-attendance-child-tabs" role="tablist">
+        {% for item in attendance_children %}
+        <a
+          class="portal-family-tab portal-family-tab--attendance{% if item.is_selected %} is-active{% endif %}"
+          href="?{{ item.query }}"
+          role="tab"
+          aria-selected="{% if item.is_selected %}true{% else %}false{% endif %}"
+          {% if item.is_selected %}aria-current="page"{% endif %}
+        >{{ item.name }}{% if not item.is_active %} <span class="portal-attendance-inactive">Inactive</span>{% endif %}</a>
+        {% endfor %}
+      </div>
+    </nav>
+    {% endif %}
 
     {% if not attendance_child %}
     <section class="card portal-collapse-skip">

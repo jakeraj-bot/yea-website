@@ -3187,10 +3187,12 @@ def _family_attendance_context(request, area, family_slug):
     from django.utils.dateparse import parse_date
 
     from .attendance_calendar import (
+        attendance_child_switcher_items,
+        attendance_children_for_account,
         child_attendance_month,
         merge_attendance_query,
         parse_calendar_month,
-        visible_child_for_attendance,
+        pick_attendance_child,
     )
     from .member_admin import resolve_family
 
@@ -3205,8 +3207,20 @@ def _family_attendance_context(request, area, family_slug):
             family_id=context.get("family_id") or _family_id_from_request(request),
             unit=unit,
         )
-    requested_child = bool((request.GET.get("child_id") or "").strip() or (request.GET.get("child") or "").strip())
-    child = visible_child_for_attendance(family, request, unit=unit) if family else None
+    requested_id = (request.GET.get("child_id") or "").strip()
+    requested_name = (request.GET.get("child") or "").strip()
+    requested_child = bool(requested_id or requested_name)
+    siblings = (
+        attendance_children_for_account(
+            family,
+            unit,
+            include_child_id=requested_id,
+            include_child_name=requested_name,
+        )
+        if family
+        else []
+    )
+    child = pick_attendance_child(siblings, child_id=requested_id, child_name=requested_name) if siblings else None
     if family and requested_child and child is None:
         return None
     month_start = parse_calendar_month(request.GET.get("month"))
@@ -3218,8 +3232,11 @@ def _family_attendance_context(request, area, family_slug):
     calendar["prev_query"] = merge_attendance_query(base_query, month=calendar["prev_month"], day=None)
     calendar["next_query"] = merge_attendance_query(base_query, month=calendar["next_month"], day=None)
     calendar["month_query"] = merge_attendance_query(base_query, month=calendar["month_value"], day=None)
+    switcher = attendance_child_switcher_items(siblings, child, base_query, calendar["month_value"])
     context["attendance_calendar"] = calendar
     context["attendance_child"] = child
+    context["attendance_children"] = switcher
+    context["show_attendance_child_switcher"] = len(switcher) > 1
     context["page_title"] = (
         f"{child.name} — Attendance" if child else f"{context['profile']['family_name']} — Attendance"
     )
