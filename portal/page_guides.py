@@ -715,7 +715,7 @@ GUIDES = {
             },
             {
                 "title": "Add a scholarship on a regular plan",
-                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount.",
+                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, keep the plan amount (the full tuition before scholarship). Choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The card still shows the plan amount plus scholarship and family-pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount.",
             },
             {
                 "title": "Add a scholarship on a 4Cs plan",

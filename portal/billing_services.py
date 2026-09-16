@@ -1094,10 +1094,12 @@ def update_child_billing_plan(
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=amount if amount not in (None, "") else child.billing_amount,
         )
-        if assignment:
-            child.billing_amount = assignment.parent_amount
-        elif amount not in (None, ""):
+        # Keep the plan amount as full tuition before scholarship. Family-pays
+        # lives on the scholarship assignment — do not replace the monthly/weekly rate.
+        if amount not in (None, ""):
             child.billing_amount = _parse_amount(amount)
+        elif assignment and assignment.full_rate is not None:
+            child.billing_amount = assignment.full_rate
     elif amount not in (None, ""):
         child.billing_amount = _parse_amount(amount)
     if four_cs_profile:
