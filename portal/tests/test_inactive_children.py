@@ -256,10 +256,97 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
     def test_family_account_shows_make_inactive(self):
         _staff_login(self.client, self.admin, "admin")
         page = self.client.get(reverse("portal_admin_family_detail", kwargs={"family_slug": "jacobs"}))
-        self.assertContains(page, "Children in program")
+        html = page.content.decode()
+        self.assertContains(page, "Program status")
         self.assertContains(page, "Make inactive")
         self.assertContains(page, "Jordan Jacobs")
+        self.assertIn('id="child-program-status"', html)
+        self.assertIn("portal-collapse-skip", html)
+        self.assertLess(html.find('id="child-program-status"'), html.find('id="edit-member-info"'))
         self.assertRegex(
-            page.content.decode(),
+            html,
             r'id="child-program-status"[^>]*portal-collapse-skip|portal-collapse-skip[^>]*id="child-program-status"',
         )
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_dashboard_overdue_and_enrollment_ignore_inactive_children(self):
+        from portal.admin_services import get_admin_alerts_live, get_admin_dashboard_live
+        from portal.four_cs_report import four_cs_payout_report_bundle
+        from portal.member_report import filter_member_information_rows, member_information_rows
+        from portal.staff_services import build_dashboard_live
+
+        post_charge(
+            self.family,
+            "Maya Jacobs",
+            "tuition",
+            "40.00",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        self.maya.is_active = False
+        self.maya.save(update_fields=["is_active"])
+
+        dashboard = get_admin_dashboard_live()
+        self.assertEqual(dashboard["overdue_families"], 0)
+        self.assertEqual(dashboard["overdue_amount"], "0.00")
+        self.assertEqual(dashboard["total_enrolled"], 1)
+        alerts = " ".join(item["text"] for item in get_admin_alerts_live())
+        self.assertNotIn("overdue", alerts.lower())
+
+        staff_dash = build_dashboard_live(self.unit, None)
+        self.assertFalse(any("balance due" in (item.get("text") or "").lower() for item in staff_dash["alerts"]))
+
+        rows = member_information_rows()
+        hidden = filter_member_information_rows(rows, {"_exclude_inactive": True})
+        self.assertIn("Jordan Jacobs", [row["child"] for row in hidden])
+        self.assertNotIn("Maya Jacobs", [row["child"] for row in hidden])
+        shown = filter_member_information_rows(rows, {"status": "Inactive"})
+        self.assertEqual([row["child"] for row in shown], ["Maya Jacobs"])
+        all_rows = filter_member_information_rows(rows, {"status": ""})
+        self.assertIn("Maya Jacobs", [row["child"] for row in all_rows])
+
+        four_cs = four_cs_payout_report_bundle(filters={}, admin=True)
+        self.assertNotIn("Maya Jacobs", [row["child"] for row in four_cs["report_rows"]])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_inactive_children_report_lists_balance_and_skips_active(self):
+        post_charge(
+            self.family,
+            "Maya Jacobs",
+            "tuition",
+            "40.00",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        self.maya.is_active = False
+        self.maya.save(update_fields=["is_active"])
+        report = build_admin_report("inactive-children", {})
+        names = [row["child"] for row in report["rows"]]
+        self.assertIn("Maya Jacobs", names)
+        self.assertNotIn("Jordan Jacobs", names)
+        maya = next(row for row in report["rows"] if row["child"] == "Maya Jacobs")
+        self.assertEqual(maya["status"], "Inactive")
+        self.assertEqual(maya["balance"], "40.00")
+        self.assertEqual(report["outstanding"], "40.00")
+        owes = build_admin_report("inactive-children", {"owes": "yes"})
+        self.assertEqual([row["child"] for row in owes["rows"]], ["Maya Jacobs"])
+        paid = build_admin_report("inactive-children", {"owes": "no"})
+        self.assertNotIn("Maya Jacobs", [row["child"] for row in paid["rows"]])
+
+        _staff_login(self.client, self.admin, "admin")
+        page = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "inactive-children"}))
+        self.assertContains(page, "Inactive children")
+        self.assertContains(page, "Maya Jacobs")
+        self.assertContains(page, "Remaining balance")
+        self.assertContains(page, "How to review inactive children")
+        _staff_login(self.client, self.staff, "staff")
+        staff_page = self.client.get(reverse("portal_staff_inactive_children_report"))
+        self.assertEqual(staff_page.status_code, 200)
+        self.assertContains(staff_page, "Maya Jacobs")
+        self.assertContains(staff_page, "40.00")
+        other = PortalFamily.objects.create(unit=self.other, slug="chen", name="Chen")
+        PortalChild.objects.create(family=other, name="Mia Chen", unit=self.other, is_active=False)
+        staff_page = self.client.get(reverse("portal_staff_inactive_children_report"))
+        self.assertNotContains(staff_page, "Mia Chen")

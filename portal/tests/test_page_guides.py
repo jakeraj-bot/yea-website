@@ -27,6 +27,7 @@ class PageGuideCatalogTests(TestCase):
             "reports",
             "owed-weeks",
             "four-cs-payout",
+            "inactive-children",
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
@@ -128,6 +129,10 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("tax statements", bodies.lower())
         profile = guide_for("family-profile")
         self.assertIn("Make a child inactive or active", [step["title"] for step in profile["steps"]])
+        self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
+        inactive = guide_for("inactive-children")
+        self.assertIsNotNone(inactive)
+        self.assertIn("remaining balance", inactive["intro"].lower())
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")

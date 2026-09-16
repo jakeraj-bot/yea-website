@@ -2998,9 +2998,11 @@ def admin_data_report(request, report_slug):
 
     if report_slug not in ADMIN_DATA_REPORTS:
         return render(request, "portal/404.html", status=404)
-    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status")}
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status", "owes")}
     if report_slug == "balances" and "status" not in request.GET:
         filters["status"] = "Active"
+    if report_slug == "member-information" and "status" not in request.GET:
+        filters["_exclude_inactive"] = True
     report = build_admin_report(report_slug, filters) if _portal_data_live() else {
         **ADMIN_DATA_REPORTS[report_slug],
         "rows": [],
@@ -3059,6 +3061,8 @@ def admin_data_report(request, report_slug):
                     if report_slug == "member-information"
                     else "outstanding-balances"
                     if report_slug == "balances"
+                    else "inactive-children"
+                    if report_slug == "inactive-children"
                     else None
                 ),
                 report=report,
@@ -3339,7 +3343,10 @@ MEMBER_INFORMATION_FILTER_KEYS = (
 
 
 def _member_information_filters(request):
-    return {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
+    filters = {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
+    if "status" not in request.GET:
+        filters["_exclude_inactive"] = True
+    return filters
 
 
 def _member_information_csv(report_rows, filename):
@@ -3613,6 +3620,64 @@ def staff_four_cs_payout_report(request):
             show_unit_filter=False,
             report_filters=filters,
             **bundle,
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
+def staff_inactive_children_report(request):
+    import csv
+    from urllib.parse import urlencode
+
+    from django.http import HttpResponse
+
+    from .admin_reports import ADMIN_DATA_REPORTS, build_admin_report
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
+    spec = ADMIN_DATA_REPORTS["inactive-children"]
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "owes")}
+    if _portal_data_live() and unit:
+        report = build_admin_report("inactive-children", {**filters, "unit": unit.slug})
+    else:
+        report = {
+            **spec,
+            "rows": [],
+            "summary": "Choose a unit to see inactive children.",
+            "outstanding": "0.00",
+            "units": [],
+            "statuses": [],
+            "layout": spec.get("layout") or "table",
+            "child_link": "profile",
+        }
+    report = {**report, "filters": ("q", "owes")}
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
+        writer = csv.writer(response)
+        writer.writerow([label for _key, label in report["columns"]])
+        for row in report.get("rows", []):
+            writer.writerow([cell["value"] for cell in row["display"]])
+        return response
+    query = {key: value for key, value in filters.items() if value}
+    query["format"] = "csv"
+    return render(
+        request,
+        "portal/admin/data_report.html",
+        _staff_context(
+            report["title"],
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="inactive-children",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            report=report,
+            filters=filters,
+            csv_query=urlencode(query),
         ),
     )
 

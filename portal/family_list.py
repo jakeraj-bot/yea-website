@@ -117,6 +117,37 @@ def overdue_ledger_summary(family_ids):
     return len(owing), total, owing
 
 
+def overdue_active_children_summary(family_ids=None, *, unit=None):
+    """Overdue families/totals using only active children's remaining tuition.
+
+    Inactive children who still owe are left off Overview cards and default
+    reports. Review them on the Inactive tab, Inactive report, or status All.
+    """
+    from .member_admin import is_placeholder_unit
+    from .models import PortalChild
+    from .unit_visibility import child_unit_q
+
+    qs = (
+        PortalChild.objects.filter(is_active=True)
+        .exclude(family__slug="practice")
+        .select_related("family", "family__unit", "unit")
+    )
+    if unit is not None:
+        qs = qs.filter(child_unit_q(unit))
+    elif family_ids is not None:
+        qs = qs.filter(family_id__in=list(family_ids))
+    children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
+    maps = child_balance_maps([child.family_id for child in children])
+    family_owing = {}
+    for child in children:
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if balance <= 0:
+            continue
+        family_owing[child.family_id] = family_owing.get(child.family_id, Decimal("0")) + balance
+    total = sum(family_owing.values(), Decimal("0"))
+    return len(family_owing), total, family_owing
+
+
 def household_balance_from_child_map(family_balances):
     """Sum of a per-child map. Prefer household_ledger_totals for family display."""
     if not family_balances:

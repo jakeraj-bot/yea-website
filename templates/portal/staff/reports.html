@@ -43,6 +43,8 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_application_print' app_slug=report.link_arg %}">Preview &amp; print</a>
         {% elif report.slug == 'owed-weeks' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_owed_weeks_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'inactive-children' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_inactive_children_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'balances' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_balances_export' %}">Download CSV</a>
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_page' page='families' %}">View families</a>

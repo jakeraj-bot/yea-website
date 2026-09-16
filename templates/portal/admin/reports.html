@@ -36,6 +36,8 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_financial_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'owed-weeks' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_owed_weeks_report' %}">Preview &amp; print</a>
+        {% elif report.slug == 'inactive-children' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_data_report' report_slug='inactive-children' %}">Preview &amp; export</a>
         {% elif report.slug == 'four-cs-payout' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_four_cs_payout_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'members' %}

@@ -384,10 +384,9 @@ def build_dashboard_live(unit, program):
     session = build_session_context(unit, program, today, roster) if unit and program else {}
     apps = applications_for_staff(unit) if unit else []
     open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents", "Waitlist")]
-    from .family_list import overdue_ledger_summary
+    from .family_list import overdue_active_children_summary
 
-    unit_family_ids = list(families_qs_for_unit(unit).values_list("pk", flat=True))
-    past_due, _overdue_total, owing = overdue_ledger_summary(unit_family_ids)
+    past_due, _overdue_total, owing = overdue_active_children_summary(unit=unit)
     unread = count_messages_unread_live(for_admin=False)
 
     alerts = []

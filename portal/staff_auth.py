@@ -19,7 +19,7 @@ ROLE_FRONT_DESK_ALIAS = "Front desk"
 ROLE_UNIT_STAFF = "Unit staff"
 
 FRONT_DESK_ROLES = {ROLE_FRONT_DESK, ROLE_FRONT_DESK_ALIAS}
-PAYMENT_REPORT_SLUGS = {"balances", "4cs", "owed-weeks"}
+PAYMENT_REPORT_SLUGS = {"balances", "4cs", "owed-weeks", "inactive-children"}
 
 
 def set_portal_auth(request, area):

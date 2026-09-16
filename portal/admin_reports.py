@@ -714,6 +714,68 @@ def balance_report_rows(filters=None):
     }
 
 
+def inactive_children_report_rows(filters=None, *, unit=None):
+    """Children marked inactive, with remaining tuition. Waitlist-only kids stay off."""
+    from .family_list import child_balance_from_map, child_balance_maps, child_is_waitlist_only
+    from .unit_visibility import child_unit_q, child_unit_slug_q, unit_label_for_child
+
+    filters = filters or {}
+    query = (filters.get("q") or "").strip()
+    unit_slug = (filters.get("unit") or "").strip()
+    owes = (filters.get("owes") or "").strip().lower()
+    children = (
+        PortalChild.objects.filter(is_active=False)
+        .exclude(family__slug="practice")
+        .select_related("family", "family__unit", "unit")
+        .prefetch_related("family__enrollment_applications")
+        .order_by("name")
+    )
+    if unit is not None:
+        children = children.filter(child_unit_q(unit))
+    elif unit_slug:
+        children = children.filter(child_unit_slug_q(unit_slug))
+    if query:
+        children = children.filter(
+            Q(name__icontains=query) | Q(family__name__icontains=query) | Q(family__primary_contact__icontains=query)
+        )
+    child_list = []
+    for child in children:
+        if is_placeholder_unit(child.family.unit):
+            continue
+        apps = list(child.family.enrollment_applications.all())
+        if child_is_waitlist_only(child, apps):
+            continue
+        child_list.append(child)
+    maps = child_balance_maps([child.family_id for child in child_list])
+    rows = []
+    outstanding = Decimal("0")
+    for child in child_list:
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if owes == "yes" and balance <= 0:
+            continue
+        if owes == "no" and balance > 0:
+            continue
+        unit_name, _slug = unit_label_for_child(child)
+        outstanding += balance if balance > 0 else Decimal("0")
+        rows.append(
+            {
+                "child": child.name,
+                "family": child.family.name,
+                "family_slug": child.family.slug,
+                "family_id": child.family_id,
+                "unit": unit_name or child.family.unit.name,
+                "status": "Inactive",
+                "balance": _money(balance),
+            }
+        )
+    rows.sort(key=lambda row: (-Decimal(row["balance"]), row["child"].casefold()))
+    return {
+        "rows": rows,
+        "outstanding": _money(outstanding),
+        "count": len(rows),
+    }
+
+
 def four_cs_member_rows(filters=None):
     from .member_report import four_cs_roster_rows
 
@@ -892,6 +954,20 @@ ADMIN_DATA_REPORTS = {
         ],
         "filename": "outstanding-balances.csv",
         "filters": ("q", "unit", "status"),
+    },
+    "inactive-children": {
+        "title": "Inactive children",
+        "lead": "Children marked inactive — accounts stay on file. Remaining balance is that child's live tuition (charges minus payments; Stripe fees do not count as still owed).",
+        "columns": [
+            ("child", "Child"),
+            ("family", "Family"),
+            ("unit", "Unit"),
+            ("status", "Status"),
+            ("balance", "Remaining balance"),
+        ],
+        "filename": "inactive-children.csv",
+        "filters": ("q", "unit", "owes"),
+        "child_link": "profile",
     },
     "payments": {
         "title": "Who paid what",
@@ -1085,6 +1161,12 @@ def build_admin_report(slug, filters=None):
         extra["summary"] = f"{len(rows)} children · ${data['outstanding']} outstanding"
         extra["statuses"] = data["statuses"]
         extra["outstanding"] = data["outstanding"]
+    elif slug == "inactive-children":
+        data = inactive_children_report_rows(filters)
+        rows = data["rows"]
+        extra["summary"] = f"{data['count']} inactive children · ${data['outstanding']} remaining"
+        extra["outstanding"] = data["outstanding"]
+        extra["child_link"] = "profile"
     elif slug == "payments":
         data = payment_report_rows(filters)
         rows = data["rows"]
@@ -1163,6 +1245,7 @@ def build_admin_report(slug, filters=None):
         return None
     extra["units"] = unit_options()
     extra.setdefault("layout", spec.get("layout") or "table")
+    extra.setdefault("child_link", spec.get("child_link") or "")
     extra.setdefault("pending_rows", [])
     extra.setdefault("waiting_for_card_rows", [])
     extra.setdefault("remaining_rows", [])

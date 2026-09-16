@@ -4,7 +4,7 @@
 {% include "portal/includes/print_wide.html" %}
 <section class="page-hero portal-hero portal-hero-compact portal-no-print">
   <div class="container">
-    <p class="portal-breadcrumb"><a href="{% url 'portal_admin_page' page='reports' %}">Organization reports</a> / {{ report.title }}</p>
+    <p class="portal-breadcrumb"><a href="{% if portal_area == 'staff' %}{% url 'portal_staff_page' page='reports' %}{% else %}{% url 'portal_admin_page' page='reports' %}{% endif %}">{% if portal_area == 'staff' %}Reports{% else %}Organization reports{% endif %}</a> / {{ report.title }}</p>
     <h1>{{ report.title }}</h1>
     <p class="lead">{{ report.lead }}</p>
   </div>
@@ -153,6 +153,16 @@
           {% for value, label in report.agency_status_choices %}
           <option value="{{ value }}"{% if filters.agency_status == value %} selected{% endif %}>{{ label }}</option>
           {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      {% if "owes" in report.filters %}
+      <label class="portal-filter-label">
+        Still owes
+        <select class="portal-select" name="owes">
+          <option value="">All</option>
+          <option value="yes"{% if filters.owes == "yes" %} selected{% endif %}>Yes</option>
+          <option value="no"{% if filters.owes == "no" %} selected{% endif %}>No</option>
         </select>
       </label>
       {% endif %}

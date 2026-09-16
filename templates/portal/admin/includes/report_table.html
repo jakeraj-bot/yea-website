@@ -16,9 +16,21 @@
         {% for cell in row.display %}
         <td>
           {% if cell.key == "child" and row.family_slug %}
+          {% if report.child_link == "profile" %}
+          {% if portal_area == 'staff' %}
+          <a class="portal-no-print" href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+          {% else %}
+          <a class="portal-no-print" href="{% url 'portal_admin_family_detail' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+          {% endif %}
+          {% else %}
           <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.child }}</a><span class="portal-print-only">{{ row.child }}</span>
+          {% endif %}
           {% elif cell.key == "family" and row.family_slug %}
+          {% if portal_area == 'staff' %}
+          <a class="portal-no-print" href="{% url 'portal_staff_family_detail' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
+          {% else %}
           <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
+          {% endif %}
           {% else %}
           {{ cell.value }}
           {% endif %}
