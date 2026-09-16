@@ -502,6 +502,9 @@ class BiweeklyFourCsStartDateTests(TestCase):
     def test_biweekly_first_charge_date_is_ledger_date_not_today(self):
         today = date(2026, 9, 16)
         first_charge = date(2026, 9, 8)
+        calendar = get_program_calendar()
+        calendar.program_start = first_charge
+        calendar.save()
         with patch("portal.billing_services.timezone.localdate", return_value=today):
             child, posted = update_child_billing_plan(
                 self.family,
