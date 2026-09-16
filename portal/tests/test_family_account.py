@@ -582,6 +582,7 @@ class RegularPlanScholarshipTests(TestCase):
         types = list(PortalLedgerEntry.objects.filter(family=self.family).values_list("entry_type", "amount"))
         self.assertIn(("charge", Decimal("280.00")), types)
         self.assertIn(("discount", Decimal("-80.00")), types)
+        self.family.refresh_from_db()
         self.assertEqual(self.family.balance, Decimal("200.00"))
 
     def test_monthly_scholarship_does_not_clear_existing_plan_amount(self):
