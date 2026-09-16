@@ -1,6 +1,7 @@
-<section class="card {% if alerts or child.enrollment_status %}portal-medical-card{% endif %}">
+<section class="card {% if alerts or child.enrollment_status %}portal-medical-card{% endif %}"{% if child.child_id %} data-collapse-open{% endif %}>
+  <h2>{{ child_name }}</h2>
+  {% if child.enrollment_status or alerts %}
   <div class="portal-medical-card-header">
-    <h2>{{ child_name }}</h2>
     {% if child.enrollment_status %}
     <span class="portal-status portal-status-{{ child.enrollment_status|slugify }}">{{ child.enrollment_status }}</span>
     {% elif alerts %}
@@ -9,6 +10,20 @@
     </div>
     {% endif %}
   </div>
+  {% endif %}
+
+  {% if child.child_id %}
+  <div class="portal-child-program-status">
+    <h3>Program status</h3>
+    {% if child.is_active %}
+    <span class="portal-status portal-status-active">Active</span>
+    {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=0 button_class="btn btn-primary" %}
+    {% else %}
+    <span class="portal-status portal-status-inactive">Inactive</span>
+    {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=1 button_class="btn btn-primary" %}
+    {% endif %}
+  </div>
+  {% endif %}
 
   {% if child.enrollment_status %}
   <div class="portal-medical-alert-banner">

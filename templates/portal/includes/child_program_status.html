@@ -1,5 +1,4 @@
-{% if portal_live %}
-<section class="card portal-profile-full portal-collapse-skip portal-program-status" id="child-program-status">
+<section class="card portal-profile-full portal-program-status" id="child-program-status" data-collapse-open data-collapse-keep-open>
   <h2>Program status</h2>
   <p class="form-note">Make a child inactive when they stop attending. The family account, ledger, receipts, and parent login stay. They leave attendance, enrollment counts, and Overview balances. Use Make active if they return. Parents can still pay and download tax statements.</p>
   <div class="portal-table-wrap">
@@ -7,19 +6,27 @@
       <thead><tr><th>Child</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {% for child in profile.children %}
-        {% if child.child_id %}
         <tr>
           <td><strong>{{ child.name }}</strong></td>
-          <td>{% if child.is_active %}<span class="portal-status portal-status-active">Active</span>{% else %}<span class="portal-status portal-status-inactive">Inactive</span>{% endif %}</td>
           <td>
-            {% if child.is_active %}
-            {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=0 button_class="btn btn-primary" %}
+            {% if child.child_id %}
+              {% if child.is_active %}<span class="portal-status portal-status-active">Active</span>{% else %}<span class="portal-status portal-status-inactive">Inactive</span>{% endif %}
+            {% elif child.enrollment_status %}
+              <span class="portal-status portal-status-{{ child.enrollment_status|slugify }}">{{ child.enrollment_status }}</span>
             {% else %}
-            {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=1 button_class="btn btn-primary" %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if child.child_id %}
+              {% if child.is_active %}
+              {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=0 button_class="btn btn-primary" %}
+              {% else %}
+              {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=1 button_class="btn btn-primary" %}
+              {% endif %}
             {% endif %}
           </td>
         </tr>
-        {% endif %}
         {% empty %}
         <tr><td colspan="3">No children on this family account.</td></tr>
         {% endfor %}
@@ -27,4 +34,3 @@
     </table>
   </div>
 </section>
-{% endif %}
