@@ -1,7 +1,7 @@
 """Staff review actions for enrollment applications."""
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from portal.fee_config import get_fee_amount, get_fee_display
+from portal.fee_config import get_fee_amount
 from portal.models import PortalChild, PortalFamily, PortalLedgerEntry
 
 from .application_edit import EDITABLE_STATUSES
@@ -113,40 +113,93 @@ def _ensure_child_on_roster(app):
 
 
 def _membership_fee_amount():
-    return get_fee_amount(MEMBERSHIP_FEE_KEY, DEFAULT_MEMBERSHIP_FEE)
+    return get_fee_amount(MEMBERSHIP_FEE_KEY, DEFAULT_MEMBERSHIP_FEE) or Decimal("0.00")
 
 
-def _post_membership_fee_if_needed(app):
+def parse_membership_amount(value, default=None):
+    """Parse a staff-entered membership amount. Empty uses default; $0 waives."""
+    if value is None:
+        return default
+    text = str(value).replace("$", "").replace(",", "").strip()
+    if text == "":
+        return default
+    try:
+        amount = Decimal(text)
+    except (InvalidOperation, TypeError) as exc:
+        raise ValueError("Enter a valid membership amount.") from exc
+    if amount < 0:
+        raise ValueError("Membership amount cannot be negative.")
+    return amount.quantize(Decimal("0.01"))
+
+
+def membership_fee_description(child_name, amount):
+    return f"Membership fee (${amount:.2f}) — {child_name}"
+
+
+def membership_already_posted(app):
+    family = getattr(app, "portal_family", None)
+    if not family:
+        return False
+    from portal.family_merge import family_has_membership_for_child
+
+    return family_has_membership_for_child(family, child_display_name(app))
+
+
+def membership_charge_context(app):
+    """Defaults for the approve-screen membership amount field."""
+    default_fee = _membership_fee_amount()
+    already = membership_already_posted(app)
+    if already:
+        amount = Decimal("0.00")
+    elif app.membership_fee_agreed == "yes":
+        amount = default_fee
+    else:
+        amount = Decimal("0.00")
+    child_name = child_display_name(app)
+    return {
+        "membership_already_posted": already,
+        "membership_amount": f"{amount:.2f}",
+        "membership_description": membership_fee_description(child_name, amount),
+        "membership_fee_default": f"{default_fee:.2f}",
+    }
+
+
+def _post_membership_fee_if_needed(app, amount=None, description=""):
     family = app.portal_family
-    if not family or app.membership_fee_agreed != "yes":
-        return
-
-    amount = _membership_fee_amount()
-    if not amount:
-        return
+    if not family:
+        return None
 
     from portal.family_merge import family_has_membership_for_child
 
     child_name = child_display_name(app)
-    label = get_fee_display(MEMBERSHIP_FEE_KEY, f"${amount}")
-    description = f"Membership fee ({label}) — {child_name}"
-    if PortalLedgerEntry.objects.filter(family=family, description=description).exists():
-        return
     if family_has_membership_for_child(family, child_name):
-        return
+        return None
 
-    PortalLedgerEntry.objects.create(
+    if amount is None:
+        if app.membership_fee_agreed != "yes":
+            return None
+        amount = _membership_fee_amount()
+
+    if not amount:
+        return None
+
+    label = (description or "").strip() or membership_fee_description(child_name, amount)
+    if PortalLedgerEntry.objects.filter(family=family, description=label).exists():
+        return None
+
+    entry = PortalLedgerEntry.objects.create(
         family=family,
         child_name=child_name,
         date=timezone.localdate(),
         entry_type="membership",
-        description=description,
+        description=label,
         amount=amount,
         is_manual=False,
     )
     from portal.family_list import sync_family_balance_from_ledger
 
     sync_family_balance_from_ledger(family)
+    return entry
 
 
 def _activate_family_if_needed(family):
@@ -272,7 +325,7 @@ def assign_application_location(app, program_location):
 
 
 @transaction.atomic
-def approve_application(app, program_location=None):
+def approve_application(app, program_location=None, membership_amount=None, membership_description=""):
     if app.status not in REVIEWABLE_STATUSES:
         raise ValueError("This application has already been reviewed.")
 
@@ -283,7 +336,11 @@ def approve_application(app, program_location=None):
         _sync_family_to_application_unit(app)
 
     _ensure_child_on_roster(app)
-    _post_membership_fee_if_needed(app)
+    _post_membership_fee_if_needed(
+        app,
+        amount=membership_amount,
+        description=membership_description,
+    )
     if app.portal_family:
         _activate_family_if_needed(app.portal_family)
         from enrollment.portal_integration import PAYMENT_TO_BILLING_TYPE

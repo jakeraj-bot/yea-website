@@ -627,6 +627,12 @@ def staff_application_rows(apps):
     ]
 
 
+def _membership_charge_fields(app):
+    from .application_review import membership_charge_context
+
+    return membership_charge_context(app)
+
+
 def staff_application_detail(app, unit=None):
     from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
 
@@ -641,6 +647,7 @@ def staff_application_detail(app, unit=None):
             ),
             "returning_member": False,
             "membership_required": app.membership_fee_agreed == "yes",
+            **_membership_charge_fields(app),
             "internal_note": app.internal_note or "",
             "staff_message": app.staff_message or "",
             "can_review": app.status in {"under_review", "pending_documents", "waitlist"},

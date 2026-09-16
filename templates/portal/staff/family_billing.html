@@ -268,7 +268,7 @@
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
                 <label class="visually-hidden" for="ledger-desc-{{ row.id }}">Description</label>
                 <input id="ledger-desc-{{ row.id }}" name="description" type="text" class="portal-input" value="{{ row.description }}" maxlength="255" required>
-                {% if row.type == 'charge' %}
+                {% if row.type == 'charge' or row.type == 'membership' %}
                 <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Amount</label>
                 <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount }}" inputmode="decimal">
                 <label class="portal-check-label">
@@ -288,7 +288,7 @@
             <td class="portal-cell-amount">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
             <td class="portal-row-actions">
               {% if row.editable and billing_live %}
-              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="Edit description">Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="Edit amount or description">Edit</button>
               {% endif %}
               {% if billing_permissions.can_delete_charge %}
               {% if row.deletable and billing_live %}

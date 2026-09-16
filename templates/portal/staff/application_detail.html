@@ -22,15 +22,15 @@
       <span class="form-note">{{ application.queue_position }} of {{ application.queue_total }}</span>
       {% endif %}
       {% if is_live_application and application.can_review and can_approve_this_application %}
-      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form">
+      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form" data-child-name="{{ application.child_name }}" data-waitlist="{% if application.status_slug == 'waitlist' %}1{% else %}0{% endif %}">
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
         <input type="hidden" name="program_location" id="approve-program-location" value="{{ program_location }}">
         {% if application.status_slug == "waitlist" %}
         <input type="hidden" name="next" value="{{ application_urls.list }}">
-        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('A spot opened — approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve — add to roster</button>
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove()">Approve — add to roster</button>
         {% else %}
-        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove()">Approve</button>
         {% endif %}
       </form>
       {% endif %}
@@ -98,6 +98,27 @@
     </div>
     {% endif %}
 
+    {% if is_live_application and application.can_review and can_approve_this_application %}
+    <section class="card portal-review-panel" id="membership-charge-panel">
+      <h2>Membership charge</h2>
+      {% if application.membership_already_posted %}
+      <p class="form-note">Membership is already on this family account for {{ application.child_name }}. Approving will not post a second membership fee (including waitlist or after-care add-on).</p>
+      {% else %}
+      <p class="form-note">This amount posts to the family ledger when you Approve. Change it if needed. Type 0 to waive.</p>
+      <div class="portal-form-grid">
+        <div class="form-group">
+          <label for="approve-membership-amount">Amount</label>
+          <input id="approve-membership-amount" form="approve-application-form" name="membership_amount" type="text" class="portal-input" value="{{ application.membership_amount }}" inputmode="decimal">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="approve-membership-description">Description</label>
+          <input id="approve-membership-description" form="approve-application-form" name="membership_description" type="text" class="portal-input" value="{{ application.membership_description }}" maxlength="255">
+        </div>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
     {% if is_live_application and application.can_review %}
     <div class="portal-review-panels">
       {% if location_choices %}
@@ -158,11 +179,29 @@
 
     {% if is_live_application and application.can_review and can_approve_this_application %}
     <script>
-      function syncApplicationLocationForApprove(message) {
+      function syncApplicationLocationForApprove() {
         var select = document.getElementById("app-program-location");
         var hidden = document.getElementById("approve-program-location");
         if (select && hidden) {
           hidden.value = select.value;
+        }
+        var form = document.getElementById("approve-application-form");
+        var amountInput = document.getElementById("approve-membership-amount");
+        var childName = (form && form.getAttribute("data-child-name")) || "{{ application.child_name|escapejs }}";
+        var waitlist = form && form.getAttribute("data-waitlist") === "1";
+        var message = waitlist
+          ? ("A spot opened — approve " + childName + " and add them to the roster?")
+          : ("Approve " + childName + " and add them to the roster?");
+        if (!amountInput) {
+          message += " Membership is already on this account — it will not be charged again.";
+        } else {
+          var raw = (amountInput.value || "").replace("$", "").replace(",", "").trim();
+          var amount = parseFloat(raw);
+          if (!raw || isNaN(amount) || amount === 0) {
+            message += " Membership will be waived ($0).";
+          } else {
+            message += " A $" + amount.toFixed(2) + " membership fee will post to the family account.";
+          }
         }
         return confirm(message);
       }
@@ -223,7 +262,7 @@
             <li>Add child to program roster</li>
             {% endif %}
             <li>Activate family account if pending</li>
-            <li>Post membership fee if required ($20)</li>
+            <li>Post the membership charge you enter (0 waives; already-posted membership is not charged again)</li>
             <li>Email parent welcome notification</li>
           </ul>
           {% if not can_approve_this_application %}

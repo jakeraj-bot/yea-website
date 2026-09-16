@@ -74,6 +74,18 @@ def _require_delete_reason(request):
     return require_delete_reason(request)
 
 
+def _membership_charge_from_request(request):
+    from enrollment.application_review import parse_membership_amount
+
+    amount = None
+    if "membership_amount" in request.POST:
+        amount = parse_membership_amount(request.POST.get("membership_amount"))
+    return {
+        "membership_amount": amount,
+        "membership_description": request.POST.get("membership_description", ""),
+    }
+
+
 def _add_after_school_from_review(request, app, area):
     from enrollment.add_program import can_add_after_school_for_application, create_after_school_from_application
 
@@ -1333,7 +1345,11 @@ def staff_application_review(request, app_slug):
             if not can_approve_enrollment_application(get_staff_account(request.user), app, "staff"):
                 messages.error(request, "You don't have permission to approve this application.")
                 return redirect(redirect_url)
-            approve_application(app, program_location=program_location or None)
+            approve_application(
+                app,
+                program_location=program_location or None,
+                **_membership_charge_from_request(request),
+            )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
         elif action == "waitlist":
             place_on_waitlist(app)
@@ -1398,7 +1414,11 @@ def admin_application_review(request, app_slug):
     program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
-            approve_application(app, program_location=program_location or None)
+            approve_application(
+                app,
+                program_location=program_location or None,
+                **_membership_charge_from_request(request),
+            )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster. Open the family Applications tab to view or edit their full application.")
         elif action == "waitlist":
             place_on_waitlist(app)
