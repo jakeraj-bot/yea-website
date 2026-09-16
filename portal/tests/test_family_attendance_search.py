@@ -402,7 +402,11 @@ class ChildAttendanceCalendarTests(TestCase):
         self.assertContains(page, "Casey Cole")
         self.assertContains(page, "Ivy Cole")
         self.assertContains(page, "Inactive")
-        self.assertNotContains(page, "Quiet Cole")
+        switcher = page.content.decode().split("portal-attendance-child-switcher", 1)[1].split(
+            "portal-child-calendar-card", 1
+        )[0]
+        self.assertIn("Ivy Cole", switcher)
+        self.assertNotIn("Quiet Cole", switcher)
         history = self.client.get(
             reverse("portal_admin_family_attendance", kwargs={"family_slug": "cole"}),
             {"id": family.pk, "child_id": inactive.pk, "month": "2026-09"},
