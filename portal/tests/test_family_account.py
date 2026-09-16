@@ -14,6 +14,7 @@ from portal.billing_services import (
     next_plan_charge_date,
     post_credit,
     post_payment,
+    run_due_plan_charges,
     staff_payment_note,
     update_child_billing_plan,
     update_ledger_description,
@@ -252,6 +253,82 @@ class BillingPlanChargeTests(TestCase):
         )
         self.assertEqual(posted, [])
         self.assertFalse(PortalLedgerEntry.objects.filter(family=self.family).exists())
+
+    def test_past_first_charge_date_is_ledger_date_not_today(self):
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 15)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Jordan Jacobs",
+                "Weekly",
+                "50.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=first_charge,
+                charge_weekday=first_charge.weekday(),
+            )
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, first_charge)
+        self.assertNotEqual(entry.date, today)
+        child.refresh_from_db()
+        self.assertEqual(child.last_auto_charge_date, first_charge)
+        billing = get_billing_live(self.family)
+        self.assertEqual(billing["ledger"][0]["date"], first_charge.isoformat())
+
+    def test_future_first_charge_posts_that_date_when_due_not_today(self):
+        today = date(2026, 9, 9)
+        future = date(2026, 9, 16)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Jordan Jacobs",
+                "Weekly",
+                "50.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=future,
+                charge_weekday=future.weekday(),
+            )
+        self.assertEqual(posted, [])
+        child.refresh_from_db()
+        self.assertEqual(child.next_charge_date, future)
+        posted = run_due_plan_charges(today=future, child=child)
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, future)
+        self.assertNotEqual(entry.date, today)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_save_plan_keeps_chosen_first_charge_date_on_billing(self):
+        self._login_admin()
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 15)
+        with patch("portal.billing_services.timezone.localdate", return_value=today), patch(
+            "portal.views_actions.timezone.localdate", return_value=today
+        ):
+            response = self.client.post(
+                reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+                {
+                    "portal_area": "admin",
+                    "action": "update_plan",
+                    "child_name": "Jordan Jacobs",
+                    "billing_plan": "Weekly",
+                    "billing_amount": "50.00",
+                    "billing_type": "Private pay",
+                    "auto_charge": "on",
+                    "next_charge_date": first_charge.isoformat(),
+                    "charge_weekday": str(first_charge.weekday()),
+                    "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}),
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, first_charge)
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertEqual(billing.status_code, 200)
+        self.assertContains(billing, first_charge.isoformat())
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_save_plan_for_today_shows_charge_on_billing(self):
@@ -537,6 +614,29 @@ class RegularPlanScholarshipTests(TestCase):
                 charge_weekday=today.weekday(),
             )
         self._assert_full_rate_and_discount(posted)
+
+    def test_scholarship_charge_and_discount_share_chosen_first_charge_date(self):
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 15)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            _child, posted = update_child_billing_plan(
+                self.family,
+                "Jordan Jacobs",
+                "Weekly",
+                billing_type="Private pay",
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="70.00",
+                scholarship_parent_amount="50.00",
+                auto_charge=True,
+                next_charge_date=first_charge,
+                charge_weekday=first_charge.weekday(),
+            )
+        self._assert_full_rate_and_discount(posted)
+        charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertEqual(charge.date, first_charge)
+        self.assertEqual(discount.date, first_charge)
+        self.assertNotEqual(charge.date, today)
 
     def test_biweekly_private_pay_plan_posts_reduced_family_amount(self):
         today = date(2026, 9, 9)

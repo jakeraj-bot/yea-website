@@ -390,6 +390,14 @@ def parent_copay_after_scholarship(scholarship, copay_amount):
     return family_pays, copay - family_pays
 
 
+def _scholarship_start_date(next_charge_date=None):
+    """Scholarship must be active on the first charge date, even when that date is in the past."""
+    today = timezone.localdate()
+    if next_charge_date and next_charge_date < today:
+        return next_charge_date
+    return today
+
+
 def _apply_plan_scholarship(
     child,
     scholarship_fund_id=None,
@@ -397,6 +405,7 @@ def _apply_plan_scholarship(
     scholarship_parent_amount=None,
     fallback_full_rate=None,
     full_rate_error="Enter the plan rate before the scholarship.",
+    start_date=None,
 ):
     """Attach the per-child scholarship to a plan. Empty fund means no change."""
     if scholarship_fund_id in (None, ""):
@@ -411,7 +420,7 @@ def _apply_plan_scholarship(
         scholarship_fund_id,
         full_rate,
         scholarship_parent_amount,
-        start_date=timezone.localdate(),
+        start_date=start_date or timezone.localdate(),
     )
 
 
@@ -421,6 +430,7 @@ def _apply_four_cs_plan_scholarship(
     scholarship_full_rate=None,
     scholarship_parent_amount=None,
     fallback_full_rate=None,
+    start_date=None,
 ):
     """Attach the existing per-child scholarship to a 4Cs plan (copay only)."""
     return _apply_plan_scholarship(
@@ -430,6 +440,7 @@ def _apply_four_cs_plan_scholarship(
         scholarship_parent_amount=scholarship_parent_amount,
         fallback_full_rate=fallback_full_rate,
         full_rate_error="Enter the parent copay before the scholarship.",
+        start_date=start_date,
     )
 
 
@@ -1007,6 +1018,7 @@ def _save_extra_billing_plan(
             scholarship_full_rate=scholarship_full_rate,
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=row.billing_amount,
+            start_date=_scholarship_start_date(row.next_charge_date or next_charge_date),
         )
     else:
         _apply_plan_scholarship(
@@ -1015,6 +1027,7 @@ def _save_extra_billing_plan(
             scholarship_full_rate=scholarship_full_rate,
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=row.billing_amount if row.billing_amount is not None else amount,
+            start_date=_scholarship_start_date(row.next_charge_date or next_charge_date),
         )
     posted = []
     if row.auto_charge and row.next_charge_date and row.next_charge_date <= timezone.localdate():
@@ -1083,7 +1096,7 @@ def update_child_billing_plan(
             scholarship_fund_id,
             scholarship_full_rate,
             parent_amount,
-            start_date=timezone.localdate(),
+            start_date=_scholarship_start_date(next_charge_date),
         )
         child.billing_amount = assignment.parent_amount
     elif not four_cs_profile:
@@ -1093,6 +1106,7 @@ def update_child_billing_plan(
             scholarship_full_rate=scholarship_full_rate,
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=amount if amount not in (None, "") else child.billing_amount,
+            start_date=_scholarship_start_date(next_charge_date),
         )
         # Keep the plan amount as full tuition before scholarship. Family-pays
         # lives on the scholarship assignment — do not replace the monthly/weekly rate.
@@ -1125,6 +1139,7 @@ def update_child_billing_plan(
             scholarship_full_rate=scholarship_full_rate,
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=child.billing_amount,
+            start_date=_scholarship_start_date(next_charge_date),
         )
         if four_cs_weekly and charge_weekday in (None, ""):
             charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
@@ -1219,11 +1234,12 @@ def _next_4cs_charge_date(plan, today, profile, scheduled=None):
 
 
 def _post_4cs_copay_period(locked, today, plan=None):
-    """Post a parent-copay period dated today. Returns True if a family charge was posted.
+    """Post a parent-copay period. Returns True if a family charge was posted.
 
-    Weekly 4Cs copay covers the school week after the most recent Thursday
-    (Thursday posts the following week). The ledger date is the post day so
-    "post today" appears immediately instead of waiting for the week Monday.
+    The ledger date is the plan's first/next charge date — the date staff
+    chose — not "today". Checking Post today sets that date to today before
+    this runs. Weekly 4Cs copay still covers the school week after the most
+    recent Thursday relative to that post date (Thursday posts next week).
     """
     from .agency_weeks import (
         cadence_key,
@@ -1240,7 +1256,7 @@ def _post_4cs_copay_period(locked, today, plan=None):
     key = cadence_key(target.billing_plan)
     scheduled = target.next_charge_date or today
     if key == "weekly":
-        period = parent_period_for_weekly_thursday_post(profile, target.billing_plan, today)
+        period = parent_period_for_weekly_thursday_post(profile, target.billing_plan, scheduled)
     elif key == "biweekly":
         period = parent_period_for_biweekly_from_date(profile, target.billing_plan, scheduled)
     else:
@@ -1248,7 +1264,7 @@ def _post_4cs_copay_period(locked, today, plan=None):
     if not period:
         target.next_charge_date = None
         return False
-    charge_date = today
+    charge_date = scheduled
     if target.last_auto_charge_date == charge_date:
         target.next_charge_date = _next_4cs_charge_date(
             target.billing_plan, today, profile, scheduled=scheduled
