@@ -346,6 +346,28 @@ class WeeklyFourCsThursdayPostTests(TestCase):
         self.assertContains(billing, "9/14/26")
 
 
+    def test_weekly_first_charge_date_is_ledger_date_not_today(self):
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 10)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=first_charge,
+            )
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, first_charge)
+        self.assertNotEqual(entry.date, today)
+        self.assertIn("9/14/26", entry.description)
+        child.refresh_from_db()
+        self.assertEqual(child.last_auto_charge_date, first_charge)
+        self.assertEqual(child.next_charge_date, date(2026, 9, 17))
+
+
 class BiweeklyFourCsStartDateTests(TestCase):
     def setUp(self):
         self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
@@ -476,6 +498,54 @@ class BiweeklyFourCsStartDateTests(TestCase):
         self.child.refresh_from_db()
         self.assertEqual(self.child.next_charge_date, start)
         self.assertEqual(self.child.billing_plan, "Bi-weekly")
+
+    def test_biweekly_first_charge_date_is_ledger_date_not_today(self):
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 8)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Bi-weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=first_charge,
+            )
+        self.assertEqual(len(posted), 1)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, first_charge)
+        self.assertNotEqual(entry.date, today)
+        self.assertIn("9/8/26", entry.description)
+        child.refresh_from_db()
+        self.assertEqual(child.last_auto_charge_date, first_charge)
+        self.assertEqual(child.next_charge_date, date(2026, 9, 22))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_form_posts_typed_first_charge_date_on_ledger(self):
+        self._login_admin()
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 8)
+        with patch("portal.billing_services.timezone.localdate", return_value=today), patch(
+            "portal.views_actions.timezone.localdate", return_value=today
+        ):
+            response = self.client.post(
+                reverse("portal_staff_billing_action", kwargs={"family_slug": "rivera"}),
+                {
+                    "portal_area": "admin",
+                    "action": "update_4cs_plan",
+                    "child_name": "Ada Rivera",
+                    "billing_plan": "Bi-weekly",
+                    "auto_charge": "on",
+                    "next_charge_date": first_charge.isoformat(),
+                    "next": reverse("portal_admin_family_billing", kwargs={"family_slug": "rivera"}),
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(entry.date, first_charge)
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(billing.status_code, 200)
+        self.assertContains(billing, first_charge.isoformat())
 
 
 class AgencyReceivedCheckboxTests(TestCase):
@@ -921,6 +991,28 @@ class FourCsPlanScholarshipTests(TestCase):
             week.refresh_from_db()
             self.assertEqual(week.agency_amount, agency_before[week.week_start])
             self.assertEqual(week.agency_amount, Decimal("110.00"))
+
+    def test_4cs_scholarship_charge_and_discount_share_first_charge_date(self):
+        today = date(2026, 9, 16)
+        first_charge = date(2026, 9, 10)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            _child, posted = update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=first_charge,
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="26.50",
+                scholarship_parent_amount="10.00",
+            )
+        self.assertEqual(len(posted), 1)
+        charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertEqual(charge.date, first_charge)
+        self.assertEqual(discount.date, first_charge)
+        self.assertNotEqual(charge.date, today)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_page_can_save_4cs_scholarship_from_the_copay_form(self):
