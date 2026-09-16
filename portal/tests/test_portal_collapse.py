@@ -158,6 +158,7 @@ class PortalCollapseScriptTests(SimpleTestCase):
         self.assertIn('content.querySelectorAll(".card")', source)
         self.assertIn("startsCollapsed", source)
         self.assertIn("data-collapse-open", source)
+        self.assertIn("data-collapse-keep-open", source)
         self.assertIn("Expand all", source)
         self.assertIn("Collapse all", source)
 
@@ -228,7 +229,15 @@ class PortalCollapsePageTests(TestCase):
         self._assert_collapse_ready(family)
         self.assertContains(family, "<h2>Emergency contacts</h2>")
         self.assertContains(family, "<h2>Email parent</h2>")
-        self.assertContains(family, "portal-profile-full portal-collapse-skip")
+        self.assertContains(family, "<h2>Program status</h2>")
+        self.assertContains(family, "<h2>Edit member info</h2>")
+        html = family.content.decode()
+        self.assertIn("data-collapse-keep-open", html)
+        self.assertIn('id="child-program-status"', html)
+        self.assertNotRegex(
+            html,
+            r'<section[^>]*id="edit-member-info"[^>]*portal-collapse-skip|<section[^>]*portal-collapse-skip[^>]*id="edit-member-info"',
+        )
         self.assertNotContains(family, "portal-report-filter-card")
 
         dashboard = self.client.get(reverse("portal_admin_page", kwargs={"page": "dashboard"}))

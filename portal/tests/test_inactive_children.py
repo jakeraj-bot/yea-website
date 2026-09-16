@@ -261,12 +261,25 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertContains(page, "Make inactive")
         self.assertContains(page, "Jordan Jacobs")
         self.assertIn('id="child-program-status"', html)
-        self.assertIn("portal-collapse-skip", html)
+        self.assertIn("data-collapse-keep-open", html)
+        self.assertIn("portal-child-program-status", html)
+        self.assertGreaterEqual(html.count("Make inactive"), 4)
         self.assertLess(html.find('id="child-program-status"'), html.find('id="edit-member-info"'))
         self.assertRegex(
             html,
-            r'id="child-program-status"[^>]*portal-collapse-skip|portal-collapse-skip[^>]*id="child-program-status"',
+            r'id="child-program-status"[^>]*data-collapse-keep-open|data-collapse-keep-open[^>]*id="child-program-status"',
         )
+        self.assertNotRegex(
+            html,
+            r'<section[^>]*id="edit-member-info"[^>]*portal-collapse-skip|<section[^>]*portal-collapse-skip[^>]*id="edit-member-info"',
+        )
+
+        staff = self.client
+        _staff_login(staff, self.staff, "staff")
+        staff_page = staff.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(staff_page, "Make inactive")
+        self.assertContains(staff_page, "Program status")
+        self.assertContains(staff_page, "portal-child-program-status")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_dashboard_overdue_and_enrollment_ignore_inactive_children(self):

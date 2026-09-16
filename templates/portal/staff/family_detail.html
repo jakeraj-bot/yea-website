@@ -57,7 +57,7 @@
 
     <div class="portal-profile-grid">
       {% if member_info %}
-      <section class="card portal-profile-full portal-collapse-skip" id="edit-member-info">
+      <section class="card portal-profile-full" id="edit-member-info">
         <h2>Edit member info</h2>
         <p class="form-note">Change parent names, phone, address, and login email here after approval. The parent does not need to re-apply. Saving updates the email they use to sign in and reset their password.</p>
         <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_member_update' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_member_update' family_slug=family_slug %}{% endif %}" class="portal-form-grid">

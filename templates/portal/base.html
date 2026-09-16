@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=36">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=94">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=95">
   {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=3">{% endif %}
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
@@ -165,7 +165,7 @@
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
   <script src="{% static 'js/portal.js' %}?v=8"></script>
-  {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=4"></script>{% endif %}
+  {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=5"></script>{% endif %}
   <script src="{% static 'js/portal-pending-review.js' %}?v=3"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=2"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-parent-email.js' %}?v=1"></script>{% endif %}

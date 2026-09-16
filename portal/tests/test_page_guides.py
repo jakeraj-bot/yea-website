@@ -128,8 +128,11 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Pay now", bodies)
         self.assertIn("tax statements", bodies.lower())
         profile = guide_for("family-profile")
-        self.assertIn("Make a child inactive or active", [step["title"] for step in profile["steps"]])
+        titles = [step["title"] for step in profile["steps"]]
+        self.assertIn("Make a child inactive or active", titles)
+        self.assertIn("Fold profile sections", titles)
         self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())

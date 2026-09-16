@@ -650,12 +650,16 @@ GUIDES = {
                 "body": "Allergies and action plans are on this page. Hover icons in lists for a short reminder.",
             },
             {
+                "title": "Fold profile sections",
+                "body": "Use Expand all / Collapse all at the top of Profile, or the chevron on a card. Program status stays open so Make inactive stays in view. Edit member info starts folded.",
+            },
+            {
                 "title": "Correct parent info",
-                "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets.",
+                "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets. Open that section with the chevron if it is folded.",
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Program status is at the top of this profile, under the tabs. Use Make inactive when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They leave Overview balances, enrollment, attendance, and Active family lists. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They leave Overview balances, enrollment, attendance, and Active family lists. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
                 "title": "Reset parent password",
