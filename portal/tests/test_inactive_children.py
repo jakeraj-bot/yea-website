@@ -259,3 +259,7 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertContains(page, "Children in program")
         self.assertContains(page, "Make inactive")
         self.assertContains(page, "Jordan Jacobs")
+        self.assertRegex(
+            page.content.decode(),
+            r'id="child-program-status"[^>]*portal-collapse-skip|portal-collapse-skip[^>]*id="child-program-status"',
+        )
