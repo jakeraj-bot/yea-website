@@ -81,6 +81,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("agency week amounts stay the same", bodies.lower())
         self.assertIn("private-pay", bodies.lower())
         self.assertIn("family-pays", bodies.lower())
+        self.assertIn("plan amount", bodies.lower())
 
     def test_family_profile_guide_explains_password_reset(self):
         guide = guide_for("family-profile")
