@@ -223,7 +223,11 @@ GUIDES = {
             },
             {
                 "title": "Approve, waitlist, request changes, or reject",
-                "body": "Approve puts them on the roster (and may add the membership fee). Waitlist holds a spot in order. Request changes sends a note the parent can see. Reject needs a clear reason.",
+                "body": "Approve puts them on the roster. Waitlist holds a spot in order. Request changes sends a note the parent can see. Reject needs a clear reason.",
+            },
+            {
+                "title": "Change the membership amount before you approve",
+                "body": "The membership charge defaults to the current membership fee. You can change the amount (and description) before you confirm. Type 0 to waive. That edited amount is what posts to the family ledger. A second waitlist or after-care application for the same child does not charge membership again.",
             },
             {
                 "title": "Print if you need a paper copy",
@@ -744,6 +748,10 @@ GUIDES = {
             {
                 "title": "Credits and deletes",
                 "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions.",
+            },
+            {
+                "title": "Edit a membership charge",
+                "body": "Use Edit on a membership line to change the amount or the description. Deletes still ask for a reason.",
             },
         ],
     },

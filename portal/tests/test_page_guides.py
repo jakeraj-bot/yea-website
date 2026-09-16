@@ -81,6 +81,21 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("new enrollment form", guide["steps"][1]["body"])
         self.assertIn("Confirm to save", guide["steps"][2]["body"])
 
+    def test_application_detail_guide_explains_editable_membership_amount(self):
+        guide = guide_for("application-detail")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Change the membership amount before you approve", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("Type 0 to waive", bodies)
+        self.assertIn("family ledger", bodies.lower())
+
+    def test_family_billing_guide_explains_editing_membership_amount(self):
+        guide = guide_for("family-billing")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Edit a membership charge", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("amount", bodies.lower())
+
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
         titles = [step["title"] for step in guide["steps"]]

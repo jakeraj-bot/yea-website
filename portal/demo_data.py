@@ -863,12 +863,12 @@ def prepare_billing_preview(billing, permissions):
     enriched = {**billing}
     ledger = []
     for index, row in enumerate(billing.get("ledger", [])):
-        is_manual = row.get("manual") or row.get("type") in ("charge", "credit")
+        is_manual = row.get("manual") or row.get("type") in ("charge", "credit", "membership")
         item = {
             **row,
             "id": row.get("id", index + 1),
             "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
-            "editable": row.get("type") in ("charge", "payment"),
+            "editable": row.get("type") in ("charge", "payment", "membership"),
         }
         if row.get("type") == "payment" and not item.get("reference_display"):
             from .payment_refs import attach_ledger_reference
@@ -1939,6 +1939,13 @@ def enrich_demo_application(application):
         family_name = (application.get("family_name") or "").strip().lower()
         if family_name in {"jacobs", "patel", "lee", "martinez", "williams", "chen", "johnson"}:
             enriched["family_slug"] = family_name
+    if "membership_amount" not in enriched:
+        enriched["membership_amount"] = "20.00" if enriched.get("membership_required") else "0.00"
+    if "membership_description" not in enriched:
+        child_name = enriched.get("child_name") or "child"
+        enriched["membership_description"] = f"Membership fee (${enriched['membership_amount']}) — {child_name}"
+    enriched.setdefault("membership_already_posted", False)
+    enriched.setdefault("membership_fee_default", "20.00")
     return enriched
 
 

@@ -11,7 +11,7 @@
     <dt>Ethnicity</dt><dd>{{ application.student_ethnicity|default:"—" }}</dd>
     <dt>Race</dt><dd>{{ application.student_race|default:"—" }}</dd>
     <dt>Returning member</dt><dd>{% if application.returning_member %}Yes{% else %}No{% endif %}</dd>
-    <dt>Membership fee</dt><dd>{% if application.membership_required %}$20 required{% else %}Waived (returning){% endif %}</dd>
+    <dt>Membership fee</dt><dd>{% if application.membership_already_posted %}Already on this account{% elif application.membership_required %}{{ application.membership_fee_default|default:"20.00" }} required — you can change this before approve{% else %}Waived (returning) — you can still enter an amount before approve{% endif %}</dd>
   </dl>
 
   <h2>Medical information</h2>

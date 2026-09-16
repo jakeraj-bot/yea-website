@@ -274,7 +274,7 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
                 "applied": f"{applied:.2f}",
                 "manual": entry.is_manual,
-                "editable": entry.entry_type in ("charge", "payment"),
+                "editable": entry.entry_type in ("charge", "payment", "membership"),
             }
             if entry.entry_type == "payment":
                 attach_ledger_reference(
@@ -591,8 +591,8 @@ def update_ledger_description(family, entry_id, description):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type not in ("charge", "payment"):
-        raise ValueError("Only charge and payment descriptions can be edited.")
+    if entry.entry_type not in ("charge", "payment", "membership"):
+        raise ValueError("Only charge, membership, and payment descriptions can be edited.")
     label = (description or "").strip()
     if not label:
         raise ValueError("Enter a description.")
@@ -608,8 +608,8 @@ def update_ledger_amount(family, entry_id, amount, notify=True):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type != "charge":
-        raise ValueError("Only charge amounts can be edited.")
+    if entry.entry_type not in ("charge", "membership"):
+        raise ValueError("Only charge and membership amounts can be edited.")
     previous = entry.amount
     new_amount = _parse_amount(amount, allow_zero=True)
     if new_amount == previous:
@@ -631,10 +631,10 @@ def delete_ledger_entry(family, entry_id, notify=False):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type not in ("payment", "credit", "discount", "charge"):
+    if entry.entry_type not in ("payment", "credit", "discount", "charge", "membership"):
         raise ValueError("This entry cannot be deleted.")
-    snapshot = _DeletedCharge(entry) if entry.entry_type == "charge" else None
-    previous = entry.amount if entry.entry_type == "charge" else None
+    snapshot = _DeletedCharge(entry) if entry.entry_type in ("charge", "membership") else None
+    previous = entry.amount if entry.entry_type in ("charge", "membership") else None
     entry.delete()
     from .family_list import sync_family_balance_from_ledger
 
