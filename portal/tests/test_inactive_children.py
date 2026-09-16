@@ -83,6 +83,14 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
     def _child_names(self, rows, slug):
         return [row["child_name"] for row in rows if row.get("slug") == slug]
 
+    def _named_application(self, family, child, *, status="approved"):
+        parts = child.name.split(None, 1)
+        app = _make_application(family, status=status)
+        app.student_first_name = parts[0]
+        app.student_last_name = parts[1] if len(parts) > 1 else family.name
+        app.save(update_fields=["student_first_name", "student_last_name"])
+        return app
+
     def test_phone_digits_normalize_punctuation(self):
         self.assertEqual(phone_digits("(201) 456-5698"), "2014565698")
         self.assertTrue(query_matches_phones("(201) 456-5698", "2014565698"))
@@ -91,6 +99,8 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_make_inactive_moves_child_to_inactive_tab_and_keeps_sibling(self):
         _staff_login(self.client, self.admin, "admin")
+        child_count = PortalChild.objects.count()
+        family_count = PortalFamily.objects.count()
         url = reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"})
         response = self.client.post(
             url,
@@ -104,6 +114,8 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.maya.refresh_from_db()
         self.assertFalse(self.maya.is_active)
+        self.assertEqual(PortalChild.objects.count(), child_count)
+        self.assertEqual(PortalFamily.objects.count(), family_count)
         self.family.refresh_from_db()
         self.assertEqual(self.family.status, "Active")
         self.assertTrue(PortalParentAccount.objects.filter(family=self.family).exists())
@@ -112,6 +124,7 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         inactive = get_admin_families_live(inactive=True)
         self.assertEqual(self._child_names(active, "jacobs"), ["Jordan Jacobs"])
         self.assertEqual(self._child_names(inactive, "jacobs"), ["Maya Jacobs"])
+        self.assertEqual([row["child_id"] for row in inactive if row["slug"] == "jacobs"], [self.maya.pk])
 
         page = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
         self.assertContains(page, ">Active</a>")
@@ -128,6 +141,101 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertContains(inactive_page, "Maya Jacobs")
         self.assertContains(inactive_page, "Make active")
         self.assertNotContains(inactive_page, "Jordan Jacobs")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_make_inactive_does_not_clone_child_with_approved_application(self):
+        """Approved apps used to keep the child on Active while Inactive added them too."""
+        self._named_application(self.family, self.maya, status="approved")
+        child_count = PortalChild.objects.count()
+        family_count = PortalFamily.objects.count()
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"}),
+            {
+                "family_id": self.family.pk,
+                "child_id": self.maya.pk,
+                "active": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PortalChild.objects.filter(family=self.family).count(), 2)
+        self.assertEqual(PortalChild.objects.count(), child_count)
+        self.assertEqual(PortalFamily.objects.count(), family_count)
+        self.maya.refresh_from_db()
+        self.assertFalse(self.maya.is_active)
+        self.assertEqual(PortalChild.objects.filter(pk=self.maya.pk, is_active=False).count(), 1)
+
+        active = get_admin_families_live()
+        inactive = get_admin_families_live(inactive=True)
+        self.assertEqual(self._child_names(active, "jacobs"), ["Jordan Jacobs"])
+        self.assertEqual(self._child_names(inactive, "jacobs"), ["Maya Jacobs"])
+        self.assertEqual(
+            [row["child_id"] for row in inactive if row["child_name"] == "Maya Jacobs"],
+            [self.maya.pk],
+        )
+        self.assertFalse(any(row.get("application_id") and row["child_name"] == "Maya Jacobs" for row in active))
+        self.assertEqual(self._child_names(families_for_staff(self.unit), "jacobs"), ["Jordan Jacobs"])
+        self.assertEqual(self._child_names(families_for_staff(self.unit, inactive=True), "jacobs"), ["Maya Jacobs"])
+
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertContains(page, "Jordan Jacobs")
+        self.assertNotContains(page, 'data-child-name="maya jacobs"')
+        inactive_page = self.client.get(
+            reverse("portal_admin_page", kwargs={"page": "families"}),
+            {"tab": "inactive"},
+        )
+        self.assertContains(inactive_page, "Maya Jacobs")
+        self.assertEqual(inactive_page.content.decode().count('data-child-name="maya jacobs"'), 1)
+        self.assertNotContains(inactive_page, "Jordan Jacobs")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_one_child_family_leaves_active_tab_when_made_inactive(self):
+        solo = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="solo",
+            name="Solo",
+            primary_contact="Pat Solo",
+            status="Active",
+        )
+        child = PortalChild.objects.create(family=solo, name="Nia Solo", school="School 18", is_active=True)
+        self._named_application(solo, child, status="approved")
+        child_count = PortalChild.objects.count()
+        family_count = PortalFamily.objects.count()
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "solo"}),
+            {"family_id": solo.pk, "child_id": child.pk, "active": "0"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PortalChild.objects.count(), child_count)
+        self.assertEqual(PortalFamily.objects.count(), family_count)
+        child.refresh_from_db()
+        self.assertFalse(child.is_active)
+        active = get_admin_families_live()
+        self.assertNotIn("solo", {row["slug"] for row in active})
+        self.assertNotIn("Nia Solo", [row["child_name"] for row in active])
+        inactive = get_admin_families_live(inactive=True)
+        self.assertEqual(self._child_names(inactive, "solo"), ["Nia Solo"])
+        self.assertEqual([row["child_id"] for row in inactive if row["slug"] == "solo"], [child.pk])
+
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "families"}))
+        self.assertNotContains(page, 'data-child-name="nia solo"')
+        inactive_page = self.client.get(
+            reverse("portal_admin_page", kwargs={"page": "families"}),
+            {"tab": "inactive"},
+        )
+        self.assertContains(inactive_page, "Nia Solo")
+        self.assertEqual(inactive_page.content.decode().count('data-child-name="nia solo"'), 1)
+
+    def test_pending_new_sibling_stays_on_active_when_other_child_is_inactive(self):
+        pending = self._named_application(self.family, self.maya, status="under_review")
+        pending.student_first_name = "Noah"
+        pending.student_last_name = "Jacobs"
+        pending.save(update_fields=["student_first_name", "student_last_name"])
+        self.maya.is_active = False
+        self.maya.save(update_fields=["is_active"])
+        self.assertEqual(self._child_names(get_admin_families_live(), "jacobs"), ["Jordan Jacobs", "Noah Jacobs"])
+        self.assertEqual(self._child_names(get_admin_families_live(inactive=True), "jacobs"), ["Maya Jacobs"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_reactivate_from_inactive_tab(self):

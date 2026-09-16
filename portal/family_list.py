@@ -448,7 +448,8 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
 
     ``inactive=True`` lists enrolled children who left the program. Waitlist-only
     kids stay off both tabs. Mixed households keep the active child on the main
-    list and the inactive child on the Inactive tab.
+    list and the inactive child on the Inactive tab. Make inactive toggles the
+    existing child — it does not create a second child, family, or Active row.
     """
     from enrollment.portal_integration import family_display_label, family_name_duplicate_keys
 
@@ -467,12 +468,13 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
         family_balances = balances.get(family.pk, {})
         apps = list(family.enrollment_applications.all())
         household_children = _active_prefetched_children(family)
+        inactive_children = _inactive_prefetched_children(family)
         if not inactive and is_waitlist_only_household(apps, household_children):
             continue
         if inactive:
             listed_children = [
                 child
-                for child in _inactive_prefetched_children(family)
+                for child in inactive_children
                 if not child_is_waitlist_only(child, apps)
                 and (not staff_unit or child_belongs_to_unit(child, staff_unit))
             ]
@@ -483,7 +485,12 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                 if not staff_unit or child_belongs_to_unit(child, staff_unit)
             ]
         children_specs = []
-        listed_names = []
+        # Skip application fallbacks for kids who already have a PortalChild,
+        # including inactive ones. Otherwise Make inactive looks like a duplicate
+        # (Active keeps the approved-application row; Inactive adds the child).
+        listed_names = [child.name for child in household_children] + [
+            child.name for child in inactive_children
+        ]
         for child in listed_children:
             unit_name, unit_slug = unit_label_for_child(child)
             children_specs.append(
@@ -520,11 +527,12 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                     }
                 )
                 listed_names.append(child_name)
-        if inactive:
-            if not children_specs:
+        if not children_specs:
+            if inactive or staff_unit:
                 continue
-        elif staff_unit and not children_specs:
-            continue
+            # Fully inactive households must leave Active — no blank family row.
+            if inactive_children:
+                continue
         has_application = getattr(family, "list_has_application", None)
         if has_application is None:
             has_application = bool(family.enrollment_applications.all())

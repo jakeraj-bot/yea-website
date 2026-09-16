@@ -151,15 +151,19 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("phone", bodies.lower())
         self.assertIn("Pay now", bodies)
         self.assertIn("tax statements", bodies.lower())
+        self.assertIn("not a copy", bodies)
+        self.assertIn("will not see that child on both tabs", bodies)
         profile = guide_for("family-profile")
         titles = [step["title"] for step in profile["steps"]]
         self.assertIn("Make a child inactive or active", titles)
         self.assertIn("Fold profile sections", titles)
         self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
         self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("does not copy", " ".join(step["body"] for step in profile["steps"]))
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())
+        self.assertIn("not a second copy", " ".join(step["body"] for step in inactive["steps"]))
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")

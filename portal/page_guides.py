@@ -249,7 +249,7 @@ GUIDES = {
             },
             {
                 "title": "Inactive tab",
-                "body": "When a child stops attending, make them inactive on the family account. They move to the Inactive tab. The family account, ledger, and parent login stay. If a household has one active child and one inactive child, the active child stays on this list and the inactive child is on the Inactive tab.",
+                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
             },
             {
                 "title": "Make them active again",
@@ -435,7 +435,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Read who left and what they still owe",
-                "body": "Each row is an inactive child. Child names open the family profile. Remaining balance is that child's tuition after payments. Parents can still Pay now and download tax statements.",
+                "body": "Each row is an inactive child who moved off Active — not a second copy of the account. Child names open the family profile. Remaining balance is that child's tuition after payments. Parents can still Pay now and download tax statements.",
             },
             {
                 "title": "Filter the list",
@@ -663,7 +663,7 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. The account stays — ledger, receipts, and parent login are not deleted. They leave Overview balances, enrollment, attendance, and Active family lists. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
                 "title": "Reset parent password",
