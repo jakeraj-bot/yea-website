@@ -254,15 +254,15 @@ def _attach_member_info(extra, family_slug, unit=None, family_id=None):
     return extra
 
 
-def _family_list_rows_for_neighbors(area, unit=None):
+def _family_list_rows_for_neighbors(area, unit=None, *, inactive=False):
     from .family_list import demo_family_list_rows
 
     if _portal_families_live():
         if area == "admin":
             from .admin_services import get_admin_families_live
 
-            return get_admin_families_live()
-        return families_for_staff(unit) if unit else []
+            return get_admin_families_live(inactive=inactive)
+        return families_for_staff(unit, inactive=inactive) if unit else []
     return demo_family_list_rows(area)
 
 
@@ -338,7 +338,11 @@ def _family_neighbor_nav(request, area, family_slug, family_tab, family_id=None,
 
     unit = None if area == "admin" else _staff_unit(request)
     list_nav = resolve_family_list_nav(request, area)
-    rows = apply_family_list_nav(_family_list_rows_for_neighbors(area, unit), list_nav)
+    inactive = (list_nav.get("tab") or "") == "inactive"
+    rows = apply_family_list_nav(
+        _family_list_rows_for_neighbors(area, unit, inactive=inactive),
+        list_nav,
+    )
     previous, nxt, index, count = adjacent_child_rows(
         rows,
         slug=family_slug,
@@ -1986,11 +1990,14 @@ def staff_page(request, page):
     if page == "families":
         from .family_list import demo_family_list_rows
 
+        families_tab = "inactive" if request.GET.get("tab") == "inactive" else "active"
+        context["families_tab"] = families_tab
+        inactive = families_tab == "inactive"
         if portal_is_live():
             unit = _staff_unit(request)
-            context["families"] = families_for_staff(unit) if unit else []
+            context["families"] = families_for_staff(unit, inactive=inactive) if unit else []
         else:
-            context["families"] = demo_family_list_rows("staff")
+            context["families"] = [] if inactive else demo_family_list_rows("staff")
         context["family_count"] = len({row["slug"] for row in context["families"]})
     if page == "emails-sent":
         context["page_title"] = "Emails sent"
@@ -3128,7 +3135,11 @@ def _family_account_search_results(request, area):
 
     query = (request.GET.get("q") or "").strip()
     unit = None if area == "admin" else _staff_unit(request)
-    rows = family_account_search_rows(_family_list_rows_for_neighbors(area, unit), query)
+    rows = family_account_search_rows(
+        _family_list_rows_for_neighbors(area, unit)
+        + _family_list_rows_for_neighbors(area, unit, inactive=True),
+        query,
+    )
     return query, [_family_search_result_payload(area, row) for row in rows]
 
 
@@ -4600,18 +4611,21 @@ def admin_page(request, page):
             context["families"] = ADMIN_MEMBER_FAMILIES
             context["parent_accounts"] = []
     if page == "families":
+        families_tab = "inactive" if request.GET.get("tab") == "inactive" else "active"
+        context["families_tab"] = families_tab
+        inactive = families_tab == "inactive"
         if context.get("portal_live"):
             from .admin_services import get_admin_families_live, get_units_live
             from .member_admin import families_without_applications, families_without_parent_login
 
-            context["families"] = get_admin_families_live()
+            context["families"] = get_admin_families_live(inactive=inactive)
             context["units"] = get_units_live()
-            context["families_without_login"] = families_without_parent_login()
-            context["families_without_applications"] = families_without_applications()
+            context["families_without_login"] = [] if inactive else families_without_parent_login()
+            context["families_without_applications"] = [] if inactive else families_without_applications()
         else:
             from .family_list import demo_family_list_rows
 
-            context["families"] = demo_family_list_rows("admin")
+            context["families"] = [] if inactive else demo_family_list_rows("admin")
             context["units"] = UNITS
             context["families_without_login"] = []
             context["families_without_applications"] = []

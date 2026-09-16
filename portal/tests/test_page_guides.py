@@ -114,6 +114,20 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("filter", bodies.lower())
         self.assertIn("payment", bodies.lower())
         self.assertIn("fee", bodies.lower())
+        self.assertIn("inactive", bodies.lower())
+
+    def test_families_guide_explains_inactive_tab_and_phone_search(self):
+        guide = guide_for("families")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Inactive tab", titles)
+        self.assertIn("Make them active again", titles)
+        self.assertIn("Parents can still pay and get tax forms", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("phone", bodies.lower())
+        self.assertIn("Pay now", bodies)
+        self.assertIn("tax statements", bodies.lower())
+        profile = guide_for("family-profile")
+        self.assertIn("Make a child inactive or active", [step["title"] for step in profile["steps"]])
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")

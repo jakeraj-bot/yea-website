@@ -677,9 +677,18 @@ def balance_report_rows(filters=None):
         if balance <= 0:
             continue
         row_status = _family_row_status(child.family)
+        if not child.is_active:
+            statuses.add("Inactive")
         statuses.add(row_status)
-        if status and row_status.lower() != status.lower():
-            continue
+        if status:
+            wanted = status.lower()
+            if wanted == "inactive":
+                if child.is_active:
+                    continue
+            elif row_status.lower() != wanted:
+                continue
+            elif wanted == "active" and not child.is_active:
+                continue
         unit_name, _slug = unit_label_for_child(child)
         outstanding += balance
         rows.append(
@@ -697,6 +706,7 @@ def balance_report_rows(filters=None):
     if status:
         statuses.add(status)
     statuses.add("Active")
+    statuses.add("Inactive")
     return {
         "rows": rows,
         "outstanding": _money(outstanding),
@@ -873,7 +883,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Outstanding balances",
-        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist or withdrawn accounts.",
+        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist, inactive, or withdrawn accounts.",
         "columns": [
             ("child", "Child"),
             ("unit", "Unit"),

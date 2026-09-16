@@ -1,0 +1,10 @@
+{% if child_id and portal_live %}
+<form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_child_status' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_child_status' family_slug=family_slug %}{% endif %}" class="portal-inline-form" onsubmit="return confirm('{% if make_active %}Make {{ child_name }} active again? They will go back to the Active families list and attendance.{% else %}Make {{ child_name }} inactive? Their account, ledger, receipts, and parent login stay. Parents can still pay and download tax statements. You can make them active again later.{% endif %}');">
+  {% csrf_token %}
+  {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+  <input type="hidden" name="child_id" value="{{ child_id }}">
+  <input type="hidden" name="active" value="{% if make_active %}1{% else %}0{% endif %}">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <button type="submit" class="btn btn-secondary btn-sm">{% if make_active %}Make active{% else %}Make inactive{% endif %}</button>
+</form>
+{% endif %}

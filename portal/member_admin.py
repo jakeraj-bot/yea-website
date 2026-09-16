@@ -535,6 +535,15 @@ def matching_prior_balances(family):
     return matches
 
 
+def set_child_active(child, active):
+    """Keep the account; toggle whether this child is on the attending roster."""
+    if child is None:
+        raise ValueError("Child not found.")
+    child.is_active = bool(active)
+    child.save(update_fields=["is_active"])
+    return child
+
+
 @transaction.atomic
 def suspend_family(family, reason, note=""):
     reason = (reason or "other").strip()

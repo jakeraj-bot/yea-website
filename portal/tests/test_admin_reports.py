@@ -255,6 +255,10 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertEqual([row["child"] for row in withdrawn_report["rows"]], ["Omar Left"])
         self.assertEqual(withdrawn_report["rows"][0]["balance"], "80.00")
 
+        inactive_report = build_admin_report("balances", {"status": "Inactive"})
+        self.assertEqual([row["child"] for row in inactive_report["rows"]], ["Omar Left"])
+        self.assertEqual(inactive_report["rows"][0]["balance"], "80.00")
+
         all_statuses = build_admin_report("balances", {"status": ""})
         all_names = {row["child"] for row in all_statuses["rows"]}
         self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Nia Waitowe", "Omar Left"})
@@ -262,6 +266,7 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Waitlist", all_statuses["statuses"])
         self.assertIn("Withdrawn", all_statuses["statuses"])
         self.assertIn("Active", all_statuses["statuses"])
+        self.assertIn("Inactive", all_statuses["statuses"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_outstanding_balance_page_has_child_column_and_status_filter(self):

@@ -530,7 +530,7 @@ def family_meta_live(family_slug, unit=None, family_id=None):
         return None
     enrolled = [
         child.name
-        for child in family.children.filter(is_active=True)
+        for child in family.children.all()
         if child_belongs_to_unit(child, unit)
     ]
     pending = []
@@ -607,9 +607,10 @@ def family_profile_live(family_slug, unit=None, family_id=None):
 
     visible_children = [
         child
-        for child in family.children.filter(is_active=True)
+        for child in family.children.all()
         if child_belongs_to_unit(child, unit)
     ]
+    visible_children.sort(key=lambda child: (not child.is_active, (child.name or "").casefold()))
     enrolled_names = {child.name.lower() for child in visible_children}
     children = []
     for child in visible_children:
@@ -623,6 +624,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
                 "is_drop_off": child.is_drop_off,
                 "note": child.note,
                 "child_id": child.pk,
+                "is_active": child.is_active,
                 "family_slug": family.slug,
                 "can_edit_school": True,
                 "unit_name": unit_name,

@@ -1428,6 +1428,11 @@ nav.portal-nav-admin-groups {
   color: #2e7d32;
 }
 
+.portal-status-inactive {
+  background: #eceff1;
+  color: #455a64;
+}
+
 .portal-status-under-review,
 .portal-status-pending-membership {
   background: #fff8e1;

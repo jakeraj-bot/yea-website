@@ -2053,6 +2053,86 @@ def family_member_info_save(request, family_slug):
 
 
 @require_POST
+def family_child_status(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import resolve_family, set_child_active
+    from .models import PortalChild
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from .unit_visibility import child_belongs_to_unit
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_admin_page", kwargs={"page": "families"})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_staff_page", kwargs={"page": "families"})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    child = PortalChild.objects.filter(pk=request.POST.get("child_id"), family=family).first()
+    if not child or not child_belongs_to_unit(child, unit):
+        messages.error(request, "Child not found.")
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    make_active = request.POST.get("active") == "1"
+    try:
+        set_child_active(child, make_active)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    if make_active:
+        messages.success(
+            request,
+            f"{child.name} is active again. They are back on the Active families list.",
+        )
+        default_next = _with_family_id(fallback, family)
+    else:
+        messages.success(
+            request,
+            f"{child.name} is inactive. Their account stays. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
+        )
+        default_next = families_page + "?tab=inactive"
+    _log_activity(
+        request,
+        "save",
+        action_label="Made child active" if make_active else "Made child inactive",
+        object_type="child",
+        object_label=child.name,
+        details=family.name,
+    )
+    return redirect(_portal_next_url(request, default_next))
+
+
+@require_POST
 def family_parent_password_reset(request, family_slug):
     from django.conf import settings
 
