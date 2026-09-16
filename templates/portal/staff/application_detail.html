@@ -99,7 +99,7 @@
     {% endif %}
 
     {% if is_live_application and application.can_review and can_approve_this_application %}
-    <section class="card portal-review-panel" id="membership-charge-panel">
+    <section class="card portal-review-panel" id="membership-charge-panel" data-collapse-open>
       <h2>Membership charge</h2>
       {% if application.membership_already_posted %}
       <p class="form-note">Membership is already on this family account for {{ application.child_name }}. Approving will not post a second membership fee (including waitlist or after-care add-on).</p>
