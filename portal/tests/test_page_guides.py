@@ -63,6 +63,15 @@ class PageGuideCatalogTests(TestCase):
         ):
             self.assertIsNotNone(guide_for(f"family-{tab}"), tab)
 
+    def test_family_attendance_guide_explains_switching_children(self):
+        guide = guide_for("family-attendance")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Switch children", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("two children", bodies)
+        self.assertIn("names", bodies)
+        self.assertIn("Inactive", bodies)
+
     def test_waitlist_guide_explains_adding_after_care(self):
         guide = guide_for("waitlist")
         titles = [step["title"] for step in guide["steps"]]

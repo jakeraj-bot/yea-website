@@ -691,8 +691,12 @@ GUIDES = {
     },
     "family-attendance": {
         "title": "How to read this child’s attendance",
-        "intro": "This month calendar is only for the child on this account. It shows saved present, absent, and not-marked days.",
+        "intro": "This month calendar is for one child on this family account. It shows saved present, absent, and not-marked days.",
         "steps": [
+            {
+                "title": "Switch children",
+                "body": "If this account has two children, use the names under the Attendance tab to switch calendars. You stay on the family account. Inactive children with saved attendance stay on the list and are labeled Inactive.",
+            },
             {
                 "title": "Read the colors",
                 "body": "Green is present. Red is absent. Gray is not marked. Days stay not marked unless staff already saved attendance.",
@@ -703,7 +707,7 @@ GUIDES = {
             },
             {
                 "title": "Change month",
-                "body": "Use Previous month and Next month. Staff only see the child at their unit.",
+                "body": "Use Previous month and Next month. Staff only see children at their unit.",
             },
         ],
     },
