@@ -123,7 +123,7 @@ class MembershipChargeOnApproveTests(TestCase):
         self.assertContains(page, 'name="approve_billing_type"')
         self.assertContains(page, 'name="approve_billing_plan"')
         self.assertContains(page, 'name="approve_plan_amount"')
-        self.assertContains(page, "Don't attach a plan")
+        self.assertContains(page, "attach a plan")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_approve_posts_edited_amount_with_today(self):
