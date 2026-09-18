@@ -175,6 +175,11 @@ class EnrollmentApplication(models.Model):
         help_text="Message shown to the parent when changes are requested or an application is declined.",
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    member_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date this child can start. Entered when staff approve the application.",
+    )
     portal_family = models.ForeignKey(
         "portal.PortalFamily",
         null=True,

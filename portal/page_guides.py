@@ -191,7 +191,7 @@ GUIDES = {
             },
             {
                 "title": "Approve when a before-care spot opens",
-                "body": "Approve adds them to the roster. You do not need a new application.",
+                "body": "Open Review (or use Approve on this list) and type the member start date — each child can start on a different day, and that date goes in the approval email. Approve removes them from this waitlist and adds them to All families Active. If the child already has a family account, we use that account — no duplicate family or second membership. The parent gets an email that payment is due before the program start, with payment steps and a Pay now link.",
             },
         ],
     },
@@ -223,7 +223,7 @@ GUIDES = {
             },
             {
                 "title": "Approve, waitlist, request changes, or reject",
-                "body": "Approve puts them on the roster. Waitlist holds a spot in order. Request changes sends a note the parent can see. Reject needs a clear reason.",
+                "body": "Enter the member start date first — it is required and goes into the approval email. Approve puts them on All families Active and emails the parent that they can start on that date, that payment is due before the program start, with Pay now steps and a payment-page link. Waitlist holds a before-care spot in order — they stay off Active until you approve. If the child already has an account, we add before care as Approved on that account (no second family). Request changes sends a note the parent can see. Reject needs a clear reason.",
             },
             {
                 "title": "Change the membership amount before you approve",
@@ -815,6 +815,10 @@ GUIDES = {
                 "title": "Add After-care for a waitlisted before-care child",
                 "body": "Find the waitlisted before-care child, then use + After-care and confirm to save. No new enrollment application is required. After-care is added onto this record; before-care waitlist stays the same.",
             },
+            {
+                "title": "After you approve before care",
+                "body": "The waitlist row is gone. This Applications tab shows before care as Approved on the existing account. We do not create a second family.",
+            },
         ],
     },
     "family-policies": {
@@ -1094,6 +1098,10 @@ GUIDES = {
             {
                 "title": "Read the ledger",
                 "body": "Emails sent under the form is every parent email from the portal. Click a row to read the full message. Use Emails sent in the menu for filters when the list gets long.",
+            },
+            {
+                "title": "Edit application emails",
+                "body": "The four application templates (submitted and approved, regular vs waitlist) are on this page. Change the wording anytime. Placeholders include parent name, child name, program, unit, start date, payment link, and first-payment steps. The start date is filled in when you approve the application.",
             },
             {
                 "title": "Collapse sections",

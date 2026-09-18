@@ -3,11 +3,24 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Email parents</h1>
-    <p class="lead">Send a message to one parent or a selected group. Choose the recipients below.</p>
+    <p class="lead">Send a message to one parent or a selected group. Choose the recipients below. Application submitted and approved emails (regular and waitlist) are editable here.</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
+    {% if application_submitted_template %}
+    {% include "portal/includes/email_template_editor.html" with email_template=application_submitted_template editor_title="Application submitted — regular" editor_note="Parents get this when they submit an after-school, drop-off, or summer application." enabled_label="Send this email when a regular application is submitted" save_label="Save regular submitted template" %}
+    {% endif %}
+    {% if application_submitted_waitlist_template %}
+    {% include "portal/includes/email_template_editor.html" with email_template=application_submitted_waitlist_template editor_title="Application submitted — waitlist" editor_note="Parents get this when they join the before care waitlist." enabled_label="Send this email when a waitlist application is submitted" save_label="Save waitlist submitted template" %}
+    {% endif %}
+    {% if application_approved_template %}
+    {% include "portal/includes/email_template_editor.html" with email_template=application_approved_template editor_title="Application approved — regular" editor_note="Sent when you approve a regular application. The member start date you type on Approve is merged in. Keep the Pay now link so it stays clickable." enabled_label="Send this email when a regular application is approved" save_label="Save regular approved template" %}
+    {% endif %}
+    {% if application_approved_waitlist_template %}
+    {% include "portal/includes/email_template_editor.html" with email_template=application_approved_waitlist_template editor_title="Application approved — waitlist" editor_note="Sent when you approve a waitlisted child onto the roster. The member start date you type on Approve is merged in. Keep the Pay now link so it stays clickable." enabled_label="Send this email when a waitlist application is approved" save_label="Save waitlist approved template" %}
+    {% endif %}
+
     {% if first_day_template %}
     <div class="card">
       <h2>First-day payment reminder</h2>

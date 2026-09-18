@@ -101,6 +101,8 @@ class ChargeNoticeEmailTests(TestCase):
         self.assertIn("20.00", kwargs["message"])
         self.assertIn("Ada Rivera", kwargs["message"])
         self.assertIn("/portal/parent/payment/", kwargs["message"])
+        self.assertIn("Pay now", kwargs["message"])
+        self.assertIn("parent portal", kwargs["message"].lower())
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_charge_template_can_be_edited(self, send_email):
@@ -115,6 +117,7 @@ class ChargeNoticeEmailTests(TestCase):
         self.assertEqual(kwargs["subject"], "You were charged $15.00")
         self.assertIn("Late pickup", kwargs["message"])
         self.assertIn("Rivera", kwargs["message"])
+        self.assertIn("/portal/parent/payment/", kwargs["message"])
 
     @patch("portal.email_templates.send_site_email")
     def test_disabled_charge_template_does_not_send(self, send_email):
@@ -221,6 +224,13 @@ class AdminAccountEmailViewTests(TestCase):
         self.assertContains(response, "September 8")
         self.assertContains(response, "$20")
         self.assertContains(response, "send_first_day_reminder")
+        self.assertContains(response, "Application submitted — regular")
+        self.assertContains(response, "Application submitted — waitlist")
+        self.assertContains(response, "Application approved — regular")
+        self.assertContains(response, "Application approved — waitlist")
+        self.assertContains(response, "{start_date}")
+        self.assertContains(response, "{payment_url}")
+        self.assertContains(response, "{payment_steps}")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_can_save_charge_template(self):

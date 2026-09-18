@@ -1946,6 +1946,8 @@ def enrich_demo_application(application):
         enriched["membership_description"] = f"Membership fee (${enriched['membership_amount']}) — {child_name}"
     enriched.setdefault("membership_already_posted", False)
     enriched.setdefault("membership_fee_default", "20.00")
+    enriched.setdefault("member_start_date", "")
+    enriched.setdefault("member_start_date_display", "")
     return enriched
 
 

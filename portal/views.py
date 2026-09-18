@@ -4854,7 +4854,19 @@ def admin_page(request, page):
             context["first_day_template"] = get_email_template(PortalEmailTemplate.KEY_FIRST_DAY_REMINDER)
             context["balance_updated_template"] = get_email_template(PortalEmailTemplate.KEY_BALANCE_UPDATED)
             context["late_payment_template"] = get_email_template(PortalEmailTemplate.KEY_LATE_PAYMENT)
-            from .email_templates import late_notice_preview_rows
+            context["application_submitted_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_SUBMITTED
+            )
+            context["application_submitted_waitlist_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_SUBMITTED_WAITLIST
+            )
+            context["application_approved_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_APPROVED
+            )
+            context["application_approved_waitlist_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_APPROVED_WAITLIST
+            )
+            from .email_templates import APPLICATION_TEMPLATE_PLACEHOLDERS, late_notice_preview_rows
             from .owed_weeks import late_fee_amount
 
             context["late_notice_preview"] = late_notice_preview_rows()
@@ -4864,8 +4876,15 @@ def admin_page(request, page):
             context["first_day_template"] = None
             context["balance_updated_template"] = None
             context["late_payment_template"] = None
+            context["application_submitted_template"] = None
+            context["application_submitted_waitlist_template"] = None
+            context["application_approved_template"] = None
+            context["application_approved_waitlist_template"] = None
             context["late_notice_preview"] = []
             context["late_fee_amount"] = "15.00"
+        from .email_templates import APPLICATION_TEMPLATE_PLACEHOLDERS
+
+        context["application_template_placeholders"] = APPLICATION_TEMPLATE_PLACEHOLDERS
         context["preselect_family_id"] = request.GET.get("family_id", "")
         _attach_email_ledger(context, request, area="admin", full=False)
     if page == "emails-sent":

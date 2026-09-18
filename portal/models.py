@@ -1129,12 +1129,20 @@ class PortalEmailTemplate(models.Model):
     KEY_FIRST_DAY_REMINDER = "first_day_reminder"
     KEY_BALANCE_UPDATED = "balance_updated"
     KEY_LATE_PAYMENT = "late_payment"
+    KEY_APPLICATION_SUBMITTED = "application_submitted"
+    KEY_APPLICATION_SUBMITTED_WAITLIST = "application_submitted_waitlist"
+    KEY_APPLICATION_APPROVED = "application_approved"
+    KEY_APPLICATION_APPROVED_WAITLIST = "application_approved_waitlist"
     KEY_CHOICES = (
         (KEY_STAFF_WELCOME, "Staff / admin welcome"),
         (KEY_CHARGE_NOTICE, "Charge posted"),
         (KEY_FIRST_DAY_REMINDER, "First-day payment reminder"),
         (KEY_BALANCE_UPDATED, "Balance updated"),
         (KEY_LATE_PAYMENT, "Late payment reminder"),
+        (KEY_APPLICATION_SUBMITTED, "Application submitted"),
+        (KEY_APPLICATION_SUBMITTED_WAITLIST, "Waitlist application submitted"),
+        (KEY_APPLICATION_APPROVED, "Application approved"),
+        (KEY_APPLICATION_APPROVED_WAITLIST, "Waitlist application approved"),
     )
 
     key = models.SlugField(unique=True, choices=KEY_CHOICES)

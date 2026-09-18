@@ -87,9 +87,9 @@
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
       {% if can_approve_this_application %}
-      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Type the member start date, then Approve — that date goes in the email. Approve removes them from the waitlist and adds them to All families Active. If they already have a family account, we use that account — no duplicate. The parent is emailed to pay before the program start, with a Pay now link.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
       {% else %}
-      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission. Approve will use the existing family account if the child already has one.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
       {% endif %}
     </div>
     {% elif is_live_application and application.can_review and not can_approve_this_application %}
@@ -100,21 +100,28 @@
 
     {% if is_live_application and application.can_review and can_approve_this_application %}
     <section class="card portal-review-panel" id="membership-charge-panel" data-collapse-open>
-      <h2>Membership charge</h2>
-      {% if application.membership_already_posted %}
-      <p class="form-note">Membership is already on this family account for {{ application.child_name }}. Approving will not post a second membership fee (including waitlist or after-care add-on).</p>
-      {% else %}
-      <p class="form-note">This amount posts to the family ledger when you Approve. Change it if needed. Type 0 to waive.</p>
+      <h2>Approve details</h2>
+      <p class="form-note">Type the member start date before you Approve — it is required and goes into the approval email. You can change that email on Email parents (regular vs waitlist).</p>
       <div class="portal-form-grid">
         <div class="form-group">
-          <label for="approve-membership-amount">Amount</label>
+          <label for="approve-member-start-date">Member start date</label>
+          <input id="approve-member-start-date" form="approve-application-form" name="member_start_date" type="date" class="portal-input" value="{{ application.member_start_date }}" required>
+        </div>
+        {% if not application.membership_already_posted %}
+        <div class="form-group">
+          <label for="approve-membership-amount">Membership amount</label>
           <input id="approve-membership-amount" form="approve-application-form" name="membership_amount" type="text" class="portal-input" value="{{ application.membership_amount }}" inputmode="decimal">
         </div>
         <div class="form-group portal-form-full">
-          <label for="approve-membership-description">Description</label>
+          <label for="approve-membership-description">Membership description</label>
           <input id="approve-membership-description" form="approve-application-form" name="membership_description" type="text" class="portal-input" value="{{ application.membership_description }}" maxlength="255">
         </div>
+        {% endif %}
       </div>
+      {% if application.membership_already_posted %}
+      <p class="form-note">Membership is already on this family account for {{ application.child_name }}. Approving will not post a second membership fee (including waitlist or after-care add-on).</p>
+      {% else %}
+      <p class="form-note">The membership amount posts to the family ledger when you Approve. Change it if needed. Type 0 to waive.</p>
       {% endif %}
     </section>
     {% endif %}
@@ -185,6 +192,12 @@
         if (select && hidden) {
           hidden.value = select.value;
         }
+        var startInput = document.getElementById("approve-member-start-date");
+        if (!startInput || !startInput.value) {
+          alert("Enter the member start date before sending the approval email.");
+          if (startInput) startInput.focus();
+          return false;
+        }
         var form = document.getElementById("approve-application-form");
         var amountInput = document.getElementById("approve-membership-amount");
         var childName = (form && form.getAttribute("data-child-name")) || "{{ application.child_name|escapejs }}";
@@ -192,6 +205,7 @@
         var message = waitlist
           ? ("A spot opened — approve " + childName + " and add them to the roster?")
           : ("Approve " + childName + " and add them to the roster?");
+        message += " They can start on " + startInput.value + ".";
         if (!amountInput) {
           message += " Membership is already on this account — it will not be charged again.";
         } else {
@@ -257,13 +271,14 @@
           <h2>On approval</h2>
           <ul class="portal-link-list">
             {% if application.status_slug == "waitlist" %}
-            <li>Move child from waitlist to the roster</li>
+            <li>Move child from waitlist to All families Active</li>
+            <li>Use the existing family account if this child already has one (no duplicate)</li>
             {% else %}
             <li>Add child to program roster</li>
             {% endif %}
             <li>Activate family account if pending</li>
             <li>Post the membership charge you enter (0 waives; already-posted membership is not charged again)</li>
-            <li>Email parent welcome notification</li>
+            <li>Email parent: start date you enter, pay before the program start, payment steps, and a Pay now link</li>
           </ul>
           {% if not can_approve_this_application %}
           <p class="form-note">Staff can view this application. Approval is available in the admin portal, or here if you have been given permission.</p>
