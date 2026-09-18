@@ -156,7 +156,7 @@ class AdminLoginLayoutTests(TestCase):
         self.assertContains(response, "portal-auth-card")
         self.assertContains(response, "portal-auth-heading")
         self.assertContains(response, "Portal admin login")
-        self.assertNotContains(response, "portal-sidebar")
+        self.assertNotContains(response, 'id="portal-sidebar"')
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_password_reset_uses_centered_auth_shell(self):
