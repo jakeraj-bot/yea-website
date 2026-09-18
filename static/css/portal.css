@@ -5917,6 +5917,10 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   display: block;
 }
 
+.portal-waitlist-table {
+  min-width: 100%;
+}
+
 .portal-waitlist-table th,
 .portal-waitlist-table td {
   padding: 0.28rem 0.4rem;
@@ -5938,7 +5942,9 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 
 .portal-waitlist-actions {
   white-space: normal;
-  min-width: 24rem;
+  width: 30rem;
+  max-width: 32rem;
+  min-width: 18rem;
   padding: 0.25rem 0.35rem;
   vertical-align: top;
 }
