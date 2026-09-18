@@ -191,7 +191,7 @@ GUIDES = {
             },
             {
                 "title": "Approve when a before-care spot opens",
-                "body": "Open Review (or use Approve on this list) and type the member start date — each child can start on a different day, and that date goes in the approval email. Approve removes them from this waitlist and adds them to All families Active. If the child already has a family account, we use that account — no duplicate family or second membership. The parent gets an email that payment is due before the program start, with payment steps and a Pay now link.",
+                "body": "Open Review (or use Approve on this list) and type the member start date — each child can start on a different day, and that date goes in the approval email. Attach a billing plan before you approve if you want the email to show tuition or parent copay. Skip the plan for 4Cs so the email states the membership fee and reminds the parent to send their contract to jakeraj@yeanj.org. Approve removes them from this waitlist and adds them to All families Active. If the child already has a family account, we use that account — no duplicate family or second membership. The parent gets an email that payment is due before the program start, with payment steps and a Pay now link.",
             },
         ],
     },
@@ -223,11 +223,15 @@ GUIDES = {
             },
             {
                 "title": "Approve, waitlist, request changes, or reject",
-                "body": "Enter the member start date first — it is required and goes into the approval email. Approve puts them on All families Active and emails the parent that they can start on that date, that payment is due before the program start, with Pay now steps and a payment-page link. Waitlist holds a before-care spot in order — they stay off Active until you approve. If the child already has an account, we add before care as Approved on that account (no second family). Request changes sends a note the parent can see. Reject needs a clear reason.",
+                "body": "Enter the member start date first — it is required and goes into the approval email. Attach a billing plan before you approve if you want that email to show the amount due (membership plus first tuition or parent copay). Skip the plan for 4Cs so the email states the membership fee and reminds the parent to send their contract to jakeraj@yeanj.org. Approve puts them on All families Active and emails the parent that they can start on that date, that payment is due before the program start, with Pay now steps and a payment-page link. Waitlist holds a before-care spot in order — they stay off Active until you approve. If the child already has an account, we add before care as Approved on that account (no second family). Request changes sends a note the parent can see. Reject needs a clear reason.",
             },
             {
                 "title": "Change the membership amount before you approve",
                 "body": "The membership charge defaults to the current membership fee. You can change the amount (and description) before you confirm. Type 0 to waive. That edited amount is what posts to the family ledger. A second waitlist or after-care application for the same child does not charge membership again.",
+            },
+            {
+                "title": "Attach a billing plan before you approve",
+                "body": "Use the billing plan picker on Approve details — the same weekly, bi-weekly, and monthly private-pay or 4Cs copay types as family Plans. Fill the parent amount so the approval email can show amount due. Amount due is what the parent owes, not the 4Cs agency week amount. Leave the plan off for 4Cs until copay is set: the email then states the membership fee and the contract reminder (send to jakeraj@yeanj.org, YEA signs it and emails it back for 4Cs). You can still add or change the plan later on the family Plans tab.",
             },
             {
                 "title": "Print if you need a paper copy",

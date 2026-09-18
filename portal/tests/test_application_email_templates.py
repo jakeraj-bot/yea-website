@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import date
 from unittest.mock import patch
 
@@ -6,7 +7,7 @@ from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from enrollment.application_review import approve_application, parse_member_start_date
+from enrollment.application_review import approve_application, parse_approve_billing_plan, parse_member_start_date
 from enrollment.notifications import notify_parent_application_received
 from portal.email_templates import (
     application_email_context,
@@ -15,7 +16,7 @@ from portal.email_templates import (
     save_email_template,
     submitted_template_key,
 )
-from portal.models import PortalEmailTemplate, PortalFamily, PortalStaffAccount, PortalUnit
+from portal.models import PortalChild, PortalEmailTemplate, PortalFamily, PortalStaffAccount, PortalUnit
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
 
@@ -120,11 +121,134 @@ class ApplicationEmailTemplateTests(TestCase):
             "start_date",
             "payment_url",
             "payment_steps",
+            "amount_due",
+            "membership_fee",
+            "four_cs_contract",
         ):
             self.assertIn(key, ctx)
         self.assertEqual(ctx["start_date"], "November 2, 2026")
         self.assertTrue(ctx["payment_url"].endswith("/portal/parent/payment/"))
         self.assertIn("Pay with Stripe", ctx["payment_steps"])
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_with_weekly_plan_email_has_amount_due(self):
+        self.regular.membership_fee_agreed = "yes"
+        self.regular.save(update_fields=["membership_fee_agreed"])
+        plan = parse_approve_billing_plan(
+            {
+                "approve_billing_type": "Private pay",
+                "approve_billing_plan": "Weekly",
+                "approve_plan_amount": "70.00",
+                "approve_post_first": "on",
+            },
+            self.regular,
+        )
+        mail.outbox.clear()
+        approve_application(
+            self.regular,
+            start_date=date(2026, 10, 6),
+            membership_amount=Decimal("20.00"),
+            plan=plan,
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn("Amount due to start: $90.00", body)
+        self.assertIn("$20.00 membership fee", body)
+        self.assertIn("$70.00 weekly tuition", body)
+        self.assertNotIn("The membership fee to start is", body)
+        self.assertNotIn("jakeraj@yeanj.org", body)
+        child = PortalChild.objects.get(family=self.family, name="Ada Rivera")
+        self.assertEqual(child.billing_plan, "Weekly")
+        self.assertEqual(child.billing_amount, Decimal("70.00"))
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_with_no_plan_email_membership_only(self):
+        self.regular.membership_fee_agreed = "yes"
+        self.regular.save(update_fields=["membership_fee_agreed"])
+        mail.outbox.clear()
+        approve_application(
+            self.regular,
+            start_date=date(2026, 10, 6),
+            membership_amount=Decimal("20.00"),
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn("The membership fee to start is $20.00.", body)
+        self.assertNotIn("Amount due to start", body)
+        self.assertNotIn("weekly tuition", body)
+        self.assertNotIn("jakeraj@yeanj.org", body)
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_4cs_email_has_contract_and_membership_only(self):
+        self.regular.payment_method = "4cs"
+        self.regular.membership_fee_agreed = "yes"
+        self.regular.save(update_fields=["payment_method", "membership_fee_agreed"])
+        mail.outbox.clear()
+        approve_application(
+            self.regular,
+            start_date=date(2026, 10, 6),
+            membership_amount=Decimal("20.00"),
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn("The membership fee to start is $20.00.", body)
+        self.assertNotIn("Amount due to start", body)
+        self.assertIn("jakeraj@yeanj.org", body)
+        self.assertIn("Youth Education Academy can sign it", body)
+        self.assertIn("give to 4Cs", body)
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.billing_type, "4Cs")
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_4cs_copay_plan_email_has_amount_due_and_contract(self):
+        self.regular.payment_method = "4cs"
+        self.regular.membership_fee_agreed = "yes"
+        self.regular.save(update_fields=["payment_method", "membership_fee_agreed"])
+        plan = parse_approve_billing_plan(
+            {
+                "approve_billing_type": "4Cs",
+                "approve_billing_plan": "Weekly",
+                "approve_plan_amount": "26.50",
+                "approve_post_first": "on",
+            },
+            self.regular,
+        )
+        mail.outbox.clear()
+        approve_application(
+            self.regular,
+            start_date=date(2026, 10, 6),
+            membership_amount=Decimal("20.00"),
+            plan=plan,
+        )
+        body = mail.outbox[0].body
+        self.assertIn("Amount due to start: $46.50", body)
+        self.assertIn("$26.50 weekly parent copay", body)
+        self.assertIn("jakeraj@yeanj.org", body)
+        self.assertNotIn("agency", body.lower())
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_plan_family_pays_after_scholarship(self):
+        plan = parse_approve_billing_plan(
+            {
+                "approve_billing_type": "Private pay",
+                "approve_billing_plan": "Weekly",
+                "approve_plan_amount": "70.00",
+                "approve_plan_parent_amount": "50.00",
+                "approve_post_first": "",
+            },
+            self.regular,
+        )
+        mail.outbox.clear()
+        approve_application(
+            self.regular,
+            start_date=date(2026, 10, 6),
+            membership_amount=Decimal("20.00"),
+            plan=plan,
+        )
+        body = mail.outbox[0].body
+        self.assertIn("Amount due to start: $70.00", body)
+        self.assertIn("$50.00 weekly tuition", body)
+        self.assertIn("family-pays after scholarship", body)
 
 
 class ApplicationEmailAdminViewTests(TestCase):
@@ -195,6 +319,34 @@ class ApplicationEmailAdminViewTests(TestCase):
         self.assertIn("https://yeanj.org/portal/parent/payment/", mail.outbox[0].body)
         self.assertIn("Payment is due before the program start", mail.outbox[0].body)
 
+    @override_settings(PORTAL_PREVIEW_MODE=False, SITE_URL="https://yeanj.org")
+    def test_approve_posts_weekly_plan_into_email(self):
+        app = _make_application(self.family, status="under_review")
+        app.membership_fee_agreed = "yes"
+        app.save(update_fields=["membership_fee_agreed"])
+        mail.outbox.clear()
+        response = self.client.post(
+            reverse("portal_admin_application_review", kwargs={"app_slug": str(app.reference)}),
+            {
+                "action": "approve",
+                "membership_amount": "20.00",
+                "member_start_date": "2026-09-29",
+                "approve_billing_type": "Private pay",
+                "approve_billing_plan": "Weekly",
+                "approve_plan_amount": "70.00",
+                "approve_post_first": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        app.refresh_from_db()
+        self.assertEqual(app.status, "approved")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Amount due to start: $90.00", mail.outbox[0].body)
+        self.assertIn("$70.00 weekly tuition", mail.outbox[0].body)
+        child = PortalChild.objects.get(family=self.family, name="Ada Lee")
+        self.assertEqual(child.billing_plan, "Weekly")
+        self.assertEqual(child.billing_amount, Decimal("70.00"))
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_waitlist_list_approve_has_start_date_field(self):
         app = _make_application(self.family, status="waitlist")
@@ -204,3 +356,5 @@ class ApplicationEmailAdminViewTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, 'name="member_start_date"')
         self.assertContains(page, "Start date")
+        self.assertContains(page, 'name="approve_billing_type"')
+        self.assertContains(page, 'name="approve_plan_amount"')

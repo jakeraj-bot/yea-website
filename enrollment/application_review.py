@@ -24,6 +24,17 @@ DEFAULT_MEMBERSHIP_FEE = Decimal("20.00")
 REVIEWABLE_STATUSES = {"under_review", "pending_documents", "waitlist"}
 WAITLISTABLE_STATUSES = {"under_review", "pending_documents"}
 
+APPROVE_PLAN_TYPE_CHOICES = [
+    ("", "Don't attach a plan (4Cs membership only)"),
+    ("Private pay", "Private pay"),
+    ("4Cs", "4Cs (parent copay)"),
+]
+APPROVE_PLAN_CADENCE_CHOICES = [
+    ("Weekly", "Weekly"),
+    ("Bi-weekly", "Bi-weekly"),
+    ("Monthly", "Monthly"),
+]
+
 
 def child_display_name(app):
     return f"{app.student_first_name} {app.student_last_name}".strip()
@@ -68,15 +79,201 @@ def parse_member_start_date(value, *, required=False):
     return parsed
 
 
-def approval_email_body(app, *, start_date=None, waitlist=None):
+def approval_email_body(app, *, start_date=None, waitlist=None, membership_amount=None, plan=None):
     from portal.email_templates import render_application_approved_email
 
     _template, _subject, body = render_application_approved_email(
         app,
         start_date=start_date,
         waitlist=waitlist,
+        membership_amount=membership_amount,
+        plan=plan,
     )
     return body
+
+
+def application_is_four_cs(app):
+    return (getattr(app, "payment_method", None) or "").strip().lower() == "4cs"
+
+
+def empty_approve_plan(app=None):
+    return {
+        "attached": False,
+        "is_four_cs": application_is_four_cs(app) if app is not None else False,
+        "billing_type": "",
+        "billing_plan": "",
+        "amount": None,
+        "family_pays": None,
+        "has_scholarship": False,
+        "post_first": False,
+        "scholarship_fund_id": "",
+        "scholarship_full_rate": "",
+        "scholarship_parent_amount": "",
+        "description": "",
+    }
+
+
+def parse_plan_amount(value, *, required=False, field_name="plan amount"):
+    """Parse a staff-entered plan/copay amount. Empty is allowed unless required."""
+    if value is None:
+        if required:
+            raise ValueError(f"Enter the {field_name}.")
+        return None
+    text = str(value).replace("$", "").replace(",", "").strip()
+    if text == "":
+        if required:
+            raise ValueError(f"Enter the {field_name}.")
+        return None
+    try:
+        amount = Decimal(text)
+    except (InvalidOperation, TypeError) as exc:
+        raise ValueError(f"Enter a valid {field_name}.") from exc
+    if amount < 0:
+        raise ValueError(f"The {field_name} cannot be negative.")
+    return amount.quantize(Decimal("0.01"))
+
+
+def parse_approve_billing_plan(data, app=None):
+    """Read the approve-form billing plan. Empty type or amount means the plan is not attached."""
+    plan = empty_approve_plan(app)
+    if not data:
+        return plan
+    billing_type = (data.get("approve_billing_type") or "").strip()
+    cadence = (data.get("approve_billing_plan") or "").strip() or "Weekly"
+    if cadence.lower() in {"weekly", "biweekly", "bi-weekly", "monthly"}:
+        from enrollment.portal_integration import PAYMENT_PLAN_TO_BILLING_PLAN
+
+        cadence = PAYMENT_PLAN_TO_BILLING_PLAN.get(cadence.lower().replace("-", ""), cadence)
+        if cadence.lower() == "biweekly":
+            cadence = "Bi-weekly"
+        elif cadence.lower() == "weekly":
+            cadence = "Weekly"
+        elif cadence.lower() == "monthly":
+            cadence = "Monthly"
+    amount = parse_plan_amount(data.get("approve_plan_amount"), field_name="plan amount")
+    family_pays = parse_plan_amount(
+        data.get("approve_plan_parent_amount"),
+        field_name="family-pays amount",
+    )
+    full_rate = parse_plan_amount(
+        data.get("approve_plan_full_rate"),
+        field_name="plan rate before scholarship",
+    )
+    type_key = billing_type.lower()
+    chose_four_cs = "4cs" in type_key or type_key == "4cs"
+    chose_private = "private" in type_key
+    attached = bool(billing_type and amount and amount > 0)
+    if chose_private:
+        is_four_cs = False
+    elif chose_four_cs:
+        is_four_cs = True
+    else:
+        is_four_cs = application_is_four_cs(app)
+    parent_pays = family_pays if family_pays is not None else amount
+    plan.update(
+        {
+            "attached": attached,
+            "is_four_cs": is_four_cs,
+            "billing_type": "4Cs" if chose_four_cs else (billing_type if billing_type else ""),
+            "billing_plan": cadence,
+            "amount": amount if attached else None,
+            "family_pays": parent_pays if attached else None,
+            "has_scholarship": bool(attached and family_pays is not None and amount is not None and family_pays != amount),
+            "post_first": attached and (data.get("approve_post_first") == "on" or data.get("approve_post_first") is True),
+            "scholarship_fund_id": (data.get("approve_scholarship_fund_id") or "").strip(),
+            "scholarship_full_rate": f"{full_rate:.2f}" if full_rate is not None else (f"{amount:.2f}" if amount is not None else ""),
+            "scholarship_parent_amount": f"{family_pays:.2f}" if family_pays is not None else "",
+            "description": (data.get("approve_plan_description") or "").strip(),
+        }
+    )
+    if plan["scholarship_fund_id"] and attached:
+        plan["has_scholarship"] = True
+        if family_pays is not None:
+            plan["family_pays"] = family_pays
+    return plan
+
+
+def approve_plan_form_context(app):
+    """Defaults for the approve-screen billing plan picker."""
+    from enrollment.portal_integration import PAYMENT_PLAN_TO_BILLING_PLAN
+    from portal.models import PortalScholarshipFund
+
+    is_4cs = application_is_four_cs(app)
+    cadence = PAYMENT_PLAN_TO_BILLING_PLAN.get((app.payment_plan or "").strip().lower(), "") or "Weekly"
+    funds = []
+    try:
+        funds = list(PortalScholarshipFund.objects.filter(is_active=True).order_by("name"))
+    except Exception:
+        funds = []
+    return {
+        "approve_billing_type": "" if is_4cs else "Private pay",
+        "approve_billing_plan": cadence,
+        "approve_plan_amount": "",
+        "approve_plan_parent_amount": "",
+        "approve_plan_full_rate": "",
+        "approve_plan_description": "",
+        "approve_post_first": True,
+        "approve_is_four_cs": is_4cs,
+        "approve_plan_type_choices": APPROVE_PLAN_TYPE_CHOICES,
+        "approve_plan_cadence_choices": APPROVE_PLAN_CADENCE_CHOICES,
+        "approve_scholarship_funds": funds,
+    }
+
+
+def membership_amount_for_email(app, membership_amount=None):
+    """Dollar amount the approval email should treat as the membership fee."""
+    if membership_already_posted(app):
+        return Decimal("0.00")
+    if membership_amount is not None:
+        return membership_amount
+    return parse_membership_amount(membership_charge_context(app)["membership_amount"], default=Decimal("0.00"))
+
+
+def attach_approve_billing_plan(app, plan, *, start_date=None):
+    """Save the staff-chosen plan on the child. Does not create a second family."""
+    if not plan or not app.portal_family:
+        return None
+    if not plan.get("attached"):
+        return None
+    from portal.billing_services import update_child_billing_plan
+    from .portal_integration import cadence_defaults_for_plan
+
+    family = app.portal_family
+    name = child_display_name(app)
+    child = family.children.filter(name__iexact=name).first()
+    if child is None:
+        return None
+    billing_type = plan.get("billing_type") or ("4Cs" if plan.get("is_four_cs") else "Private pay")
+    cadence = plan.get("billing_plan") or "Weekly"
+    amount = plan.get("amount")
+    post_first = bool(plan.get("post_first"))
+    on_date = start_date or timezone.localdate()
+    if post_first:
+        on_date = timezone.localdate()
+    defaults = cadence_defaults_for_plan(cadence, on_date=on_date)
+    scholarship_parent = plan.get("scholarship_parent_amount") or None
+    scholarship_full = plan.get("scholarship_full_rate") or None
+    scholarship_fund = plan.get("scholarship_fund_id") or None
+    if not scholarship_fund:
+        scholarship_parent = None
+        scholarship_full = None
+    update_child_billing_plan(
+        family,
+        child.name,
+        cadence,
+        amount,
+        billing_type,
+        auto_charge=post_first,
+        next_charge_date=on_date if post_first else None,
+        charge_weekday=defaults.get("charge_weekday"),
+        charge_month_day=defaults.get("charge_month_day"),
+        scholarship_fund_id=scholarship_fund,
+        scholarship_full_rate=scholarship_full,
+        scholarship_parent_amount=scholarship_parent,
+        description=plan.get("description") or "",
+    )
+    child.refresh_from_db()
+    return child
 
 
 def _application_detail_url(app):
@@ -382,6 +579,7 @@ def approve_application(
     membership_description="",
     start_date=None,
     require_start_date=False,
+    plan=None,
 ):
     if app.status not in REVIEWABLE_STATUSES:
         raise ValueError("This application has already been reviewed.")
@@ -390,6 +588,9 @@ def approve_application(
 
     waitlist_email = application_uses_waitlist_emails(app)
     parsed_start = parse_member_start_date(start_date, required=require_start_date)
+    plan = plan if plan is not None else empty_approve_plan(app)
+    already_posted_membership = membership_already_posted(app)
+    email_membership = membership_amount_for_email(app, membership_amount)
 
     if program_location and program_location.strip() != (app.program_location or ""):
         assign_application_location(app, program_location.strip())
@@ -398,6 +599,7 @@ def approve_application(
         _sync_family_to_application_unit(app)
 
     _ensure_child_on_roster(app)
+    attach_approve_billing_plan(app, plan, start_date=parsed_start)
     _post_membership_fee_if_needed(
         app,
         amount=membership_amount,
@@ -408,6 +610,10 @@ def approve_application(
         from enrollment.portal_integration import PAYMENT_TO_BILLING_TYPE
 
         billing_type = PAYMENT_TO_BILLING_TYPE.get(app.payment_method, app.portal_family.billing_type)
+        if plan.get("attached") and plan.get("billing_type"):
+            billing_type = plan["billing_type"]
+        elif plan.get("is_four_cs"):
+            billing_type = "4Cs"
         updates = []
         if billing_type and app.portal_family.billing_type != billing_type:
             app.portal_family.billing_type = billing_type
@@ -430,6 +636,9 @@ def approve_application(
         app,
         start_date=parsed_start,
         waitlist=waitlist_email,
+        membership_amount=email_membership,
+        plan=plan,
+        membership_already_posted=already_posted_membership,
     )
     if template.is_enabled:
         _email_parent(app, subject, body)

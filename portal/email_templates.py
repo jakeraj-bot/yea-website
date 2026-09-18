@@ -121,6 +121,9 @@ DEFAULT_TEMPLATES = {
             "at {unit} has been approved. They are on the active roster.\n\n"
             "{child_name} can start on {start_date}. Payment is due before the program start. "
             "You can pay in the parent portal.\n\n"
+            "{amount_due}\n"
+            "{membership_fee}\n"
+            "{four_cs_contract}\n\n"
             "Pay now (this link opens your payment page after you sign in):\n"
             "{payment_url}\n\n"
             "{payment_steps}\n\n"
@@ -136,6 +139,9 @@ DEFAULT_TEMPLATES = {
             "at {unit} has been approved. They are on the active roster.\n\n"
             "{child_name} can start on {start_date}. Payment is due before the program start. "
             "You can pay in the parent portal.\n\n"
+            "{amount_due}\n"
+            "{membership_fee}\n"
+            "{four_cs_contract}\n\n"
             "Pay now (this link opens your payment page after you sign in):\n"
             "{payment_url}\n\n"
             "{payment_steps}\n\n"
@@ -145,7 +151,16 @@ DEFAULT_TEMPLATES = {
 }
 
 APPLICATION_TEMPLATE_PLACEHOLDERS = (
-    "{parent_name} {child_name} {program} {unit} {start_date} {payment_url} {payment_steps}"
+    "{parent_name} {child_name} {program} {unit} {start_date} {payment_url} {payment_steps} "
+    "{amount_due} {membership_fee} {four_cs_contract}"
+)
+
+FOUR_CS_CONTRACT_EMAIL = "jakeraj@yeanj.org"
+
+FOUR_CS_CONTRACT_REMINDER = (
+    "Because this is a 4Cs membership, please send your 4Cs contract to "
+    f"{FOUR_CS_CONTRACT_EMAIL} so Youth Education Academy can sign it. "
+    "We will email the signed contract back to you for you to give to 4Cs."
 )
 
 
@@ -175,14 +190,14 @@ def format_member_start_date(value):
     return date_format(value, "F j, Y")
 
 
-def application_email_context(app, *, start_date=None, portal_url=None):
+def application_email_context(app, *, start_date=None, portal_url=None, membership_amount=None, plan=None, membership_already_posted=False):
     from enrollment.application_review import child_display_name, first_payment_steps_text, program_name_for_email
     from enrollment.locations import get_location_label
 
     start = start_date if start_date is not None else getattr(app, "member_start_date", None)
     payment_url = parent_pay_now_url()
     track_url = portal_url or (settings.SITE_URL.rstrip("/") + reverse("portal_parent_login"))
-    return {
+    context = {
         "parent_name": (app.primary_first_name or "").strip() or "there",
         "family_name": app.family_name or "",
         "child_name": child_display_name(app),
@@ -193,6 +208,84 @@ def application_email_context(app, *, start_date=None, portal_url=None):
         "portal_url": track_url,
         "payment_steps": first_payment_steps_text(),
         "reference": str(app.reference),
+    }
+    context.update(
+        approval_payment_placeholders(
+            app,
+            membership_amount=membership_amount,
+            plan=plan,
+            membership_already_posted=membership_already_posted,
+        )
+    )
+    return context
+
+
+def _money(amount):
+    from decimal import Decimal
+
+    value = amount if amount is not None else Decimal("0.00")
+    return f"${value:.2f}"
+
+
+def _plan_cadence_words(plan_label):
+    label = (plan_label or "Weekly").strip().lower()
+    if "month" in label:
+        return "monthly"
+    if "bi" in label:
+        return "bi-weekly"
+    return "weekly"
+
+
+def approval_payment_placeholders(app, *, membership_amount=None, plan=None, membership_already_posted=False):
+    """Fill {amount_due}, {membership_fee}, and {four_cs_contract} for approval emails."""
+    from decimal import Decimal
+
+    from enrollment.application_review import empty_approve_plan, membership_amount_for_email
+
+    plan = plan if plan is not None else empty_approve_plan(app)
+    if membership_amount is None:
+        membership_amount = membership_amount_for_email(app, None)
+    membership = membership_amount if membership_amount is not None else Decimal("0.00")
+    attached = bool(plan.get("attached") and plan.get("family_pays") is not None)
+    family_pays = plan.get("family_pays") if attached else None
+    if family_pays is None:
+        family_pays = Decimal("0.00")
+    membership_line = ""
+    amount_due = ""
+    if attached and family_pays > 0:
+        total = (membership if not membership_already_posted else Decimal("0.00")) + family_pays
+        cadence = _plan_cadence_words(plan.get("billing_plan"))
+        kind = "parent copay" if plan.get("is_four_cs") else "tuition"
+        scholarship_note = " (family-pays after scholarship)" if plan.get("has_scholarship") else ""
+        if membership_already_posted:
+            amount_due = (
+                f"Amount due to start: {_money(family_pays)}. This is the first {_money(family_pays)} "
+                f"{cadence} {kind}{scholarship_note}. Membership is already on your account."
+            )
+        elif membership > 0:
+            amount_due = (
+                f"Amount due to start: {_money(total)}. This includes the {_money(membership)} membership fee "
+                f"and the first {_money(family_pays)} {cadence} {kind}{scholarship_note}."
+            )
+        else:
+            amount_due = (
+                f"Amount due to start: {_money(family_pays)}. This is the first {_money(family_pays)} "
+                f"{cadence} {kind}{scholarship_note}."
+            )
+    else:
+        if membership_already_posted:
+            membership_line = "Membership is already on your account — it is not charged again."
+        elif membership > 0:
+            membership_line = f"The membership fee to start is {_money(membership)}."
+        else:
+            membership_line = "The membership fee is waived."
+    four_cs_contract = FOUR_CS_CONTRACT_REMINDER if plan.get("is_four_cs") else ""
+    if membership_line and four_cs_contract:
+        membership_line = membership_line + "\n"
+    return {
+        "amount_due": amount_due,
+        "membership_fee": membership_line,
+        "four_cs_contract": four_cs_contract,
     }
 
 
@@ -225,13 +318,35 @@ def send_application_submitted_parent_email(app, *, staff_created=False, save_dr
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 
-def render_application_approved_email(app, *, start_date=None, waitlist=None):
+def render_application_approved_email(
+    app,
+    *,
+    start_date=None,
+    waitlist=None,
+    membership_amount=None,
+    plan=None,
+    membership_already_posted=False,
+):
     key = approved_template_key(app, waitlist=waitlist)
     template = get_email_template(key)
-    context = application_email_context(app, start_date=start_date, portal_url=parent_pay_now_url())
+    context = application_email_context(
+        app,
+        start_date=start_date,
+        portal_url=parent_pay_now_url(),
+        membership_amount=membership_amount,
+        plan=plan,
+        membership_already_posted=membership_already_posted,
+    )
     subject, body = render_email(key, context)
     body = with_pay_now_link(body, context["payment_url"])
+    body = _collapse_blank_lines(body)
     return template, subject, body
+
+
+def _collapse_blank_lines(text):
+    import re
+
+    return re.sub(r"\n{3,}", "\n\n", text or "").strip() + "\n"
 
 
 def ensure_email_templates():

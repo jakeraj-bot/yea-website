@@ -619,6 +619,15 @@ def staff_application_row(
         "returning": False,
         "can_add_after_school": _application_can_add_program(app, "after_school", family_apps),
         "can_add_before_care": _application_can_add_program(app, "before_care", family_apps),
+        "payment_method_key": app.payment_method,
+        "payment_plan_key": app.payment_plan,
+        "approve_billing_type": "" if (app.payment_method or "").lower() == "4cs" else "Private pay",
+        "approve_billing_plan": {
+            "weekly": "Weekly",
+            "biweekly": "Bi-weekly",
+            "monthly": "Monthly",
+        }.get((app.payment_plan or "").lower(), "Weekly"),
+        "approve_is_four_cs": (app.payment_method or "").lower() == "4cs",
     }
 
 
@@ -661,6 +670,7 @@ def _membership_charge_fields(app):
 
 def staff_application_detail(app, unit=None):
     from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
+    from .application_review import approve_plan_form_context
     from portal.email_templates import format_member_start_date
 
     data = application_to_portal_dict(app)
@@ -717,6 +727,7 @@ def staff_application_detail(app, unit=None):
             "can_add_after_school": can_add_after_school_for_application(app),
             "can_add_before_care": can_add_before_care_for_application(app),
             "payment_plan_key": app.payment_plan,
+            **approve_plan_form_context(app),
             "grade_choices": EnrollmentApplication.GRADE_CHOICES,
             "program_choices": EnrollmentApplication.PROGRAM_CHOICES,
             "payment_method_choices": EnrollmentApplication.PAYMENT_METHOD_CHOICES,
