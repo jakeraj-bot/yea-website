@@ -4,7 +4,6 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Waitlist</h1>
-    <p class="lead">Before care waitlist in request order. Approve takes the child off this list and onto All families Active. Type the member start date first — it goes in the approval email. Attach a billing plan on Approve if you want the email to show tuition; skip the plan for 4Cs membership-only plus the contract reminder. If they already have a family account, we use that account — no duplicate. The parent gets an email to pay before the program start, with a Pay now link. If a waitlisted before-care child also needs after-school, use <strong>+ After-care</strong> on that row — no new application.</p>
   </div>
 </section>
 <section class="page-content">
@@ -24,8 +23,8 @@
 
     {% include "portal/staff/includes/list_toolbar.html" with sort_default="Request order" filter_options="All" search_placeholder="Child or family" search_id="admin-waitlist-search" %}
 
-    <div class="portal-table-wrap">
-      <table class="portal-table" id="admin-waitlist-table">
+    <div class="portal-table-wrap portal-waitlist-table-wrap">
+      <table class="portal-table portal-waitlist-table" id="admin-waitlist-table">
         <thead>
           <tr>
             <th>#</th>
@@ -50,11 +49,13 @@
             <td>{{ app.submitted }}</td>
             <td>{{ app.program }}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
-            <td class="portal-row-actions">
+            <td class="portal-row-actions portal-waitlist-actions">
               {% include "portal/includes/waitlist_approve_form.html" %}
               {% include "portal/includes/add_after_care_form.html" with app_slug=app.slug child_name=app.child show_add_after_care=app.can_add_after_school next_url=waitlist_next %}
+              {% if not can_approve_waitlist %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

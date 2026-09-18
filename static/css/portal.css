@@ -5908,3 +5908,144 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   margin-top: 0.5rem;
 }
 
+/* Compact waitlist rows: labeled fields in one strip, buttons under, sticky header. */
+.portal-waitlist-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  max-height: calc(100vh - 11rem);
+  display: block;
+}
+
+.portal-waitlist-table {
+  min-width: 100%;
+}
+
+.portal-waitlist-table th,
+.portal-waitlist-table td {
+  padding: 0.28rem 0.4rem;
+  vertical-align: middle;
+}
+
+.portal-waitlist-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg-soft);
+  background-color: #f9fafb;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.portal-waitlist-table tbody td {
+  position: relative;
+  z-index: 0;
+}
+
+.portal-waitlist-table tbody .portal-waitlist-actions {
+  overflow: hidden;
+}
+
+.portal-waitlist-actions {
+  white-space: normal;
+  width: 30rem;
+  max-width: 32rem;
+  min-width: 18rem;
+  padding: 0.25rem 0.35rem;
+  vertical-align: top;
+}
+
+.portal-waitlist-approve {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.portal-waitlist-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.3rem 0.45rem;
+}
+
+.portal-waitlist-fields .form-group,
+.portal-waitlist-fields .portal-waitlist-field {
+  margin: 0;
+  flex: 1 1 7.25rem;
+  min-width: 6.5rem;
+}
+
+.portal-waitlist-fields .portal-form-full {
+  grid-column: auto;
+  flex: 1 1 8.5rem;
+  min-width: 7.5rem;
+  margin: 0;
+}
+
+.portal-waitlist-fields label {
+  display: block;
+  margin: 0 0 0.12rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.portal-waitlist-fields .portal-input,
+.portal-waitlist-fields .portal-select {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding: 0.22rem 0.35rem;
+  font-size: 0.8125rem;
+  box-sizing: border-box;
+}
+
+.portal-waitlist-fields .portal-check-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.portal-waitlist-fields .portal-check-label input[type="checkbox"] {
+  margin: 0.15rem 0 0;
+}
+
+.portal-waitlist-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.portal-waitlist-actions > .portal-inline-form {
+  display: inline-flex;
+  margin: 0.05rem 0 0;
+}
+
+.portal-waitlist-buttons .btn,
+.portal-waitlist-actions > .btn {
+  margin: 0;
+}
+
+@media print {
+  .portal-waitlist-table-wrap {
+    max-height: none;
+    overflow: visible;
+  }
+}
+

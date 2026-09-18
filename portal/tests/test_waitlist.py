@@ -193,6 +193,8 @@ class WaitlistAddAfterCareViewTests(TestCase):
         self.assertContains(page, "Confirm to save")
         self.assertContains(page, "new enrollment form")
         self.assertContains(page, "portal-page-guide.js")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_add_after_care_from_waitlist_without_new_application(self):
@@ -729,7 +731,97 @@ class WaitlistApprovePayEmailTests(TestCase):
         self.assertNotContains(page, "<dd>Before care (waitlist)</dd>")
         waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
         self.assertNotContains(waitlist_page, "Ada Shown")
+        self.assertContains(waitlist_page, "How to use this page")
         self.assertContains(waitlist_page, "no duplicate")
         self.assertContains(waitlist_page, "Pay now")
         self.assertContains(waitlist_page, "member start date")
+        self.assertNotContains(waitlist_page, "Type the member start date first")
+        self.assertNotContains(waitlist_page, "Before care waitlist in request order")
+
+
+class WaitlistCompactRowTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(
+            slug="school-18",
+            name="School 18",
+            program_type="both",
+            is_active=True,
+        )
+        self.family = PortalFamily.objects.create(unit=self.unit, slug="rivera", name="Rivera")
+        User = get_user_model()
+        self.admin_user = User.objects.create_user(username="admin:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin_user,
+            unit=self.unit,
+            display_name="YEA Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff_user = User.objects.create_user(username="staff:unitstaff", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff_user,
+            unit=self.unit,
+            display_name="Unit Staff",
+            role="Unit staff",
+            all_units_access=False,
+            can_approve_waitlist=True,
+            is_active=True,
+        )
+        for first in ("Ada", "Ben", "Cora"):
+            app = _make_application(self.family, status="waitlist")
+            app.program = "before_care"
+            app.student_first_name = first
+            app.save(update_fields=["program", "student_first_name"])
+
+    def _login(self, user, area):
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = area
+        session.save()
+
+    def _assert_compact_row(self, page):
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "portal-waitlist-table-wrap")
+        self.assertContains(page, "portal-waitlist-table")
+        self.assertContains(page, "portal-waitlist-fields")
+        self.assertContains(page, "portal-waitlist-buttons")
+        self.assertContains(page, "Start date")
+        self.assertContains(page, "Billing plan")
+        self.assertContains(page, "Plan type")
+        self.assertContains(page, "Plan amount")
+        self.assertContains(page, "Post the first plan charge now")
+        html = page.content.decode()
+        start = html.find("portal-waitlist-fields")
+        self.assertGreater(start, 0)
+        self.assertGreater(html.find('name="member_start_date"', start), start)
+        self.assertGreater(html.find('name="approve_billing_type"', start), html.find('name="member_start_date"', start))
+        self.assertGreater(html.find('name="approve_billing_plan"', start), html.find('name="approve_billing_type"', start))
+        self.assertGreater(html.find('name="approve_plan_amount"', start), html.find('name="approve_billing_plan"', start))
+        self.assertGreater(html.find('name="approve_post_first"', start), html.find('name="approve_plan_amount"', start))
+        buttons = html.find("portal-waitlist-buttons", start)
+        self.assertGreater(buttons, html.find('name="approve_post_first"', start))
+        self.assertGreater(html.find(">Approve<", buttons), buttons)
+        self.assertGreater(html.find(">Review<", buttons), html.find(">Approve<", buttons))
+        self.assertGreater(html.find(">PDF<", buttons), html.find(">Review<", buttons))
+        self.assertEqual(html.count("portal-waitlist-fields"), 3)
+        self.assertEqual(html.count(">Review<"), 3)
+        self.assertEqual(html.count(">PDF<"), 3)
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "Before care waitlist in request order")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "no duplicate")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_waitlist_rows_are_compact(self):
+        self._login(self.admin_user, "admin")
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self._assert_compact_row(page)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_waitlist_rows_are_compact(self):
+        self._login(self.staff_user, "staff")
+        page = self.client.get(reverse("portal_staff_page", kwargs={"page": "waitlist"}))
+        self._assert_compact_row(page)
 
