@@ -191,7 +191,7 @@ GUIDES = {
             },
             {
                 "title": "Approve when a before-care spot opens",
-                "body": "Approve adds them to the roster. You do not need a new application.",
+                "body": "Approve removes them from this waitlist and adds them to All families Active. If the child already has a family account, we use that account — no duplicate family or second membership. The parent gets an email that payment is due before the program start, with payment steps and a Pay now link.",
             },
         ],
     },
@@ -223,7 +223,7 @@ GUIDES = {
             },
             {
                 "title": "Approve, waitlist, request changes, or reject",
-                "body": "Approve puts them on the roster. Waitlist holds a spot in order. Request changes sends a note the parent can see. Reject needs a clear reason.",
+                "body": "Approve puts them on All families Active and emails the parent that payment is due before the program start, with Pay now steps and a payment-page link. Waitlist holds a before-care spot in order — they stay off Active until you approve. If the child already has an account, we add before care as Approved on that account (no second family). Request changes sends a note the parent can see. Reject needs a clear reason.",
             },
             {
                 "title": "Change the membership amount before you approve",
@@ -814,6 +814,10 @@ GUIDES = {
             {
                 "title": "Add After-care for a waitlisted before-care child",
                 "body": "Find the waitlisted before-care child, then use + After-care and confirm to save. No new enrollment application is required. After-care is added onto this record; before-care waitlist stays the same.",
+            },
+            {
+                "title": "After you approve before care",
+                "body": "The waitlist row is gone. This Applications tab shows before care as Approved on the existing account. We do not create a second family.",
             },
         ],
     },

@@ -87,9 +87,9 @@
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
       {% if can_approve_this_application %}
-      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approve removes them from the waitlist and adds them to All families Active. If they already have a family account, we use that account — no duplicate. The parent is emailed to pay before the program start, with a Pay now link.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
       {% else %}
-      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission. Approve will use the existing family account if the child already has one.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
       {% endif %}
     </div>
     {% elif is_live_application and application.can_review and not can_approve_this_application %}
@@ -257,13 +257,14 @@
           <h2>On approval</h2>
           <ul class="portal-link-list">
             {% if application.status_slug == "waitlist" %}
-            <li>Move child from waitlist to the roster</li>
+            <li>Move child from waitlist to All families Active</li>
+            <li>Use the existing family account if this child already has one (no duplicate)</li>
             {% else %}
             <li>Add child to program roster</li>
             {% endif %}
             <li>Activate family account if pending</li>
             <li>Post the membership charge you enter (0 waives; already-posted membership is not charged again)</li>
-            <li>Email parent welcome notification</li>
+            <li>Email parent: pay before the program start, with payment steps and a Pay now link</li>
           </ul>
           {% if not can_approve_this_application %}
           <p class="form-note">Staff can view this application. Approval is available in the admin portal, or here if you have been given permission.</p>

@@ -34,8 +34,8 @@ DEFAULT_TEMPLATES = {
             "Date: {date}\n\n"
             "Current balance for {child_name}: ${child_balance}\n"
             "Family balance (what the household owes): ${family_balance}\n\n"
-            "You can review and pay now in the parent portal:\n"
-            "{portal_url}\n\n"
+            "You can pay in the parent portal. Pay now:\n"
+            "{payment_url}\n\n"
             "Youth Education Academy\n"
         ),
     },
@@ -65,8 +65,8 @@ DEFAULT_TEMPLATES = {
             "New charge amount: ${amount}\n\n"
             "Current balance for {child_name}: ${child_balance}\n"
             "Family balance (what the household owes): ${family_balance}\n\n"
-            "You can review and pay now in the parent portal:\n"
-            "{portal_url}\n\n"
+            "You can pay in the parent portal. Pay now:\n"
+            "{payment_url}\n\n"
             "Youth Education Academy\n"
         ),
     },
@@ -128,12 +128,40 @@ def _fill(text, context):
     return rendered
 
 
+PAYMENT_PATH = "/portal/parent/payment/"
+
+
 def absolute_portal_url(url_name):
     return settings.SITE_URL.rstrip("/") + reverse(url_name)
 
 
-def parent_portal_url():
+def parent_payment_page_url():
+    """Absolute Pay now URL. After login this is `/portal/parent/payment/`."""
     return absolute_portal_url("portal_parent_payment")
+
+
+def parent_pay_now_url():
+    """Pay now link for parent emails (SITE_URL + payment page)."""
+    return parent_payment_page_url()
+
+
+def parent_portal_url():
+    """Parent emails use the payment page, not login-then-dashboard."""
+    return parent_payment_page_url()
+
+
+def with_pay_now_link(body, payment_url=None):
+    """Guarantee a Pay now payment-page URL is visible in the email body."""
+    payment_url = payment_url or parent_pay_now_url()
+    text = body or ""
+    if PAYMENT_PATH in text:
+        return text
+    block = f"You can pay in the parent portal. Pay now:\n{payment_url}\n"
+    marker = "Youth Education Academy"
+    idx = text.rfind(marker)
+    if idx >= 0:
+        return text[:idx].rstrip() + "\n\n" + block + "\n" + text[idx:]
+    return text.rstrip() + "\n\n" + block
 
 
 def welcome_portal_url(portal_type):
@@ -192,7 +220,8 @@ def _charge_email_context(family, entry=None, *, previous_amount=None):
         "child_balance": balances["child_balance_display"],
         "family_balance": balances["family_balance_display"],
         "balance": balances["family_balance_display"],
-        "portal_url": parent_portal_url(),
+        "portal_url": parent_pay_now_url(),
+        "payment_url": parent_pay_now_url(),
     }
 
 
@@ -205,10 +234,9 @@ def notify_charge_posted(family, entry):
     email = parent_email_for_family(family)
     if not email:
         return 0
-    subject, body = render_email(
-        PortalEmailTemplate.KEY_CHARGE_NOTICE,
-        _charge_email_context(family, entry),
-    )
+    context = _charge_email_context(family, entry)
+    subject, body = render_email(PortalEmailTemplate.KEY_CHARGE_NOTICE, context)
+    body = with_pay_now_link(body, context["payment_url"])
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 
@@ -221,10 +249,9 @@ def notify_balance_updated(family, entry=None, *, previous_amount=None):
     email = parent_email_for_family(family)
     if not email:
         return 0
-    subject, body = render_email(
-        PortalEmailTemplate.KEY_BALANCE_UPDATED,
-        _charge_email_context(family, entry, previous_amount=previous_amount),
-    )
+    context = _charge_email_context(family, entry, previous_amount=previous_amount)
+    subject, body = render_email(PortalEmailTemplate.KEY_BALANCE_UPDATED, context)
+    body = with_pay_now_link(body, context["payment_url"])
     return send_site_email(subject=subject, message=body, recipient_list=[email])
 
 

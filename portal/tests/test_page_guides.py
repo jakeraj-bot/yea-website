@@ -80,6 +80,10 @@ class PageGuideCatalogTests(TestCase):
         self.assertEqual(titles[2], "Save")
         self.assertIn("new enrollment form", guide["steps"][1]["body"])
         self.assertIn("Confirm to save", guide["steps"][2]["body"])
+        approve_body = guide["steps"][3]["body"]
+        self.assertIn("All families Active", approve_body)
+        self.assertIn("no duplicate", approve_body)
+        self.assertIn("Pay now", approve_body)
 
     def test_application_detail_guide_explains_editable_membership_amount(self):
         guide = guide_for("application-detail")
@@ -88,6 +92,9 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("Type 0 to waive", bodies)
         self.assertIn("family ledger", bodies.lower())
+        self.assertIn("All families Active", bodies)
+        self.assertIn("no second family", bodies)
+        self.assertIn("Pay now", bodies)
 
     def test_family_billing_guide_explains_editing_membership_amount(self):
         guide = guide_for("family-billing")
@@ -199,6 +206,8 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("+ After-care", bodies)
         self.assertIn("No new enrollment application", bodies)
+        self.assertIn("Approved", bodies)
+        self.assertIn("second family", bodies)
 
     def test_parent_applications_guide_explains_after_care(self):
         guide = guide_for("parent-applications")
@@ -284,6 +293,9 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, "Find the waitlisted child")
         self.assertContains(page, "Add After-care")
         self.assertContains(page, "Confirm to save")
+        self.assertContains(page, "All families Active")
+        self.assertContains(page, "no duplicate")
+        self.assertContains(page, "Pay now")
         self.assertContains(page, 'data-open-page-guide')
         self.assertContains(page, "portal-page-guide.js")
 

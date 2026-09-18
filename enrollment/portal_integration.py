@@ -42,6 +42,18 @@ STATUS_LABELS = {
 }
 
 
+def program_display_for_application(app, *, short=False):
+    """Hide the waitlist tag after before care is approved."""
+    if not app:
+        return ""
+    if app.program == "before_care" and app.status in {"approved", "enrolled"}:
+        return "Before care"
+    label = app.get_program_display() or ""
+    if short:
+        return label.replace(" program", "")
+    return label
+
+
 def billing_plan_from_application(app):
     """Return the staff billing-plan label for an enrollment application's payment plan."""
     if not app:
@@ -393,7 +405,7 @@ def application_to_portal_dict(app):
         "submitted": timezone.localtime(app.submitted_at).strftime("%B %d, %Y"),
         "submitted_short": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "child_name": f"{app.student_first_name} {app.student_last_name}",
-        "program": app.get_program_display(),
+        "program": program_display_for_application(app),
         "program_location": app.program_location,
         "location": get_location_label(app.program_location),
         "family_name": app.family_name,
@@ -440,37 +452,51 @@ def get_applications_for_family(family):
     return EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
 
 
+def _before_care_for_child(apps, primary):
+    from portal.child_identity import child_names_match
+
+    primary_name = f"{primary.student_first_name} {primary.student_last_name}".strip()
+    for app in apps:
+        if app.program != "before_care" or app.status == "declined":
+            continue
+        if child_names_match(primary_name, f"{app.student_first_name} {app.student_last_name}"):
+            return app
+    return None
+
+
 def parent_application_list_items(family):
-    """Show one row per child. Before-care waitlist is a note on the after-school application."""
-    from .add_program import child_key
+    """Show one row per child. Before-care waitlist or approval is a note on the after-school row."""
+    from portal.child_identity import child_names_match
 
     apps = list(get_applications_for_family(family))
-    before_care_by_child = {}
-    for app in apps:
-        if app.program == "before_care" and app.status != "declined":
-            before_care_by_child.setdefault(child_key(app), app)
-
     folded = set()
     items = []
     for app in apps:
         if app.pk in folded:
             continue
-        key = child_key(app)
         if app.program == "before_care":
             has_primary = any(
-                other.program != "before_care" and child_key(other) == key for other in apps
+                other.program != "before_care"
+                and other.status != "declined"
+                and child_names_match(
+                    f"{app.student_first_name} {app.student_last_name}",
+                    f"{other.student_first_name} {other.student_last_name}",
+                )
+                for other in apps
             )
             if has_primary:
                 continue
         item = application_list_item(app)
         if app.program != "before_care":
-            before = before_care_by_child.get(key)
+            before = _before_care_for_child(apps, app)
             if before:
                 folded.add(before.pk)
                 item["can_add_before_care"] = False
                 item["can_add_after_school"] = False
                 if before.status == "waitlist":
                     item["program"] = f"{item['program']} · before care waitlist"
+                elif before.status in {"approved", "enrolled"}:
+                    item["program"] = f"{item['program']} · before care approved"
         items.append(item)
     return items
 
@@ -516,19 +542,19 @@ def _application_family_label(app):
 
 
 def _application_can_add_program(app, program, family_apps=None):
+    from portal.child_identity import child_names_match
+
     from .add_program import can_add_program_for_application
 
     if family_apps is None:
         return can_add_program_for_application(app, program)
     if not app or not app.portal_family_id or app.program == program:
         return False
-    first = (app.student_first_name or "").strip().lower()
-    last = (app.student_last_name or "").strip().lower()
+    target = f"{app.student_first_name} {app.student_last_name}".strip()
     return not any(
-        (other.student_first_name or "").strip().lower() == first
-        and (other.student_last_name or "").strip().lower() == last
-        and other.program == program
+        other.program == program
         and other.status != "declined"
+        and child_names_match(target, f"{other.student_first_name} {other.student_last_name}")
         for other in family_apps
     )
 
@@ -586,7 +612,7 @@ def staff_application_row(
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "submitted_sort": timezone.localtime(app.submitted_at).isoformat(),
-        "program": app.get_program_display().replace(" program", ""),
+        "program": program_display_for_application(app, short=True),
         "school": app.student_school or "—",
         "status": STATUS_LABELS.get(app.status, "Under review"),
         "status_slug": (app.status or "under_review").replace("_", "-"),

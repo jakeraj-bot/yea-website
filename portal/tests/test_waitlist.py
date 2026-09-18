@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -20,14 +21,17 @@ from enrollment.portal_integration import (
     parent_application_list_items,
     waitlist_for_admin,
 )
+from enrollment.views import _create_application
 from portal.admin_services import get_admin_families_live
 from portal.attendance_service import families_for_staff
+from portal.email_templates import parent_pay_now_url
 from portal.member_admin import families_without_parent_login
 from portal.models import (
     PortalChild,
     PortalFamily,
     PortalLedgerEntry,
     PortalParentAccount,
+    PortalProgramCalendar,
     PortalStaffAccount,
     PortalUnit,
 )
@@ -225,9 +229,8 @@ class WaitlistAddAfterCareViewTests(TestCase):
         self._login(self.parent_user, "parent")
         list_page = self.client.get(reverse("portal_parent_page", kwargs={"page": "applications"}))
         self.assertContains(list_page, "+ After-care")
-        self.assertContains(list_page, "How to use this page")
-        self.assertContains(list_page, "Click + After-care")
-        self.assertContains(list_page, "portal-page-guide.js")
+        help_page = self.client.get(reverse("portal_parent_page", kwargs={"page": "help"}))
+        self.assertContains(help_page, "Click + After-care")
         confirm = self.client.get(
             reverse("enrollment_apply_add_after_care", kwargs={"reference": self.before.reference})
         )
@@ -521,3 +524,210 @@ class SameChildWaitlistFamilyTests(TestCase):
             1,
         )
         self.assertEqual(first.portal_family_id, self.family.pk)
+
+
+def _before_care_apply_payload(family, *, first="Ada", last=None, dob=None):
+    last = last or family.name
+    dob_iso = (dob or date(2016, 1, 1)).isoformat()
+    return {
+        "program": "before_care",
+        "program_location": "school_18",
+        "family_name": family.name,
+        "primary_email": "parent@example.com",
+        "home_address": "1 Main St",
+        "primary_first_name": "Pat",
+        "primary_last_name": family.name,
+        "primary_gender": "female",
+        "primary_language": "english",
+        "primary_relationship": "mother",
+        "primary_phone": "555-0100",
+        "primary_phone_type": "cell",
+        "primary_text_subscription": "yes",
+        "primary_email_subscription": "yes",
+        "primary_email_address": "parent@example.com",
+        "primary_authorized_pickup": "yes",
+        "student_first_name": first,
+        "student_last_name": last,
+        "student_gender": "female",
+        "student_dob": dob_iso,
+        "student_language": "english",
+        "student_ethnicity": "unknown",
+        "student_race": "unknown",
+        "student_grade": "3",
+        "student_school": "School 18",
+        "health_statement": "good_health",
+        "membership_fee_agreed": "yes",
+        "payment_method": "private_pay",
+        "payment_plan": "weekly",
+        "payment_plan_signature": "Pat",
+        "payment_plan_signed_date": date(2026, 8, 1).isoformat(),
+        "portal_family": family,
+        "emergency_contacts": [],
+        "policies": {},
+    }
+
+
+class WaitlistApprovePayEmailTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(
+            slug="school-18",
+            name="School 18",
+            program_type="both",
+            is_active=True,
+        )
+        PortalProgramCalendar.objects.create(program_start=date(2026, 9, 8))
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_before_care_apply_goes_to_waitlist_not_active(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="wait-apply",
+            name="Waitapply",
+            status="Pending enrollment",
+        )
+        app = _create_application(_before_care_apply_payload(family, first="Nia"))
+        self.assertEqual(app.status, "waitlist")
+        self.assertEqual(app.program, "before_care")
+        self.assertEqual(waitlist_for_admin()[0]["slug"], str(app.reference))
+        self.assertNotIn("wait-apply", {row["slug"] for row in get_admin_families_live()})
+        self.assertFalse(PortalChild.objects.filter(family=family, is_active=True).exists())
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_waitlist_approve_moves_to_active_families(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="wait-approve",
+            name="Waitapprove",
+            status="Pending enrollment",
+        )
+        app = _create_application(_before_care_apply_payload(family, first="Nia"))
+        mail.outbox.clear()
+        approve_application(app)
+        app.refresh_from_db()
+        family.refresh_from_db()
+
+        self.assertEqual(app.status, "approved")
+        self.assertEqual(family.status, "Active")
+        self.assertEqual(waitlist_for_admin(), [])
+        rows = [row for row in get_admin_families_live() if row["id"] == family.pk]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["child_name"], "Nia Waitapprove")
+        self.assertEqual(rows[0]["status"], "Active")
+        self.assertTrue(family.children.filter(name="Nia Waitapprove", is_active=True).exists())
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_second_before_care_approve_reuses_family_and_membership(self):
+        family, user, created = create_portal_account_from_enrollment(
+            {
+                "family_name": "Montoya Cuenca",
+                "primary_email": "parent@example.com",
+                "primary_email_address": "parent@example.com",
+                "primary_first_name": "Jakera",
+                "primary_last_name": "Montoya",
+                "children": [
+                    {
+                        "student_first_name": "Danuska",
+                        "student_last_name": "Montoya Cuenca",
+                        "student_dob": date(2016, 5, 1),
+                        "program": "after_school",
+                        "program_location": "school_18",
+                    }
+                ],
+            },
+            "jakera",
+            "ParentPass123",
+        )
+        after = _make_application(family, location="school_18", status="under_review")
+        after.student_first_name = "Danuska"
+        after.student_last_name = "Montoya Cuenca"
+        after.student_dob = date(2016, 5, 1)
+        after.membership_fee_agreed = "yes"
+        after.save()
+        approve_application(after)
+        child = family.children.get()
+        child.unit = self.unit
+        child.save(update_fields=["unit"])
+        waitlist = create_before_care_from_application(after)
+        waitlist.student_first_name = "Danuska Daenerys"
+        waitlist.student_last_name = "Montoya Cuenca"
+        waitlist.save(update_fields=["student_first_name", "student_last_name"])
+
+        family_pk = family.pk
+        membership_count = PortalLedgerEntry.objects.filter(family=family, entry_type="membership").count()
+        self.assertEqual(membership_count, 1)
+        self.assertEqual(waitlist.portal_family_id, family_pk)
+        self.assertTrue(any(item["child"] == "Danuska Daenerys Montoya Cuenca" for item in waitlist_for_admin()))
+
+        mail.outbox.clear()
+        approve_application(waitlist)
+        waitlist.refresh_from_db()
+        family.refresh_from_db()
+
+        self.assertEqual(waitlist.status, "approved")
+        self.assertEqual(waitlist.portal_family_id, family_pk)
+        self.assertEqual(PortalFamily.objects.count(), 1)
+        self.assertEqual(
+            PortalLedgerEntry.objects.filter(family=family, entry_type="membership").count(),
+            1,
+        )
+        self.assertEqual(family.children.filter(is_active=True).count(), 1)
+        self.assertEqual(family.children.get().unit_id, self.unit.id)
+        self.assertEqual(waitlist_for_admin(), [])
+        items = parent_application_list_items(family)
+        self.assertTrue(any("before care approved" in item["program"] for item in items))
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_approve_email_has_payment_steps_and_url(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="pay-email",
+            name="Payemail",
+            status="Pending enrollment",
+        )
+        app = _create_application(_before_care_apply_payload(family, first="Nia"))
+        mail.outbox.clear()
+        approve_application(app)
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        payment_url = parent_pay_now_url()
+        self.assertTrue(payment_url.endswith("/portal/parent/payment/"))
+        self.assertIn("https://yeanj.org/portal/parent/payment/", body)
+        self.assertIn("Payment is due before the program start", body)
+        self.assertIn("September 8, 2026", body)
+        self.assertIn("parent portal", body.lower())
+        self.assertIn("1. Open Parent login", body)
+        self.assertIn("Pay now / Billing", body)
+        self.assertIn("Continue to review", body)
+        self.assertIn("Pay with Stripe", body)
+        self.assertIn("check or money order", body)
+        self.assertIn(reverse("portal_parent_payment"), body)
+
+    @override_settings(SITE_URL="https://yeanj.org", PORTAL_PREVIEW_MODE=False)
+    def test_family_applications_show_before_care_approved(self):
+        User = get_user_model()
+        family = PortalFamily.objects.create(unit=self.unit, slug="shown", name="Shown", status="Active")
+        after = _make_application(family, status="approved")
+        family.children.create(name="Ada Shown", is_active=True, unit=self.unit)
+        waitlist = create_before_care_from_application(after)
+        approve_application(waitlist)
+        admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=admin,
+            unit=self.unit,
+            display_name="Portal Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        _staff_login(self.client, admin, "admin")
+        page = self.client.get(reverse("portal_admin_family_applications", kwargs={"family_slug": "shown"}))
+        self.assertContains(page, "Ada Shown")
+        self.assertContains(page, "<dd>Before care</dd>")
+        self.assertContains(page, "Approved")
+        self.assertNotContains(page, "<dd>Before care (waitlist)</dd>")
+        waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self.assertNotContains(waitlist_page, "Ada Shown")
+        waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self.assertContains(waitlist_page, "no duplicate")
+        self.assertContains(waitlist_page, "Pay now")
+

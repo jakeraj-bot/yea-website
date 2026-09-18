@@ -33,6 +33,52 @@ def _portal_applications_url():
     return settings.SITE_URL.rstrip("/") + reverse("portal_parent_page", kwargs={"page": "applications"})
 
 
+def _program_start_sentence():
+    from django.utils.formats import date_format
+
+    from portal.models import PortalProgramCalendar
+
+    calendar = PortalProgramCalendar.objects.order_by("id").first()
+    start = getattr(calendar, "program_start", None) if calendar else None
+    if start:
+        return f"Payment is due before the program start ({date_format(start, 'F j, Y')})."
+    return "Payment is due before the program start."
+
+
+def _program_name_for_email(app):
+    if app.program == "before_care":
+        return "before care"
+    return app.get_program_display()
+
+
+def first_payment_steps_text():
+    return (
+        "How to make your first payment:\n"
+        "1. Open Parent login. Enter your username and password, then press Log in.\n"
+        "2. Open Pay now / Billing & balance, or use the Pay now link in this email.\n"
+        "3. Choose the amount (Pay full balance or a different amount) and press Continue to review.\n"
+        "4. Press Pay with Stripe and enter your card. You can also pay by check or money order at the site — staff will record it."
+    )
+
+
+def approval_email_body(app):
+    from portal.email_templates import parent_pay_now_url
+
+    child_name = child_display_name(app)
+    payment_url = parent_pay_now_url()
+    return (
+        f"Hi {app.primary_first_name},\n\n"
+        f"Great news — {child_name}'s enrollment application for {_program_name_for_email(app)} "
+        f"at {get_location_label(app.program_location)} has been approved. "
+        f"They are on the active roster.\n\n"
+        f"{_program_start_sentence()} You can pay in the parent portal.\n\n"
+        f"Pay now (this link opens your payment page after you sign in):\n"
+        f"{payment_url}\n\n"
+        f"{first_payment_steps_text()}\n\n"
+        f"Youth Education Academy"
+    )
+
+
 def _application_detail_url(app):
     return (
         settings.SITE_URL.rstrip("/")
@@ -79,7 +125,7 @@ def _ensure_child_on_roster(app):
         if app.program == "drop_off" and not child.is_drop_off:
             child.is_drop_off = True
             fields.append("is_drop_off")
-        if unit and child.unit_id != unit.id:
+        if unit and not child.unit_id:
             child.unit = unit
             fields.append("unit")
         fields.extend(apply_application_billing_plan(child, app, only_if_unset=True))
@@ -203,7 +249,11 @@ def _post_membership_fee_if_needed(app, amount=None, description=""):
 
 
 def _activate_family_if_needed(family):
-    if family and family.status == "Pending enrollment":
+    """Waitlist approve (and other approvals) put the household on Active families."""
+    if not family or family.is_suspended:
+        return
+    status = (family.status or "").strip()
+    if status not in {"Active", "Suspended"}:
         family.status = "Active"
         family.save(update_fields=["status"])
 
@@ -364,14 +414,7 @@ def approve_application(app, program_location=None, membership_amount=None, memb
     _email_parent(
         app,
         f"Enrollment approved — {child_name}",
-        (
-            f"Hi {app.primary_first_name},\n\n"
-            f"Great news — {child_name}'s enrollment application for {app.get_program_display()} "
-            f"at {get_location_label(app.program_location)} has been approved.\n\n"
-            f"Sign in to your parent portal to view billing and your family profile:\n"
-            f"{_portal_applications_url()}\n\n"
-            f"Youth Education Academy"
-        ),
+        approval_email_body(app),
     )
     return app
 
@@ -380,20 +423,21 @@ def _deactivate_roster_child_if_before_care_only(app):
     family = app.portal_family
     if not family:
         return
-    has_other_program = (
-        EnrollmentApplication.objects.filter(
+    from portal.child_identity import child_names_match
+
+    name = child_display_name(app)
+    has_other_program = any(
+        child_names_match(name, child_display_name(other))
+        for other in EnrollmentApplication.objects.filter(
             portal_family=family,
-            student_first_name__iexact=app.student_first_name,
-            student_last_name__iexact=app.student_last_name,
             status__in=("approved", "enrolled"),
-        )
-        .exclude(program="before_care")
-        .exists()
+        ).exclude(program="before_care")
     )
     if has_other_program:
         return
-    name = child_display_name(app)
     child = family.children.filter(name__iexact=name).first()
+    if child is None:
+        child = next((row for row in family.children.all() if child_names_match(row.name, name)), None)
     if child and child.is_active:
         child.is_active = False
         child.save(update_fields=["is_active"])

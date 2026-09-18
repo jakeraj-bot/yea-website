@@ -132,6 +132,40 @@ class ParentPayNowStripeTests(TestCase):
         message = send_email.call_args.kwargs["message"]
         self.assertIn("/portal/parent/payment/", message)
         self.assertNotIn("/portal/login/", message)
+        self.assertIn("Pay now", message)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False, SITE_URL="https://yeanj.org")
+    def test_email_pay_link_lands_on_payment_after_login(self):
+        payment = reverse("portal_parent_payment")
+        logged_out = self.client.get(payment)
+        self.assertEqual(logged_out.status_code, 302)
+        parsed = urlparse(logged_out.url)
+        self.assertEqual(parsed.path, "/portal/login/")
+        self.assertEqual(parse_qs(parsed.query).get("next"), [payment])
+
+        signed_in = self.client.post(
+            reverse("portal_parent_login"),
+            {"username": "rivera", "password": "ParentPass123", "next": payment},
+        )
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(signed_in.url, payment)
+
+        page = self.client.get(signed_in.url)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Continue to review")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False, SITE_URL="https://yeanj.org")
+    def test_absolute_site_url_next_still_opens_payment(self):
+        signed_in = self.client.post(
+            reverse("portal_parent_login"),
+            {
+                "username": "rivera",
+                "password": "ParentPass123",
+                "next": "https://yeanj.org/portal/parent/payment/",
+            },
+        )
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(signed_in.url, reverse("portal_parent_payment"))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_parent_view_pay_now_does_not_create_checkout(self):
