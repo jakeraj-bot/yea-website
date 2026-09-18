@@ -5930,14 +5930,19 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 .portal-waitlist-table thead th {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 40;
   background: var(--bg-soft);
+  background-color: #f9fafb;
   box-shadow: 0 1px 0 var(--border);
 }
 
 .portal-waitlist-table tbody td {
   position: relative;
   z-index: 0;
+}
+
+.portal-waitlist-table tbody .portal-waitlist-actions {
+  overflow: hidden;
 }
 
 .portal-waitlist-actions {
