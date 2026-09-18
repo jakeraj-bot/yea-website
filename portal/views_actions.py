@@ -1347,9 +1347,12 @@ def staff_application_review(request, app_slug):
             if not can_approve_enrollment_application(get_staff_account(request.user), app, "staff"):
                 messages.error(request, "You don't have permission to approve this application.")
                 return redirect(redirect_url)
+            from enrollment.application_review import parse_approve_billing_plan
+
             approve_application(
                 app,
                 program_location=program_location or None,
+                plan=parse_approve_billing_plan(request.POST, app),
                 **_membership_charge_from_request(request),
             )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
@@ -1416,9 +1419,12 @@ def admin_application_review(request, app_slug):
     program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
+            from enrollment.application_review import parse_approve_billing_plan
+
             approve_application(
                 app,
                 program_location=program_location or None,
+                plan=parse_approve_billing_plan(request.POST, app),
                 **_membership_charge_from_request(request),
             )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster. Open the family Applications tab to view or edit their full application.")

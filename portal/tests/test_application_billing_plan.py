@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
 
-from enrollment.application_review import approve_application
+from enrollment.application_review import approve_application, parse_approve_billing_plan
 from portal.agency_weeks import cadence_key
 from portal.models import PortalChild, PortalFamily, PortalUnit
 from portal.tests.test_family_units import _make_application
@@ -89,3 +89,20 @@ class ApproveApplicationBillingPlanTests(TestCase):
         self.assertEqual(cadence_key(child.billing_plan), "monthly")
         self.family.refresh_from_db()
         self.assertEqual(self.family.billing_type, "4Cs")
+
+    def test_approve_staff_weekly_plan_sets_amount_without_duplicate_family(self):
+        app = _make_application(self.family, status="under_review", payment_plan="monthly")
+        plan = parse_approve_billing_plan(
+            {
+                "approve_billing_type": "Private pay",
+                "approve_billing_plan": "Weekly",
+                "approve_plan_amount": "65.00",
+                "approve_post_first": "on",
+            },
+            app,
+        )
+        approve_application(app, plan=plan, membership_amount=Decimal("0.00"))
+        self.assertEqual(PortalFamily.objects.filter(name="Rivera").count(), 1)
+        child = PortalChild.objects.get(family=self.family)
+        self.assertEqual(child.billing_plan, "Weekly")
+        self.assertEqual(child.billing_amount, Decimal("65.00"))

@@ -1948,6 +1948,15 @@ def enrich_demo_application(application):
     enriched.setdefault("membership_fee_default", "20.00")
     enriched.setdefault("member_start_date", "")
     enriched.setdefault("member_start_date_display", "")
+    enriched.setdefault("approve_billing_type", "Private pay")
+    enriched.setdefault("approve_billing_plan", "Weekly")
+    enriched.setdefault("approve_plan_amount", "")
+    enriched.setdefault("approve_plan_parent_amount", "")
+    enriched.setdefault("approve_is_four_cs", False)
+    enriched.setdefault("approve_post_first", True)
+    enriched.setdefault("approve_plan_type_choices", [("", "Don't attach a plan (4Cs membership only)"), ("Private pay", "Private pay"), ("4Cs", "4Cs (parent copay)")])
+    enriched.setdefault("approve_plan_cadence_choices", [("Weekly", "Weekly"), ("Bi-weekly", "Bi-weekly"), ("Monthly", "Monthly")])
+    enriched.setdefault("approve_scholarship_funds", [])
     return enriched
 
 

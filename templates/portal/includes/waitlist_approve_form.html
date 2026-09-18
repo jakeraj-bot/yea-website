@@ -5,7 +5,7 @@
 {% url 'portal_staff_application_review' app_slug=app.slug as waitlist_review_url %}
 {% endif %}
 {% if portal_live %}
-<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form" onsubmit="return confirmWaitlistStart(this, '{{ app.child|escapejs }}');">
+<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form portal-waitlist-approve" onsubmit="return confirmWaitlistStart(this, '{{ app.child|escapejs }}');">
   {% csrf_token %}
   <input type="hidden" name="action" value="approve">
   <input type="hidden" name="next" value="{{ waitlist_next }}">
@@ -13,6 +13,7 @@
     Start date
     <input type="date" name="member_start_date" class="portal-input" required>
   </label>
+  {% include "portal/includes/approve_billing_plan_fields.html" with field_prefix=app.slug show_scholarship=False approve_billing_type=app.approve_billing_type approve_billing_plan=app.approve_billing_plan approve_plan_amount="" approve_is_four_cs=app.approve_is_four_cs %}
   <button type="submit" class="btn btn-primary btn-sm">Approve</button>
 </form>
 <script>
@@ -23,7 +24,18 @@ window.confirmWaitlistStart = window.confirmWaitlistStart || function (form, chi
     if (input) input.focus();
     return false;
   }
-  return confirm("A spot opened — approve " + childName + " and add them to the roster? They can start on " + input.value + ".");
+  var planType = form.querySelector('[name="approve_billing_type"]');
+  var planAmount = form.querySelector('[name="approve_plan_amount"]');
+  var message = "A spot opened — approve " + childName + " and add them to the roster? They can start on " + input.value + ".";
+  var kind = planType ? (planType.value || "") : "";
+  var raw = planAmount ? (planAmount.value || "").replace("$", "").replace(",", "").trim() : "";
+  var amount = parseFloat(raw);
+  if (kind && raw && !isNaN(amount) && amount > 0) {
+    message += " A " + kind + " plan of $" + amount.toFixed(2) + " will be attached so the email can show amount due.";
+  } else {
+    message += " Skip the plan for 4Cs membership-only plus the contract reminder.";
+  }
+  return confirm(message);
 };
 </script>
 {% else %}

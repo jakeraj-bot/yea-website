@@ -85,11 +85,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("no duplicate", approve_body)
         self.assertIn("Pay now", approve_body)
         self.assertIn("member start date", approve_body)
+        self.assertIn("billing plan", approve_body.lower())
+        self.assertIn("jakeraj@yeanj.org", approve_body)
 
     def test_application_detail_guide_explains_editable_membership_amount(self):
         guide = guide_for("application-detail")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Change the membership amount before you approve", titles)
+        self.assertIn("Attach a billing plan before you approve", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("Type 0 to waive", bodies)
         self.assertIn("family ledger", bodies.lower())
@@ -97,6 +100,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("no second family", bodies)
         self.assertIn("Pay now", bodies)
         self.assertIn("member start date", bodies)
+        self.assertIn("jakeraj@yeanj.org", bodies)
+        self.assertIn("parent copay", bodies.lower())
 
     def test_family_billing_guide_explains_editing_membership_amount(self):
         guide = guide_for("family-billing")
