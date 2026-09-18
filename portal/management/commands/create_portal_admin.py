@@ -63,6 +63,7 @@ class Command(BaseCommand):
         user.first_name = display_name
         user.set_password(password)
         user.is_staff = True
+        user.is_superuser = True
         user.save()
 
         account, account_created = PortalStaffAccount.objects.update_or_create(
@@ -82,10 +83,15 @@ class Command(BaseCommand):
             },
         )
 
+        from portal.staff_auth import sync_django_backend_access
+
+        sync_django_backend_access(user)
+
         verb = "Created" if created or account_created else "Updated"
         self.stdout.write(
             self.style.SUCCESS(
                 f"{verb} portal admin: {display_username(user.username)}\n"
-                f"Sign in at /portal/admin/login/"
+                f"Member portal: /portal/admin/login/\n"
+                f"Django backend: /admin/ (type {display_username(user.username)}, same password)"
             )
         )

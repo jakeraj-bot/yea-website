@@ -557,6 +557,9 @@ def invite_staff_user(
         account.accessible_units.set(PortalUnit.objects.filter(slug__in=unit_slugs))
     elif unit_slug:
         account.accessible_units.set(PortalUnit.objects.filter(slug=unit_slug))
+    from .staff_auth import sync_django_backend_access
+
+    sync_django_backend_access(user)
     return account, created, temp_password if created or password else None, login_name
 
 
@@ -613,6 +616,9 @@ def invite_admin_user(name, username, email="", password=None):
         },
     )
     account.accessible_units.clear()
+    from .staff_auth import sync_django_backend_access
+
+    sync_django_backend_access(user)
     return account, created, temp_password, display_username(stored_username)
 
 
@@ -669,6 +675,9 @@ def update_staff_user(staff_id, data):
         account.user.set_password(new_password)
         account.user.save()
     account.save()
+    from .staff_auth import sync_django_backend_access
+
+    sync_django_backend_access(account.user)
     return account, new_password if new_password else None
 
 

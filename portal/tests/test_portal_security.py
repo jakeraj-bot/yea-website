@@ -372,7 +372,21 @@ class PortalLoginPostTests(TestCase):
         self.assertIsNotNone(user)
         self.assertEqual(user.pk, self.admin.pk)
 
-    def test_django_admin_login_accepts_unprefixed_portal_admin(self):
+    def test_django_admin_login_opens_backend_models(self):
+        self.assertFalse(self.admin.is_superuser)
+        call_command(
+            "create_portal_admin",
+            "--username",
+            "yeaadmin",
+            "--password",
+            "AdminPass123",
+            "--name",
+            "YEA Admin",
+        )
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_staff)
+        self.assertTrue(self.admin.is_superuser)
+
         response = self.client.post(
             "/admin/login/",
             {"username": "yeaadmin", "password": "AdminPass123", "next": "/admin/"},
@@ -381,6 +395,21 @@ class PortalLoginPostTests(TestCase):
         self.assertTrue(response.url.startswith("/admin/"))
         home = self.client.get("/admin/")
         self.assertEqual(home.status_code, 200)
+        self.assertNotContains(home, "You don't have permission to view or edit anything")
+        self.assertContains(home, "Site administration")
+        self.assertContains(home, "/admin/portal/portalfamily/")
+        self.assertContains(home, "Enrollment applications")
+
+    def test_parent_cannot_open_django_admin(self):
+        response = self.client.post(
+            "/admin/login/",
+            {"username": "rivera", "password": "ParentPass123", "next": "/admin/"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please enter the correct")
+        home = self.client.get("/admin/")
+        self.assertEqual(home.status_code, 302)
+        self.assertIn("/admin/login/", home.url)
 
 
 class CreatePortalAdminUsernameTests(TestCase):
@@ -405,6 +434,8 @@ class CreatePortalAdminUsernameTests(TestCase):
         self.assertEqual(website.username, "yeaadmin")
         portal = User.objects.get(username="admin:yeaadmin")
         self.assertNotEqual(portal.pk, website.pk)
+        self.assertTrue(portal.is_staff)
+        self.assertTrue(portal.is_superuser)
         matched = authenticate(username="yeaadmin", password="WebsitePass123")
         self.assertIsNotNone(matched)
         self.assertEqual(matched.pk, website.pk)
