@@ -113,6 +113,7 @@ class PortalCollapseCssTests(SimpleTestCase):
         self.assertEqual(sticky[0][1], 0)
         self.assertIn("max-height: calc(100vh - 11rem)", css)
         self.assertIn(".portal-waitlist-buttons {", css)
+        self.assertIn("z-index: 20", css.split(".portal-waitlist-table thead th {", 1)[1].split("}", 1)[0])
         print_wrap = [
             rule
             for rule in rules

@@ -5914,6 +5914,7 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   max-width: 100%;
   overflow: auto;
   max-height: calc(100vh - 11rem);
+  display: block;
 }
 
 .portal-waitlist-table th,
@@ -5925,14 +5926,19 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 .portal-waitlist-table thead th {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
   background: var(--bg-soft);
   box-shadow: 0 1px 0 var(--border);
 }
 
+.portal-waitlist-table tbody td {
+  position: relative;
+  z-index: 0;
+}
+
 .portal-waitlist-actions {
   white-space: normal;
-  min-width: 36rem;
+  min-width: 24rem;
   padding: 0.25rem 0.35rem;
   vertical-align: top;
 }
@@ -5948,7 +5954,7 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 
 .portal-waitlist-fields {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.3rem 0.45rem;
 }
@@ -5956,13 +5962,13 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 .portal-waitlist-fields .form-group,
 .portal-waitlist-fields .portal-waitlist-field {
   margin: 0;
-  flex: 1 1 6.75rem;
-  min-width: 6.25rem;
+  flex: 1 1 7.25rem;
+  min-width: 6.5rem;
 }
 
 .portal-waitlist-fields .portal-form-full {
   grid-column: auto;
-  flex: 0 1 8.75rem;
+  flex: 1 1 8.5rem;
   min-width: 7.5rem;
   margin: 0;
 }
