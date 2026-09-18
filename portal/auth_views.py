@@ -392,7 +392,7 @@ def _safe_parent_next(next_url):
     next_url = (next_url or "").strip()
     if not next_url:
         return None
-    site = settings.SITE_URL.rstrip("/")
+    site = str(getattr(settings, "SITE_URL", None) or "").rstrip("/")
     if site and next_url.startswith(site):
         next_url = next_url[len(site) :] or "/"
     if next_url.startswith("/portal/") or next_url.startswith("/apply/"):

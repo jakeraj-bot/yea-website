@@ -43,7 +43,12 @@ class Command(BaseCommand):
         created = False
         if not user:
             legacy = User.objects.filter(username__iexact=login_name).first()
-            if legacy:
+            # Do not rename a website /admin/ superuser into admin:yeaadmin —
+            # that is what made Django admin reject the same login name.
+            steal_legacy = bool(legacy) and (
+                PortalStaffAccount.objects.filter(user=legacy).exists() or not legacy.is_superuser
+            )
+            if steal_legacy:
                 user = legacy
                 migrate_user_username(user, "admin")
             else:

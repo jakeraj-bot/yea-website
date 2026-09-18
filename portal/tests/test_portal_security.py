@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from django.core.cache import cache
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
@@ -299,3 +299,112 @@ class PortalAreaSwitchTests(TestCase):
         )
         self.assertEqual(resolve_auth_username("staff", "yeaadmin"), "admin:yeaadmin")
         self.assertEqual(resolve_auth_username("admin", "yeaadmin"), "admin:yeaadmin")
+
+
+class PortalLoginPostTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.admin = User.objects.create_user(
+            username="admin:yeaadmin",
+            password="AdminPass123",
+            is_staff=True,
+        )
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="YEA Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.family = PortalFamily.objects.create(unit=self.unit, slug="rivera", name="Rivera")
+        self.parent_user = User.objects.create_user(
+            username="parent:rivera",
+            password="ParentPass123",
+            email="rivera@example.com",
+        )
+        PortalParentAccount.objects.create(user=self.parent_user, family=self.family)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_login_page_returns_200(self):
+        response = self.client.get(reverse("portal_admin_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Portal admin login")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_parent_login_page_returns_200(self):
+        response = self.client.get(reverse("portal_parent_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Parent login")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_login_page_returns_200(self):
+        response = self.client.get(reverse("portal_staff_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Staff login")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_login_post_succeeds_with_unprefixed_username(self):
+        response = self.client.post(
+            reverse("portal_admin_login"),
+            {"username": "yeaadmin", "password": "AdminPass123"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_admin_page", kwargs={"page": "dashboard"}))
+        dashboard = self.client.get(response.url)
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Dashboard")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_parent_login_post_succeeds_with_unprefixed_username(self):
+        response = self.client.post(
+            reverse("portal_parent_login"),
+            {"username": "rivera", "password": "ParentPass123"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_parent_page", kwargs={"page": "dashboard"}))
+        dashboard = self.client.get(response.url)
+        self.assertEqual(dashboard.status_code, 200)
+
+    def test_authenticate_accepts_unprefixed_portal_admin(self):
+        user = authenticate(username="yeaadmin", password="AdminPass123")
+        self.assertIsNotNone(user)
+        self.assertEqual(user.pk, self.admin.pk)
+
+    def test_django_admin_login_accepts_unprefixed_portal_admin(self):
+        response = self.client.post(
+            "/admin/login/",
+            {"username": "yeaadmin", "password": "AdminPass123", "next": "/admin/"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/admin/"))
+        home = self.client.get("/admin/")
+        self.assertEqual(home.status_code, 200)
+
+
+class CreatePortalAdminUsernameTests(TestCase):
+    def test_create_portal_admin_does_not_rename_website_superuser(self):
+        User = get_user_model()
+        website = User.objects.create_user(
+            username="yeaadmin",
+            password="WebsitePass123",
+            is_staff=True,
+            is_superuser=True,
+        )
+        call_command(
+            "create_portal_admin",
+            "--username",
+            "yeaadmin",
+            "--password",
+            "AdminPass123",
+            "--name",
+            "YEA Admin",
+        )
+        website.refresh_from_db()
+        self.assertEqual(website.username, "yeaadmin")
+        portal = User.objects.get(username="admin:yeaadmin")
+        self.assertNotEqual(portal.pk, website.pk)
+        matched = authenticate(username="yeaadmin", password="WebsitePass123")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched.pk, website.pk)

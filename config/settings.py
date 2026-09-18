@@ -74,6 +74,10 @@ MIDDLEWARE = [
     "portal.middleware.PortalActivityMiddleware",
 ]
 
+AUTHENTICATION_BACKENDS = [
+    "portal.auth_backends.PortalUsernameBackend",
+]
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
