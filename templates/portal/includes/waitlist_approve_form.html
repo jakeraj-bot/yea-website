@@ -5,12 +5,27 @@
 {% url 'portal_staff_application_review' app_slug=app.slug as waitlist_review_url %}
 {% endif %}
 {% if portal_live %}
-<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form" onsubmit="return confirm('A spot opened — approve {{ app.child }} and add them to the roster?');">
+<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form" onsubmit="return confirmWaitlistStart(this, '{{ app.child|escapejs }}');">
   {% csrf_token %}
   <input type="hidden" name="action" value="approve">
   <input type="hidden" name="next" value="{{ waitlist_next }}">
+  <label class="portal-filter-label">
+    Start date
+    <input type="date" name="member_start_date" class="portal-input" required>
+  </label>
   <button type="submit" class="btn btn-primary btn-sm">Approve</button>
 </form>
+<script>
+window.confirmWaitlistStart = window.confirmWaitlistStart || function (form, childName) {
+  var input = form.querySelector('[name="member_start_date"]');
+  if (!input || !input.value) {
+    alert("Enter the member start date before sending the approval email.");
+    if (input) input.focus();
+    return false;
+  }
+  return confirm("A spot opened — approve " + childName + " and add them to the roster? They can start on " + input.value + ".");
+};
+</script>
 {% else %}
 <button type="button" class="btn btn-primary btn-sm" disabled title="Demo only">Approve</button>
 {% endif %}

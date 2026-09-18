@@ -112,8 +112,10 @@ class MembershipChargeOnApproveTests(TestCase):
             reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})
         )
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "Membership charge")
+        self.assertContains(page, "Membership amount")
         self.assertContains(page, 'name="membership_amount"')
+        self.assertContains(page, 'name="member_start_date"')
+        self.assertContains(page, "Member start date")
         self.assertContains(page, 'value="20.00"')
         self.assertContains(page, "Type 0 to waive")
         self.assertContains(page, "Change the membership amount before you approve")
@@ -128,6 +130,7 @@ class MembershipChargeOnApproveTests(TestCase):
                 "action": "approve",
                 "membership_amount": "7.25",
                 "membership_description": "Membership fee ($7.25) — Ada Rivera",
+                "member_start_date": "2026-09-15",
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -135,6 +138,8 @@ class MembershipChargeOnApproveTests(TestCase):
         self.assertEqual(fee.amount, Decimal("7.25"))
         self.assertEqual(fee.date, timezone.localdate())
         self.assertEqual(fee.description, "Membership fee ($7.25) — Ada Rivera")
+        app.refresh_from_db()
+        self.assertEqual(app.member_start_date.isoformat(), "2026-09-15")
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "rivera"}))
         self.assertContains(billing, "7.25")
         self.assertContains(billing, "Membership fee ($7.25) — Ada Rivera")

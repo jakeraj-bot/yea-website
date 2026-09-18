@@ -84,7 +84,154 @@ DEFAULT_TEMPLATES = {
             "Youth Education Academy\n"
         ),
     },
+    PortalEmailTemplate.KEY_APPLICATION_SUBMITTED: {
+        "name": "Application submitted",
+        "subject": "[YEA] Application received — {child_name}",
+        "body": (
+            "Hello {parent_name},\n\n"
+            "Thank you for submitting your enrollment application for {child_name}.\n\n"
+            "Reference: {reference}\n"
+            "Program: {program} — {unit}\n\n"
+            "We'll review your application and contact you if we need anything else. "
+            "Track status anytime in the parent portal:\n"
+            "{portal_url}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
+    PortalEmailTemplate.KEY_APPLICATION_SUBMITTED_WAITLIST: {
+        "name": "Waitlist application submitted",
+        "subject": "[YEA] You're on the before care waitlist — {child_name}",
+        "body": (
+            "Hello {parent_name},\n\n"
+            "Thank you for joining the before care waitlist at {unit} for {child_name}.\n\n"
+            "Reference: {reference}\n"
+            "Program: {program} — {unit}\n\n"
+            "Families on the waitlist are contacted in the order requests were received when a spot opens. "
+            "Track status anytime in the parent portal:\n"
+            "{portal_url}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
+    PortalEmailTemplate.KEY_APPLICATION_APPROVED: {
+        "name": "Application approved",
+        "subject": "Enrollment approved — {child_name}",
+        "body": (
+            "Hi {parent_name},\n\n"
+            "Great news — {child_name}'s enrollment application for {program} "
+            "at {unit} has been approved. They are on the active roster.\n\n"
+            "{child_name} can start on {start_date}. Payment is due before the program start. "
+            "You can pay in the parent portal.\n\n"
+            "Pay now (this link opens your payment page after you sign in):\n"
+            "{payment_url}\n\n"
+            "{payment_steps}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
+    PortalEmailTemplate.KEY_APPLICATION_APPROVED_WAITLIST: {
+        "name": "Waitlist application approved",
+        "subject": "Waitlist approved — {child_name} can start {start_date}",
+        "body": (
+            "Hi {parent_name},\n\n"
+            "A spot opened — {child_name}'s waitlist request for {program} "
+            "at {unit} has been approved. They are on the active roster.\n\n"
+            "{child_name} can start on {start_date}. Payment is due before the program start. "
+            "You can pay in the parent portal.\n\n"
+            "Pay now (this link opens your payment page after you sign in):\n"
+            "{payment_url}\n\n"
+            "{payment_steps}\n\n"
+            "Youth Education Academy\n"
+        ),
+    },
 }
+
+APPLICATION_TEMPLATE_PLACEHOLDERS = (
+    "{parent_name} {child_name} {program} {unit} {start_date} {payment_url} {payment_steps}"
+)
+
+
+def application_uses_waitlist_emails(app):
+    return app.program == "before_care" or app.status == "waitlist"
+
+
+def submitted_template_key(app):
+    if application_uses_waitlist_emails(app):
+        return PortalEmailTemplate.KEY_APPLICATION_SUBMITTED_WAITLIST
+    return PortalEmailTemplate.KEY_APPLICATION_SUBMITTED
+
+
+def approved_template_key(app, *, waitlist=None):
+    if waitlist is None:
+        waitlist = application_uses_waitlist_emails(app)
+    if waitlist:
+        return PortalEmailTemplate.KEY_APPLICATION_APPROVED_WAITLIST
+    return PortalEmailTemplate.KEY_APPLICATION_APPROVED
+
+
+def format_member_start_date(value):
+    if not value:
+        return ""
+    from django.utils.formats import date_format
+
+    return date_format(value, "F j, Y")
+
+
+def application_email_context(app, *, start_date=None, portal_url=None):
+    from enrollment.application_review import child_display_name, first_payment_steps_text, program_name_for_email
+    from enrollment.locations import get_location_label
+
+    start = start_date if start_date is not None else getattr(app, "member_start_date", None)
+    payment_url = parent_pay_now_url()
+    track_url = portal_url or (settings.SITE_URL.rstrip("/") + reverse("portal_parent_login"))
+    return {
+        "parent_name": (app.primary_first_name or "").strip() or "there",
+        "family_name": app.family_name or "",
+        "child_name": child_display_name(app),
+        "program": program_name_for_email(app),
+        "unit": get_location_label(app.program_location),
+        "start_date": format_member_start_date(start),
+        "payment_url": payment_url,
+        "portal_url": track_url,
+        "payment_steps": first_payment_steps_text(),
+        "reference": str(app.reference),
+    }
+
+
+def send_application_submitted_parent_email(app, *, staff_created=False, save_draft=False):
+    """Parent email after an application is submitted. Drafts keep the complete-your-form copy."""
+    email = (app.primary_email or "").strip()
+    if not email:
+        return 0
+    if save_draft:
+        child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+        portal_url = settings.SITE_URL.rstrip("/") + reverse("portal_parent_login")
+        return send_site_email(
+            subject="[YEA] Complete your enrollment application",
+            message=(
+                f"Hello {app.primary_first_name},\n\n"
+                f"YEA staff started an enrollment application for {child_name}. "
+                f"Please sign in to the parent portal to complete medical information, policies, and billing.\n\n"
+                f"Reference: {app.reference}\n\n"
+                f"Parent portal:\n{portal_url}\n\n"
+                f"Youth Education Academy\n"
+            ),
+            recipient_list=[email],
+        )
+    key = submitted_template_key(app)
+    template = get_email_template(key)
+    if not template.is_enabled:
+        return 0
+    context = application_email_context(app)
+    subject, body = render_email(key, context)
+    return send_site_email(subject=subject, message=body, recipient_list=[email])
+
+
+def render_application_approved_email(app, *, start_date=None, waitlist=None):
+    key = approved_template_key(app, waitlist=waitlist)
+    template = get_email_template(key)
+    context = application_email_context(app, start_date=start_date, portal_url=parent_pay_now_url())
+    subject, body = render_email(key, context)
+    body = with_pay_now_link(body, context["payment_url"])
+    return template, subject, body
 
 
 def ensure_email_templates():

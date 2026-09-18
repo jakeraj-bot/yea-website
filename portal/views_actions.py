@@ -75,7 +75,7 @@ def _require_delete_reason(request):
 
 
 def _membership_charge_from_request(request):
-    from enrollment.application_review import parse_membership_amount
+    from enrollment.application_review import parse_member_start_date, parse_membership_amount
 
     amount = None
     if "membership_amount" in request.POST:
@@ -83,6 +83,8 @@ def _membership_charge_from_request(request):
     return {
         "membership_amount": amount,
         "membership_description": request.POST.get("membership_description", ""),
+        "start_date": parse_member_start_date(request.POST.get("member_start_date"), required=True),
+        "require_start_date": True,
     }
 
 

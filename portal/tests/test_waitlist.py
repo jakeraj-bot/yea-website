@@ -686,14 +686,15 @@ class WaitlistApprovePayEmailTests(TestCase):
         )
         app = _create_application(_before_care_apply_payload(family, first="Nia"))
         mail.outbox.clear()
-        approve_application(app)
+        approve_application(app, start_date=date(2026, 9, 15))
         self.assertEqual(len(mail.outbox), 1)
         body = mail.outbox[0].body
         payment_url = parent_pay_now_url()
         self.assertTrue(payment_url.endswith("/portal/parent/payment/"))
         self.assertIn("https://yeanj.org/portal/parent/payment/", body)
         self.assertIn("Payment is due before the program start", body)
-        self.assertIn("September 8, 2026", body)
+        self.assertIn("September 15, 2026", body)
+        self.assertIn("can start on", body.lower())
         self.assertIn("parent portal", body.lower())
         self.assertIn("1. Open Parent login", body)
         self.assertIn("Pay now / Billing", body)
@@ -701,6 +702,7 @@ class WaitlistApprovePayEmailTests(TestCase):
         self.assertIn("Pay with Stripe", body)
         self.assertIn("check or money order", body)
         self.assertIn(reverse("portal_parent_payment"), body)
+        self.assertEqual(app.member_start_date, date(2026, 9, 15))
 
     @override_settings(SITE_URL="https://yeanj.org", PORTAL_PREVIEW_MODE=False)
     def test_family_applications_show_before_care_approved(self):
@@ -727,7 +729,7 @@ class WaitlistApprovePayEmailTests(TestCase):
         self.assertNotContains(page, "<dd>Before care (waitlist)</dd>")
         waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
         self.assertNotContains(waitlist_page, "Ada Shown")
-        waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
         self.assertContains(waitlist_page, "no duplicate")
         self.assertContains(waitlist_page, "Pay now")
+        self.assertContains(waitlist_page, "member start date")
 

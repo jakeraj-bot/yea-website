@@ -1,0 +1,23 @@
+<div class="card">
+  <h2>{{ editor_title }}</h2>
+  <p class="form-note">{{ editor_note }} Placeholders: <code>{parent_name}</code> <code>{child_name}</code> <code>{program}</code> <code>{unit}</code> <code>{start_date}</code> <code>{payment_url}</code> <code>{payment_steps}</code>.</p>
+  <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
+    {% csrf_token %}
+    <input type="hidden" name="template_key" value="{{ email_template.key }}">
+    <input type="hidden" name="next_page" value="{{ next_page|default:'parent-emails' }}">
+    <div class="form-group portal-form-full">
+      <label>Subject</label>
+      <input name="subject" class="portal-input" value="{{ email_template.subject }}" required>
+    </div>
+    <div class="form-group portal-form-full">
+      <label>Message</label>
+      <textarea name="body" class="portal-input portal-textarea" rows="10" required>{{ email_template.body }}</textarea>
+    </div>
+    <div class="form-group portal-form-full">
+      <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if email_template.is_enabled %}checked{% endif %}> {{ enabled_label|default:"Send this email" }}</label>
+    </div>
+    <div class="portal-form-actions portal-form-full">
+      <button type="submit" class="btn btn-secondary">{{ save_label|default:"Save email template" }}</button>
+    </div>
+  </form>
+</div>

@@ -224,6 +224,13 @@ class AdminAccountEmailViewTests(TestCase):
         self.assertContains(response, "September 8")
         self.assertContains(response, "$20")
         self.assertContains(response, "send_first_day_reminder")
+        self.assertContains(response, "Application submitted — regular")
+        self.assertContains(response, "Application submitted — waitlist")
+        self.assertContains(response, "Application approved — regular")
+        self.assertContains(response, "Application approved — waitlist")
+        self.assertContains(response, "{start_date}")
+        self.assertContains(response, "{payment_url}")
+        self.assertContains(response, "{payment_steps}")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_can_save_charge_template(self):

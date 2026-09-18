@@ -33,19 +33,7 @@ def _portal_applications_url():
     return settings.SITE_URL.rstrip("/") + reverse("portal_parent_page", kwargs={"page": "applications"})
 
 
-def _program_start_sentence():
-    from django.utils.formats import date_format
-
-    from portal.models import PortalProgramCalendar
-
-    calendar = PortalProgramCalendar.objects.order_by("id").first()
-    start = getattr(calendar, "program_start", None) if calendar else None
-    if start:
-        return f"Payment is due before the program start ({date_format(start, 'F j, Y')})."
-    return "Payment is due before the program start."
-
-
-def _program_name_for_email(app):
+def program_name_for_email(app):
     if app.program == "before_care":
         return "before care"
     return app.get_program_display()
@@ -61,22 +49,34 @@ def first_payment_steps_text():
     )
 
 
-def approval_email_body(app):
-    from portal.email_templates import parent_pay_now_url
+def parse_member_start_date(value, *, required=False):
+    """Parse the approve-form start date. Empty is allowed unless required."""
+    from datetime import date as date_cls
 
-    child_name = child_display_name(app)
-    payment_url = parent_pay_now_url()
-    return (
-        f"Hi {app.primary_first_name},\n\n"
-        f"Great news — {child_name}'s enrollment application for {_program_name_for_email(app)} "
-        f"at {get_location_label(app.program_location)} has been approved. "
-        f"They are on the active roster.\n\n"
-        f"{_program_start_sentence()} You can pay in the parent portal.\n\n"
-        f"Pay now (this link opens your payment page after you sign in):\n"
-        f"{payment_url}\n\n"
-        f"{first_payment_steps_text()}\n\n"
-        f"Youth Education Academy"
+    from django.utils.dateparse import parse_date
+
+    if isinstance(value, date_cls):
+        return value
+    text = "" if value is None else str(value).strip()
+    if not text:
+        if required:
+            raise ValueError("Enter the member start date before sending the approval email.")
+        return None
+    parsed = parse_date(text)
+    if not parsed:
+        raise ValueError("Enter a valid member start date.")
+    return parsed
+
+
+def approval_email_body(app, *, start_date=None, waitlist=None):
+    from portal.email_templates import render_application_approved_email
+
+    _template, _subject, body = render_application_approved_email(
+        app,
+        start_date=start_date,
+        waitlist=waitlist,
     )
+    return body
 
 
 def _application_detail_url(app):
@@ -375,9 +375,21 @@ def assign_application_location(app, program_location):
 
 
 @transaction.atomic
-def approve_application(app, program_location=None, membership_amount=None, membership_description=""):
+def approve_application(
+    app,
+    program_location=None,
+    membership_amount=None,
+    membership_description="",
+    start_date=None,
+    require_start_date=False,
+):
     if app.status not in REVIEWABLE_STATUSES:
         raise ValueError("This application has already been reviewed.")
+
+    from portal.email_templates import application_uses_waitlist_emails, render_application_approved_email
+
+    waitlist_email = application_uses_waitlist_emails(app)
+    parsed_start = parse_member_start_date(start_date, required=require_start_date)
 
     if program_location and program_location.strip() != (app.program_location or ""):
         assign_application_location(app, program_location.strip())
@@ -408,14 +420,19 @@ def approve_application(app, program_location=None, membership_amount=None, memb
 
     app.status = "approved"
     app.reviewed_at = timezone.now()
-    app.save(update_fields=["status", "reviewed_at"])
+    update_fields = ["status", "reviewed_at"]
+    if parsed_start:
+        app.member_start_date = parsed_start
+        update_fields.append("member_start_date")
+    app.save(update_fields=update_fields)
 
-    child_name = child_display_name(app)
-    _email_parent(
+    template, subject, body = render_application_approved_email(
         app,
-        f"Enrollment approved — {child_name}",
-        approval_email_body(app),
+        start_date=parsed_start,
+        waitlist=waitlist_email,
     )
+    if template.is_enabled:
+        _email_parent(app, subject, body)
     return app
 
 
