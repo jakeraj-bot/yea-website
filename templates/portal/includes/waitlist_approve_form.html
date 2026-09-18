@@ -1,20 +1,30 @@
 {% if can_approve_waitlist %}
 {% if portal_area == 'admin' %}
 {% url 'portal_admin_application_review' app_slug=app.slug as waitlist_review_url %}
+{% url 'portal_admin_application_detail' app_slug=app.slug as waitlist_detail_url %}
+{% url 'portal_admin_application_print' app_slug=app.slug as waitlist_print_url %}
 {% else %}
 {% url 'portal_staff_application_review' app_slug=app.slug as waitlist_review_url %}
+{% url 'portal_staff_application_detail' app_slug=app.slug as waitlist_detail_url %}
+{% url 'portal_staff_application_print' app_slug=app.slug as waitlist_print_url %}
 {% endif %}
 {% if portal_live %}
-<form method="post" action="{{ waitlist_review_url }}" class="portal-inline-form portal-waitlist-approve" onsubmit="return confirmWaitlistStart(this, '{{ app.child|escapejs }}');">
+<form method="post" action="{{ waitlist_review_url }}" class="portal-waitlist-approve" onsubmit="return confirmWaitlistStart(this, '{{ app.child|escapejs }}');">
   {% csrf_token %}
   <input type="hidden" name="action" value="approve">
   <input type="hidden" name="next" value="{{ waitlist_next }}">
-  <label class="portal-filter-label">
-    Start date
-    <input type="date" name="member_start_date" class="portal-input" required>
-  </label>
-  {% include "portal/includes/approve_billing_plan_fields.html" with field_prefix=app.slug show_scholarship=False approve_billing_type=app.approve_billing_type approve_billing_plan=app.approve_billing_plan approve_plan_amount="" approve_is_four_cs=app.approve_is_four_cs %}
-  <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+  <div class="portal-waitlist-fields">
+    <div class="form-group portal-waitlist-field">
+      <label for="waitlist-start-{{ app.slug }}">Start date</label>
+      <input id="waitlist-start-{{ app.slug }}" type="date" name="member_start_date" class="portal-input" required>
+    </div>
+    {% include "portal/includes/approve_billing_plan_fields.html" with field_prefix=app.slug show_scholarship=False approve_billing_type=app.approve_billing_type approve_billing_plan=app.approve_billing_plan approve_plan_amount="" approve_is_four_cs=app.approve_is_four_cs %}
+  </div>
+  <div class="portal-waitlist-buttons">
+    <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+    <a class="btn btn-secondary btn-sm" href="{{ waitlist_detail_url }}">Review</a>
+    <a class="btn btn-secondary btn-sm" href="{{ waitlist_print_url }}">PDF</a>
+  </div>
 </form>
 <script>
 window.confirmWaitlistStart = window.confirmWaitlistStart || function (form, childName) {
@@ -39,6 +49,12 @@ window.confirmWaitlistStart = window.confirmWaitlistStart || function (form, chi
 };
 </script>
 {% else %}
-<button type="button" class="btn btn-primary btn-sm" disabled title="Demo only">Approve</button>
+<div class="portal-waitlist-approve">
+  <div class="portal-waitlist-buttons">
+    <button type="button" class="btn btn-primary btn-sm" disabled title="Demo only">Approve</button>
+    <a class="btn btn-secondary btn-sm" href="{{ waitlist_detail_url }}">Review</a>
+    <a class="btn btn-secondary btn-sm" href="{{ waitlist_print_url }}">PDF</a>
+  </div>
+</div>
 {% endif %}
 {% endif %}

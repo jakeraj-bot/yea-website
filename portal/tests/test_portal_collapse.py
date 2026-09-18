@@ -100,6 +100,27 @@ class PortalCollapseCssTests(SimpleTestCase):
         self.assertTrue(member_info, "member-info table cells must be a closed CSS rule")
         self.assertEqual(member_info[0][1], 0)
 
+    def test_waitlist_compact_rules_are_closed_and_sticky(self):
+        css = PORTAL_CSS.read_text()
+        rules = _css_rule_depths(css)
+        wrap = [rule for rule in rules if rule[0] == ".portal-waitlist-table-wrap"]
+        self.assertEqual(len(wrap), 1, "waitlist wrap must be a closed top-level CSS rule")
+        self.assertEqual(wrap[0][1], 0)
+        fields = [rule for rule in rules if rule[0] == ".portal-waitlist-fields"]
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0][1], 0)
+        sticky = [rule for rule in rules if rule[0] == ".portal-waitlist-table thead th"]
+        self.assertEqual(len(sticky), 1)
+        self.assertEqual(sticky[0][1], 0)
+        self.assertIn("max-height: calc(100vh - 11rem)", css)
+        self.assertIn(".portal-waitlist-buttons {", css)
+        print_wrap = [
+            rule
+            for rule in rules
+            if ".portal-waitlist-table-wrap" in rule[0] and rule[1] >= 1
+        ]
+        self.assertTrue(print_wrap, "waitlist wrap print override belongs inside @media print")
+
     def test_print_title_row_is_not_mashed_into_an_unclosed_block(self):
         css = PORTAL_CSS.read_text()
         self.assertNotIn(".portal-print-title-row {\n  .portal-print-title-row", css)

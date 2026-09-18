@@ -24,8 +24,8 @@
 
     {% include "portal/staff/includes/list_toolbar.html" with sort_default="Request order" filter_options="All" search_placeholder="Child or family" search_id="admin-waitlist-search" %}
 
-    <div class="portal-table-wrap">
-      <table class="portal-table" id="admin-waitlist-table">
+    <div class="portal-table-wrap portal-waitlist-table-wrap">
+      <table class="portal-table portal-waitlist-table" id="admin-waitlist-table">
         <thead>
           <tr>
             <th>#</th>
@@ -50,11 +50,13 @@
             <td>{{ app.submitted }}</td>
             <td>{{ app.program }}</td>
             <td><span class="portal-status portal-status-{{ app.status|slugify }}">{{ app.status }}</span></td>
-            <td class="portal-row-actions">
+            <td class="portal-row-actions portal-waitlist-actions">
               {% include "portal/includes/waitlist_approve_form.html" %}
               {% include "portal/includes/add_after_care_form.html" with app_slug=app.slug child_name=app.child show_add_after_care=app.can_add_after_school next_url=waitlist_next %}
+              {% if not can_approve_waitlist %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_detail' app_slug=app.slug %}">Review</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_application_print' app_slug=app.slug %}">PDF</a>
+              {% endif %}
             </td>
           </tr>
           {% empty %}
