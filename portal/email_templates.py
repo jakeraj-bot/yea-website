@@ -280,6 +280,8 @@ def approval_payment_placeholders(app, *, membership_amount=None, plan=None, mem
         else:
             membership_line = "The membership fee is waived."
     four_cs_contract = FOUR_CS_CONTRACT_REMINDER if plan.get("is_four_cs") else ""
+    if membership_line and four_cs_contract:
+        membership_line = membership_line + "\n"
     return {
         "amount_due": amount_due,
         "membership_fee": membership_line,
