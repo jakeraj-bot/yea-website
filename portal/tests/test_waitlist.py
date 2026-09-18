@@ -743,6 +743,7 @@ class WaitlistCompactRowTests(TestCase):
             is_active=True,
         )
         self.family = PortalFamily.objects.create(unit=self.unit, slug="rivera", name="Rivera")
+        User = get_user_model()
         self.admin_user = User.objects.create_user(username="admin:yeaadmin", password="AdminPass123")
         PortalStaffAccount.objects.create(
             user=self.admin_user,

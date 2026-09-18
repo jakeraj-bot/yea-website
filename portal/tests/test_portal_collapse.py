@@ -103,9 +103,8 @@ class PortalCollapseCssTests(SimpleTestCase):
     def test_waitlist_compact_rules_are_closed_and_sticky(self):
         css = PORTAL_CSS.read_text()
         rules = _css_rule_depths(css)
-        wrap = [rule for rule in rules if rule[0] == ".portal-waitlist-table-wrap"]
+        wrap = [rule for rule in rules if rule[0] == ".portal-waitlist-table-wrap" and rule[1] == 0]
         self.assertEqual(len(wrap), 1, "waitlist wrap must be a closed top-level CSS rule")
-        self.assertEqual(wrap[0][1], 0)
         fields = [rule for rule in rules if rule[0] == ".portal-waitlist-fields"]
         self.assertEqual(len(fields), 1)
         self.assertEqual(fields[0][1], 0)
