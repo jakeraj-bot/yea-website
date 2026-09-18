@@ -30,7 +30,7 @@ PRACTICE_PRIMARY = "Alex Practice"
 PRACTICE_CHILD_NAME = "Sam Practice"
 PRACTICE_CHILD_GRADE = "4th"
 PRACTICE_BALANCE = Decimal("85.00")
-PRACTICE_AUTH_BACKEND = "django.contrib.auth.backends.ModelBackend"
+PRACTICE_AUTH_BACKEND = "portal.auth_backends.PortalUsernameBackend"
 
 SESSION_FLAG = "practice_parent_session"
 SESSION_RESTORE_USER = "practice_restore_user_id"

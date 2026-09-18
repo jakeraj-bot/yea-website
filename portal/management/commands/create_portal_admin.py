@@ -43,7 +43,12 @@ class Command(BaseCommand):
         created = False
         if not user:
             legacy = User.objects.filter(username__iexact=login_name).first()
-            if legacy:
+            # Do not rename a website /admin/ superuser into admin:yeaadmin —
+            # that is what made Django admin reject the same login name.
+            steal_legacy = bool(legacy) and (
+                PortalStaffAccount.objects.filter(user=legacy).exists() or not legacy.is_superuser
+            )
+            if steal_legacy:
                 user = legacy
                 migrate_user_username(user, "admin")
             else:
@@ -58,6 +63,7 @@ class Command(BaseCommand):
         user.first_name = display_name
         user.set_password(password)
         user.is_staff = True
+        user.is_superuser = True
         user.save()
 
         account, account_created = PortalStaffAccount.objects.update_or_create(
@@ -77,10 +83,15 @@ class Command(BaseCommand):
             },
         )
 
+        from portal.staff_auth import sync_django_backend_access
+
+        sync_django_backend_access(user)
+
         verb = "Created" if created or account_created else "Updated"
         self.stdout.write(
             self.style.SUCCESS(
                 f"{verb} portal admin: {display_username(user.username)}\n"
-                f"Sign in at /portal/admin/login/"
+                f"Member portal: /portal/admin/login/\n"
+                f"Django backend: /admin/ (type {display_username(user.username)}, same password)"
             )
         )
