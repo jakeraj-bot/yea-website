@@ -193,6 +193,8 @@ class WaitlistAddAfterCareViewTests(TestCase):
         self.assertContains(page, "Confirm to save")
         self.assertContains(page, "new enrollment form")
         self.assertContains(page, "portal-page-guide.js")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_add_after_care_from_waitlist_without_new_application(self):
@@ -729,9 +731,12 @@ class WaitlistApprovePayEmailTests(TestCase):
         self.assertNotContains(page, "<dd>Before care (waitlist)</dd>")
         waitlist_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
         self.assertNotContains(waitlist_page, "Ada Shown")
+        self.assertContains(waitlist_page, "How to use this page")
         self.assertContains(waitlist_page, "no duplicate")
         self.assertContains(waitlist_page, "Pay now")
         self.assertContains(waitlist_page, "member start date")
+        self.assertNotContains(waitlist_page, "Type the member start date first")
+        self.assertNotContains(waitlist_page, "Before care waitlist in request order")
 
 
 class WaitlistCompactRowTests(TestCase):
@@ -802,6 +807,11 @@ class WaitlistCompactRowTests(TestCase):
         self.assertEqual(html.count("portal-waitlist-fields"), 3)
         self.assertEqual(html.count(">Review<"), 3)
         self.assertEqual(html.count(">PDF<"), 3)
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "Before care waitlist in request order")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "no duplicate")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_waitlist_rows_are_compact(self):
