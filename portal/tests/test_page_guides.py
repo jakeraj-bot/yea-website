@@ -305,6 +305,20 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, "Pay now")
         self.assertContains(page, 'data-open-page-guide')
         self.assertContains(page, "portal-page-guide.js")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_waitlist_page_keeps_howto_without_banner(self):
+        self._login(self.admin_user, "admin")
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "no duplicate")
+        self.assertContains(page, "Pay now")
+        self.assertContains(page, "member start date")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "Before care waitlist in request order")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_staff_attendance_with_same_login(self):
