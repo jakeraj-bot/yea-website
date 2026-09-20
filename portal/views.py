@@ -2998,7 +2998,7 @@ def admin_data_report(request, report_slug):
 
     if report_slug not in ADMIN_DATA_REPORTS:
         return render(request, "portal/404.html", status=404)
-    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status", "owes")}
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status", "owes", "unfinished")}
     if report_slug == "balances" and "status" not in request.GET:
         filters["status"] = "Active"
     if report_slug == "member-information" and "status" not in request.GET:
@@ -3012,6 +3012,7 @@ def admin_data_report(request, report_slug):
         "payout_groups": [],
         "waiting_to_receive_total": "0.00",
         "waiting_for_card_total": "0.00",
+        "show_unfinished_checkouts": False,
         "summary": "No live data in preview mode.",
         "units": [],
         "schools": [],
