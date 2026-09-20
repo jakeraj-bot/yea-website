@@ -109,6 +109,26 @@ def is_portal_admin(user):
     return account.role == ROLE_PORTAL_ADMIN or account.all_units_access
 
 
+def sync_django_backend_access(user):
+    """Let portal org admins use Django /admin/. Never grant this to parents."""
+    if user is None or not getattr(user, "pk", None):
+        return user
+    if hasattr(user, "_yea_staff_account"):
+        delattr(user, "_yea_staff_account")
+    if not is_portal_admin(user):
+        return user
+    fields = []
+    if not user.is_staff:
+        user.is_staff = True
+        fields.append("is_staff")
+    if not user.is_superuser:
+        user.is_superuser = True
+        fields.append("is_superuser")
+    if fields:
+        user.save(update_fields=fields)
+    return user
+
+
 def org_program_director_can_see_billing():
     return bool(PortalOrgSetting.load().program_director_can_see_billing)
 

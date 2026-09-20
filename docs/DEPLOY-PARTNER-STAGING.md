@@ -135,6 +135,18 @@ Forgot-password emails require SMTP env vars (`EMAIL_HOST`, `EMAIL_HOST_USER`, `
 
 After deploy, sign in at `/portal/admin/login/` with the username and password you set.
 
+Django’s built-in backend is a different URL: `/admin/` (https://www.yeanj.org/admin/). Type the same `yeaadmin` name. If that login shows “correct username and password for a staff account”, the account needs staff+superuser — run (does not print hashes):
+
+```bash
+python manage.py ensure_django_superuser --username yeaadmin
+```
+
+To set a new password at the same time:
+
+```bash
+python manage.py ensure_django_superuser --username yeaadmin --password 'YourNewPass123!'
+```
+
 ### Alternative — run from your Mac (if build setup fails)
 
 1. Render → your **Postgres** database → copy **External Database URL**
