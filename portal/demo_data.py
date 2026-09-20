@@ -703,14 +703,14 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Who paid what",
-        "description": "Who paid, which child, how much, and on what day",
+        "description": "Who paid, which child, how much, and on what day — unfinished card checkouts are not listed",
         "format": "PDF / CSV",
         "slug": "payments",
         "report": "payments",
     },
     {
         "name": "Stripe & bank payouts",
-        "description": "Stripe card payments only — money not paid out yet, unfinished card checkouts, then each bank payout",
+        "description": "Stripe card payments only — money not paid out yet, then each bank payout. Unfinished card checkouts are not payments.",
         "format": "PDF / CSV",
         "slug": "stripe-settlement",
         "report": "stripe-settlement",

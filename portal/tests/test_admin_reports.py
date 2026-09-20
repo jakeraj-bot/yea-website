@@ -455,6 +455,36 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertEqual(row["amount"], "40.00")
         self.assertEqual(row["status"], "Paid")
 
+    def test_who_paid_what_omits_unfinished_card_checkout(self):
+        today = timezone.now()
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("30.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_who_paid_pending",
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.four_cs_family,
+            amount=Decimal("25.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_who_paid_ok",
+            stripe_payment_intent_id="pi_who_paid_ok",
+            stripe_charge_id="ch_who_paid_ok",
+            paid_at=today,
+        )
+        report = build_admin_report("payments", {})
+        families = {row["family"] for row in report["rows"]}
+        self.assertNotIn("Jacobs", families)
+        self.assertIn("Martinez", families)
+        paid = next(item for item in report["rows"] if item["family"] == "Martinez")
+        self.assertEqual(paid["amount"], "25.00")
+        self.assertEqual(paid["status"], "Paid")
+        self.assertEqual(report["summary"], "1 payments · $25.00 collected")
+        self.assertTrue(all(row["status"] != "Waiting for card payment" for row in report["rows"]))
+
     def test_stripe_settlement_report_marks_pending_card_and_excludes_in_person(self):
         today = timezone.now()
         pending = PortalPayment.objects.create(
@@ -473,20 +503,27 @@ class AdminReportsAndScholarshipTests(TestCase):
             paid_at=today,
         )
         report = build_admin_report("stripe-settlement", {})
-        by_family = {row["family"]: row for row in report["rows"]}
-        self.assertEqual(list(by_family), ["Jacobs"])
-        self.assertEqual(by_family["Jacobs"]["status"], "Waiting for card")
-        self.assertIn("Waiting for parent", by_family["Jacobs"]["bank_status"])
         pending.refresh_from_db()
         self.assertEqual(pending.stripe_bank_status, "waiting_for_card")
-        self.assertNotIn("Martinez", by_family)
+        self.assertEqual(report["rows"], [])
+        self.assertFalse(report["show_unfinished_checkouts"])
         self.assertEqual({row["family"] for row in report["waiting_for_card_rows"]}, {"Jacobs"})
         self.assertEqual(report["pending_rows"], [])
         self.assertEqual(report["waiting_to_receive_total"], "0.00")
         self.assertEqual(report["waiting_for_card_total"], "30.00")
         self.assertEqual(report["payout_groups"], [])
         self.assertEqual(report["layout"], "payout_sections")
-        self.assertEqual(report["rows"][0]["section"], "Waiting for card")
+        self.assertNotIn("Waiting for card $30.00", report["summary"])
+        self.assertIn("0 Stripe payments", report["summary"])
+        shown = build_admin_report("stripe-settlement", {"unfinished": "yes"})
+        by_family = {row["family"]: row for row in shown["rows"]}
+        self.assertEqual(list(by_family), ["Jacobs"])
+        self.assertEqual(by_family["Jacobs"]["status"], "Waiting for card")
+        self.assertIn("Waiting for parent", by_family["Jacobs"]["bank_status"])
+        self.assertNotIn("Martinez", by_family)
+        self.assertTrue(shown["show_unfinished_checkouts"])
+        self.assertEqual(shown["rows"][0]["section"], "Unfinished checkout")
+        self.assertIn("unfinished checkouts (not paid)", shown["summary"])
 
     def test_stripe_settlement_groups_member_payments_under_payout(self):
         today = timezone.now()
@@ -616,6 +653,64 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Section", csv_text.splitlines()[0])
         self.assertIn("Not paid out yet", csv_text)
         self.assertIn("po_page_paid", csv_text)
+        self.assertNotIn("Waiting for card", html)
+        self.assertNotIn("Unfinished card checkouts", html)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_stripe_and_who_paid_pages_hide_unfinished_checkout(self):
+        today = timezone.now()
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("30.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_page_unfinished",
+            stripe_payment_intent_id="pi_page_unfinished",
+            paid_at=today,
+        )
+        PortalPayment.objects.create(
+            family=self.no_plan,
+            amount=Decimal("18.00"),
+            method_label="Card",
+            status=PortalPayment.STATUS_PAID,
+            stripe_session_id="cs_page_received",
+            stripe_payment_intent_id="pi_page_received",
+            stripe_charge_id="ch_page_received",
+            stripe_bank_status="waiting_for_bank",
+            paid_at=today,
+        )
+        self._login_admin()
+        who_paid = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "payments"}))
+        self.assertEqual(who_paid.status_code, 200)
+        self.assertContains(who_paid, "Rivera")
+        self.assertContains(who_paid, "18.00")
+        self.assertNotContains(who_paid, "Waiting for card")
+        self.assertNotContains(who_paid, "30.00")
+        settlement = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}))
+        html = settlement.content.decode()
+        self.assertIn("Waiting to receive $18.00", html)
+        self.assertIn("Rivera", html)
+        self.assertNotIn("Waiting for card $30.00", html)
+        self.assertNotIn("Unfinished card checkouts", html)
+        self.assertNotIn("Jacobs", html)
+        csv_response = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}),
+            {"format": "csv"},
+        )
+        csv_text = csv_response.content.decode()
+        self.assertIn("Not paid out yet", csv_text)
+        self.assertIn("Rivera", csv_text)
+        self.assertNotIn("Unfinished checkout", csv_text)
+        self.assertNotIn("Jacobs", csv_text)
+        shown = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}),
+            {"unfinished": "yes"},
+        )
+        shown_html = shown.content.decode()
+        self.assertIn("Unfinished card checkouts", shown_html)
+        self.assertIn("Jacobs", shown_html)
+        self.assertIn("Unfinished checkouts (not paid) $30.00", shown_html)
+        self.assertIn("Waiting to receive $18.00", shown_html)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_payment_reports(self):
@@ -710,6 +805,10 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertNotIn("pi_same_purchase", waiting_intents)
         self.assertEqual(report["waiting_for_card_total"], "40.00")
         self.assertEqual(report["waiting_to_receive_total"], "0.00")
+        self.assertFalse(report["show_unfinished_checkouts"])
+        default_intents = {row["stripe_payment_intent_id"] for row in report["rows"]}
+        self.assertEqual(default_intents, {"pi_same_purchase"})
+        self.assertNotIn("pi_other_purchase", default_intents)
         statuses_for_same = [
             row["status"]
             for row in report["rows"]

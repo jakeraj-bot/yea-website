@@ -317,6 +317,9 @@ def payment_report_rows(filters=None):
         paid_on = _payment_calendar_date(payment)
         children = [child.name for child in payment.family.children.all() if child.is_active]
         child = payment.dropin_child or (" · ".join(children) if children else "—")
+        if _is_waiting_for_card(payment):
+            # Started Stripe checkout only — the card was never charged.
+            continue
         _tuition, fee, charged = payment_charged_totals(payment)
         key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
         seen_keys.add(key)
@@ -327,9 +330,7 @@ def payment_report_rows(filters=None):
         )
         method = clean_in_person_method_label(raw_method) or raw_method
         ref = display_payment_reference(raw_method, payment.reference_number, raw_method)
-        if payment.status == PortalPayment.STATUS_PENDING:
-            status = "Waiting for card payment"
-        elif payment.status == PortalPayment.STATUS_FAILED:
+        if payment.status == PortalPayment.STATUS_FAILED:
             status = "Failed"
         else:
             status = "Paid"
@@ -405,7 +406,7 @@ def payment_report_rows(filters=None):
 
 
 SETTLEMENT_STATUS_CHOICES = [
-    ("waiting_for_card", "Waiting for card payment"),
+    ("waiting_for_card", "Unfinished card checkout (not paid)"),
     ("received_by_stripe", "Stripe received — waiting to become available"),
     ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
     ("in_transit", "On the way to the bank"),
@@ -445,6 +446,14 @@ def _is_waiting_for_card(payment):
     if _payment_already_paid_out(payment):
         return False
     return payment.status == PortalPayment.STATUS_PENDING
+
+
+def _show_unfinished_checkouts(filters):
+    """Unfinished card checkouts stay off payment reports unless staff asks."""
+    filters = filters or {}
+    if (filters.get("unfinished") or "").strip().lower() in {"1", "yes", "on", "true"}:
+        return True
+    return (filters.get("status") or "").strip() == "waiting_for_card"
 
 
 def _settlement_payment_row(payment):
@@ -616,14 +625,16 @@ def stripe_settlement_rows(filters=None):
 
     waiting_to_receive = sum((Decimal(row["amount"]) for row in pending_rows), Decimal("0"))
     waiting_for_card = sum((Decimal(row["amount"]) for row in waiting_for_card_rows), Decimal("0"))
+    show_unfinished = _show_unfinished_checkouts(filters)
 
     rows = []
     for row in pending_rows:
         row["section"] = "Not paid out yet"
         rows.append(row)
-    for row in waiting_for_card_rows:
-        row["section"] = "Waiting for card"
-        rows.append(row)
+    if show_unfinished:
+        for row in waiting_for_card_rows:
+            row["section"] = "Unfinished checkout"
+            rows.append(row)
     for group in payout_groups:
         for row in group["rows"]:
             row["section"] = group["title"]
@@ -639,6 +650,7 @@ def stripe_settlement_rows(filters=None):
         "statuses": SETTLEMENT_STATUS_CHOICES,
         "waiting_to_receive_total": _money(waiting_to_receive),
         "waiting_for_card_total": _money(waiting_for_card),
+        "show_unfinished_checkouts": show_unfinished,
     }
 
 
@@ -971,7 +983,7 @@ ADMIN_DATA_REPORTS = {
     },
     "payments": {
         "title": "Who paid what",
-        "lead": "Every payment — who paid, which child, how much, and on what day.",
+        "lead": "Payments that were received — who paid, which child, how much, and on what day. A card checkout that was started but never finished is not a payment.",
         "columns": [
             ("date", "Date"),
             ("child", "Child"),
@@ -989,7 +1001,7 @@ ADMIN_DATA_REPORTS = {
     },
     "stripe-settlement": {
         "title": "Stripe & bank payouts",
-        "lead": "Only Stripe card payments. Succeeded charges not paid out to the bank yet are at the top, incomplete card checkouts are listed separately, then each Stripe payout.",
+        "lead": "Only Stripe card payments that actually charged the card. Succeeded charges not paid out to the bank yet are at the top, then each Stripe payout. Unfinished card checkouts are not payments.",
         "columns": [
             ("family", "Family"),
             ("child", "Child"),
@@ -1004,7 +1016,7 @@ ADMIN_DATA_REPORTS = {
             ("bank_date", "Expected in bank"),
         ],
         "filename": "stripe-bank-payouts.csv",
-        "filters": ("q", "unit", "status", "start", "end"),
+        "filters": ("q", "unit", "status", "start", "end", "unfinished"),
         "layout": "payout_sections",
     },
     "plans": {
@@ -1179,12 +1191,16 @@ def build_admin_report(slug, filters=None):
         payout_count = len(data["payout_groups"])
         extra["waiting_to_receive_total"] = data.get("waiting_to_receive_total") or "0.00"
         extra["waiting_for_card_total"] = data.get("waiting_for_card_total") or "0.00"
+        extra["show_unfinished_checkouts"] = bool(data.get("show_unfinished_checkouts"))
+        paid_count = pending_count + sum(len(group.get("rows") or []) for group in data.get("payout_groups") or [])
         extra["summary"] = (
             f"Waiting to receive ${extra['waiting_to_receive_total']} · "
-            f"Waiting for card ${extra['waiting_for_card_total']} · "
-            f"{pending_count} not paid out yet · {waiting_card_count} waiting for card · "
-            f"{payout_count} bank payout{'' if payout_count == 1 else 's'} · {len(rows)} Stripe payments"
+            f"{pending_count} not paid out yet · "
+            f"{payout_count} bank payout{'' if payout_count == 1 else 's'} · "
+            f"{paid_count} Stripe payments"
         )
+        if extra["show_unfinished_checkouts"]:
+            extra["summary"] += f" · {waiting_card_count} unfinished checkouts (not paid)"
         extra["statuses"] = [value for value, _label in data["statuses"]]
         extra["status_choices"] = data["statuses"]
         extra["pending_rows"] = data["pending_rows"]
@@ -1252,6 +1268,7 @@ def build_admin_report(slug, filters=None):
     extra.setdefault("payout_groups", [])
     extra.setdefault("waiting_to_receive_total", "0.00")
     extra.setdefault("waiting_for_card_total", "0.00")
+    extra.setdefault("show_unfinished_checkouts", False)
     for row in rows:
         row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
     for group in extra.get("payout_groups") or []:
