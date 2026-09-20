@@ -200,10 +200,16 @@ class MonthlyWeeksBillingTests(TestCase):
         PortalLedgerEntry.objects.filter(family=self.family).delete()
         self.family.balance = Decimal("0")
         self.family.save(update_fields=["balance"])
+        self.child.last_auto_charge_date = None
+        self.child.next_charge_date = None
+        self.child.save(update_fields=["last_auto_charge_date", "next_charge_date"])
+        sibling = PortalChild.objects.create(
+            family=self.family, name="Casey Jacobs", is_active=True, billing_plan="Weekly"
+        )
         with patch("portal.billing_services.timezone.localdate", return_value=today):
             update_child_billing_plan(
                 self.family,
-                "Jordan Jacobs",
+                sibling.name,
                 "Bi-weekly",
                 amount="140.00",
                 billing_type="Private pay",
