@@ -86,7 +86,7 @@
         </dl>
         {% if child.monthly_schedule %}
         <h4>Amount due each month</h4>
-        <p class="form-note">A program week counts in the month of its Monday (or the first program day if the week is clipped). Weeks with no program days are not billed. First charge date is the ledger date for the first posted month.</p>
+        <p class="form-note">A program week counts in the month of its Friday. Example: 9/28/2026–10/2/2026 is the first week of October, not September. Weeks with no program days are not billed. First charge date is the ledger date for the first posted month.</p>
         <div class="portal-table-wrap">
           <table class="portal-table">
             <thead>
@@ -99,7 +99,10 @@
             <tbody>
               {% for month in child.monthly_schedule %}
               <tr>
-                <td>{{ month.label }}</td>
+                <td>
+                  {{ month.label }}
+                  {% if month.week_labels_display %}<p class="form-note">{{ month.week_labels_display }}</p>{% endif %}
+                </td>
                 <td>{{ month.week_count }}</td>
                 <td>
                   {% if month.has_scholarship %}
@@ -218,7 +221,7 @@
             <label for="plan-card-amount-{{ child.child_id }}">{% if 'onth' in cadence %}Weekly rate ($){% elif 'i-' in cadence or 'Bi' in cadence %}Bi-weekly rate ($){% else %}Weekly rate ($){% endif %}</label>
             <input id="plan-card-amount-{{ child.child_id }}" name="billing_amount" type="text" class="portal-input" value="{% if child.weekly_rate %}{{ child.weekly_rate }}{% elif child.full_rate %}{{ child.full_rate }}{% elif plan.amount %}{{ plan.amount }}{% endif %}" placeholder="70.00">
             {% if 'onth' in cadence %}
-            <p class="form-note">Enter the weekly rate. Each month’s charge is this weekly rate × the program weeks in that month (4 or 5). A week counts in the month of its Monday.</p>
+            <p class="form-note">Enter the weekly rate. Each month’s charge is this weekly rate × the program weeks in that month (4 or 5). A week counts in the month of its Friday (9/28/2026–10/2/2026 is October).</p>
             {% else %}
             <p class="form-note">Full tuition for this plan before any scholarship.</p>
             {% endif %}
@@ -288,7 +291,7 @@
 
     <div class="portal-panel card portal-account-narrow" id="edit-plan-panel" hidden>
       <h2 id="edit-plan-heading">Edit billing plan</h2>
-      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier. On a Monthly plan, type the weekly rate — the system multiplies it by the program weeks in that month (4 or 5). A week counts in the month of its Monday; weeks with no program days are not billed. The plan card lists each month’s amount. A scholarship on a regular (private pay) plan comes off that plan’s rate — the ledger posts the full month amount and a scholarship discount so the family owes the family-pays amount. On a 4Cs plan the scholarship comes off the parent copay; agency week amounts stay the same.</p>
+      <p class="form-note">Add more than one plan on the same child when they have after-care and before-care. The description shows on the charge so parents know what they are paying for. If the first charge date is today, the charge posts to the ledger as soon as you save. Weekly 4Cs copay then repeats every Thursday for the next school week. Bi-weekly repeats every two weeks from the first charge date you type, even when the 4Cs contract started earlier. On a Monthly plan, type the weekly rate — the system multiplies it by the program weeks in that month (4 or 5). A week counts in the month of its Friday; 9/28/2026–10/2/2026 is the first week of October. Weeks with no program days are not billed. The plan card lists each month’s amount. A scholarship on a regular (private pay) plan comes off that plan’s rate — the ledger posts the full month amount and a scholarship discount so the family owes the family-pays amount. On a 4Cs plan the scholarship comes off the parent copay; agency week amounts stay the same.</p>
       <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}">
         {% csrf_token %}
         <input type="hidden" name="portal_area" value="{{ portal_area }}">
@@ -350,7 +353,7 @@
         <div class="form-group portal-form-full plan-amount-field">
           <label for="plan-amount" id="plan-amount-label">Amount ($)</label>
           <input id="plan-amount" name="billing_amount" type="text" class="portal-input" placeholder="0.00">
-          <p class="form-note" id="plan-monthly-rate-note" hidden>Enter the weekly rate. Each month’s charge is this weekly rate × the program weeks in that month (4 or 5). A week counts in the month of its Monday. The plan card lists how much is due each month.</p>
+          <p class="form-note" id="plan-monthly-rate-note" hidden>Enter the weekly rate. Each month’s charge is this weekly rate × the program weeks in that month (4 or 5). A week counts in the month of its Friday. The plan card lists how much is due each month.</p>
         </div>
         <div class="form-group portal-form-full">
           <label class="portal-check-label">

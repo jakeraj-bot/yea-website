@@ -773,7 +773,7 @@ GUIDES = {
             },
             {
                 "title": "Enter a weekly rate on monthly plans",
-                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Monday (or the first program day if that week is clipped). Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 5 weeks × $70 = $350; October, 4 × $70 = $280. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
+                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Friday. Example: 9/28/2026–10/2/2026 is the first week of October, not September. Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 4 weeks × $70 = $280; October, 5 × $70 = $350. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
             },
             {
                 "title": "Add a scholarship on a regular plan",

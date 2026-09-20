@@ -681,10 +681,10 @@ class RegularPlanScholarshipTests(TestCase):
         self.assertEqual(self.child.billing_amount, Decimal("70.00"))
         self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
         types = list(PortalLedgerEntry.objects.filter(family=self.family).values_list("entry_type", "amount"))
-        self.assertIn(("charge", Decimal("350.00")), types)
-        self.assertIn(("discount", Decimal("-100.00")), types)
+        self.assertIn(("charge", Decimal("280.00")), types)
+        self.assertIn(("discount", Decimal("-80.00")), types)
         self.family.refresh_from_db()
-        self.assertEqual(self.family.balance, Decimal("250.00"))
+        self.assertEqual(self.family.balance, Decimal("200.00"))
 
     def test_monthly_scholarship_does_not_clear_existing_plan_amount(self):
         today = date(2026, 9, 9)
@@ -867,7 +867,7 @@ class RegularPlanScholarshipTests(TestCase):
         self.assertContains(shown, "Family pays")
         self.assertContains(shown, "Amount due each month")
         self.assertContains(shown, "September 2026")
-        self.assertContains(shown, "5 × $70.00 = $350.00")
+        self.assertContains(shown, "4 × $70.00 = $280.00")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_page_shows_amount_field_for_biweekly(self):

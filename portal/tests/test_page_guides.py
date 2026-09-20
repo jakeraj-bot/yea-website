@@ -122,8 +122,9 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("private-pay", bodies.lower())
         self.assertIn("family-pays", bodies.lower())
         self.assertIn("plan amount", bodies.lower())
-        self.assertIn("monday", bodies.lower())
-        self.assertIn("5 weeks", bodies.lower())
+        self.assertIn("friday", bodies.lower())
+        self.assertIn("9/28/2026", bodies)
+        self.assertIn("october", bodies.lower())
 
     def test_family_profile_guide_explains_password_reset(self):
         guide = guide_for("family-profile")
