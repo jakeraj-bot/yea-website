@@ -653,8 +653,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Section", csv_text.splitlines()[0])
         self.assertIn("Not paid out yet", csv_text)
         self.assertIn("po_page_paid", csv_text)
-        self.assertNotIn("Waiting for card", html)
-        self.assertNotIn("Unfinished card checkouts", html)
+        self.assertNotIn('id="waiting-for-card"', html)
+        self.assertNotIn("Unfinished checkouts (not paid)", html)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_stripe_and_who_paid_pages_hide_unfinished_checkout(self):
@@ -691,7 +691,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Waiting to receive $18.00", html)
         self.assertIn("Rivera", html)
         self.assertNotIn("Waiting for card $30.00", html)
-        self.assertNotIn("Unfinished card checkouts", html)
+        self.assertNotIn('id="waiting-for-card"', html)
+        self.assertNotIn("Unfinished checkouts (not paid)", html)
         self.assertNotIn("Jacobs", html)
         csv_response = self.client.get(
             reverse("portal_admin_data_report", kwargs={"report_slug": "stripe-settlement"}),
