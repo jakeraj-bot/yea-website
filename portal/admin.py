@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import DjangoAdminAuthenticationForm
 from .models import (
     AttendanceRecord,
     PortalActivityEvent,
@@ -202,3 +203,6 @@ class PortalOutsideProgramAdmin(admin.ModelAdmin):
     list_display = ("name", "email", "phone", "category", "charge_amount", "last_used_on")
     list_filter = ("category",)
     search_fields = ("name", "email", "phone", "description", "notes")
+
+
+admin.site.login_form = DjangoAdminAuthenticationForm

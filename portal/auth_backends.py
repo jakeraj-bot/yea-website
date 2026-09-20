@@ -41,7 +41,9 @@ class PortalUsernameBackend(ModelBackend):
                 continue
             found_user = True
             if user.check_password(password) and self.user_can_authenticate(user):
-                return user
+                from .staff_auth import sync_django_backend_access
+
+                return sync_django_backend_access(user)
         if not found_user:
             UserModel().set_password(password)
         return None
