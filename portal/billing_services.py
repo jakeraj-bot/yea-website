@@ -124,6 +124,7 @@ def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=
     """
     from .agency_weeks import (
         billable_program_weeks,
+        format_week_label,
         group_program_weeks_by_month,
         parse_money,
         program_year_range,
@@ -134,16 +135,19 @@ def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=
     start, end = program_year_range(calendar, on_date=on_date)
     weeks = billable_program_weeks(start, end, calendar)
     rows = []
-    for (year, month), _month_weeks in sorted(group_program_weeks_by_month(weeks).items()):
-        count = len(_month_weeks)
+    for (year, month), month_weeks in sorted(group_program_weeks_by_month(weeks).items()):
+        count = len(month_weeks)
         gross = (weekly * Decimal(count)).quantize(MONEY)
         family_pays, discount = parent_copay_after_scholarship(scholarship, gross)
+        week_labels = [format_week_label(week_start, week_end) for week_start, week_end in month_weeks]
         rows.append(
             {
                 "year": year,
                 "month": month,
                 "label": date(year, month, 1).strftime("%B %Y"),
                 "week_count": count,
+                "week_labels": week_labels,
+                "week_labels_display": ", ".join(week_labels),
                 "amount": f"{gross:.2f}",
                 "amount_value": gross,
                 "family_pays": f"{family_pays:.2f}",

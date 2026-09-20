@@ -247,6 +247,17 @@ def program_year_range(calendar=None, on_date=None):
     return start, end
 
 
+def friday_of_program_week(week_start, week_end=None):
+    """Friday that decides which month a program week is billed in.
+
+    9/28/2026–10/2/2026 has Friday 10/2, so it is October week 1.
+    """
+    if week_end is not None and week_end.weekday() == 4:
+        return week_end
+    monday = week_start - timedelta(days=week_start.weekday())
+    return monday + timedelta(days=4)
+
+
 def billable_program_weeks(start=None, end=None, calendar=None):
     """Program weeks that have at least one school day after days off.
 
@@ -265,12 +276,13 @@ def billable_program_weeks(start=None, end=None, calendar=None):
 
 
 def group_program_weeks_by_month(weeks=None, calendar=None):
-    """A week belongs to the month of its week_start (Monday / first program day)."""
+    """A week belongs to the month of its Friday."""
     if weeks is None:
         weeks = billable_program_weeks(calendar=calendar)
     groups = {}
     for week_start, week_end in weeks:
-        key = (week_start.year, week_start.month)
+        friday = friday_of_program_week(week_start, week_end)
+        key = (friday.year, friday.month)
         groups.setdefault(key, []).append((week_start, week_end))
     return groups
 
@@ -308,7 +320,8 @@ def group_weeks_for_cadence(weeks, plan):
         bucket = []
         current = None
         for week in rows:
-            month_key = (week.week_start.year, week.week_start.month)
+            friday = friday_of_program_week(week.week_start, week.week_end)
+            month_key = (friday.year, friday.month)
             if current is None:
                 current = month_key
             if month_key != current:
@@ -448,7 +461,8 @@ def parent_charge_periods(profile, plan, start_from=None):
         start, end = _period_dates(group, calendar)
         month_label = ""
         if monthly and group:
-            month_label = group[0].week_start.strftime("%B %Y")
+            friday = friday_of_program_week(group[0].week_start, group[0].week_end)
+            month_label = friday.strftime("%B %Y")
         label = format_week_label(start, end)
         if month_label:
             label = f"{month_label} · {len(group)} weeks · {label}"

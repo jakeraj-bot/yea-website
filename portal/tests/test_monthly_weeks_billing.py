@@ -9,7 +9,9 @@ from django.urls import reverse
 from portal.admin_config import save_scholarship_fund
 from portal.agency_weeks import (
     billable_week_count_for_month,
+    friday_of_program_week,
     get_program_calendar,
+    group_program_weeks_by_month,
     monthly_charge_for_date,
 )
 from portal.billing_services import (
@@ -60,35 +62,12 @@ class MonthlyWeeksBillingTests(TestCase):
         session[PORTAL_AUTH_SESSION_KEY] = "admin"
         session.save()
 
-    def test_september_2026_has_five_billable_weeks(self):
-        self.assertEqual(billable_week_count_for_month(2026, 9), 5)
-        self.assertEqual(billable_week_count_for_month(2026, 10), 4)
-
-    def test_five_week_month_charges_five_times_weekly(self):
-        today = date(2026, 9, 9)
-        with patch("portal.billing_services.timezone.localdate", return_value=today):
-            _child, posted = update_child_billing_plan(
-                self.family,
-                "Jordan Jacobs",
-                "Monthly",
-                amount="70.00",
-                billing_type="Private pay",
-                auto_charge=True,
-                next_charge_date=today,
-                charge_month_day=today.day,
-            )
-        self.assertEqual(len(posted), 1)
-        charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
-        self.assertEqual(charge.amount, Decimal("350.00"))
-        self.assertEqual(charge.date, today)
-        self.assertIn("September 2026", charge.description)
-        self.assertIn("5 weeks", charge.description)
-        self.child.refresh_from_db()
-        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
-        self.assertEqual(self.child.next_charge_date, date(2026, 10, 9))
+    def test_september_2026_has_four_billable_weeks(self):
+        self.assertEqual(billable_week_count_for_month(2026, 9), 4)
+        self.assertEqual(billable_week_count_for_month(2026, 10), 5)
 
     def test_four_week_month_charges_four_times_weekly(self):
-        today = date(2026, 10, 9)
+        today = date(2026, 9, 9)
         with patch("portal.billing_services.timezone.localdate", return_value=today):
             _child, posted = update_child_billing_plan(
                 self.family,
@@ -104,8 +83,31 @@ class MonthlyWeeksBillingTests(TestCase):
         charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
         self.assertEqual(charge.amount, Decimal("280.00"))
         self.assertEqual(charge.date, today)
-        self.assertIn("October 2026", charge.description)
+        self.assertIn("September 2026", charge.description)
         self.assertIn("4 weeks", charge.description)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
+        self.assertEqual(self.child.next_charge_date, date(2026, 10, 9))
+
+    def test_five_week_month_charges_five_times_weekly(self):
+        today = date(2026, 10, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            _child, posted = update_child_billing_plan(
+                self.family,
+                "Jordan Jacobs",
+                "Monthly",
+                amount="70.00",
+                billing_type="Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_month_day=today.day,
+            )
+        self.assertEqual(len(posted), 1)
+        charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
+        self.assertEqual(charge.amount, Decimal("350.00"))
+        self.assertEqual(charge.date, today)
+        self.assertIn("October 2026", charge.description)
+        self.assertIn("5 weeks", charge.description)
 
     def test_scholarship_reduces_family_pays_on_each_month(self):
         rows = monthly_schedule_rows(
@@ -118,13 +120,14 @@ class MonthlyWeeksBillingTests(TestCase):
             on_date=date(2026, 9, 9),
         )
         by_label = {row["label"]: row for row in rows}
-        self.assertEqual(by_label["September 2026"]["week_count"], 5)
-        self.assertEqual(by_label["September 2026"]["amount"], "350.00")
-        self.assertEqual(by_label["September 2026"]["family_pays"], "250.00")
+        self.assertEqual(by_label["September 2026"]["week_count"], 4)
+        self.assertEqual(by_label["September 2026"]["amount"], "280.00")
+        self.assertEqual(by_label["September 2026"]["family_pays"], "200.00")
         self.assertTrue(by_label["September 2026"]["has_scholarship"])
-        self.assertEqual(by_label["October 2026"]["week_count"], 4)
-        self.assertEqual(by_label["October 2026"]["amount"], "280.00")
-        self.assertEqual(by_label["October 2026"]["family_pays"], "200.00")
+        self.assertEqual(by_label["October 2026"]["week_count"], 5)
+        self.assertEqual(by_label["October 2026"]["amount"], "350.00")
+        self.assertEqual(by_label["October 2026"]["family_pays"], "250.00")
+        self.assertIn("9/28/26–10/2/26", by_label["October 2026"]["week_labels"])
 
     def test_closed_week_is_not_billed(self):
         calendar = get_program_calendar()
@@ -136,15 +139,21 @@ class MonthlyWeeksBillingTests(TestCase):
             "2026-10-09",
         ]
         calendar.save()
-        self.assertEqual(billable_week_count_for_month(2026, 10), 3)
-        amount, count = monthly_charge_for_date(Decimal("70.00"), date(2026, 10, 9))
-        self.assertEqual(count, 3)
-        self.assertEqual(amount, Decimal("210.00"))
-
-    def test_week_belongs_to_monday_month(self):
-        # Sep 28–Oct 2 starts Monday Sep 28, so it is a September week.
-        self.assertEqual(billable_week_count_for_month(2026, 9), 5)
         self.assertEqual(billable_week_count_for_month(2026, 10), 4)
+        amount, count = monthly_charge_for_date(Decimal("70.00"), date(2026, 10, 9))
+        self.assertEqual(count, 4)
+        self.assertEqual(amount, Decimal("280.00"))
+
+    def test_week_of_sep_28_to_oct_2_is_october_week_1(self):
+        span = (date(2026, 9, 28), date(2026, 10, 2))
+        self.assertEqual(friday_of_program_week(*span), date(2026, 10, 2))
+        groups = group_program_weeks_by_month()
+        september = groups.get((2026, 9), [])
+        october = groups.get((2026, 10), [])
+        self.assertNotIn(span, september)
+        self.assertEqual(october[0], span)
+        self.assertEqual(len(september), 4)
+        self.assertEqual(len(october), 5)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_card_lists_months_and_amounts(self):
@@ -160,7 +169,9 @@ class MonthlyWeeksBillingTests(TestCase):
         self.assertContains(page, "October 2026")
         self.assertContains(page, "5 × $70.00 = $350.00")
         self.assertContains(page, "4 × $70.00 = $280.00")
-        self.assertContains(page, "month of its Monday")
+        self.assertContains(page, "month of its Friday")
+        self.assertContains(page, "9/28/26–10/2/26")
+        self.assertContains(page, "first week of October")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_card_lists_scholarship_family_pays(self):
@@ -181,6 +192,7 @@ class MonthlyWeeksBillingTests(TestCase):
         self.assertContains(page, "$250.00")
         self.assertContains(page, "$200.00")
         self.assertContains(page, "5 × $70.00 = $350.00")
+        self.assertContains(page, "4 × $70.00 = $280.00")
 
     def test_weekly_and_biweekly_still_post_flat_amount(self):
         today = date(2026, 9, 9)
@@ -235,7 +247,7 @@ class MonthlyWeeksBillingTests(TestCase):
             )
         self.assertEqual(
             PortalLedgerEntry.objects.get(family=self.family, entry_type="charge").amount,
-            Decimal("350.00"),
+            Decimal("280.00"),
         )
         october = date(2026, 10, 9)
         with patch("portal.billing_services.timezone.localdate", return_value=october):
@@ -246,4 +258,4 @@ class MonthlyWeeksBillingTests(TestCase):
             .order_by("date")
             .values_list("amount", flat=True)
         )
-        self.assertEqual(amounts, [Decimal("350.00"), Decimal("280.00")])
+        self.assertEqual(amounts, [Decimal("280.00"), Decimal("350.00")])
