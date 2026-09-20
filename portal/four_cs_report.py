@@ -4,7 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.http import HttpResponse
 
-from .agency_weeks import cadence_key, weekly_from_daily
+from .agency_weeks import billable_week_count_for_month, cadence_key, weekly_from_daily, weekly_rate_for_plan
 from .billing_services import (
     active_scholarship_for_child,
     agency_profile_for,
@@ -148,13 +148,19 @@ def _weekly_copay_gross(profile, plan, child, weeks):
         daily = profile.daily_copay or ZERO
         if daily > 0:
             return weekly_from_daily(daily)
+    target = plan if plan is not None else child
+    rate = weekly_rate_for_plan(target) if target is not None else None
+    if rate:
+        return _quantize(rate)
     amount = None
     if plan is not None and plan.billing_amount is not None:
         amount = plan.billing_amount
     elif child.billing_amount is not None:
         amount = child.billing_amount
-    if amount and weeks:
+    if amount and weeks and weeks > 1:
         return _quantize(amount / Decimal(weeks))
+    if amount:
+        return _quantize(amount)
     return ZERO
 
 
@@ -190,7 +196,13 @@ def _build_row(child, profile, apps):
     copay_plan = four_cs_copay_plan(child)
     copay_label = (copay_plan.billing_plan if copay_plan else child.billing_plan) or "Weekly"
     copay_cadence = _cadence_from_label(copay_label)
-    weeks = CADENCE_WEEKS.get(copay_cadence, 1)
+    agency_weeks = CADENCE_WEEKS.get(copay_cadence, 1)
+    weeks = agency_weeks
+    if copay_cadence == "monthly":
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        weeks = billable_week_count_for_month(today.year, today.month) or weeks
     weekly_gross = _weekly_copay_gross(profile, copay_plan, child, weeks)
     cycle_gross = _quantize(weekly_gross * Decimal(weeks))
     scholarship = active_scholarship_for_child(child)
@@ -201,10 +213,9 @@ def _build_row(child, profile, apps):
     if profile and profile.agency_id:
         agency_schedule = profile.agency.remittance_schedule or ""
     agency_cadence = _cadence_from_schedule(agency_schedule) or "weekly"
-    # 4Cs still posts weekly. Bi-weekly / monthly agency figures are the weekly
-    # agency rate times 2 or 4, grouped with the child's copay plan so staff can
-    # compare "what I collect" vs "what 4Cs pays" on the same cadence.
-    agency_cycle = _quantize(weekly_agency * Decimal(weeks))
+    # 4Cs still posts weekly. Bi-weekly / monthly agency figures stay two and
+    # four weeks of that weekly agency rate — there is no agency monthly plan.
+    agency_cycle = _quantize(weekly_agency * Decimal(agency_weeks))
     school, grade = _child_school_grade(child, apps)
     types = program_types_for_child(child, apps)
     agency_name = ""

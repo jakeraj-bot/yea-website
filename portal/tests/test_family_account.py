@@ -664,11 +664,11 @@ class RegularPlanScholarshipTests(TestCase):
                 self.family,
                 "Jordan Jacobs",
                 "Monthly",
-                amount="280.00",
+                amount="70.00",
                 billing_type="Private pay",
                 scholarship_fund_id=self.fund.pk,
-                scholarship_full_rate="280.00",
-                scholarship_parent_amount="200.00",
+                scholarship_full_rate="70.00",
+                scholarship_parent_amount="50.00",
                 auto_charge=True,
                 next_charge_date=today,
                 charge_month_day=today.day,
@@ -676,14 +676,15 @@ class RegularPlanScholarshipTests(TestCase):
         self.assertEqual(len(posted), 1)
         self.child.refresh_from_db()
         assignment = PortalScholarshipAssignment.objects.get(child=self.child)
-        self.assertEqual(assignment.full_rate, Decimal("280.00"))
-        self.assertEqual(assignment.parent_amount, Decimal("200.00"))
-        self.assertEqual(self.child.billing_amount, Decimal("280.00"))
+        self.assertEqual(assignment.full_rate, Decimal("70.00"))
+        self.assertEqual(assignment.parent_amount, Decimal("50.00"))
+        self.assertEqual(self.child.billing_amount, Decimal("70.00"))
+        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
         types = list(PortalLedgerEntry.objects.filter(family=self.family).values_list("entry_type", "amount"))
-        self.assertIn(("charge", Decimal("280.00")), types)
-        self.assertIn(("discount", Decimal("-80.00")), types)
+        self.assertIn(("charge", Decimal("350.00")), types)
+        self.assertIn(("discount", Decimal("-100.00")), types)
         self.family.refresh_from_db()
-        self.assertEqual(self.family.balance, Decimal("200.00"))
+        self.assertEqual(self.family.balance, Decimal("250.00"))
 
     def test_monthly_scholarship_does_not_clear_existing_plan_amount(self):
         today = date(2026, 9, 9)
@@ -692,33 +693,35 @@ class RegularPlanScholarshipTests(TestCase):
                 self.family,
                 "Jordan Jacobs",
                 "Monthly",
-                amount="280.00",
+                amount="70.00",
                 billing_type="Private pay",
                 auto_charge=True,
                 next_charge_date=today,
                 charge_month_day=today.day,
             )
         self.child.refresh_from_db()
-        self.assertEqual(self.child.billing_amount, Decimal("280.00"))
+        self.assertEqual(self.child.billing_amount, Decimal("70.00"))
+        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
         with patch("portal.billing_services.timezone.localdate", return_value=today):
             update_child_billing_plan(
                 self.family,
                 "Jordan Jacobs",
                 "Monthly",
-                amount="280.00",
+                amount="70.00",
                 billing_type="Private pay",
                 scholarship_fund_id=self.fund.pk,
-                scholarship_full_rate="280.00",
-                scholarship_parent_amount="200.00",
+                scholarship_full_rate="70.00",
+                scholarship_parent_amount="50.00",
                 auto_charge=True,
                 next_charge_date=today,
                 charge_month_day=today.day,
             )
         self.child.refresh_from_db()
         assignment = PortalScholarshipAssignment.objects.get(child=self.child)
-        self.assertEqual(self.child.billing_amount, Decimal("280.00"))
-        self.assertEqual(assignment.full_rate, Decimal("280.00"))
-        self.assertEqual(assignment.parent_amount, Decimal("200.00"))
+        self.assertEqual(self.child.billing_amount, Decimal("70.00"))
+        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
+        self.assertEqual(assignment.full_rate, Decimal("70.00"))
+        self.assertEqual(assignment.parent_amount, Decimal("50.00"))
 
     def test_private_pay_scholarship_does_not_change_4cs_agency_weeks(self):
         four_cs_family = PortalFamily.objects.create(
@@ -818,12 +821,13 @@ class RegularPlanScholarshipTests(TestCase):
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_page_keeps_monthly_amount_when_saving_scholarship(self):
         self.child.billing_plan = "Monthly"
-        self.child.billing_amount = Decimal("280.00")
-        self.child.save(update_fields=["billing_plan", "billing_amount"])
+        self.child.billing_amount = Decimal("70.00")
+        self.child.weekly_rate = Decimal("70.00")
+        self.child.save(update_fields=["billing_plan", "billing_amount", "weekly_rate"])
         self._login_admin()
         plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}))
-        self.assertContains(plans, "Monthly rate ($)")
-        self.assertContains(plans, "280.00")
+        self.assertContains(plans, "Weekly rate ($)")
+        self.assertContains(plans, "70.00")
         self.assertContains(plans, 'name="billing_amount"')
         self.assertContains(plans, "Scholarship type")
         today = date(2026, 9, 9)
@@ -838,28 +842,32 @@ class RegularPlanScholarshipTests(TestCase):
                     "child_name": "Jordan Jacobs",
                     "billing_plan": "Monthly",
                     "billing_type": "Private pay",
-                    "billing_amount": "280.00",
+                    "billing_amount": "70.00",
                     "auto_charge": "on",
                     "next_charge_date": today.isoformat(),
                     "charge_month_day": str(today.day),
                     "scholarship_fund_id": str(self.fund.pk),
-                    "scholarship_full_rate": "280.00",
-                    "scholarship_parent_amount": "200.00",
+                    "scholarship_full_rate": "70.00",
+                    "scholarship_parent_amount": "50.00",
                     "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}),
                 },
             )
         self.assertEqual(response.status_code, 302)
         self.child.refresh_from_db()
-        self.assertEqual(self.child.billing_amount, Decimal("280.00"))
+        self.assertEqual(self.child.billing_amount, Decimal("70.00"))
+        self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
         assignment = PortalScholarshipAssignment.objects.get(child=self.child)
-        self.assertEqual(assignment.parent_amount, Decimal("200.00"))
+        self.assertEqual(assignment.parent_amount, Decimal("50.00"))
         shown = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}))
-        self.assertContains(shown, "Amount")
-        self.assertContains(shown, "280.00")
-        self.assertContains(shown, "Monthly rate ($)")
+        self.assertContains(shown, "Weekly rate")
+        self.assertContains(shown, "70.00")
+        self.assertContains(shown, "Weekly rate ($)")
         self.assertContains(shown, "YEA General Scholarship")
-        self.assertContains(shown, "200.00")
+        self.assertContains(shown, "50.00")
         self.assertContains(shown, "Family pays")
+        self.assertContains(shown, "Amount due each month")
+        self.assertContains(shown, "September 2026")
+        self.assertContains(shown, "5 × $70.00 = $350.00")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_plans_page_shows_amount_field_for_biweekly(self):

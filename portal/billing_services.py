@@ -103,6 +103,8 @@ def ledger_charge_description(child, cadence, kind="tuition", period_label=None,
             base = f"{base} ({period_label})"
     else:
         base = f"{cadence or 'Plan'} tuition — {child.name}"
+        if period_label:
+            base = f"{base} ({period_label})"
     if note:
         return f"{note} — {base}"
     return base
@@ -113,6 +115,45 @@ def plan_description_for(child, plan=None):
         return (plan.description or "").strip()
     primary = primary_billing_plan(child)
     return (primary.description or "").strip() if primary else ""
+
+
+def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=None):
+    """Upcoming program-year months with week counts and amounts.
+
+    Family-pays after scholarship uses the same ratio as weekly copay.
+    """
+    from .agency_weeks import (
+        billable_program_weeks,
+        group_program_weeks_by_month,
+        parse_money,
+        program_year_range,
+        MONEY,
+    )
+
+    weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate or 0)
+    start, end = program_year_range(calendar, on_date=on_date)
+    weeks = billable_program_weeks(start, end, calendar)
+    rows = []
+    for (year, month), _month_weeks in sorted(group_program_weeks_by_month(weeks).items()):
+        count = len(_month_weeks)
+        gross = (weekly * Decimal(count)).quantize(MONEY)
+        family_pays, discount = parent_copay_after_scholarship(scholarship, gross)
+        rows.append(
+            {
+                "year": year,
+                "month": month,
+                "label": date(year, month, 1).strftime("%B %Y"),
+                "week_count": count,
+                "amount": f"{gross:.2f}",
+                "amount_value": gross,
+                "family_pays": f"{family_pays:.2f}",
+                "family_pays_value": family_pays,
+                "discount": f"{discount:.2f}",
+                "formula": f"{count} × ${weekly:.2f} = ${gross:.2f}",
+                "has_scholarship": bool(scholarship and discount > 0),
+            }
+        )
+    return rows
 
 
 def serialize_billing_plan(plan, child=None):
@@ -126,12 +167,21 @@ def serialize_billing_plan(plan, child=None):
         billing_type = "Private pay"
     else:
         billing_type = child.family.billing_type or "Private pay"
+    from .agency_weeks import cadence_key, weekly_rate_for_plan
+
+    weekly = weekly_rate_for_plan(plan)
+    schedule = []
+    if cadence_key(plan.billing_plan) == "monthly" and weekly:
+        assignment = active_scholarship_for_child(child) if plan.sort_order == 1 else None
+        schedule = monthly_schedule_rows(weekly, scholarship=assignment)
     return {
         "id": plan.pk,
         "description": plan.description or "",
         "plan": plan.billing_plan or "Weekly",
         "amount": f"{plan.billing_amount:.2f}" if plan.billing_amount is not None else "",
         "amount_display": f"{plan.billing_amount:.2f}" if plan.billing_amount is not None else "—",
+        "weekly_rate": f"{weekly:.2f}" if weekly else "",
+        "monthly_schedule": schedule,
         "auto_charge": plan.auto_charge,
         "next_charge_date": plan.next_charge_date.isoformat() if plan.next_charge_date else "",
         "charge_weekday": "" if plan.charge_weekday is None else plan.charge_weekday,
@@ -161,6 +211,8 @@ def serialize_child_primary_plan(child, extra=None):
         "charge_month_day": extra.get("charge_month_day", "" if child.charge_month_day is None else child.charge_month_day),
         "auto_charge_label": extra.get("auto_charge_label") or plan_repeat_label(child),
         "billing_type": extra.get("type") or child.family.billing_type or "Private pay",
+        "weekly_rate": extra.get("weekly_rate")
+        or (f"{child.weekly_rate:.2f}" if child.weekly_rate is not None else ""),
         "is_primary": True,
     }
     return row
@@ -171,6 +223,7 @@ def sync_plan_from_child(child, plan=None, description=None, billing_kind=None):
     fields = {
         "billing_plan": child.billing_plan or "Weekly",
         "billing_amount": child.billing_amount,
+        "weekly_rate": child.weekly_rate,
         "auto_charge": child.auto_charge,
         "next_charge_date": child.next_charge_date,
         "last_auto_charge_date": child.last_auto_charge_date,
@@ -195,6 +248,7 @@ def sync_plan_from_child(child, plan=None, description=None, billing_kind=None):
 def sync_child_from_plan(child, plan):
     child.billing_plan = plan.billing_plan or child.billing_plan
     child.billing_amount = plan.billing_amount
+    child.weekly_rate = plan.weekly_rate
     child.auto_charge = plan.auto_charge
     child.next_charge_date = plan.next_charge_date
     child.last_auto_charge_date = plan.last_auto_charge_date
@@ -204,6 +258,7 @@ def sync_child_from_plan(child, plan):
         update_fields=[
             "billing_plan",
             "billing_amount",
+            "weekly_rate",
             "auto_charge",
             "next_charge_date",
             "last_auto_charge_date",
@@ -885,6 +940,20 @@ def plan_repeat_label(child):
     return repeat
 
 
+def _assign_plan_amount(target, amount, plan_label=None, four_cs_profile=None):
+    """Store the entered amount. Monthly plans treat that amount as the weekly rate."""
+    if amount in (None, ""):
+        return target
+    parsed = _parse_amount(amount)
+    target.billing_amount = parsed
+    label = (plan_label or getattr(target, "billing_plan", "") or "").lower()
+    if four_cs_profile and getattr(four_cs_profile, "weekly_copay", None) is not None:
+        target.weekly_rate = four_cs_profile.weekly_copay
+    elif "month" in label:
+        target.weekly_rate = parsed
+    return target
+
+
 def _apply_plan_schedule(
     target,
     plan,
@@ -899,7 +968,7 @@ def _apply_plan_schedule(
     target.billing_plan = (plan or "").strip() or target.billing_plan
     billing_label = (billing_type or "").strip()
     if amount not in (None, "") and not four_cs_profile:
-        target.billing_amount = _parse_amount(amount)
+        _assign_plan_amount(target, amount, target.billing_plan)
     if four_cs_profile:
         from .agency_weeks import (
             FOUR_CS_WEEKLY_POST_WEEKDAY,
@@ -917,6 +986,8 @@ def _apply_plan_schedule(
             target.billing_plan,
             start_from=next_charge_date if four_cs_biweekly else None,
         )
+        if four_cs_profile.weekly_copay is not None:
+            target.weekly_rate = four_cs_profile.weekly_copay
         if four_cs_weekly and charge_weekday in (None, ""):
             charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
         if not next_charge_date:
@@ -996,7 +1067,7 @@ def _save_extra_billing_plan(
         sort_order=next_plan_sort_order(child),
     )
     if amount not in (None, "") and not four_cs_profile:
-        row.billing_amount = _parse_amount(amount)
+        _assign_plan_amount(row, amount, plan, four_cs_profile=four_cs_profile)
     _apply_plan_schedule(
         row,
         plan,
@@ -1111,11 +1182,11 @@ def update_child_billing_plan(
         # Keep the plan amount as full tuition before scholarship. Family-pays
         # lives on the scholarship assignment — do not replace the monthly/weekly rate.
         if amount not in (None, ""):
-            child.billing_amount = _parse_amount(amount)
+            _assign_plan_amount(child, amount, child.billing_plan)
         elif assignment and assignment.full_rate is not None:
-            child.billing_amount = assignment.full_rate
+            _assign_plan_amount(child, assignment.full_rate, child.billing_plan)
     elif amount not in (None, ""):
-        child.billing_amount = _parse_amount(amount)
+        _assign_plan_amount(child, amount, child.billing_plan)
     if four_cs_profile:
         from .agency_weeks import (
             FOUR_CS_WEEKLY_POST_WEEKDAY,
@@ -1133,6 +1204,8 @@ def update_child_billing_plan(
             child.billing_plan,
             start_from=next_charge_date if four_cs_biweekly else None,
         )
+        if four_cs_profile.weekly_copay is not None:
+            child.weekly_rate = four_cs_profile.weekly_copay
         _apply_four_cs_plan_scholarship(
             child,
             scholarship_fund_id=scholarship_fund_id,
@@ -1196,6 +1269,7 @@ def update_child_billing_plan(
         update_fields=[
             "billing_plan",
             "billing_amount",
+            "weekly_rate",
             "auto_charge",
             "next_charge_date",
             "charge_weekday",
@@ -1307,6 +1381,8 @@ def _post_4cs_copay_period(locked, today, plan=None):
 
 def _post_regular_plan_charge(child, target, today):
     """Post one regular (non-4Cs) period for a child or extra plan. Returns True if posted."""
+    from .agency_weeks import cadence_key, monthly_charge_for_date, weekly_rate_for_plan
+
     charge_date = target.next_charge_date
     if not charge_date:
         return False
@@ -1321,7 +1397,51 @@ def _post_regular_plan_charge(child, target, today):
     plan_row = target if isinstance(target, PortalChildBillingPlan) else None
     note = plan_description_for(child, plan_row)
     scholarship = active_scholarship_for_child(child, charge_date) if plan_row is None or plan_row.sort_order == 1 else None
-    if scholarship and scholarship.full_rate:
+    monthly = cadence_key(target.billing_plan) == "monthly"
+    period_label = None
+    if monthly:
+        weekly = weekly_rate_for_plan(target)
+        if not weekly:
+            target.next_charge_date = next_plan_charge_date(
+                charge_date,
+                target.billing_plan,
+                weekday=target.charge_weekday,
+                month_day=target.charge_month_day,
+            )
+            return False
+        amount, week_count = monthly_charge_for_date(weekly, charge_date)
+        period_label = f"{charge_date.strftime('%B %Y')} · {week_count} weeks"
+        if week_count == 0:
+            target.last_auto_charge_date = charge_date
+            target.next_charge_date = next_plan_charge_date(
+                charge_date,
+                target.billing_plan,
+                weekday=target.charge_weekday,
+                month_day=target.charge_month_day,
+            )
+            return False
+        post_charge(
+            child.family,
+            child.name,
+            "tuition",
+            amount,
+            charge_date,
+            ledger_charge_description(
+                child, target.billing_plan, "tuition", period_label=period_label, description=note
+            ),
+            is_manual=False,
+        )
+        if scholarship and scholarship.full_rate:
+            _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
+            if discount > 0:
+                post_discount(
+                    child.family,
+                    child.name,
+                    discount,
+                    charge_date,
+                    f"{scholarship.fund.name} scholarship",
+                )
+    elif scholarship and scholarship.full_rate:
         post_charge(
             child.family,
             child.name,
@@ -1386,7 +1506,7 @@ def _run_due_extra_plan(plan, today):
         if _post_regular_plan_charge(child, plan, today):
             did_post = True
         periods += 1
-    plan.save(update_fields=["last_auto_charge_date", "next_charge_date", "billing_amount"])
+    plan.save(update_fields=["last_auto_charge_date", "next_charge_date", "billing_amount", "weekly_rate"])
     return did_post
 
 
@@ -1459,6 +1579,7 @@ def run_due_plan_charges(today=None, child=None, plan=None):
                     primary.next_charge_date = locked.next_charge_date
                     primary.last_auto_charge_date = locked.last_auto_charge_date
                     primary.billing_amount = locked.billing_amount
+                    primary.weekly_rate = locked.weekly_rate
                     primary.auto_charge = locked.auto_charge
                     primary.billing_plan = locked.billing_plan
                     primary.charge_weekday = locked.charge_weekday
@@ -1468,6 +1589,7 @@ def run_due_plan_charges(today=None, child=None, plan=None):
                             "next_charge_date",
                             "last_auto_charge_date",
                             "billing_amount",
+                            "weekly_rate",
                             "auto_charge",
                             "billing_plan",
                             "charge_weekday",
