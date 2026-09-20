@@ -225,6 +225,78 @@ def cadence_key(plan):
     return "weekly"
 
 
+def program_year_range(calendar=None, on_date=None):
+    """School-year window for monthly plan schedules.
+
+    Uses Settings → Program calendar start when set. Otherwise September 1
+    of the school year that contains on_date (July–June). Ends June 30.
+    """
+    calendar = calendar or get_program_calendar()
+    on_date = on_date or timezone.localdate()
+    start = getattr(calendar, "program_start", None)
+    if not start:
+        year = on_date.year if on_date.month >= 7 else on_date.year - 1
+        start = date(year, 9, 1)
+    if start.month >= 7:
+        end = date(start.year + 1, 6, 30)
+    else:
+        end = date(start.year, 6, 30)
+    if on_date > end:
+        start = date(end.year, 9, 1)
+        end = date(end.year + 1, 6, 30)
+    return start, end
+
+
+def billable_program_weeks(start=None, end=None, calendar=None):
+    """Program weeks that have at least one school day after days off.
+
+    week_start is Monday, or the first program day when the range clips a
+    partial week. A week with no remaining program days is omitted.
+    """
+    calendar = calendar or get_program_calendar()
+    if start is None or end is None:
+        start, end = program_year_range(calendar)
+    weeks = []
+    for week_start, week_end in school_weeks_in_range(start, end):
+        if parent_week_span(week_start, week_end, calendar) is None:
+            continue
+        weeks.append((week_start, week_end))
+    return weeks
+
+
+def group_program_weeks_by_month(weeks=None, calendar=None):
+    """A week belongs to the month of its week_start (Monday / first program day)."""
+    if weeks is None:
+        weeks = billable_program_weeks(calendar=calendar)
+    groups = {}
+    for week_start, week_end in weeks:
+        key = (week_start.year, week_start.month)
+        groups.setdefault(key, []).append((week_start, week_end))
+    return groups
+
+
+def billable_week_count_for_month(year, month, calendar=None, weeks=None):
+    groups = group_program_weeks_by_month(weeks=weeks, calendar=calendar)
+    return len(groups.get((year, month), []))
+
+
+def monthly_charge_for_date(weekly_rate, charge_date, calendar=None, weeks=None):
+    """Return (amount, week_count) for the month that contains charge_date."""
+    weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate)
+    count = billable_week_count_for_month(
+        charge_date.year, charge_date.month, calendar=calendar, weeks=weeks
+    )
+    return (weekly * Decimal(count)).quantize(MONEY), count
+
+
+def weekly_rate_for_plan(target):
+    """Weekly figure used to build monthly charges."""
+    rate = getattr(target, "weekly_rate", None)
+    if rate is not None:
+        return rate
+    return getattr(target, "billing_amount", None) or ZERO
+
+
 def group_weeks_for_cadence(weeks, plan):
     """Group contract weeks into weekly, bi-weekly, or monthly charge periods."""
     rows = list(weeks)
@@ -371,15 +443,24 @@ def parent_charge_periods(profile, plan, start_from=None):
     """
     weeks, calendar = _parent_weeks_for_periods(profile, start_from=start_from)
     periods = []
+    monthly = cadence_key(plan) == "monthly"
     for group in group_weeks_for_cadence(weeks, plan):
         start, end = _period_dates(group, calendar)
+        month_label = ""
+        if monthly and group:
+            month_label = group[0].week_start.strftime("%B %Y")
+        label = format_week_label(start, end)
+        if month_label:
+            label = f"{month_label} · {len(group)} weeks · {label}"
         periods.append(
             {
                 "start": start,
                 "end": end,
-                "label": format_week_label(start, end),
+                "label": label,
                 "amount": period_parent_total(group),
                 "weeks": group,
+                "week_count": len(group),
+                "month_label": month_label,
                 "posted": all(week.parent_posted for week in group),
             }
         )

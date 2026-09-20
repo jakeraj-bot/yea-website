@@ -113,6 +113,7 @@ class PageGuideCatalogTests(TestCase):
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
         titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Enter a weekly rate on monthly plans", titles)
         self.assertIn("Add a scholarship on a regular plan", titles)
         self.assertIn("Add a scholarship on a 4Cs plan", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
@@ -121,6 +122,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("private-pay", bodies.lower())
         self.assertIn("family-pays", bodies.lower())
         self.assertIn("plan amount", bodies.lower())
+        self.assertIn("monday", bodies.lower())
+        self.assertIn("5 weeks", bodies.lower())
 
     def test_family_profile_guide_explains_password_reset(self):
         guide = guide_for("family-profile")

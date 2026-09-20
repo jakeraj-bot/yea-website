@@ -475,11 +475,11 @@ GUIDES = {
             },
             {
                 "title": "Weekly, bi-weekly, and monthly copay totals",
-                "body": "Those cards group children by the child’s copay payment plan. Weekly-plan totals are one week of family-pays. Bi-weekly-plan totals are two weeks. Monthly-plan totals are four weeks. Each child also has a row with that same cadence amount.",
+                "body": "Those cards group children by the child’s copay payment plan. Weekly-plan totals are one week of family-pays. Bi-weekly-plan totals are two weeks. Monthly-plan totals use the program weeks in this month (4 or 5). Each child also has a row with that same cadence amount.",
             },
             {
                 "title": "Weekly copay for all 4Cs members",
-                "body": "That column and card put everyone on a weekly copay, no matter their plan. It uses the plan’s weekly copay (daily × 5 school days, or the weekly override). If only a cycle amount exists, bi-weekly is divided by 2 and monthly by 4. After-scholarship family-pays is the number you should collect.",
+                "body": "That column and card put everyone on a weekly copay, no matter their plan. It uses the plan’s weekly copay (daily × 5 school days, or the weekly override). If only a cycle amount exists, bi-weekly is divided by 2. Monthly uses the weekly rate (or this month’s week count). After-scholarship family-pays is the number you should collect.",
             },
             {
                 "title": "What 4Cs will pay",
@@ -772,8 +772,12 @@ GUIDES = {
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
             },
             {
+                "title": "Enter a weekly rate on monthly plans",
+                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Monday (or the first program day if that week is clipped). Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 5 weeks × $70 = $350; October, 4 × $70 = $280. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
+            },
+            {
                 "title": "Add a scholarship on a regular plan",
-                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, keep the plan amount (the full tuition before scholarship). Choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The card still shows the plan amount plus scholarship and family-pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount.",
+                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, keep the plan amount (the full tuition before scholarship — weekly rate on a Monthly plan). Choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The card still shows the plan amount plus scholarship and family-pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount. On Monthly, family-pays is the weekly figure; each month’s table is weeks × that family-pays.",
             },
             {
                 "title": "Add a scholarship on a 4Cs plan",
@@ -849,7 +853,7 @@ GUIDES = {
             },
             {
                 "title": "Add days off and half days",
-                "body": "Full closures skip parent weeks that have no remaining school days. Half days are stored on this calendar and do not change the weekly copay amount.",
+                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. Half days are stored on this calendar and do not change the weekly copay amount.",
             },
             {
                 "title": "4Cs still follows the contract",

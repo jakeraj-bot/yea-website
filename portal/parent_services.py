@@ -58,10 +58,17 @@ def _child_balances_from_ledger(family):
 
     portal_children = list(family.children.all().order_by("-is_active", "name"))
     if portal_children:
-        from .agency_weeks import cadence_key, get_program_calendar, parent_charge_periods, serialize_week
+        from .agency_weeks import (
+            cadence_key,
+            get_program_calendar,
+            parent_charge_periods,
+            serialize_week,
+            weekly_rate_for_plan,
+        )
         from .billing_services import (
             active_scholarship_for_child,
             agency_profile_for,
+            monthly_schedule_rows,
             plan_repeat_label,
             serialize_billing_plan,
             serialize_child_primary_plan,
@@ -88,6 +95,7 @@ def _child_balances_from_ledger(family):
                 "is_drop_off": child.is_drop_off,
                 "program_label": "Drop-off" if child.is_drop_off else "After-school",
                 "is_active": child.is_active,
+                "weekly_rate": f"{child.weekly_rate:.2f}" if child.weekly_rate is not None else "",
             }
             if assignment:
                 discount = assignment.full_rate - assignment.parent_amount
@@ -108,6 +116,12 @@ def _child_balances_from_ledger(family):
                 row["plans"] = [serialize_child_primary_plan(child, row)]
                 row["description"] = ""
             profile = agency_profile_for(child)
+            if cadence_key(child.billing_plan) == "monthly":
+                weekly = weekly_rate_for_plan(child)
+                if weekly:
+                    row["weekly_rate"] = f"{weekly:.2f}"
+                    if not profile:
+                        row["monthly_schedule"] = monthly_schedule_rows(weekly, scholarship=assignment)
             if profile:
                 row["agency_profile_id"] = profile.pk
                 row["agency_name"] = profile.agency.name if profile.agency_id else ""
