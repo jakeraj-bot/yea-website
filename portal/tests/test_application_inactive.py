@@ -209,17 +209,18 @@ class ApplicationInactiveAttendanceTests(TestCase):
         self.assertTrue(self.both.is_active)
         self.assertTrue(EnrollmentApplication.objects.get(pk=self.both_after.pk).is_active)
 
+        self.client.get(reverse("portal_staff_family_detail", kwargs={"family_slug": "jacobs"}))
         weekly_before = self.client.get(
             reverse("portal_staff_weekly_attendance_report"),
             {"date": self.today.isoformat(), "care": "before"},
         )
-        self.assertNotContains(weekly_before, "Sam Jacobs")
-        self.assertContains(weekly_before, "Maya Jacobs")
+        self.assertNotContains(weekly_before, "<strong>Sam Jacobs</strong>")
+        self.assertContains(weekly_before, "<strong>Maya Jacobs</strong>")
         weekly_after = self.client.get(
             reverse("portal_staff_weekly_attendance_report"),
             {"date": self.today.isoformat(), "care": "after"},
         )
-        self.assertContains(weekly_after, "Sam Jacobs")
+        self.assertContains(weekly_after, "<strong>Sam Jacobs</strong>")
 
         restore = self.client.post(
             url,
