@@ -2338,10 +2338,14 @@ def staff_school_bus_report(request):
 
 
 def _weekly_attendance_filters(request):
+    from .care_program import normalize_care_filter
+
+    care = normalize_care_filter(request.GET.get("care", ""))
     return {
         "q": request.GET.get("q", "").strip(),
         "unit": request.GET.get("unit", "").strip(),
         "program": request.GET.get("program", "").strip(),
+        "care": "" if care == "all" else care,
         "school": request.GET.get("school", "").strip(),
         "date": request.GET.get("date", "").strip(),
         "status": request.GET.get("status", "").strip(),
@@ -2392,7 +2396,16 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
     live = _portal_data_live() if admin else bool(_portal_data_live() and unit)
     program = None if admin else (get_active_program(unit) if live and unit else None)
     hub = _attendance_sheet_hub(request, admin=admin)
-    empty_options = {"grades": [], "schools": [], "programs": [], "units": [], "statuses": []}
+    from .care_program import CARE_FILTER_CHOICES
+
+    empty_options = {
+        "grades": [],
+        "schools": [],
+        "programs": [],
+        "units": [],
+        "statuses": [],
+        "care_choices": list(CARE_FILTER_CHOICES),
+    }
     sheet_date = parse_sheet_date(filters.get("date"))
     base = {
         "report_filters": filters,
@@ -2629,23 +2642,111 @@ def staff_attendance_blank_weekly(request):
 @staff_login_required
 @require_GET
 def staff_signout_blank(request):
+    from .care_program import normalize_care_filter
+    from .staff_services import resolve_weekly_attendance_unit
+
     sheet_date = parse_sheet_date(request.GET.get("date"))
-    live, unit, program = _report_sheet_sources(request)
+    live, header_unit, program = _report_sheet_sources(request)
+    _, allowed_units = _attendance_sheet_allowed_units(request, admin=False)
+    unit = resolve_weekly_attendance_unit(
+        request.GET.get("unit", "").strip(),
+        header_unit=header_unit,
+        allowed_units=allowed_units,
+    ) or header_unit
+    if live and unit and (not program or program.unit_id != unit.pk):
+        program = get_active_program(unit)
     unit_name, program_name = _report_names(unit, program)
+    care = normalize_care_filter(request.GET.get("care", ""))
+    extras = signout_blank_context(
+        sheet_date,
+        unit_name,
+        program_name,
+        live=live,
+        unit=unit,
+        program_obj=program,
+        care=care,
+    )
+    extras["report_filters"] = {
+        **(extras.get("report_filters") or {}),
+        "unit": unit.slug if unit else "",
+        "date": extras.get("sheet_date_value") or sheet_date.isoformat(),
+    }
+    extras["show_unit_filter"] = bool(allowed_units)
+    extras["unit_filter_allows_all"] = False
+    extras["filter_options"] = {
+        "units": [(item.slug, item.name) for item in allowed_units],
+        "care_choices": extras.get("care_choices") or [],
+    }
     return render(
         request,
         "portal/staff/signout_blank.html",
         _staff_context(
             "Sign-out sheet — blank",
+            request=request,
             staff_page_slug="reports",
-            **signout_blank_context(
-                sheet_date,
-                unit_name,
-                program_name,
-                live=live,
-                unit=unit,
-                program_obj=program,
-            ),
+            page_guide_key="signout-blank",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            **extras,
+        ),
+    )
+
+
+def _before_care_filters(request):
+    return {
+        "q": request.GET.get("q", "").strip(),
+        "unit": request.GET.get("unit", "").strip(),
+    }
+
+
+def _before_care_csv(report_rows, filename):
+    import csv
+
+    from django.http import HttpResponse
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(["Child", "Family", "Unit", "School", "Status"])
+    for row in report_rows or []:
+        writer.writerow(
+            [row.get("child"), row.get("family"), row.get("unit"), row.get("school"), row.get("status")]
+        )
+    return response
+
+
+@staff_login_required
+@require_GET
+def staff_before_care_report(request):
+    from .care_program import before_care_roster_bundle
+
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _before_care_filters(request)
+    if _portal_data_live() and unit:
+        bundle = before_care_roster_bundle(filters=filters, unit=unit, admin=False)
+    else:
+        bundle = {
+            "report_rows": [],
+            "listed_count": 0,
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_unit_name": unit.name if unit else "",
+            "filter_options": {"units": []},
+        }
+    if request.GET.get("format") == "csv":
+        return _before_care_csv(bundle["report_rows"], "before-care-roster.csv")
+    return render(
+        request,
+        "portal/staff/before_care_report.html",
+        _staff_context(
+            "Before care",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="before-care",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
         ),
     )
 
@@ -5044,6 +5145,44 @@ def _admin_attendance_sheet(request, kind, title, template):
 def admin_weekly_attendance_report(request):
     return _admin_attendance_sheet(
         request, "weekly", "Weekly attendance summary", "portal/staff/weekly_attendance_report.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_before_care_report(request):
+    from .care_program import before_care_roster_bundle
+
+    filters = _before_care_filters(request)
+    if _portal_data_live():
+        bundle = before_care_roster_bundle(filters=filters, admin=True)
+    else:
+        bundle = {
+            "report_rows": [],
+            "listed_count": 0,
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_unit_name": "All units",
+            "filter_options": {"units": []},
+        }
+    if request.GET.get("format") == "csv":
+        return _before_care_csv(bundle["report_rows"], "before-care-roster.csv")
+    return render(
+        request,
+        "portal/staff/before_care_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Before care",
+                admin_page_slug="reports",
+                page_guide_key="before-care",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
+            ),
+        ),
     )
 
 

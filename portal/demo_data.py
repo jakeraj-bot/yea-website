@@ -634,9 +634,15 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Weekly attendance",
-        "description": "Monday–Friday attendance sheet — filter by unit, program, school, or multiple grades. Chosen grades stay on one sheet.",
+        "description": "Monday–Friday attendance sheet — filter by After-care, Before-care, or All, plus unit, school, or grades. Chosen grades stay on one sheet.",
         "format": "PDF / CSV",
         "slug": "weekly-attendance",
+    },
+    {
+        "name": "Before care",
+        "description": "Who is approved for before-care — child name, family, unit, school, and status. Waitlist-only stays off.",
+        "format": "PDF / CSV",
+        "slug": "before-care",
     },
     {
         "name": "Daily attendance",
@@ -1670,9 +1676,15 @@ STAFF_REPORTS = [
     },
     {
         "name": "Weekly attendance summary",
-        "description": "Mon–Fri totals per child. Check one or more grades to print those kids on the same sheet.",
+        "description": "Mon–Fri totals per child. Filter After-care, Before-care, or All. Check one or more grades to print those kids on the same sheet.",
         "format": "PDF / CSV",
         "slug": "weekly-attendance",
+    },
+    {
+        "name": "Before care",
+        "description": "Who is approved for before-care at this unit — child name, family, unit, school, and status.",
+        "format": "PDF / CSV",
+        "slug": "before-care",
     },
     {
         "name": "Daily attendance (blank)",
@@ -1688,7 +1700,7 @@ STAFF_REPORTS = [
     },
     {
         "name": "Sign-out sheet (blank)",
-        "description": "Enrolled children with parent signature & pickup time columns",
+        "description": "Enrolled children with parent signature & pickup time columns. Filter After-care, Before-care, or All.",
         "format": "PDF",
         "slug": "signout-blank",
     },

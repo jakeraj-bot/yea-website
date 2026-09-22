@@ -1,0 +1,37 @@
+<form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print">
+  <h2>Filters</h2>
+  <p class="form-note">Choose After-care, Before-care, or All. After-care is after-school only. Before-care is approved before-care only. All prints both. The printed names follow this filter.</p>
+  <div class="portal-report-filters">
+    {% if show_unit_filter %}
+    <label class="portal-filter-label">
+      Unit
+      <select class="portal-select" name="unit">
+        {% if unit_filter_allows_all %}
+        <option value="">All units</option>
+        {% endif %}
+        {% for slug, name in filter_options.units %}
+        <option value="{{ slug }}"{% if report_filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <label class="portal-filter-label">
+      After / Before
+      <select class="portal-select" name="care">
+        <option value=""{% if not report_filters.care %} selected{% endif %}>All</option>
+        <option value="after"{% if report_filters.care == "after" %} selected{% endif %}>After-care</option>
+        <option value="before"{% if report_filters.care == "before" %} selected{% endif %}>Before-care</option>
+      </select>
+    </label>
+    <label class="portal-filter-label">
+      Date
+      <input class="portal-input" type="date" name="date" value="{{ sheet_date_value }}">
+    </label>
+  </div>
+  <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
+    <button type="submit" class="btn btn-secondary">Apply filters</button>
+    <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+    <a class="btn btn-secondary" href="{% url 'portal_staff_page' page='reports' %}">Back to reports</a>
+  </div>
+</form>
