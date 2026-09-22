@@ -56,6 +56,12 @@
               <td>
                 <strong>{{ row.child }}</strong>
                 {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
+                {% if show_parent_contact %}
+                <span class="portal-blank-sheet-meta portal-parent-contact">
+                  {% if row.parent_name %}{{ row.parent_name }}{% endif %}{% if row.parent_phone %} · {{ row.parent_phone }}{% endif %}
+                  {% if row.parent_email %}<br>{{ row.parent_email }}{% endif %}
+                </span>
+                {% endif %}
               </td>
               {% for present in row.days %}
               <td class="portal-attendance-mark">

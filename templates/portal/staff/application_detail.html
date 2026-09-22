@@ -12,6 +12,15 @@
   <div class="container">
     <div class="portal-toolbar portal-review-actions">
       <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
+      {% if is_live_application %}
+      {% if application.is_active %}
+      <span class="portal-status portal-status-active">{{ application.program }} application active</span>
+      {% include "portal/includes/application_inactive_form.html" with app_slug=app_slug child_name=application.child_name program_short=application.program_short make_active=0 button_class="btn btn-secondary" %}
+      {% else %}
+      <span class="portal-status portal-status-inactive">{{ application.program }} application inactive</span>
+      {% include "portal/includes/application_inactive_form.html" with app_slug=app_slug child_name=application.child_name program_short=application.program_short make_active=1 button_class="btn btn-primary" %}
+      {% endif %}
+      {% endif %}
       {% if application.prev_slug %}
       <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_detail' app_slug=application.prev_slug %}{% else %}{% url 'portal_staff_application_detail' app_slug=application.prev_slug %}{% endif %}">Previous</a>
       {% endif %}

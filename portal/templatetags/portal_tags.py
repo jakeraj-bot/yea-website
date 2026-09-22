@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from django import template
 
 from portal.demo_data import CHILD_MEDICAL, MEDICAL_ALERT_TYPES
+from portal.phone_format import format_us_phone
 
 register = template.Library()
 
@@ -82,3 +83,8 @@ def append_query(existing_query="", **kwargs):
         separator = "&" if existing_query.startswith("?") else "?"
         return f"{existing_query}{separator}{encoded}"
     return f"?{encoded}"
+
+
+@register.filter
+def format_phone(value):
+    return format_us_phone(value)

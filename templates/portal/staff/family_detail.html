@@ -175,7 +175,7 @@
         <dl class="portal-dl">
           <dt>Name</dt><dd>{{ profile.primary.name }}</dd>
           {% if profile.primary.email or parent_email %}<dt>Email</dt><dd>{{ profile.primary.email|default:parent_email }}</dd>{% endif %}
-          {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone }}</dd>{% endif %}
+          {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone|format_phone }}</dd>{% endif %}
         </dl>
         {% if profile.primary.email or parent_email %}
         <p class="portal-profile-email-action">
@@ -189,7 +189,7 @@
         <dl class="portal-dl">
           <dt>Name</dt><dd>{{ profile.secondary.name }}</dd>
           <dt>Email</dt><dd>{{ profile.secondary.email }}</dd>
-          <dt>Phone</dt><dd>{{ profile.secondary.phone }}</dd>
+          <dt>Phone</dt><dd>{{ profile.secondary.phone|format_phone }}</dd>
         </dl>
       </section>
       {% endif %}
@@ -212,7 +212,7 @@
                 {% for c in child.emergency_contacts %}
                 <tr>
                   <td>{{ c.name }}</td>
-                  <td>{{ c.phone }}</td>
+                  <td>{{ c.phone|format_phone }}</td>
                   <td>{{ c.relationship|default:"—" }}</td>
                   <td>{% if c.authorized_pickup %}Yes{% else %}No{% endif %}</td>
                 </tr>
@@ -232,7 +232,7 @@
             <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th></tr></thead>
             <tbody>
               {% for c in profile.emergency_contacts %}
-              <tr><td>{{ c.name }}</td><td>{{ c.phone }}</td><td>{{ c.relationship }}</td></tr>
+              <tr><td>{{ c.name }}</td><td>{{ c.phone|format_phone }}</td><td>{{ c.relationship }}</td></tr>
               {% endfor %}
             </tbody>
           </table>

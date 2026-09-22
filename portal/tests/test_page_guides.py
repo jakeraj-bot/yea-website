@@ -176,10 +176,12 @@ class PageGuideCatalogTests(TestCase):
         profile = guide_for("family-profile")
         titles = [step["title"] for step in profile["steps"]]
         self.assertIn("Make a child inactive or active", titles)
+        self.assertIn("Make one application inactive", titles)
         self.assertIn("Fold profile sections", titles)
         self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
         self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
         self.assertIn("does not copy", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("before-care", " ".join(step["body"] for step in profile["steps"]).lower())
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())
@@ -188,6 +190,7 @@ class PageGuideCatalogTests(TestCase):
     def test_attendance_and_before_care_guides_explain_after_before_all(self):
         weekly = guide_for("weekly-attendance")
         self.assertIn("Choose After-care, Before-care, or All", [step["title"] for step in weekly["steps"]])
+        self.assertIn("Optionally add parent contact", [step["title"] for step in weekly["steps"]])
         signout = guide_for("signout-blank")
         self.assertIsNotNone(signout)
         self.assertIn("After-care", " ".join(step["body"] for step in signout["steps"]))

@@ -5,6 +5,19 @@ def normalize_phone(value):
     return re.sub(r"\D", "", value or "")
 
 
+def format_us_phone(value):
+    """Format 10-digit US numbers as (xxx) xxx-xxxx. Odd values stay readable."""
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    digits = normalize_phone(raw)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) == 10:
+        return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+    return raw
+
+
 def normalize_name(first_name, last_name):
     return f"{(first_name or '').strip()} {(last_name or '').strip()}".strip().lower()
 

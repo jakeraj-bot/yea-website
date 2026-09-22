@@ -1,13 +1,14 @@
 <section class="card portal-profile-full portal-program-status" id="child-program-status" data-collapse-open data-collapse-keep-open>
   <h2>Program status</h2>
-  <p class="form-note">Make a child inactive when they stop attending. The family account, ledger, receipts, and parent login stay. They leave attendance, enrollment counts, and Overview balances. Use Make active if they return. Parents can still pay and download tax statements.</p>
+  <p class="form-note">Make a child inactive when they stop attending altogether. To drop only before-care or only after-care, use <strong>Make this application inactive</strong> on that program — the other program stays on attendance. The family account, ledger, receipts, and parent login stay. Parents can still pay and download tax statements.</p>
   <div class="portal-table-wrap">
     <table class="portal-table">
-      <thead><tr><th>Child</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Child</th><th>Scope</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {% for child in profile.children %}
         <tr>
           <td><strong>{{ child.name }}</strong></td>
+          <td>Whole child</td>
           <td>
             {% if child.child_id %}
               {% if child.is_active %}<span class="portal-status portal-status-active">Active</span>{% else %}<span class="portal-status portal-status-inactive">Inactive</span>{% endif %}
@@ -27,8 +28,25 @@
             {% endif %}
           </td>
         </tr>
+        {% for app in child.applications %}
+        <tr class="portal-program-app-row">
+          <td></td>
+          <td>{{ app.program_label }} application</td>
+          <td>
+            {% if app.is_active %}<span class="portal-status portal-status-active">Active</span>{% else %}<span class="portal-status portal-status-inactive">Inactive</span>{% endif %}
+            {% if app.status %}<span class="form-note">{{ app.status }}</span>{% endif %}
+          </td>
+          <td>
+            {% if app.is_active %}
+            {% include "portal/includes/application_inactive_form.html" with app_slug=app.app_slug child_name=child.name program_short=app.program_short make_active=0 button_class="btn btn-secondary btn-sm" %}
+            {% else %}
+            {% include "portal/includes/application_inactive_form.html" with app_slug=app.app_slug child_name=child.name program_short=app.program_short make_active=1 button_class="btn btn-primary btn-sm" %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
         {% empty %}
-        <tr><td colspan="3">No children on this family account.</td></tr>
+        <tr><td colspan="4">No children on this family account.</td></tr>
         {% endfor %}
       </tbody>
     </table>

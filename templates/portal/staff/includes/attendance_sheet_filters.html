@@ -75,6 +75,13 @@
       {% endfor %}
     </div>
   </fieldset>
+  {% if show_parent_contact_filter %}
+  <label class="portal-check-label portal-parent-contact-check">
+    <input type="checkbox" name="parent_contact" value="1"{% if report_filters.parent_contact %} checked{% endif %}>
+    Show primary parent contact on this sheet
+  </label>
+  <p class="form-note">Off by default. Check this, then Apply filters, to print each child’s primary parent name, phone, and email under the child. The choice stays in the URL so print and reload keep it.</p>
+  {% endif %}
   <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
     <button type="submit" class="btn btn-secondary">Apply filters</button>
     <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
