@@ -11,6 +11,7 @@ from portal.models import PortalFamily, PortalParentAccount, PortalUnit
 from .models import EnrollmentApplication
 from .policy_display import get_application_policies
 from .locations import applications_queryset_for_unit, get_location_label
+from .validators import format_us_phone
 
 LOCATION_TO_UNIT_SLUG = {
     "school_18": "school-18",
@@ -392,7 +393,7 @@ def application_to_portal_dict(app):
     contacts = [
         {
             "name": f"{contact.first_name} {contact.last_name}".strip(),
-            "phone": contact.phone,
+            "phone": format_us_phone(contact.phone),
         }
         for contact in app.emergency_contacts.all()
     ]
@@ -413,7 +414,15 @@ def application_to_portal_dict(app):
         "grade": app.get_student_grade_display(),
         "primary_parent": f"{app.primary_first_name} {app.primary_last_name}".strip(),
         "primary_email": app.primary_email,
-        "primary_phone": app.primary_phone,
+        "primary_phone": format_us_phone(app.primary_phone),
+        "is_active": bool(getattr(app, "is_active", True)),
+        "program_key": app.program,
+        "program_short": {
+            "after_school": "after-care",
+            "before_care": "before-care",
+            "drop_off": "drop-off",
+            "summer_camp": "summer camp",
+        }.get(app.program, (app.get_program_display() or "program").lower()),
         "home_address": app.home_address,
         "student_school": app.student_school or "",
         "payment_method": app.get_payment_method_display(),
@@ -707,7 +716,7 @@ def staff_application_detail(app, unit=None):
             "has_special_needs": app.get_has_special_needs_display() if app.has_special_needs else "",
             "requires_medication": app.get_requires_medication_display() if app.requires_medication else "",
             "doctor_name": app.doctor_name or "",
-            "doctor_phone": app.doctor_phone or "",
+            "doctor_phone": format_us_phone(app.doctor_phone or ""),
             "insurance_provider": app.insurance_provider or "",
             "insurance_policy_group": app.insurance_policy_group or "",
             "no_insurance": app.no_insurance,
@@ -722,8 +731,9 @@ def staff_application_detail(app, unit=None):
             "secondary_first_name": app.secondary_first_name or "",
             "secondary_last_name": app.secondary_last_name or "",
             "secondary_email": app.secondary_email_address or "",
-            "secondary_phone": app.secondary_phone or "",
+            "secondary_phone": format_us_phone(app.secondary_phone or ""),
             "program_key": app.program,
+            "is_active": bool(getattr(app, "is_active", True)),
             "can_add_after_school": can_add_after_school_for_application(app),
             "can_add_before_care": can_add_before_care_for_application(app),
             "payment_plan_key": app.payment_plan,

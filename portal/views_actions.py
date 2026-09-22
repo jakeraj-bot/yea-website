@@ -2161,6 +2161,89 @@ def family_child_status(request, family_slug):
 
 
 @require_POST
+def application_program_status(request, app_slug):
+    from django.conf import settings
+
+    from enrollment.portal_integration import get_application_by_reference, program_display_for_application
+    from portal.care_program import program_action_label
+    from portal.member_admin import set_application_active
+    from portal.parent_auth import portal_preview_mode
+    from portal.staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from portal.unit_visibility import application_belongs_to_unit
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_application_detail", kwargs={"app_slug": app_slug})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    app = get_application_by_reference(app_slug)
+    if not app:
+        messages.error(request, "Application not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="applications")
+
+    if unit and not application_belongs_to_unit(app, unit) and not admin_ok:
+        messages.error(request, "Application not found.")
+        return redirect(fallback)
+
+    make_active = request.POST.get("active") == "1"
+    try:
+        set_application_active(app, make_active)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, fallback))
+
+    child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+    program_label = program_display_for_application(app, short=True) or app.get_program_display() or "this program"
+    program_short = program_action_label(app)
+    if make_active:
+        messages.success(
+            request,
+            f"{child_name}'s {program_label} application is active again. They will show on {program_short} attendance.",
+        )
+    else:
+        messages.success(
+            request,
+            f"{child_name}'s {program_label} application is inactive. They stay off {program_short} attendance. "
+            "Other programs for this child are unchanged. Use Make this application active to restore it.",
+        )
+    family = app.portal_family
+    if family:
+        if admin_ok and not staff_ok:
+            fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family.slug})
+        else:
+            fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family.slug})
+        fallback = _with_family_id(fallback, family)
+    _log_activity(
+        request,
+        "save",
+        action_label="Made application active" if make_active else "Made application inactive",
+        object_type="application",
+        object_label=f"{child_name} · {program_label}",
+        details=family.name if family else program_label,
+    )
+    return redirect(_portal_next_url(request, fallback))
+
+
+@require_POST
 def family_parent_password_reset(request, family_slug):
     from django.conf import settings
 

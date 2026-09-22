@@ -2338,7 +2338,7 @@ def staff_school_bus_report(request):
 
 
 def _weekly_attendance_filters(request):
-    from .care_program import normalize_care_filter
+    from .care_program import normalize_care_filter, truthy_query_flag
 
     care = normalize_care_filter(request.GET.get("care", ""))
     return {
@@ -2349,6 +2349,7 @@ def _weekly_attendance_filters(request):
         "school": request.GET.get("school", "").strip(),
         "date": request.GET.get("date", "").strip(),
         "status": request.GET.get("status", "").strip(),
+        "parent_contact": "1" if truthy_query_flag(request.GET.get("parent_contact")) else "",
         "grades": [value.strip() for value in request.GET.getlist("grade") if value.strip()],
     }
 
@@ -2446,6 +2447,7 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
                 "unit_name": unit.name if unit else ATTENDANCE_SESSION.get("unit", ""),
             }
         count_label = "listed" if blank else "present"
+        show_parent_contact = bool(weekly.get("show_parent_contact") or filters.get("parent_contact"))
         return {
             **base,
             "date_label": "Week of",
@@ -2461,6 +2463,9 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
             "count_label": count_label,
             "program_name": weekly.get("program_name") or "",
             "unit_name": weekly.get("unit_name") or weekly.get("selected_unit_name") or "",
+            "care_label": weekly.get("care_label") or "",
+            "show_parent_contact": show_parent_contact,
+            "show_parent_contact_filter": True,
             "report_filters": filters,
             "page_guide_key": "weekly-attendance-blank" if blank else "weekly-attendance",
         }
@@ -2553,7 +2558,13 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
+    include_parent = any(
+        row.get("parent_name") or row.get("parent_phone") or row.get("parent_email")
+        for row in weekly_rows or []
+    )
     headers = ["Child", "Family", "Grade", "Unit", "School"]
+    if include_parent:
+        headers.extend(["Parent", "Parent phone", "Parent email"])
     headers.extend(
         [
             f"{day['label']} {day['date_short']} ({day.get('present_count', 0)} present)"
@@ -2563,9 +2574,14 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     headers.append("Total present")
     writer.writerow(headers)
     present_counts = [day.get("present_count", 0) for day in week_days or []]
-    writer.writerow(["Kids present", "", "", "", ""] + present_counts + [""])
+    blank_parent = ["", "", ""] if include_parent else []
+    writer.writerow(["Kids present", "", "", "", ""] + blank_parent + present_counts + [""])
     for row in weekly_rows or []:
         values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school")]
+        if include_parent:
+            values.extend(
+                [row.get("parent_name") or "", row.get("parent_phone") or "", row.get("parent_email") or ""]
+            )
         values.extend(["Present" if present else "" for present in row.get("days") or []])
         values.append(row.get("total", 0))
         writer.writerow(values)

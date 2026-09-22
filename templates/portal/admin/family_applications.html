@@ -42,6 +42,13 @@
       <div class="portal-toolbar portal-review-actions">
         <h2 class="portal-family-app-title">{{ item.application.child_name }}</h2>
         <span class="portal-status portal-status-{{ item.application.status|slugify }}">{{ item.application.status }}</span>
+        {% if item.application.is_active %}
+        <span class="portal-status portal-status-active">{{ item.application.program }} application active</span>
+        {% include "portal/includes/application_inactive_form.html" with app_slug=item.app_slug child_name=item.application.child_name program_short=item.application.program_short make_active=0 button_class="btn btn-secondary btn-sm" %}
+        {% else %}
+        <span class="portal-status portal-status-inactive">{{ item.application.program }} application inactive</span>
+        {% include "portal/includes/application_inactive_form.html" with app_slug=item.app_slug child_name=item.application.child_name program_short=item.application.program_short make_active=1 button_class="btn btn-primary btn-sm" %}
+        {% endif %}
         <span class="form-note">Ref {{ item.application.reference }} · {{ item.application.submitted }}</span>
         <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_print' app_slug=item.app_slug %}{% else %}{% url 'portal_staff_application_print' app_slug=item.app_slug %}{% endif %}">Print PDF</a>
         {% include "portal/includes/add_after_care_form.html" with app_slug=item.app_slug child_name=item.application.child_name show_add_after_care=item.application.can_add_after_school next_url=request.get_full_path %}

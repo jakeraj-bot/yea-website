@@ -580,17 +580,19 @@ def family_profile_live(family_slug, unit=None, family_id=None):
     from .member_admin import parent_email_for_family
     from .unit_visibility import application_belongs_to_unit, child_belongs_to_unit, unit_label_for_child
 
+    from portal.phone_format import format_us_phone
+
     primary = {
         "name": family.primary_contact,
         "email": parent_email_for_family(family),
-        "phone": latest_app.primary_phone if latest_app else "",
+        "phone": format_us_phone(latest_app.primary_phone) if latest_app else "",
     }
     secondary = {"name": "", "email": "", "phone": ""}
     if latest_app and latest_app.secondary_first_name:
         secondary = {
             "name": f"{latest_app.secondary_first_name} {latest_app.secondary_last_name}".strip(),
             "email": latest_app.secondary_email_address,
-            "phone": latest_app.secondary_phone,
+            "phone": format_us_phone(latest_app.secondary_phone),
         }
 
     emergency_contacts = []
@@ -598,7 +600,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
         emergency_contacts = [
             {
                 "name": f"{contact.first_name} {contact.last_name}".strip(),
-                "phone": contact.phone,
+                "phone": format_us_phone(contact.phone),
                 "relationship": contact.relationship,
                 "authorized_pickup": bool(contact.authorized_pickup),
             }
@@ -612,9 +614,13 @@ def family_profile_live(family_slug, unit=None, family_id=None):
     ]
     visible_children.sort(key=lambda child: (not child.is_active, (child.name or "").casefold()))
     enrolled_names = {child.name.lower() for child in visible_children}
+    from .care_program import application_status_rows_for_child, serialize_application_status
+    from .member_report import _match_apps_for_child
+
     children = []
     for child in visible_children:
         unit_name, unit_slug = unit_label_for_child(child)
+        child_apps = _match_apps_for_child(child, applications)
         children.append(
             {
                 "name": child.name,
@@ -630,6 +636,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
                 "unit_name": unit_name,
                 "unit_slug": unit_slug,
                 "location": unit_name,
+                "applications": application_status_rows_for_child(child, child_apps),
             }
         )
     pending_count = 0
@@ -641,6 +648,7 @@ def family_profile_live(family_slug, unit=None, family_id=None):
             continue
         child_row = _child_from_application(app)
         child_row["unit_name"] = child_row.get("location") or ""
+        child_row["applications"] = [serialize_application_status(app)]
         children.append(child_row)
         if app.status in {"under_review", "pending_documents", "approved"}:
             pending_count += 1

@@ -3,14 +3,18 @@
 Before-care kids are children with an approved or enrolled before-care application.
 Waitlist-only before-care does not count. Children with no approved care application
 are treated as After-care on sheets (the historical after-school roster).
+An inactive application does not count for that program — the child can stay on
+the other program’s sheets.
 """
 
 from django.utils import timezone
 
 from enrollment.models import EnrollmentApplication
+from enrollment.portal_integration import program_display_for_application
 
 from .member_report import _family_status, _match_apps_for_child
 from .models import PortalChild
+from .phone_format import format_us_phone
 
 CARE_ALL = "all"
 CARE_AFTER = "after"
@@ -29,6 +33,13 @@ CARE_LABELS = {
 }
 
 APPROVED_CARE_STATUSES = frozenset({"approved", "enrolled"})
+
+PROGRAM_ACTION_LABELS = {
+    "after_school": "after-care",
+    "before_care": "before-care",
+    "drop_off": "drop-off",
+    "summer_camp": "summer camp",
+}
 
 
 def normalize_care_filter(value):
@@ -54,38 +65,72 @@ def apps_by_family_for_children(children):
     return apps_by_family
 
 
+def _care_key_for_app(app):
+    program = (app.program or "").strip()
+    if program == "before_care":
+        return CARE_BEFORE
+    if program == "after_school":
+        return CARE_AFTER
+    return ""
+
+
+def _is_approved_care_app(app):
+    return (app.status or "").strip().lower() in APPROVED_CARE_STATUSES
+
+
+def application_is_program_active(app):
+    """Approved/enrolled applications default to active when the flag is missing."""
+    if app is None:
+        return False
+    return bool(getattr(app, "is_active", True))
+
+
 def approved_care_keys_for_child(child, apps=None):
-    """Return {'after'} and/or {'before'} from approved/enrolled applications only."""
+    """Return {'after'} and/or {'before'} from active approved/enrolled applications only."""
     keys = set()
     for app in apps or []:
-        if (app.status or "").strip().lower() not in APPROVED_CARE_STATUSES:
+        if not _is_approved_care_app(app) or not application_is_program_active(app):
             continue
-        program = (app.program or "").strip()
-        if program == "before_care":
-            keys.add(CARE_BEFORE)
-        elif program == "after_school":
-            keys.add(CARE_AFTER)
+        key = _care_key_for_app(app)
+        if key:
+            keys.add(key)
+    return keys
+
+
+def inactive_approved_care_keys_for_child(child, apps=None):
+    """Approved/enrolled applications staff marked inactive for a program."""
+    keys = set()
+    for app in apps or []:
+        if not _is_approved_care_app(app) or application_is_program_active(app):
+            continue
+        key = _care_key_for_app(app)
+        if key:
+            keys.add(key)
     return keys
 
 
 def child_matches_care_filter(child, apps, care):
     care = normalize_care_filter(care)
-    if care == CARE_ALL:
-        return True
     keys = approved_care_keys_for_child(child, apps)
+    inactive_keys = inactive_approved_care_keys_for_child(child, apps)
+    if care == CARE_ALL:
+        if not keys and inactive_keys:
+            return False
+        return True
     if care == CARE_BEFORE:
         return CARE_BEFORE in keys
     if CARE_AFTER in keys:
         return True
     if CARE_BEFORE in keys:
         return False
+    if inactive_keys:
+        return False
     return True
 
 
 def filter_children_by_care(children, care):
-    care = normalize_care_filter(care)
     child_list = list(children)
-    if care == CARE_ALL or not child_list:
+    if not child_list:
         return child_list
     apps_by_family = apps_by_family_for_children(child_list)
     matched = []
@@ -94,6 +139,69 @@ def filter_children_by_care(children, care):
         if child_matches_care_filter(child, apps, care):
             matched.append(child)
     return matched
+
+
+def program_action_label(app):
+    key = (getattr(app, "program", None) or "").strip()
+    return PROGRAM_ACTION_LABELS.get(key) or (program_display_for_application(app, short=True) or "program").lower()
+
+
+def serialize_application_status(app):
+    """Staff UI payload for one program application on a family profile."""
+    if app is None:
+        return None
+    label = program_display_for_application(app, short=True) or app.get_program_display() or "Program"
+    return {
+        "app_slug": str(app.reference),
+        "program_key": app.program,
+        "program_label": label,
+        "program_short": program_action_label(app),
+        "is_active": application_is_program_active(app),
+        "status": app.get_status_display() if hasattr(app, "get_status_display") else (app.status or ""),
+    }
+
+
+def application_status_rows_for_child(child, apps=None):
+    rows = []
+    for app in apps or []:
+        if (app.status or "").strip().lower() == "declined":
+            continue
+        rows.append(serialize_application_status(app))
+    rows.sort(key=lambda row: ((row.get("program_label") or "").casefold(), row.get("app_slug") or ""))
+    return rows
+
+
+def parent_contact_for_child(child, apps=None):
+    """Primary parent name, formatted phone, and email for weekly attendance."""
+    family = getattr(child, "family", None)
+    name = (getattr(family, "primary_contact", None) or "").strip()
+    phone = ""
+    email = ""
+    for app in apps or []:
+        app_name = f"{getattr(app, 'primary_first_name', '')} {getattr(app, 'primary_last_name', '')}".strip()
+        if app_name and not name:
+            name = app_name
+        raw_phone = (getattr(app, "primary_phone", None) or "").strip()
+        if raw_phone:
+            phone = raw_phone
+            email = (
+                getattr(app, "primary_email_address", None) or getattr(app, "primary_email", None) or ""
+            ).strip()
+            if app_name:
+                name = name or app_name
+            break
+    if not name and family:
+        name = (family.primary_contact or family.name or "").strip()
+    return {
+        "parent_name": name,
+        "parent_phone": format_us_phone(phone),
+        "parent_email": email,
+    }
+
+
+def truthy_query_flag(value):
+    raw = (value or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def before_care_roster_rows(*, unit=None, admin=False, query=""):
@@ -129,7 +237,11 @@ def before_care_roster_rows(*, unit=None, admin=False, query=""):
         unit_name, unit_slug = unit_label_for_child(child)
         school = (child.school or "").strip()
         for app in apps:
-            if app.program == "before_care" and (app.status or "").strip().lower() in APPROVED_CARE_STATUSES:
+            if (
+                app.program == "before_care"
+                and (app.status or "").strip().lower() in APPROVED_CARE_STATUSES
+                and application_is_program_active(app)
+            ):
                 if not school:
                     school = (app.student_school or "").strip()
                 break

@@ -1441,6 +1441,23 @@ nav.portal-nav-admin-groups {
   max-width: 46rem;
 }
 
+.portal-program-app-row td {
+  background: #fafafa;
+}
+
+.portal-parent-contact {
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+.portal-parent-contact-check {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.65rem 0 0.25rem;
+}
+
 .portal-child-program-status {
   display: flex;
   flex-wrap: wrap;

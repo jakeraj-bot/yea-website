@@ -169,6 +169,10 @@ class EnrollmentApplication(models.Model):
         ("declined", "Declined"),
     ]
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="under_review")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="When off, this program application is inactive. The child can stay active in another program.",
+    )
     internal_note = models.TextField(blank=True)
     staff_message = models.TextField(
         blank=True,

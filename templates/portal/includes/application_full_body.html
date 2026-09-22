@@ -28,7 +28,7 @@
     <dt>Primary</dt><dd>{{ application.primary_parent }}</dd>
     <dt>Relationship</dt><dd>{{ application.primary_relationship|default:"—" }}</dd>
     <dt>Email</dt><dd>{{ application.primary_email }}</dd>
-    <dt>Phone</dt><dd>{{ application.primary_phone }}{% if application.primary_phone_type %} ({{ application.primary_phone_type }}){% endif %}</dd>
+    <dt>Phone</dt><dd>{{ application.primary_phone|format_phone }}{% if application.primary_phone_type %} ({{ application.primary_phone_type }}){% endif %}</dd>
     <dt>Authorized pickup</dt><dd>{{ application.primary_authorized_pickup|default:"—" }}</dd>
     <dt>Address</dt><dd>{{ application.home_address }}</dd>
   </dl>
@@ -42,12 +42,12 @@
   <dl class="portal-dl portal-dl-2col">
     <dt>Name</dt><dd>{{ application.secondary_parent }}</dd>
     <dt>Email</dt><dd>{{ application.secondary_email|default:"—" }}</dd>
-    <dt>Phone</dt><dd>{{ application.secondary_phone|default:"—" }}</dd>
+    <dt>Phone</dt><dd>{{ application.secondary_phone|default:"—"|format_phone }}</dd>
   </dl>
   {% endif %}
   <h2>Health details</h2>
   <dl class="portal-dl portal-dl-2col">
-    <dt>Doctor</dt><dd>{{ application.doctor_name|default:"—" }}{% if application.doctor_phone %} · {{ application.doctor_phone }}{% endif %}</dd>
+    <dt>Doctor</dt><dd>{{ application.doctor_name|default:"—" }}{% if application.doctor_phone %} · {{ application.doctor_phone|format_phone }}{% endif %}</dd>
     <dt>Insurance</dt><dd>{% if application.no_insurance %}None{% else %}{{ application.insurance_provider|default:"—" }}{% endif %}</dd>
     <dt>Allergies</dt><dd>{% if application.no_known_allergies %}No known allergies{% else %}{{ application.allergies|default:"—" }}{% endif %}</dd>
     <dt>Health statement</dt><dd>{{ application.health_statement|default:"—" }}</dd>
@@ -59,7 +59,7 @@
   <h2>Emergency contacts</h2>
   <ul class="portal-link-list">
     {% for c in application.emergency_contacts %}
-    <li>{{ c.name }} — {{ c.phone }}</li>
+    <li>{{ c.name }} — {{ c.phone|format_phone }}</li>
     {% endfor %}
   </ul>
   <h2>Signed policies</h2>

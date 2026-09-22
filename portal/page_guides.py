@@ -515,7 +515,11 @@ GUIDES = {
             },
             {
                 "title": "Choose After-care, Before-care, or All",
-                "body": "All is the starting list so you do not miss anyone. After-care keeps after-school kids and hides children who only have approved before-care. Before-care keeps approved before-care kids and hides after-school-only children. A child on both programs stays on After-care and Before-care. The printed names follow this filter.",
+                "body": "All is the starting list so you do not miss anyone. After-care keeps after-school kids and hides children who only have approved before-care. Before-care keeps approved before-care kids and hides after-school-only children. A child on both programs stays on After-care and Before-care unless that application is inactive. An inactive before-care application stays off Before-care; an inactive after-care application stays off After-care. The printed names follow this filter.",
+            },
+            {
+                "title": "Optionally add parent contact",
+                "body": "Check Show primary parent contact on this sheet if you need the parent name, phone, and email under each child. It stays off unless you check it, then Apply filters. The choice stays in the URL so print and reload keep it.",
             },
             {
                 "title": "Pick the week and grades",
@@ -633,7 +637,7 @@ GUIDES = {
     },
     "before-care": {
         "title": "How to see before-care kids",
-        "intro": "This roster is who is approved for before-care. Waitlist-only children stay off until you approve them. Inactive children stay off.",
+        "intro": "This roster is who is approved for before-care. Waitlist-only children stay off until you approve them. Inactive children stay off. A child whose before-care application is inactive also stays off, even if they still attend after-care.",
         "steps": [
             {
                 "title": "Read the list",
@@ -716,6 +720,10 @@ GUIDES = {
             {
                 "title": "Make a child inactive or active",
                 "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+            },
+            {
+                "title": "Make one application inactive",
+                "body": "If a child has before-care and after-care, you can turn off one program without making the whole child inactive. On Program status, each application has Make this before-care application inactive or Make this after-care application inactive. That child leaves attendance and the before-care roster for that program only. Restore this application if they come back to that program. You can also do this from the application page or the Applications tab.",
             },
             {
                 "title": "Reset parent password",

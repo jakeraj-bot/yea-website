@@ -609,6 +609,11 @@ urlpatterns = [
         name="portal_staff_application_policy_print",
     ),
     path(
+        "staff/application/<slug:app_slug>/status/",
+        views_actions.application_program_status,
+        name="portal_staff_application_status",
+    ),
+    path(
         "staff/application/<slug:app_slug>/",
         views.staff_application_detail,
         name="portal_staff_application_detail",
@@ -870,6 +875,11 @@ urlpatterns = [
         "admin/application/<slug:app_slug>/policies/<slug:policy_slug>/print/",
         views.admin_application_policy_print,
         name="portal_admin_application_policy_print",
+    ),
+    path(
+        "admin/application/<slug:app_slug>/status/",
+        views_actions.application_program_status,
+        name="portal_admin_application_status",
     ),
     path(
         "admin/application/<slug:app_slug>/",

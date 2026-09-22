@@ -544,6 +544,15 @@ def set_child_active(child, active):
     return child
 
 
+def set_application_active(application, active):
+    """Toggle one program application. The child account can stay active."""
+    if application is None:
+        raise ValueError("Application not found.")
+    application.is_active = bool(active)
+    application.save(update_fields=["is_active"])
+    return application
+
+
 @transaction.atomic
 def suspend_family(family, reason, note=""):
     reason = (reason or "other").strip()
