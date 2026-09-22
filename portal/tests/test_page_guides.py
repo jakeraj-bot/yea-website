@@ -34,6 +34,8 @@ class PageGuideCatalogTests(TestCase):
             "weekly-attendance-blank",
             "daily-attendance",
             "daily-attendance-blank",
+            "signout-blank",
+            "before-care",
             "admin-attendance",
             "emails-sent",
             "parent-emails",
@@ -182,6 +184,17 @@ class PageGuideCatalogTests(TestCase):
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())
         self.assertIn("not a second copy", " ".join(step["body"] for step in inactive["steps"]))
+
+    def test_attendance_and_before_care_guides_explain_after_before_all(self):
+        weekly = guide_for("weekly-attendance")
+        self.assertIn("Choose After-care, Before-care, or All", [step["title"] for step in weekly["steps"]])
+        signout = guide_for("signout-blank")
+        self.assertIsNotNone(signout)
+        self.assertIn("After-care", " ".join(step["body"] for step in signout["steps"]))
+        before = guide_for("before-care")
+        self.assertIsNotNone(before)
+        self.assertIn("approved", before["intro"].lower())
+        self.assertIn("waitlist", before["intro"].lower())
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")

@@ -15,7 +15,7 @@
 </section>
 <section class="page-content">
   <div class="container">
-    {% include "portal/staff/includes/attendance_sheet_filters.html" with show_csv=True filter_help="Pick a unit, then check grades. Those kids stay on this same Monday–Friday sheet. Leave grades unchecked to include every grade at that unit." %}
+    {% include "portal/staff/includes/attendance_sheet_filters.html" with show_csv=True filter_help="Pick a unit, then After-care, Before-care, or All. Check grades to keep those kids on this same Monday–Friday sheet. Leave grades unchecked to include every grade at that unit. After-care is after-school only. Before-care is approved before-care only. All prints both." %}
 
     <div class="portal-medical-report-sheet card portal-collapse-skip portal-attendance-print-sheet">
       <header class="portal-medical-report-header portal-no-print">
@@ -24,6 +24,7 @@
           <h2>Weekly attendance sheet</h2>
           <p class="portal-medical-report-meta">
             <strong>{{ selected_unit_name|default:unit_name }}</strong>
+            {% if care_label %} · {{ care_label }}{% endif %}
             · {% if selected_grades %}Grades {{ selected_grades|join:", " }}{% else %}All grades{% endif %}
             · {{ weekly_rows|length }} children
             · {{ week_range_display }}

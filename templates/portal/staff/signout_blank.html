@@ -5,12 +5,12 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Blank sign-out sheet</p>
     <h1>Sign-out sheet — blank</h1>
-    <p class="lead">Parent signature &amp; pickup time for {{ sheet_date_display }}</p>
+    <p class="lead">Parent signature &amp; pickup time for {{ sheet_date_display }}{% if care_label %} · {{ care_label }}{% endif %}</p>
   </div>
 </section>
 <section class="page-content portal-blank-report">
   <div class="container">
-    {% include "portal/staff/includes/report_date_toolbar.html" %}
+    {% include "portal/staff/includes/signout_sheet_filters.html" %}
 
     <div class="portal-medical-report-sheet card portal-blank-sheet">
       <header class="portal-medical-report-header">
@@ -18,7 +18,7 @@
         <div>
           <h2>Daily sign-out sheet</h2>
           <p class="portal-medical-report-meta">
-            <strong>{{ unit }}</strong> · {{ program }}<br>
+            <strong>{{ unit }}</strong> · {{ program }}{% if care_label %} · {{ care_label }}{% endif %}<br>
             <span class="portal-blank-sheet-date">Date: {{ sheet_date_display }}</span>
             · {{ enrolled_count }} enrolled
           </p>

@@ -551,12 +551,15 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
     from .models import PortalProgram
     from .report_sheets import parse_sheet_date
 
+    from .care_program import filter_children_by_care, normalize_care_filter
+
     filters = dict(filters or {})
     raw_date = (filters.get("date") or "").strip()
     sheet_date = parse_sheet_date(raw_date) if raw_date else timezone.localdate()
     selected_grades = _normalized_grade_list(filters.get("grades") or filters.get("grade"))
     program_id = (filters.get("program") or "").strip()
     unit_slug = (filters.get("unit") or "").strip()
+    care = normalize_care_filter(filters.get("care"))
     scoped_unit = resolve_weekly_attendance_unit(
         unit_slug, header_unit=unit, allowed_units=allowed_units, admin=admin
     )
@@ -571,6 +574,9 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
         ]
     else:
         roster_children = list(children_for_unit(scoped_unit, active_only=True).order_by("name", "id"))
+
+    option_children = list(roster_children)
+    roster_children = filter_children_by_care(roster_children, care)
 
     programs_qs = PortalProgram.objects.filter(is_active=True).select_related("unit").order_by("unit__name", "name")
     if scoped_unit:
@@ -590,6 +596,8 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
         "filters": filters,
         "sheet_date": sheet_date,
         "scoped_unit": scoped_unit,
+        "care": care,
+        "option_children": option_children,
         "roster_children": roster_children,
         "chosen_program": chosen_program,
         "record_programs": record_programs,
@@ -637,16 +645,18 @@ def _row_matches_sheet_filters(row, *, selected_grade_keys, query, school, statu
 
 
 def _sheet_filter_options(scope, statuses=None):
-    roster_children = scope["roster_children"]
+    from .care_program import CARE_FILTER_CHOICES
+
+    option_children = scope.get("option_children") or scope["roster_children"]
     all_programs = scope["all_programs"]
     admin = scope["admin"]
     return {
         "grades": sorted(
-            {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
+            {(child.grade or "").strip() for child in option_children if (child.grade or "").strip()},
             key=_grade_sort_key,
         ),
         "schools": sorted(
-            {(child.school or "").strip() for child in roster_children if (child.school or "").strip()},
+            {(child.school or "").strip() for child in option_children if (child.school or "").strip()},
             key=str.lower,
         ),
         "programs": [
@@ -655,10 +665,13 @@ def _sheet_filter_options(scope, statuses=None):
         ],
         "units": scope["unit_choices"],
         "statuses": sorted(statuses or [], key=str.lower),
+        "care_choices": list(CARE_FILTER_CHOICES),
     }
 
 
 def _sheet_unit_meta(scope):
+    from .care_program import care_filter_label
+
     scoped_unit = scope["scoped_unit"]
     admin = scope["admin"]
     chosen_program = scope["chosen_program"]
@@ -668,6 +681,7 @@ def _sheet_unit_meta(scope):
     )
     if admin and not scoped_unit:
         program_name = chosen_program.name if chosen_program else "All programs"
+    care = scope.get("care") or ""
     return {
         "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
         "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
@@ -677,6 +691,8 @@ def _sheet_unit_meta(scope):
         "sheet_date": scope["sheet_date"].isoformat(),
         "generated_date": timezone.localdate().strftime("%B %d, %Y"),
         "selected_grades": scope["selected_grades"],
+        "care": care,
+        "care_label": care_filter_label(care),
     }
 
 

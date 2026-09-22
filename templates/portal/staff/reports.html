@@ -35,6 +35,8 @@
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_attendance_blank_weekly' %}">Preview &amp; print</a>
         {% elif report.slug == 'signout-blank' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_signout_blank' %}">Preview &amp; print</a>
+        {% elif report.slug == 'before-care' %}
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_before_care_report' %}">Preview &amp; print</a>
         {% elif report.slug == 'roster' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_program_roster' program_slug='after-school-2026-27' %}">View roster</a>
         {% elif report.slug == 'application-blank' %}

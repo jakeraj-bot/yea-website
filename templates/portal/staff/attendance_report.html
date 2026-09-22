@@ -11,7 +11,7 @@
 </section>
 <section class="page-content">
   <div class="container">
-    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit and grades, then print today’s sign-in sheet. Leave grades unchecked to include every grade at that unit." %}
+    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit, then After-care, Before-care, or All. Check grades to keep those kids on one sheet. After-care is after-school only. Before-care is approved before-care only. All prints both." %}
 
     <div class="portal-medical-report-sheet card portal-attendance-print-sheet">
       <header class="portal-medical-report-header portal-no-print">
@@ -21,6 +21,7 @@
           <p class="portal-medical-report-meta">
             <strong>{{ selected_unit_name|default:unit_name }}</strong>
             {% if program_name %} · {{ program_name }}{% endif %}
+            {% if care_label %} · {{ care_label }}{% endif %}
             · {{ sheet_date_display }}
             · {{ listed_count }} children
           </p>

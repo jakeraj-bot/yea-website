@@ -421,7 +421,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check one or more grades to keep those kids on the same page. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check After-care, Before-care, or All, then one or more grades to keep those kids on the same page. Before care is the roster of who is approved for before-care. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
@@ -507,11 +507,15 @@ GUIDES = {
     },
     "weekly-attendance": {
         "title": "How to print weekly attendance",
-        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
+        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then After-care, Before-care, or All. Check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
         "steps": [
             {
                 "title": "Pick a unit",
                 "body": "Use the Unit filter on this page. Staff can choose any unit they are allowed to open; it starts on the unit in the header, so you do not have to hunt through the header switcher. Staff cannot see children at a unit they are not assigned to. Admins can choose one unit or All units. A child whose family account is at another site still appears if they attend the unit you picked.",
+            },
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All is the starting list so you do not miss anyone. After-care keeps after-school kids and hides children who only have approved before-care. Before-care keeps approved before-care kids and hides after-school-only children. A child on both programs stays on After-care and Before-care. The printed names follow this filter.",
             },
             {
                 "title": "Pick the week and grades",
@@ -537,11 +541,15 @@ GUIDES = {
     },
     "weekly-attendance-blank": {
         "title": "How to print a blank weekly sheet",
-        "intro": "This is the Monday–Friday grid with names filled in and empty lines to mark by hand. Filters match the filled weekly sheet.",
+        "intro": "This is the Monday–Friday grid with names filled in and empty lines to mark by hand. Filters match the filled weekly sheet, including After-care, Before-care, or All.",
         "steps": [
             {
                 "title": "Pick a unit",
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All starts with every enrolled child. After-care hides before-care-only kids. Before-care hides after-school-only kids. The printed names follow this filter.",
             },
             {
                 "title": "Pick the week and grades",
@@ -566,6 +574,10 @@ GUIDES = {
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units. You will not see children from a unit you cannot open.",
             },
             {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All is the starting list. After-care keeps after-school kids. Before-care keeps approved before-care kids. The printed names follow this filter.",
+            },
+            {
                 "title": "Pick the day and grades",
                 "body": "Change the date if you need another day. Check grades to keep those kids on one sheet.",
             },
@@ -588,6 +600,10 @@ GUIDES = {
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
             },
             {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "Same as the filled daily sheet. All prints both programs. After-care and Before-care change the printed names.",
+            },
+            {
                 "title": "Pick the day and grades",
                 "body": "Set the date, then check grades if you only need some classrooms. Names match the filled daily sheet for those filters.",
             },
@@ -598,6 +614,38 @@ GUIDES = {
             {
                 "title": "Print",
                 "body": "Use Print / Save PDF. The header, listed count, page number, and print date/time appear on every printed page.",
+            },
+        ],
+    },
+    "signout-blank": {
+        "title": "How to print a sign-out sheet",
+        "intro": "This is the paper pickup sheet. Choose After-care, Before-care, or All, then print the names that match.",
+        "steps": [
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All starts with every enrolled child at your unit so you do not miss anyone. After-care hides children who only have approved before-care. Before-care hides after-school-only children. A child on both programs stays on both lists. The printed names follow this filter.",
+            },
+            {
+                "title": "Set the date and print",
+                "body": "Change the date if you need another day. Use Print / Save PDF. Parents sign and write the pickup time. Only release children to adults on the authorized pickup list.",
+            },
+        ],
+    },
+    "before-care": {
+        "title": "How to see before-care kids",
+        "intro": "This roster is who is approved for before-care. Waitlist-only children stay off until you approve them. Inactive children stay off.",
+        "steps": [
+            {
+                "title": "Read the list",
+                "body": "Each row is a child with approved or enrolled before-care. You see the child name, family, unit, school, and status. Staff see their unit only. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Open the family account",
+                "body": "Click a child name to open that family account. The printed page shows the name without the link.",
+            },
+            {
+                "title": "Print a before-care attendance sheet",
+                "body": "Need a weekly or sign-out sheet for only these kids? Open Weekly attendance or Sign-out sheet and choose Before-care. All prints after-school and before-care together.",
             },
         ],
     },
