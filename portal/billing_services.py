@@ -1451,16 +1451,9 @@ def _post_4cs_copay_period(locked, today, plan=None):
             ),
             is_manual=False,
         )
-        scholarship = active_scholarship_for_child(locked, charge_date)
-        _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
-        if discount > 0:
-            post_discount(
-                locked.family,
-                locked.name,
-                discount,
-                charge_date,
-                f"{scholarship.fund.name} scholarship",
-            )
+        scholarship = active_scholarship_for_plan(locked, plan, charge_date)
+        note = plan_description_for(locked, plan)
+        _post_plan_scholarship_discount(locked, scholarship, charge_date, amount, note)
     mark_parent_period_posted(period["weeks"], charge_date)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = _next_4cs_charge_date(
@@ -1486,7 +1479,7 @@ def _post_regular_plan_charge(child, target, today):
         return False
     plan_row = target if isinstance(target, PortalChildBillingPlan) else None
     note = plan_description_for(child, plan_row)
-    scholarship = active_scholarship_for_child(child, charge_date) if plan_row is None or plan_row.sort_order == 1 else None
+    scholarship = active_scholarship_for_plan(child, plan_row, charge_date)
     monthly = cadence_key(target.billing_plan) == "monthly"
     period_label = None
     if monthly:
@@ -1521,37 +1514,14 @@ def _post_regular_plan_charge(child, target, today):
             ),
             is_manual=False,
         )
-        if scholarship and scholarship.full_rate:
-            _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
-            if discount > 0:
-                post_discount(
-                    child.family,
-                    child.name,
-                    discount,
-                    charge_date,
-                    f"{scholarship.fund.name} scholarship",
-                )
-    elif scholarship and scholarship.full_rate:
-        post_charge(
-            child.family,
-            child.name,
-            "tuition",
-            scholarship.full_rate,
-            charge_date,
-            ledger_charge_description(child, target.billing_plan, "tuition", description=note),
-            is_manual=False,
-        )
-        discount = scholarship.full_rate - scholarship.parent_amount
-        if discount > 0:
-            post_discount(
-                child.family,
-                child.name,
-                discount,
-                charge_date,
-                f"{scholarship.fund.name} scholarship",
-            )
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
     else:
-        if not target.billing_amount:
+        amount = target.billing_amount
+        if scholarship and scholarship.full_rate and (
+            not amount or amount == scholarship.parent_amount
+        ):
+            amount = scholarship.full_rate
+        if not amount:
             target.next_charge_date = next_plan_charge_date(
                 charge_date,
                 target.billing_plan,
@@ -1563,11 +1533,12 @@ def _post_regular_plan_charge(child, target, today):
             child.family,
             child.name,
             "tuition",
-            target.billing_amount,
+            amount,
             charge_date,
             ledger_charge_description(child, target.billing_plan, "tuition", description=note),
             is_manual=False,
         )
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = next_plan_charge_date(
         charge_date,
