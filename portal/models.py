@@ -717,6 +717,13 @@ class PortalScholarshipFund(models.Model):
 
 class PortalScholarshipAssignment(models.Model):
     child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="scholarships")
+    billing_plan = models.ForeignKey(
+        "PortalChildBillingPlan",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="scholarships",
+    )
     fund = models.ForeignKey(PortalScholarshipFund, on_delete=models.CASCADE, related_name="assignments")
     full_rate = models.DecimalField(max_digits=10, decimal_places=2)
     parent_amount = models.DecimalField(max_digits=10, decimal_places=2)

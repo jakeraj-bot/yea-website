@@ -174,11 +174,11 @@ def serialize_billing_plan(plan, child=None):
     from .agency_weeks import cadence_key, weekly_rate_for_plan
 
     weekly = weekly_rate_for_plan(plan)
+    assignment = active_scholarship_for_plan(child, plan)
     schedule = []
     if cadence_key(plan.billing_plan) == "monthly" and weekly:
-        assignment = active_scholarship_for_child(child) if plan.sort_order == 1 else None
         schedule = monthly_schedule_rows(weekly, scholarship=assignment)
-    return {
+    row = {
         "id": plan.pk,
         "description": plan.description or "",
         "plan": plan.billing_plan or "Weekly",
@@ -193,7 +193,24 @@ def serialize_billing_plan(plan, child=None):
         "auto_charge_label": plan_repeat_label(plan),
         "billing_type": billing_type,
         "is_primary": plan.sort_order == 1,
+        "scholarship_fund_id": "",
+        "full_rate": "",
+        "parent_amount": "",
+        "scholarship_name": "",
+        "scholarship_discount": "",
     }
+    if assignment:
+        discount = (assignment.full_rate or Decimal("0")) - (assignment.parent_amount or Decimal("0"))
+        row.update(
+            {
+                "scholarship_fund_id": assignment.fund_id,
+                "full_rate": f"{assignment.full_rate:.2f}",
+                "parent_amount": f"{assignment.parent_amount:.2f}",
+                "scholarship_name": assignment.fund.name,
+                "scholarship_discount": f"{discount:.2f}",
+            }
+        )
+    return row
 
 
 def serialize_child_primary_plan(child, extra=None):
@@ -414,17 +431,50 @@ def post_discount(family, child_name, amount, entry_date, description, is_manual
     sync_family_balance_from_ledger(family)
 
 
+def _scholarship_is_active(row, on_date):
+    if (row.status or "").lower() != "active":
+        return False
+    if row.start_date and row.start_date > on_date:
+        return False
+    if row.end_date and row.end_date < on_date:
+        return False
+    return True
+
+
 def active_scholarship_for_child(child, on_date=None):
     on_date = on_date or timezone.localdate()
     assignments = child.scholarships.select_related("fund").all()
     for row in assignments:
-        if (row.status or "").lower() != "active":
+        if _scholarship_is_active(row, on_date):
+            return row
+    return None
+
+
+def active_scholarship_for_plan(child, plan=None, on_date=None):
+    """Return the scholarship that belongs to this plan only.
+
+    A scholarship on after-care must not change before-care. Legacy rows with
+    no billing_plan still apply to the primary plan only.
+    """
+    if not child:
+        return None
+    on_date = on_date or timezone.localdate()
+    plan_row = plan if isinstance(plan, PortalChildBillingPlan) else None
+    if plan_row is None:
+        plan_row = primary_billing_plan(child)
+        is_primary = True
+    else:
+        is_primary = plan_row.sort_order == 1 or plan_row == primary_billing_plan(child)
+    plan_id = plan_row.pk if plan_row else None
+    for row in child.scholarships.select_related("fund", "billing_plan").all():
+        if not _scholarship_is_active(row, on_date):
             continue
-        if row.start_date and row.start_date > on_date:
+        if row.billing_plan_id:
+            if plan_id and row.billing_plan_id == plan_id:
+                return row
             continue
-        if row.end_date and row.end_date < on_date:
-            continue
-        return row
+        if is_primary:
+            return row
     return None
 
 
@@ -465,8 +515,9 @@ def _apply_plan_scholarship(
     fallback_full_rate=None,
     full_rate_error="Enter the plan rate before the scholarship.",
     start_date=None,
+    billing_plan=None,
 ):
-    """Attach the per-child scholarship to a plan. Empty fund means no change."""
+    """Attach a scholarship to one billing plan. Empty fund means no change."""
     if scholarship_fund_id in (None, ""):
         return None
     full_rate = scholarship_full_rate if scholarship_full_rate not in (None, "") else fallback_full_rate
@@ -480,6 +531,7 @@ def _apply_plan_scholarship(
         full_rate,
         scholarship_parent_amount,
         start_date=start_date or timezone.localdate(),
+        billing_plan=billing_plan,
     )
 
 
@@ -490,8 +542,9 @@ def _apply_four_cs_plan_scholarship(
     scholarship_parent_amount=None,
     fallback_full_rate=None,
     start_date=None,
+    billing_plan=None,
 ):
-    """Attach the existing per-child scholarship to a 4Cs plan (copay only)."""
+    """Attach a scholarship to a 4Cs plan (copay only)."""
     return _apply_plan_scholarship(
         child,
         scholarship_fund_id=scholarship_fund_id,
@@ -500,10 +553,11 @@ def _apply_four_cs_plan_scholarship(
         fallback_full_rate=fallback_full_rate,
         full_rate_error="Enter the parent copay before the scholarship.",
         start_date=start_date,
+        billing_plan=billing_plan,
     )
 
 
-def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, start_date=None):
+def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, start_date=None, billing_plan=None):
     fund = PortalScholarshipFund.objects.filter(pk=fund_id, is_active=True).first()
     if not fund:
         raise ValueError("Select a scholarship type. Add it first on the Scholarships page.")
@@ -511,10 +565,16 @@ def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, st
     parent = _parse_amount(parent_amount, allow_zero=True)
     if parent > full:
         raise ValueError("Family portion cannot be more than the amount before the scholarship.")
-    assignment = (
-        child.scholarships.filter(status="Active").select_related("fund").first()
-        or child.scholarships.filter(fund=fund).first()
-    )
+    assignment = None
+    if billing_plan is not None:
+        assignment = child.scholarships.filter(billing_plan=billing_plan).select_related("fund").first()
+        if assignment is None:
+            assignment = child.scholarships.filter(billing_plan__isnull=True, status="Active").select_related("fund").first()
+    else:
+        assignment = (
+            child.scholarships.filter(status="Active").select_related("fund").first()
+            or child.scholarships.filter(fund=fund).first()
+        )
     if assignment:
         assignment.fund = fund
         assignment.full_rate = full
@@ -522,10 +582,13 @@ def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, st
         assignment.status = "Active"
         if start_date:
             assignment.start_date = start_date
+        if billing_plan is not None:
+            assignment.billing_plan = billing_plan
         assignment.save()
     else:
         assignment = PortalScholarshipAssignment.objects.create(
             child=child,
+            billing_plan=billing_plan,
             fund=fund,
             full_rate=full,
             parent_amount=parent,
@@ -533,6 +596,20 @@ def apply_scholarship_to_child_plan(child, fund_id, full_rate, parent_amount, st
             status="Active",
         )
     return assignment
+
+
+def _post_plan_scholarship_discount(child, scholarship, charge_date, charge_amount, note=""):
+    """Credit only the scholarship that belongs to the plan just charged."""
+    if not scholarship or not scholarship.full_rate or not charge_amount or charge_amount <= 0:
+        return
+    _family_pays, discount = parent_copay_after_scholarship(scholarship, charge_amount)
+    if discount <= 0:
+        return
+    description = f"{scholarship.fund.name} scholarship"
+    label = (note or "").strip()
+    if label:
+        description = f"{label} — {description}"
+    post_discount(child.family, child.name, discount, charge_date, description)
 
 
 def staff_payment_method_label(method):
@@ -1094,16 +1171,21 @@ def _save_extra_billing_plan(
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=row.billing_amount,
             start_date=_scholarship_start_date(row.next_charge_date or next_charge_date),
+            billing_plan=row,
         )
     else:
-        _apply_plan_scholarship(
+        assignment = _apply_plan_scholarship(
             child,
             scholarship_fund_id=scholarship_fund_id,
             scholarship_full_rate=scholarship_full_rate,
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=row.billing_amount if row.billing_amount is not None else amount,
             start_date=_scholarship_start_date(row.next_charge_date or next_charge_date),
+            billing_plan=row,
         )
+        if assignment and row.billing_amount is None and assignment.full_rate is not None:
+            _assign_plan_amount(row, assignment.full_rate, plan)
+            row.save(update_fields=["billing_amount", "weekly_rate"])
     posted = []
     if row.auto_charge and row.next_charge_date and row.next_charge_date <= timezone.localdate():
         posted = run_due_plan_charges(child=child, plan=row)
@@ -1164,6 +1246,7 @@ def update_child_billing_plan(
     child.billing_plan = plan.strip() or child.billing_plan
     billing_label = (billing_type or "").strip()
     four_cs_profile = agency_profile_for(child) if billing_label.lower() == "4cs" or "4cs" in billing_label.lower() else None
+    target_plan = existing_plan if existing_plan and existing_plan.sort_order == 1 else ensure_primary_billing_plan(child)
     if billing_label.lower() == "scholarship":
         parent_amount = scholarship_parent_amount if scholarship_parent_amount not in (None, "") else amount
         assignment = apply_scholarship_to_child_plan(
@@ -1172,6 +1255,7 @@ def update_child_billing_plan(
             scholarship_full_rate,
             parent_amount,
             start_date=_scholarship_start_date(next_charge_date),
+            billing_plan=target_plan,
         )
         child.billing_amount = assignment.parent_amount
     elif not four_cs_profile:
@@ -1182,6 +1266,7 @@ def update_child_billing_plan(
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=amount if amount not in (None, "") else child.billing_amount,
             start_date=_scholarship_start_date(next_charge_date),
+            billing_plan=target_plan,
         )
         # Keep the plan amount as full tuition before scholarship. Family-pays
         # lives on the scholarship assignment — do not replace the monthly/weekly rate.
@@ -1217,6 +1302,7 @@ def update_child_billing_plan(
             scholarship_parent_amount=scholarship_parent_amount,
             fallback_full_rate=child.billing_amount,
             start_date=_scholarship_start_date(next_charge_date),
+            billing_plan=target_plan,
         )
         if four_cs_weekly and charge_weekday in (None, ""):
             charge_weekday = FOUR_CS_WEEKLY_POST_WEEKDAY
@@ -1365,16 +1451,9 @@ def _post_4cs_copay_period(locked, today, plan=None):
             ),
             is_manual=False,
         )
-        scholarship = active_scholarship_for_child(locked, charge_date)
-        _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
-        if discount > 0:
-            post_discount(
-                locked.family,
-                locked.name,
-                discount,
-                charge_date,
-                f"{scholarship.fund.name} scholarship",
-            )
+        scholarship = active_scholarship_for_plan(locked, plan, charge_date)
+        note = plan_description_for(locked, plan)
+        _post_plan_scholarship_discount(locked, scholarship, charge_date, amount, note)
     mark_parent_period_posted(period["weeks"], charge_date)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = _next_4cs_charge_date(
@@ -1400,7 +1479,7 @@ def _post_regular_plan_charge(child, target, today):
         return False
     plan_row = target if isinstance(target, PortalChildBillingPlan) else None
     note = plan_description_for(child, plan_row)
-    scholarship = active_scholarship_for_child(child, charge_date) if plan_row is None or plan_row.sort_order == 1 else None
+    scholarship = active_scholarship_for_plan(child, plan_row, charge_date)
     monthly = cadence_key(target.billing_plan) == "monthly"
     period_label = None
     if monthly:
@@ -1435,37 +1514,14 @@ def _post_regular_plan_charge(child, target, today):
             ),
             is_manual=False,
         )
-        if scholarship and scholarship.full_rate:
-            _family_pays, discount = parent_copay_after_scholarship(scholarship, amount)
-            if discount > 0:
-                post_discount(
-                    child.family,
-                    child.name,
-                    discount,
-                    charge_date,
-                    f"{scholarship.fund.name} scholarship",
-                )
-    elif scholarship and scholarship.full_rate:
-        post_charge(
-            child.family,
-            child.name,
-            "tuition",
-            scholarship.full_rate,
-            charge_date,
-            ledger_charge_description(child, target.billing_plan, "tuition", description=note),
-            is_manual=False,
-        )
-        discount = scholarship.full_rate - scholarship.parent_amount
-        if discount > 0:
-            post_discount(
-                child.family,
-                child.name,
-                discount,
-                charge_date,
-                f"{scholarship.fund.name} scholarship",
-            )
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
     else:
-        if not target.billing_amount:
+        amount = target.billing_amount
+        if scholarship and scholarship.full_rate and (
+            not amount or amount == scholarship.parent_amount
+        ):
+            amount = scholarship.full_rate
+        if not amount:
             target.next_charge_date = next_plan_charge_date(
                 charge_date,
                 target.billing_plan,
@@ -1477,11 +1533,12 @@ def _post_regular_plan_charge(child, target, today):
             child.family,
             child.name,
             "tuition",
-            target.billing_amount,
+            amount,
             charge_date,
             ledger_charge_description(child, target.billing_plan, "tuition", description=note),
             is_manual=False,
         )
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = next_plan_charge_date(
         charge_date,

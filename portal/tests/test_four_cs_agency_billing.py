@@ -1089,3 +1089,57 @@ class FourCsPlanScholarshipTests(TestCase):
         self.assertIn(("charge", Decimal("70.00")), types)
         self.assertIn(("discount", Decimal("-20.00")), types)
         self.assertEqual(private_family.balance, Decimal("50.00"))
+
+    def test_4cs_scholarship_stays_on_copay_when_child_has_second_plan(self):
+        today = date(2026, 9, 9)
+        agency_before = {
+            week.week_start: week.agency_amount
+            for week in self.profile.contract_weeks.all()
+        }
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Weekly",
+                billing_type="4Cs",
+                auto_charge=True,
+                next_charge_date=today,
+                description="After care",
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="26.50",
+                scholarship_parent_amount="10.00",
+            )
+            update_child_billing_plan(
+                self.family,
+                "Ada Rivera",
+                "Weekly",
+                "30.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+                description="Before care",
+                create_new=True,
+            )
+        charges = list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type="charge").values_list("amount", flat=True)
+        )
+        discounts = list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type="discount").values_list("amount", flat=True)
+        )
+        self.assertIn(Decimal("26.50"), charges)
+        self.assertIn(Decimal("30.00"), charges)
+        self.assertEqual(charges.count(Decimal("26.50")), 1)
+        self.assertEqual(len(discounts), 1)
+        self.assertEqual(discounts[0], Decimal("-16.50"))
+        before = self.child.billing_plans.get(description="Before care")
+        self.assertEqual(before.billing_amount, Decimal("30.00"))
+        assignment = PortalScholarshipAssignment.objects.get(child=self.child)
+        after = self.child.billing_plans.get(description="After care")
+        self.assertEqual(assignment.billing_plan_id, after.pk)
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("40.00"))
+        for week in self.profile.contract_weeks.all():
+            week.refresh_from_db()
+            self.assertEqual(week.agency_amount, agency_before[week.week_start])
+            self.assertEqual(week.agency_amount, Decimal("110.00"))
