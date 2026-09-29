@@ -234,6 +234,10 @@ GUIDES = {
                 "body": "Use the billing plan picker on Approve details — the same weekly, bi-weekly, and monthly private-pay or 4Cs copay types as family Plans. Fill the parent amount so the approval email can show amount due. Amount due is what the parent owes, not the 4Cs agency week amount. Leave the plan off for 4Cs until copay is set: the email then states the membership fee and the contract reminder (send to jakeraj@yeanj.org, YEA signs it and emails it back for 4Cs). You can still add or change the plan later on the family Plans tab.",
             },
             {
+                "title": "Edit the application if details are wrong",
+                "body": "Portal admin and Program director can use Edit application on this page to fix names, school, grade, contacts, program, and payment details before or while they approve. That is program work — it does not use Django /admin/. Front desk staff can still approve when they have permission, but they cannot rewrite the application.",
+            },
+            {
                 "title": "Print if you need a paper copy",
                 "body": "Use the PDF for files, 4Cs packets, or the family. Previous / Next moves you through the queue.",
             },
@@ -923,7 +927,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Create a Program director",
-                "body": "Use Create staff account. Choose Program director. Pick a primary unit. They sign in at the staff portal. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They can switch units because they are in charge of programming. Billing stays hidden unless you turn it on.",
+                "body": "Use Create staff account. Choose Program director. Pick a primary unit. They sign in at the staff portal. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They can switch units because they are in charge of programming. They can edit an application while approving, the same as Portal admin. Billing stays hidden unless you turn it on.",
             },
             {
                 "title": "Create Front desk staff",

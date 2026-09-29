@@ -1376,6 +1376,15 @@ def staff_application_review(request, app_slug):
             messages.success(request, "Internal note saved.")
         elif action == "add_after_school":
             return _add_after_school_from_review(request, app, "staff")
+        elif action == "update_application":
+            from .member_admin import application_update_payload, update_application_fields
+            from .staff_auth import can_edit_enrollment_application, get_staff_account
+
+            if not can_edit_enrollment_application(get_staff_account(request.user), "staff"):
+                messages.error(request, "You do not have permission to edit this application.")
+                return redirect(redirect_url)
+            update_application_fields(app, application_update_payload(app, request.POST))
+            messages.success(request, "Application updated.")
         else:
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
@@ -3072,37 +3081,9 @@ def admin_member_ops(request):
             app = get_application_by_reference(request.POST.get("app_slug", ""))
             if not app:
                 raise ValueError("Application not found.")
-            dob = parse_date(request.POST.get("student_dob") or "")
-            update_application_fields(
-                app,
-                {
-                    "family_name": request.POST.get("family_name", app.family_name),
-                    "primary_email": request.POST.get("primary_email", app.primary_email),
-                    "home_address": request.POST.get("home_address", app.home_address),
-                    "primary_first_name": request.POST.get("primary_first_name", app.primary_first_name),
-                    "primary_last_name": request.POST.get("primary_last_name", app.primary_last_name),
-                    "primary_phone": request.POST.get("primary_phone", app.primary_phone),
-                    "student_first_name": request.POST.get("student_first_name", app.student_first_name),
-                    "student_last_name": request.POST.get("student_last_name", app.student_last_name),
-                    "student_school": request.POST.get("student_school", app.student_school),
-                    "student_grade": request.POST.get("student_grade", app.student_grade),
-                    "student_dob": dob,
-                    "program": request.POST.get("program", app.program),
-                    "program_location": request.POST.get("program_location", app.program_location),
-                    "payment_method": request.POST.get("payment_method", app.payment_method),
-                    "payment_method_other": request.POST.get("payment_method_other", app.payment_method_other),
-                    "payment_plan": request.POST.get("payment_plan", app.payment_plan),
-                    "allergies": request.POST.get("allergies", app.allergies),
-                    "medical_condition_explain": request.POST.get("medical_condition_explain", app.medical_condition_explain),
-                    "doctor_name": request.POST.get("doctor_name", app.doctor_name),
-                    "doctor_phone": request.POST.get("doctor_phone", app.doctor_phone),
-                    "insurance_provider": request.POST.get("insurance_provider", app.insurance_provider),
-                    "secondary_first_name": request.POST.get("secondary_first_name", app.secondary_first_name),
-                    "secondary_last_name": request.POST.get("secondary_last_name", app.secondary_last_name),
-                    "secondary_phone": request.POST.get("secondary_phone", app.secondary_phone),
-                    "secondary_email_address": request.POST.get("secondary_email_address", app.secondary_email_address),
-                },
-            )
+            from .member_admin import application_update_payload
+
+            update_application_fields(app, application_update_payload(app, request.POST))
             messages.success(request, "Application updated.")
             if not request.POST.get("next"):
                 next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})

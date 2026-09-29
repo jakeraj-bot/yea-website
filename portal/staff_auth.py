@@ -218,20 +218,42 @@ def billing_permissions_for_staff(account=None, portal_area="staff"):
     }
 
 
+def can_edit_enrollment_application(account, portal_area="staff"):
+    """Fix names, school, contacts, and program fields on an application.
+
+    Portal admin (in either portal) and Program director can edit because
+    that is program work. Front desk and unit-scoped staff cannot. Admin
+    portal sessions are already portal-admin-authenticated.
+    """
+    if portal_area == "admin":
+        return True
+    if is_front_desk(account):
+        return False
+    if is_program_director(account):
+        return True
+    if account and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access):
+        return True
+    return False
+
+
 def application_permissions_for_staff(account=None, portal_area="staff"):
+    can_edit = can_edit_enrollment_application(account, portal_area)
     if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):
         return {
             "can_approve_applications": True,
             "can_approve_waitlist": True,
+            "can_edit_applications": can_edit,
         }
     if not account:
         return {
             "can_approve_applications": False,
             "can_approve_waitlist": False,
+            "can_edit_applications": False,
         }
     return {
         "can_approve_applications": bool(account.can_approve_applications),
         "can_approve_waitlist": bool(account.can_approve_waitlist),
+        "can_edit_applications": can_edit,
     }
 
 

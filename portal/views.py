@@ -796,6 +796,7 @@ def _portal_context(area, page_title, **extra):
     if area == "admin":
         context.setdefault("can_approve_applications", True)
         context.setdefault("can_approve_waitlist", True)
+        context.setdefault("can_edit_applications", True)
         context.setdefault("can_see_billing", True)
         context.setdefault("can_manage_outside_programs", True)
     if area == "staff":

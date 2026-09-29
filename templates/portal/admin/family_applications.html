@@ -52,12 +52,12 @@
         <span class="form-note">Ref {{ item.application.reference }} · {{ item.application.submitted }}</span>
         <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_print' app_slug=item.app_slug %}{% else %}{% url 'portal_staff_application_print' app_slug=item.app_slug %}{% endif %}">Print PDF</a>
         {% include "portal/includes/add_after_care_form.html" with app_slug=item.app_slug child_name=item.application.child_name show_add_after_care=item.application.can_add_after_school next_url=request.get_full_path %}
-        {% if portal_area == 'admin' %}
+        {% if can_edit_applications %}
         <a class="btn btn-secondary" href="#edit-application-panel-{{ item.app_slug }}">Edit</a>
         {% endif %}
       </div>
       {% include "portal/includes/application_full_body.html" with application=item.application %}
-      {% if portal_area == 'admin' %}
+      {% if can_edit_applications %}
       {% include "portal/includes/application_edit_form.html" with application=item.application app_slug=item.app_slug id_suffix=item.app_slug location_choices=item.location_choices program_location=item.program_location next_url=request.get_full_path %}
       {% endif %}
     </article>

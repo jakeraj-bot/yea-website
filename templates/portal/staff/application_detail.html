@@ -72,8 +72,10 @@
       <a class="btn btn-secondary" href="{% url 'portal_staff_family_policies' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Policies</a>
       {% endif %}
       {% endif %}
-      {% if portal_area == 'admin' and is_live_application %}
+      {% if can_edit_applications and is_live_application %}
       <a class="btn btn-secondary" href="#edit-application-panel-{{ app_slug }}">Edit application</a>
+      {% endif %}
+      {% if portal_area == 'admin' and is_live_application %}
       {% if not application.has_parent_login %}
       <a class="btn btn-secondary" href="#create-login-panel">Create parent login</a>
       {% endif %}
@@ -243,9 +245,11 @@
     </script>
     {% endif %}
 
-    {% if portal_area == 'admin' and is_live_application %}
+    {% if can_edit_applications and is_live_application %}
     {% include "portal/includes/application_edit_form.html" with id_suffix=app_slug %}
+    {% endif %}
 
+    {% if portal_area == 'admin' and is_live_application %}
     {% if not application.has_parent_login %}
     <section class="card portal-review-panel" id="create-login-panel">
       <h2>Create parent login</h2>
