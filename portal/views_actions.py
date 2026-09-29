@@ -1381,7 +1381,7 @@ def staff_application_review(request, app_slug):
             from .staff_auth import can_edit_enrollment_application, get_staff_account
 
             if not can_edit_enrollment_application(get_staff_account(request.user), "staff"):
-                messages.error(request, "You don't have permission to edit this application.")
+                messages.error(request, "You do not have permission to edit this application.")
                 return redirect(redirect_url)
             update_application_fields(app, application_update_payload(app, request.POST))
             messages.success(request, "Application updated.")

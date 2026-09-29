@@ -209,7 +209,7 @@ class ApplicationEditPermissionTests(TestCase):
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "You don't have permission to edit this application.")
+        self.assertContains(response, "You do not have permission to edit this application.")
         self.app.refresh_from_db()
         self.assertEqual(self.app.student_first_name, "Ada")
 
