@@ -95,6 +95,7 @@ class PageGuideCatalogTests(TestCase):
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Change the membership amount before you approve", titles)
         self.assertIn("Attach a billing plan before you approve", titles)
+        self.assertIn("Edit the application if details are wrong", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("Type 0 to waive", bodies)
         self.assertIn("family ledger", bodies.lower())
@@ -104,6 +105,9 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("member start date", bodies)
         self.assertIn("jakeraj@yeanj.org", bodies)
         self.assertIn("parent copay", bodies.lower())
+        self.assertIn("Edit application", bodies)
+        self.assertIn("Program director", bodies)
+        self.assertIn("Django /admin/", bodies)
 
     def test_family_billing_guide_explains_editing_membership_amount(self):
         guide = guide_for("family-billing")
@@ -416,3 +420,4 @@ class StaffPageGuideViewTests(TestCase):
         apps = application_permissions_for_staff(self.admin_account, portal_area="staff")
         self.assertTrue(apps["can_approve_applications"])
         self.assertTrue(apps["can_approve_waitlist"])
+        self.assertTrue(apps["can_edit_applications"])
