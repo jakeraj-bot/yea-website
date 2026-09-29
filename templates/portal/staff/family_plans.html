@@ -256,8 +256,11 @@
           <li>
             <strong>{% if plan.description %}{{ plan.description }}{% else %}{{ plan.plan }}{% endif %}</strong>
             · {{ plan.plan }}
-            · {% if plan.weekly_rate %}{{ plan.weekly_rate }}/wk{% elif plan.is_primary and child.full_rate %}{{ child.full_rate }}{% else %}{{ plan.amount_display }}{% endif %}
+            · {% if plan.weekly_rate %}{{ plan.weekly_rate }}/wk{% else %}{{ plan.amount_display }}{% endif %}
             · {{ plan.auto_charge_label }}
+            {% if plan.scholarship_name %}
+            · <span class="portal-amount-credit">−${{ plan.scholarship_discount }}</span> {{ plan.scholarship_name }}
+            {% endif %}
             {% if plan.monthly_schedule and not plan.is_primary %}
             <ul class="portal-allocation-list">
               {% for month in plan.monthly_schedule %}
@@ -265,7 +268,7 @@
               {% endfor %}
             </ul>
             {% endif %}
-            <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan-id="{{ plan.id }}" data-description="{{ plan.description }}" data-plan="{{ plan.plan|default:'Weekly' }}" data-amount="{% if plan.is_primary and child.full_rate %}{{ child.full_rate }}{% else %}{{ plan.amount|default:'' }}{% endif %}" data-type="{{ plan.billing_type|default:child.type|default:'Private pay' }}" data-auto-charge="{% if plan.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ plan.next_charge_date|default:'' }}" data-weekday="{{ plan.charge_weekday }}" data-month-day="{{ plan.charge_month_day }}" data-scholarship-fund="{{ child.scholarship_fund_id|default:'' }}" data-full-rate="{{ child.full_rate|default:'' }}" data-parent-amount="{{ child.parent_amount|default:'' }}"{% if not billing_live %} disabled{% endif %}>Edit</button>
+            <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan-id="{{ plan.id }}" data-description="{{ plan.description }}" data-plan="{{ plan.plan|default:'Weekly' }}" data-amount="{{ plan.amount|default:'' }}" data-type="{{ plan.billing_type|default:child.type|default:'Private pay' }}" data-auto-charge="{% if plan.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ plan.next_charge_date|default:'' }}" data-weekday="{{ plan.charge_weekday }}" data-month-day="{{ plan.charge_month_day }}" data-scholarship-fund="{{ plan.scholarship_fund_id|default:'' }}" data-full-rate="{{ plan.full_rate|default:'' }}" data-parent-amount="{{ plan.parent_amount|default:'' }}"{% if not billing_live %} disabled{% endif %}>Edit</button>
             {% if plan.id %}
             <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form" onsubmit="return confirm('Remove this plan?');">
               {% csrf_token %}

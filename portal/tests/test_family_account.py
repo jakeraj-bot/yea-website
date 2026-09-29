@@ -11,6 +11,7 @@ from portal.admin_config import save_scholarship_fund
 from portal.billing_services import (
     delete_child_billing_plan,
     first_plan_charge_date,
+    get_scheduled_plan_charges,
     next_plan_charge_date,
     post_credit,
     post_payment,
@@ -880,6 +881,153 @@ class RegularPlanScholarshipTests(TestCase):
         self.assertContains(plans, "140.00")
         self.assertContains(plans, 'name="billing_amount"')
         self.assertContains(plans, "Scholarship type")
+
+
+class MultiPlanScholarshipChargeTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="jacobs", name="Jacobs", billing_type="Private pay", status="Active"
+        )
+        self.child = PortalChild.objects.create(
+            family=self.family, name="Jordan Jacobs", is_active=True, billing_plan="Weekly"
+        )
+        self.fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+
+    def _save_weekly_plan(self, amount, description, *, create_new=False, scholarship=None, today=None):
+        today = today or date(2026, 9, 9)
+        kwargs = {
+            "auto_charge": True,
+            "next_charge_date": today,
+            "charge_weekday": today.weekday(),
+            "description": description,
+            "create_new": create_new,
+        }
+        if scholarship:
+            kwargs.update(scholarship)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            return update_child_billing_plan(
+                self.family,
+                "Jordan Jacobs",
+                "Weekly",
+                amount,
+                "Private pay",
+                **kwargs,
+            )
+
+    def _ledger_amounts(self, entry_type):
+        return list(
+            PortalLedgerEntry.objects.filter(family=self.family, entry_type=entry_type)
+            .order_by("pk")
+            .values_list("amount", "description")
+        )
+
+    def test_two_plans_without_scholarship_keep_both_amounts(self):
+        self._save_weekly_plan("30.00", "Before care")
+        self._save_weekly_plan("70.00", "After care", create_new=True)
+        charges = self._ledger_amounts("charge")
+        self.assertEqual([amount for amount, _desc in charges], [Decimal("30.00"), Decimal("70.00")])
+        self.assertTrue(any("Before care" in desc for _amount, desc in charges))
+        self.assertTrue(any("After care" in desc for _amount, desc in charges))
+        self.assertFalse(PortalLedgerEntry.objects.filter(family=self.family, entry_type="discount").exists())
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("100.00"))
+        before = PortalChildBillingPlan.objects.get(child=self.child, description="Before care")
+        after = PortalChildBillingPlan.objects.get(child=self.child, description="After care")
+        self.assertEqual(before.billing_amount, Decimal("30.00"))
+        self.assertEqual(after.billing_amount, Decimal("70.00"))
+
+    def test_two_plans_scholarship_on_after_care_only(self):
+        self._save_weekly_plan("30.00", "Before care")
+        self._save_weekly_plan(
+            "70.00",
+            "After care",
+            create_new=True,
+            scholarship={
+                "scholarship_fund_id": self.fund.pk,
+                "scholarship_full_rate": "70.00",
+                "scholarship_parent_amount": "65.00",
+            },
+        )
+        charges = self._ledger_amounts("charge")
+        discounts = self._ledger_amounts("discount")
+        self.assertEqual([amount for amount, _desc in charges], [Decimal("30.00"), Decimal("70.00")])
+        self.assertEqual(len(discounts), 1)
+        self.assertEqual(discounts[0][0], Decimal("-5.00"))
+        self.assertIn("After care", discounts[0][1])
+        self.assertIn("YEA General Scholarship", discounts[0][1])
+        self.assertEqual(sum(amount for amount, _desc in charges), Decimal("100.00"))
+        self.assertFalse(any(amount == Decimal("70.00") and "Before care" in desc for amount, desc in charges))
+        before = PortalChildBillingPlan.objects.get(child=self.child, description="Before care")
+        after = PortalChildBillingPlan.objects.get(child=self.child, description="After care")
+        self.assertEqual(before.billing_amount, Decimal("30.00"))
+        self.assertEqual(after.billing_amount, Decimal("70.00"))
+        assignment = PortalScholarshipAssignment.objects.get(child=self.child)
+        self.assertEqual(assignment.billing_plan_id, after.pk)
+        self.assertEqual(assignment.full_rate, Decimal("70.00"))
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("95.00"))
+        billing = get_billing_live(self.family)
+        child = next(item for item in billing["children"] if item["name"] == "Jordan Jacobs")
+        self.assertEqual(child["amount"], "30.00")
+        self.assertEqual(len(child["plans"]), 2)
+        by_desc = {plan["description"]: plan for plan in child["plans"]}
+        self.assertEqual(by_desc["Before care"]["amount"], "30.00")
+        self.assertEqual(by_desc["After care"]["amount"], "70.00")
+        self.assertEqual(by_desc["After care"]["scholarship_discount"], "5.00")
+        self.assertEqual(by_desc["Before care"]["scholarship_discount"], "")
+        scheduled = {
+            row["plan"]: row["amount"]
+            for row in get_scheduled_plan_charges()
+            if row["child_name"] == "Jordan Jacobs"
+        }
+        self.assertIn("30.00", scheduled.values())
+        self.assertIn("70.00", scheduled.values())
+        self.assertNotEqual(list(scheduled.values()).count("70.00"), 2)
+
+    def test_two_plans_scholarship_on_before_care_only(self):
+        self._save_weekly_plan(
+            "30.00",
+            "Before care",
+            scholarship={
+                "scholarship_fund_id": self.fund.pk,
+                "scholarship_full_rate": "30.00",
+                "scholarship_parent_amount": "25.00",
+            },
+        )
+        self._save_weekly_plan("70.00", "After care", create_new=True)
+        charges = self._ledger_amounts("charge")
+        discounts = self._ledger_amounts("discount")
+        self.assertEqual(sorted(amount for amount, _desc in charges), [Decimal("30.00"), Decimal("70.00")])
+        self.assertEqual(len(discounts), 1)
+        self.assertEqual(discounts[0][0], Decimal("-5.00"))
+        self.assertIn("Before care", discounts[0][1])
+        before = PortalChildBillingPlan.objects.get(child=self.child, description="Before care")
+        after = PortalChildBillingPlan.objects.get(child=self.child, description="After care")
+        self.assertEqual(before.billing_amount, Decimal("30.00"))
+        self.assertEqual(after.billing_amount, Decimal("70.00"))
+        assignment = PortalScholarshipAssignment.objects.get(child=self.child)
+        self.assertEqual(assignment.billing_plan_id, before.pk)
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("95.00"))
+
+    def test_single_plan_scholarship_still_posts_full_rate_and_discount(self):
+        self._save_weekly_plan(
+            "70.00",
+            "After care",
+            scholarship={
+                "scholarship_fund_id": self.fund.pk,
+                "scholarship_full_rate": "70.00",
+                "scholarship_parent_amount": "50.00",
+            },
+        )
+        types = list(PortalLedgerEntry.objects.filter(family=self.family).values_list("entry_type", "amount"))
+        self.assertIn(("charge", Decimal("70.00")), types)
+        self.assertIn(("discount", Decimal("-20.00")), types)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.billing_amount, Decimal("70.00"))
+        self.family.refresh_from_db()
+        self.assertEqual(self.family.balance, Decimal("50.00"))
 
 
 class MoneyOrderPaymentTests(TestCase):

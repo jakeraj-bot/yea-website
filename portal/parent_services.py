@@ -66,7 +66,7 @@ def _child_balances_from_ledger(family):
             weekly_rate_for_plan,
         )
         from .billing_services import (
-            active_scholarship_for_child,
+            active_scholarship_for_plan,
             agency_profile_for,
             monthly_schedule_rows,
             plan_repeat_label,
@@ -79,7 +79,9 @@ def _child_balances_from_ledger(family):
 
         rows = []
         for child in portal_children:
-            assignment = active_scholarship_for_child(child)
+            stored_plans = list(child.billing_plans.all())
+            primary_plan = stored_plans[0] if stored_plans else None
+            assignment = active_scholarship_for_plan(child, primary_plan)
             row = {
                 "name": child.name,
                 "balance": f"{child_balance_from_map(balances, child.name):.2f}",
@@ -108,7 +110,6 @@ def _child_balances_from_ledger(family):
                         "scholarship_fund_id": assignment.fund_id,
                     }
                 )
-            stored_plans = list(child.billing_plans.all())
             if stored_plans:
                 row["plans"] = [serialize_billing_plan(plan, child) for plan in stored_plans]
                 row["description"] = stored_plans[0].description or ""
