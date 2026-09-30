@@ -1620,7 +1620,8 @@ class FamilyPlansTabStatusTests(TestCase):
         )
         paid_page = self._get_plans(paid, "admin")
         self.assertEqual(paid_page.status_code, 200)
-        self.assertNotContains(paid_page, "YEA General Scholarship")
+        self.assertContains(paid_page, "Jordan Jacobs")
+        self.assertNotContains(paid_page, "Scholarship discount")
 
         apps_only = PortalFamily.objects.create(
             unit=self.unit, slug="rivera-app", name="Rivera", billing_type="Private pay", status="Active"
@@ -1631,3 +1632,28 @@ class FamilyPlansTabStatusTests(TestCase):
         self.assertContains(app_page, "Ada Rivera")
         staff_page = self._get_plans(apps_only, "staff")
         self.assertEqual(staff_page.status_code, 200)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_tab_four_cs_child_returns_200(self):
+        from portal.agency_services import save_agency_member
+
+        family = PortalFamily.objects.create(
+            unit=self.unit, slug="fourcs", name="FourCs", billing_type="4Cs", status="Active"
+        )
+        PortalChild.objects.create(
+            family=family, name="Ada Rivera", is_active=True, billing_plan="Weekly"
+        )
+        save_agency_member(
+            self.unit,
+            "fourcs",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 25),
+            daily_copay="5.30",
+            daily_agency_rate="22.00",
+        )
+        page = self._get_plans(family, "admin")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Ada Rivera")
+        self.assertContains(page, "4Cs")
