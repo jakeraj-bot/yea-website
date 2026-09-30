@@ -1481,3 +1481,153 @@ class FamilyListPagerFilterTests(TestCase):
         self.assertEqual(response.context["family_nav_count"], 4)
         self.assertEqual(response.context["family_next"]["name"], "Drew Evans")
         self.assertNotEqual(response.context["family_next"]["slug"], "zoe")
+
+
+class FamilyPlansTabStatusTests(TestCase):
+    """Plans tab must 200 for admin and staff, including incomplete children."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.admin = User.objects.create_user(username="staff:yeaadmin", password="AdminPass123")
+        PortalStaffAccount.objects.create(
+            user=self.admin,
+            unit=self.unit,
+            display_name="YEA Admin",
+            role="Portal admin",
+            all_units_access=True,
+            is_active=True,
+        )
+        self.staff = User.objects.create_user(username="staff:unitstaff", password="StaffPass123")
+        PortalStaffAccount.objects.create(
+            user=self.staff,
+            unit=self.unit,
+            display_name="Unit Staff",
+            role="Unit director",
+            all_units_access=False,
+            can_see_billing=True,
+            is_active=True,
+        )
+        self.fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+
+    def _login(self, user, area):
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = area
+        if area == "staff":
+            session["staff_unit_slug"] = self.unit.slug
+        session.save()
+
+    def _get_plans(self, family, area="admin"):
+        user = self.admin if area == "admin" else self.staff
+        self._login(user, area)
+        name = "portal_admin_family_plans" if area == "admin" else "portal_staff_family_plans"
+        return self.client.get(reverse(name, kwargs={"family_slug": family.slug}))
+
+    def _two_plan_scholarship_family(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit, slug="two-plan", name="Two Plan", billing_type="Private pay", status="Active"
+        )
+        child = PortalChild.objects.create(
+            family=family, name="Jordan Jacobs", is_active=True, billing_plan="Weekly"
+        )
+        today = date(2026, 9, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            update_child_billing_plan(
+                family,
+                "Jordan Jacobs",
+                "Weekly",
+                "30.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+                description="Before care",
+            )
+            update_child_billing_plan(
+                family,
+                "Jordan Jacobs",
+                "Weekly",
+                "70.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+                description="After care",
+                create_new=True,
+                scholarship_fund_id=self.fund.pk,
+                scholarship_full_rate="70.00",
+                scholarship_parent_amount="65.00",
+            )
+        return family, child
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_and_staff_plans_tab_two_plans_plus_scholarship_returns_200(self):
+        family, _child = self._two_plan_scholarship_family()
+        admin_page = self._get_plans(family, "admin")
+        self.assertEqual(admin_page.status_code, 200)
+        self.assertContains(admin_page, "Before care")
+        self.assertContains(admin_page, "After care")
+        self.assertContains(admin_page, "30.00")
+        self.assertContains(admin_page, "70.00")
+        self.assertContains(admin_page, "YEA General Scholarship")
+        staff_page = self._get_plans(family, "staff")
+        self.assertEqual(staff_page.status_code, 200)
+        self.assertContains(staff_page, "Before care")
+        self.assertContains(staff_page, "After care")
+        self.assertContains(staff_page, "YEA General Scholarship")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_tab_legacy_scholarship_without_billing_plan_returns_200(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit, slug="legacy-schol", name="Legacy", billing_type="Private pay", status="Active"
+        )
+        child = PortalChild.objects.create(
+            family=family,
+            name="Jordan Jacobs",
+            is_active=True,
+            billing_plan="Weekly",
+            billing_amount=Decimal("70.00"),
+        )
+        PortalChildBillingPlan.objects.create(
+            child=child,
+            description="After care",
+            billing_plan="Weekly",
+            billing_amount=Decimal("70.00"),
+            sort_order=1,
+        )
+        PortalScholarshipAssignment.objects.create(
+            child=child,
+            billing_plan=None,
+            fund=self.fund,
+            full_rate=Decimal("70.00"),
+            parent_amount=Decimal("50.00"),
+            status="Active",
+        )
+        page = self._get_plans(family, "admin")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "YEA General Scholarship")
+        staff_page = self._get_plans(family, "staff")
+        self.assertEqual(staff_page.status_code, 200)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_tab_no_scholarship_and_application_only_family_return_200(self):
+        paid = PortalFamily.objects.create(
+            unit=self.unit, slug="no-schol", name="No Schol", billing_type="Private pay", status="Active"
+        )
+        PortalChild.objects.create(
+            family=paid, name="Jordan Jacobs", is_active=True, billing_plan="Weekly", billing_amount=Decimal("70.00")
+        )
+        paid_page = self._get_plans(paid, "admin")
+        self.assertEqual(paid_page.status_code, 200)
+        self.assertNotContains(paid_page, "YEA General Scholarship")
+
+        apps_only = PortalFamily.objects.create(
+            unit=self.unit, slug="rivera-app", name="Rivera", billing_type="Private pay", status="Active"
+        )
+        _make_application(apps_only)
+        app_page = self._get_plans(apps_only, "admin")
+        self.assertEqual(app_page.status_code, 200)
+        self.assertContains(app_page, "Ada Rivera")
+        staff_page = self._get_plans(apps_only, "staff")
+        self.assertEqual(staff_page.status_code, 200)

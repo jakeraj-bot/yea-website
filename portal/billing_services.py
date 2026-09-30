@@ -2,7 +2,7 @@ import calendar
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from .demo_data import prepare_billing_preview
@@ -200,16 +200,7 @@ def serialize_billing_plan(plan, child=None):
         "scholarship_discount": "",
     }
     if assignment:
-        discount = (assignment.full_rate or Decimal("0")) - (assignment.parent_amount or Decimal("0"))
-        row.update(
-            {
-                "scholarship_fund_id": assignment.fund_id,
-                "full_rate": f"{assignment.full_rate:.2f}",
-                "parent_amount": f"{assignment.parent_amount:.2f}",
-                "scholarship_name": assignment.fund.name,
-                "scholarship_discount": f"{discount:.2f}",
-            }
-        )
+        row.update(scholarship_display_fields(assignment))
     return row
 
 
@@ -235,6 +226,12 @@ def serialize_child_primary_plan(child, extra=None):
         "weekly_rate": extra.get("weekly_rate")
         or (f"{child.weekly_rate:.2f}" if child.weekly_rate is not None else ""),
         "is_primary": True,
+        "scholarship_fund_id": extra.get("scholarship_fund_id") or "",
+        "full_rate": extra.get("full_rate") or "",
+        "parent_amount": extra.get("parent_amount") or "",
+        "scholarship_name": extra.get("scholarship_name") or "",
+        "scholarship_discount": extra.get("scholarship_discount") or "",
+        "monthly_schedule": extra.get("monthly_schedule") or [],
     }
     return row
 
@@ -441,10 +438,83 @@ def _scholarship_is_active(row, on_date):
     return True
 
 
+_SCHOLARSHIP_PLAN_COLUMN = None
+
+
+def scholarship_billing_plan_column_exists():
+    """True when migration 0040 has added billing_plan_id.
+
+    Live can ship the multi-plan code before migrate; querying the FK then
+    500s the Plans tab. Callers skip the column until it exists.
+    """
+    global _SCHOLARSHIP_PLAN_COLUMN
+    if _SCHOLARSHIP_PLAN_COLUMN is not None:
+        return _SCHOLARSHIP_PLAN_COLUMN
+    table = PortalScholarshipAssignment._meta.db_table
+    try:
+        columns = {
+            col.name
+            for col in connection.introspection.get_table_description(connection.cursor(), table)
+        }
+        _SCHOLARSHIP_PLAN_COLUMN = "billing_plan_id" in columns
+    except Exception:
+        _SCHOLARSHIP_PLAN_COLUMN = False
+    return _SCHOLARSHIP_PLAN_COLUMN
+
+
+def scholarship_rows_for_child(child):
+    if not child:
+        return []
+    qs = child.scholarships.select_related("fund")
+    if scholarship_billing_plan_column_exists():
+        qs = qs.select_related("billing_plan")
+    else:
+        qs = qs.defer("billing_plan")
+    try:
+        return list(qs.all())
+    except Exception:
+        return []
+
+
+def scholarship_display_fields(assignment):
+    """Template-safe scholarship fields. Missing fund/amounts must not 500."""
+    empty = {
+        "scholarship_fund_id": "",
+        "full_rate": "",
+        "parent_amount": "",
+        "scholarship_name": "",
+        "scholarship_discount": "",
+    }
+    if not assignment:
+        return empty
+    full = assignment.full_rate or Decimal("0")
+    parent = assignment.parent_amount or Decimal("0")
+    try:
+        fund = assignment.fund
+    except Exception:
+        fund = None
+    discount = full - parent
+    return {
+        "scholarship_fund_id": assignment.fund_id or "",
+        "full_rate": f"{full:.2f}",
+        "parent_amount": f"{parent:.2f}",
+        "scholarship_name": fund.name if fund else "",
+        "scholarship_discount": f"{discount:.2f}",
+    }
+
+
+def _assignment_plan_id(row):
+    if not scholarship_billing_plan_column_exists():
+        return None
+    try:
+        return row.billing_plan_id
+    except Exception:
+        return None
+
+
 def active_scholarship_for_child(child, on_date=None):
     on_date = on_date or timezone.localdate()
-    assignments = child.scholarships.select_related("fund").all()
-    for row in assignments:
+    for row in scholarship_rows_for_child(child):
         if _scholarship_is_active(row, on_date):
             return row
     return None
@@ -466,11 +536,12 @@ def active_scholarship_for_plan(child, plan=None, on_date=None):
     else:
         is_primary = plan_row.sort_order == 1 or plan_row == primary_billing_plan(child)
     plan_id = plan_row.pk if plan_row else None
-    for row in child.scholarships.select_related("fund", "billing_plan").all():
+    for row in scholarship_rows_for_child(child):
         if not _scholarship_is_active(row, on_date):
             continue
-        if row.billing_plan_id:
-            if plan_id and row.billing_plan_id == plan_id:
+        assigned_plan_id = _assignment_plan_id(row)
+        if assigned_plan_id:
+            if plan_id and assigned_plan_id == plan_id:
                 return row
             continue
         if is_primary:
