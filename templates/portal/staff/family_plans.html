@@ -209,14 +209,14 @@
           <input type="hidden" name="action" value="update_plan">
           <input type="hidden" name="child_name" value="{{ child.name }}">
           {% if plan.id %}<input type="hidden" name="plan_id" value="{{ plan.id }}">{% endif %}
-          <input type="hidden" name="billing_plan" value="{{ plan.plan|default:child.plan|default:'Weekly' }}">
-          <input type="hidden" name="billing_type" value="{{ plan.billing_type|default:child.type|default:'Private pay' }}">
-          <input type="hidden" name="plan_description" value="{{ plan.description|default:child.description|default:'' }}">
-          <input type="hidden" name="next_charge_date" value="{{ plan.next_charge_date|default:child.next_charge_date|default:'' }}">
+          <input type="hidden" name="billing_plan" value="{% firstof plan.plan child.plan 'Weekly' %}">
+          <input type="hidden" name="billing_type" value="{% firstof plan.billing_type child.type 'Private pay' %}">
+          <input type="hidden" name="plan_description" value="{% firstof plan.description child.description %}">
+          <input type="hidden" name="next_charge_date" value="{% firstof plan.next_charge_date child.next_charge_date %}">
           <input type="hidden" name="charge_weekday" value="{{ plan.charge_weekday }}">
           <input type="hidden" name="charge_month_day" value="{{ plan.charge_month_day }}">
           {% if plan.auto_charge or child.auto_charge %}<input type="hidden" name="auto_charge" value="on">{% endif %}
-          {% with cadence=plan.plan|default:child.plan|default:'Weekly' %}
+          {% firstof plan.plan child.plan "Weekly" as cadence %}
           <div class="form-group portal-form-full">
             <label for="plan-card-amount-{{ child.child_id }}">{% if 'onth' in cadence %}Weekly rate ($){% elif 'i-' in cadence or 'Bi' in cadence %}Bi-weekly rate ($){% else %}Weekly rate ($){% endif %}</label>
             <input id="plan-card-amount-{{ child.child_id }}" name="billing_amount" type="text" class="portal-input" value="{% if child.weekly_rate %}{{ child.weekly_rate }}{% elif child.full_rate %}{{ child.full_rate }}{% elif plan.amount %}{{ plan.amount }}{% endif %}" placeholder="70.00">
@@ -226,7 +226,6 @@
             <p class="form-note">Full tuition for this plan before any scholarship.</p>
             {% endif %}
           </div>
-          {% endwith %}
           <div class="form-group portal-form-full">
             <label for="plan-card-scholarship-{{ child.child_id }}">Scholarship type</label>
             <select id="plan-card-scholarship-{{ child.child_id }}" name="scholarship_fund_id" class="portal-select">
@@ -268,7 +267,7 @@
               {% endfor %}
             </ul>
             {% endif %}
-            <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan-id="{{ plan.id }}" data-description="{{ plan.description }}" data-plan="{{ plan.plan|default:'Weekly' }}" data-amount="{{ plan.amount|default:'' }}" data-type="{{ plan.billing_type|default:child.type|default:'Private pay' }}" data-auto-charge="{% if plan.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ plan.next_charge_date|default:'' }}" data-weekday="{{ plan.charge_weekday }}" data-month-day="{{ plan.charge_month_day }}" data-scholarship-fund="{{ plan.scholarship_fund_id|default:'' }}" data-full-rate="{{ plan.full_rate|default:'' }}" data-parent-amount="{{ plan.parent_amount|default:'' }}"{% if not billing_live %} disabled{% endif %}>Edit</button>
+            <button type="button" class="btn btn-secondary btn-sm edit-plan-btn" data-child="{{ child.name }}" data-plan-id="{{ plan.id }}" data-description="{{ plan.description }}" data-plan="{% firstof plan.plan 'Weekly' %}" data-amount="{{ plan.amount|default:'' }}" data-type="{% firstof plan.billing_type child.type 'Private pay' %}" data-auto-charge="{% if plan.auto_charge %}1{% else %}0{% endif %}" data-next-charge="{{ plan.next_charge_date|default:'' }}" data-weekday="{{ plan.charge_weekday }}" data-month-day="{{ plan.charge_month_day }}" data-scholarship-fund="{{ plan.scholarship_fund_id|default:'' }}" data-full-rate="{{ plan.full_rate|default:'' }}" data-parent-amount="{{ plan.parent_amount|default:'' }}"{% if not billing_live %} disabled{% endif %}>Edit</button>
             {% if plan.id %}
             <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form" onsubmit="return confirm('Remove this plan?');">
               {% csrf_token %}
