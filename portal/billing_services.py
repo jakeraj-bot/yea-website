@@ -147,29 +147,25 @@ def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=
     Family-pays after scholarship uses the same ratio as weekly copay.
     """
     from .agency_weeks import (
-        billable_program_weeks,
+        configured_month_keys,
         format_week_label,
-        group_program_weeks_by_month,
         parse_money,
-        program_year_range,
         MONEY,
     )
 
-    from .agency_weeks import cc_week_numbers_for_spans, monthly_charge_name, numbered_weeks_for_month
+    from .agency_weeks import monthly_charge_name, numbered_weeks_for_month
 
     weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate or 0)
-    start, end = program_year_range(calendar, on_date=on_date)
-    weeks = billable_program_weeks(start, end, calendar)
     rows = []
-    for (year, month), month_weeks in sorted(group_program_weeks_by_month(weeks).items()):
+    for year, month in configured_month_keys(calendar, on_date=on_date):
         numbered = numbered_weeks_for_month(year, month, calendar=calendar)
-        count = len(numbered) if numbered else len(month_weeks)
+        if not numbered:
+            continue
+        count = len(numbered)
         numbers = [week.week_number for week in numbered if getattr(week, "week_number", None)]
-        if not numbers:
-            numbers = cc_week_numbers_for_spans(month_weeks, calendar=calendar)
         gross = (weekly * Decimal(count)).quantize(MONEY)
         family_pays, discount = parent_copay_after_scholarship(scholarship, gross)
-        week_labels = [format_week_label(week_start, week_end) for week_start, week_end in month_weeks]
+        week_labels = [format_week_label(week.week_start, week.week_end) for week in numbered]
         month_date = date(year, month, 1)
         charge_name = monthly_charge_name(month_date, numbers)
         cc_display = ", ".join(f"CC WK {n}" for n in numbers)

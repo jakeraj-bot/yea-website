@@ -447,6 +447,11 @@ urlpatterns = [
         name="portal_admin_program_week_save",
     ),
     path(
+        "admin/program-calendar/month/",
+        views_actions.admin_program_month_save,
+        name="portal_admin_program_month_save",
+    ),
+    path(
         "admin/account-balance/paid/",
         views_actions.account_balance_mark_paid,
         name="portal_account_balance_paid",

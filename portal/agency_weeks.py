@@ -115,15 +115,17 @@ def get_program_calendar():
     return PortalProgramCalendar.objects.create()
 
 
-def program_calendar_form(calendar=None, month=None):
+def program_calendar_form(calendar=None, month=None, tab=None):
     from calendar import Calendar as MonthCalendar
 
     from .attendance_calendar import parse_calendar_month, shift_month
 
     calendar = calendar or get_program_calendar()
     weeks = sync_program_weeks(calendar)
+    sync_program_months(calendar)
     fallback = calendar.program_start or timezone.localdate()
     month_start = parse_calendar_month(month, fallback)
+    tab_key = "months" if str(tab or "").strip().lower() == "months" else "weeks"
     days_off = date_set(calendar.days_off)
     half_days = date_set(calendar.half_days)
     by_date = {}
@@ -172,7 +174,7 @@ def program_calendar_form(calendar=None, month=None):
                 "span_overridden": week.span_overridden,
                 "in_view_month": week.week_start.month == month_start.month
                 or week.week_end.month == month_start.month
-                or friday_of_program_week(week.week_start, week.week_end).month == month_start.month,
+                or thursday_of_program_week(week.week_start, week.week_end).month == month_start.month,
             }
         )
     return {
@@ -180,6 +182,8 @@ def program_calendar_form(calendar=None, month=None):
         "days_off": format_date_list(calendar.days_off),
         "half_days": format_date_list(calendar.half_days),
         "weeks": week_rows,
+        "months": program_month_rows(calendar),
+        "tab": tab_key,
         "grid": grid,
         "month_start": month_start,
         "month_value": month_start.strftime("%Y-%m"),
@@ -198,6 +202,7 @@ def save_program_calendar(data):
     calendar.half_days = iso_date_list(parse_date_list(data.get("half_days")))
     calendar.save()
     sync_program_weeks(calendar)
+    sync_program_months(calendar)
     apply_program_calendar_to_profiles()
     return calendar
 
@@ -251,7 +256,9 @@ def sync_program_weeks(calendar=None):
             row.week_number = next_number
             row.save(update_fields=["week_number"])
         next_number += 1
-    return list(calendar.weeks.order_by("week_start", "pk"))
+    weeks = list(calendar.weeks.order_by("week_start", "pk"))
+    sync_program_months(calendar)
+    return weeks
 
 
 def listed_program_weeks(calendar=None):
@@ -296,7 +303,292 @@ def save_program_week_override(data):
         week.week_end = end
         week.span_overridden = True
     week.save()
+    sync_program_months(week.calendar)
     return week
+
+
+def parse_week_number_list(raw):
+    numbers = []
+    text = str(raw or "").replace(",", " ").replace(";", " ")
+    for part in text.split():
+        token = part.strip().upper().replace("WK", "").replace("CC", "")
+        token = token.replace("#", "").strip()
+        if not token:
+            continue
+        try:
+            number = int(token)
+        except (TypeError, ValueError):
+            raise ValueError(f"Could not read week number: {part}")
+        if number < 1:
+            raise ValueError("Week numbers start at 1.")
+        if number not in numbers:
+            numbers.append(number)
+    return numbers
+
+
+def parse_month_key(data):
+    raw = str(data.get("month_key") or data.get("month") or "").strip()
+    if raw:
+        try:
+            year_text, month_text = raw.split("-", 1)
+            year, month = int(year_text), int(month_text)
+        except (TypeError, ValueError):
+            raise ValueError("Choose a month to edit.")
+    else:
+        try:
+            year = int(str(data.get("year") or "").strip())
+            month = int(str(data.get("month_number") or data.get("month") or "").strip())
+        except (TypeError, ValueError):
+            raise ValueError("Choose a month to edit.")
+    if month < 1 or month > 12:
+        raise ValueError("Month must be between 1 and 12.")
+    if year < 2000 or year > 2100:
+        raise ValueError("Enter a valid year.")
+    return year, month
+
+
+def extend_or_trim_week_numbers(default_numbers, count):
+    cleaned = [int(n) for n in default_numbers or [] if n]
+    if count <= 0:
+        return []
+    if count <= len(cleaned):
+        return cleaned[:count]
+    last = cleaned[-1] if cleaned else 0
+    extra = list(range(last + 1, last + 1 + (count - len(cleaned))))
+    return cleaned + extra
+
+
+def _week_stub(week_start, week_end, number, pk=None):
+    return type(
+        "Week",
+        (),
+        {
+            "week_start": week_start,
+            "week_end": week_end,
+            "week_number": number,
+            "pk": pk,
+        },
+    )()
+
+
+def _match_stored_week(stored, week_start, week_end=None, calendar=None):
+    for week in stored:
+        if week.week_start == week_start or (
+            week.week_start <= week_start <= week.week_end
+        ):
+            return week
+    number = cc_week_number_for_span(week_start, week_end, calendar=calendar)
+    if number:
+        for week in stored:
+            if week.week_number == number:
+                return week
+    return None
+
+
+def default_month_week_map(calendar=None):
+    """Thursday-owned billable weeks, keyed by (year, month)."""
+    calendar = calendar or get_program_calendar()
+    stored = list(calendar.weeks.order_by("week_start", "pk"))
+    groups = {}
+    for week_start, week_end in billable_program_weeks(calendar=calendar):
+        match = _match_stored_week(stored, week_start, week_end, calendar)
+        number = match.week_number if match else cc_week_number_for_span(
+            week_start, week_end, calendar=calendar
+        )
+        thursday = thursday_of_program_week(week_start, week_end)
+        key = (thursday.year, thursday.month)
+        groups.setdefault(key, []).append(
+            _week_stub(week_start, week_end, number, pk=getattr(match, "pk", None))
+        )
+    return groups
+
+
+def overridden_month_rows(calendar=None):
+    calendar = calendar or get_program_calendar()
+    return {
+        (row.year, row.month): row
+        for row in calendar.months.filter(overridden=True)
+    }
+
+
+def claimed_week_numbers(calendar=None):
+    claimed = {}
+    for key, row in overridden_month_rows(calendar).items():
+        for number in row.week_numbers or []:
+            if number:
+                claimed[int(number)] = key
+    return claimed
+
+
+def configured_month_keys(calendar=None, on_date=None):
+    calendar = calendar or get_program_calendar()
+    keys = set(default_month_week_map(calendar))
+    for row in calendar.months.all():
+        keys.add((row.year, row.month))
+    start, end = program_year_range(calendar, on_date=on_date)
+    window_start = date(start.year, start.month, 1)
+    window_end = date(end.year, end.month, 1)
+    return [
+        key
+        for key in sorted(keys)
+        if window_start <= date(key[0], key[1], 1) <= window_end
+    ]
+
+
+def effective_week_numbers_for_month(year, month, calendar=None):
+    calendar = calendar or get_program_calendar()
+    row = calendar.months.filter(year=year, month=month).first()
+    if row and row.overridden:
+        return [int(n) for n in (row.week_numbers or []) if n]
+    claimed = claimed_week_numbers(calendar)
+    numbers = []
+    for week in default_month_week_map(calendar).get((year, month), []):
+        number = week.week_number
+        owner = claimed.get(number)
+        if number and owner not in (None, (year, month)):
+            continue
+        if number and number not in numbers:
+            numbers.append(number)
+    return numbers
+
+
+def month_key_for_span(week_start, week_end, calendar=None):
+    """Month that bills this week: override first, else that week's Thursday."""
+    calendar = calendar or get_program_calendar()
+    number = cc_week_number_for_span(week_start, week_end, calendar=calendar)
+    if number:
+        claimed = claimed_week_numbers(calendar)
+        if number in claimed:
+            return claimed[number]
+        for key in configured_month_keys(calendar):
+            row = calendar.months.filter(year=key[0], month=key[1], overridden=True).first()
+            if row and number in [int(n) for n in (row.week_numbers or []) if n]:
+                return key
+    thursday = thursday_of_program_week(week_start, week_end)
+    return (thursday.year, thursday.month)
+
+
+def sync_program_months(calendar=None):
+    """Fill month rows from the Thursday rule without wiping overrides."""
+    from .models import PortalProgramMonth
+
+    calendar = calendar or get_program_calendar()
+    defaults = default_month_week_map(calendar)
+    keep_ids = []
+    for (year, month), weeks in defaults.items():
+        numbers = [week.week_number for week in weeks if week.week_number]
+        row, _created = PortalProgramMonth.objects.get_or_create(
+            calendar=calendar,
+            year=year,
+            month=month,
+            defaults={"week_numbers": numbers, "overridden": False},
+        )
+        if not row.overridden and list(row.week_numbers or []) != numbers:
+            row.week_numbers = numbers
+            row.save(update_fields=["week_numbers"])
+        keep_ids.append(row.pk)
+    for row in calendar.months.filter(overridden=True):
+        if row.pk not in keep_ids:
+            keep_ids.append(row.pk)
+    calendar.months.exclude(pk__in=keep_ids).filter(overridden=False).delete()
+    return list(calendar.months.order_by("year", "month", "pk"))
+
+
+def save_program_month_override(data):
+    from .models import PortalProgramMonth
+
+    calendar = get_program_calendar()
+    year, month = parse_month_key(data)
+    defaults = default_month_week_map(calendar)
+    default_numbers = [
+        week.week_number for week in defaults.get((year, month), []) if week.week_number
+    ]
+    row, _created = PortalProgramMonth.objects.get_or_create(
+        calendar=calendar,
+        year=year,
+        month=month,
+        defaults={"week_numbers": default_numbers, "overridden": False},
+    )
+    reset = str(data.get("reset") or "").strip().lower() in ("1", "on", "true", "yes")
+    if reset:
+        row.week_numbers = default_numbers
+        row.overridden = False
+        row.save(update_fields=["week_numbers", "overridden"])
+        return row
+    numbers = parse_week_number_list(data.get("week_numbers"))
+    count_raw = str(data.get("week_count") or "").strip()
+    count = None
+    if count_raw:
+        try:
+            count = int(count_raw)
+        except (TypeError, ValueError):
+            raise ValueError("Enter a week count such as 4 or 5.")
+        if count < 0 or count > 8:
+            raise ValueError("Enter a week count from 0 to 8.")
+    stored = [int(n) for n in (row.week_numbers or []) if n]
+    if numbers and numbers != stored and numbers != default_numbers:
+        chosen = numbers
+    elif count is not None and count != len(stored or default_numbers):
+        base = numbers or stored or default_numbers
+        chosen = extend_or_trim_week_numbers(base, count)
+    elif numbers:
+        chosen = numbers
+    elif count is not None:
+        chosen = extend_or_trim_week_numbers(default_numbers, count)
+    else:
+        raise ValueError("Enter the week numbers or a week count for this month.")
+    row.week_numbers = chosen
+    row.overridden = chosen != default_numbers
+    row.save(update_fields=["week_numbers", "overridden"])
+    return row
+
+
+def program_month_rows(calendar=None):
+    calendar = calendar or get_program_calendar()
+    sync_program_months(calendar)
+    stored = list(calendar.weeks.order_by("week_start", "pk"))
+    by_number = {}
+    for week in stored:
+        by_number.setdefault(week.week_number, week)
+    defaults = default_month_week_map(calendar)
+    rows = []
+    for year, month in configured_month_keys(calendar):
+        default_weeks = defaults.get((year, month), [])
+        default_numbers = [week.week_number for week in default_weeks if week.week_number]
+        numbers = effective_week_numbers_for_month(year, month, calendar)
+        month_date = date(year, month, 1)
+        thursdays = []
+        labels = []
+        for number in numbers:
+            week = by_number.get(number)
+            if week is None:
+                continue
+            thursday = thursday_of_program_week(week.week_start, week.week_end)
+            thursdays.append(f"{thursday.month}/{thursday.day}/{thursday.year}")
+            labels.append(f"CC WK {number} ({format_week_label(week.week_start, week.week_end)})")
+        row = calendar.months.filter(year=year, month=month).first()
+        rows.append(
+            {
+                "id": getattr(row, "pk", None),
+                "year": year,
+                "month": month,
+                "month_key": f"{year:04d}-{month:02d}",
+                "label": month_date.strftime("%B %Y"),
+                "default_week_numbers": default_numbers,
+                "default_week_count": len(default_numbers),
+                "default_labels": ", ".join(f"CC WK {n}" for n in default_numbers),
+                "week_numbers": numbers,
+                "week_numbers_display": ", ".join(str(n) for n in numbers),
+                "week_count": len(numbers),
+                "overridden": bool(row and row.overridden),
+                "charge_name": monthly_charge_name(month_date, numbers),
+                "thursdays": thursdays,
+                "thursdays_display": ", ".join(thursdays),
+                "week_labels": labels,
+                "week_labels_display": " · ".join(labels),
+            }
+        )
+    return rows
 
 
 def cc_week_label(number):
@@ -401,40 +693,31 @@ def automatic_charge_name(cadence, kind="tuition", week_numbers=None, month_date
 
 
 def numbered_weeks_for_month(year, month, calendar=None):
-    """Program weeks billed in this month (Friday ownership), with CC numbers.
+    """Program weeks billed in this month (configured / Thursday ownership).
 
-    Membership comes from live billable weeks so a newly saved day off is
-    dropped even if stored CC week rows have not been rebuilt yet. Numbers
-    still come from the calendar week list / overrides.
+    Defaults come from the Thursday of each CC week. A saved month override
+    replaces that list so monthly preview and posting are not hardcoded to 5.
     """
     calendar = calendar or get_program_calendar()
-    groups = group_program_weeks_by_month(calendar=calendar)
-    spans = groups.get((year, month), [])
+    numbers = effective_week_numbers_for_month(year, month, calendar)
     stored = list(calendar.weeks.order_by("week_start", "pk"))
+    by_number = {}
+    for week in stored:
+        by_number.setdefault(week.week_number, week)
+    generated = billable_program_weeks(calendar=calendar)
+    generated_by_index = {
+        index: (week_start, week_end)
+        for index, (week_start, week_end) in enumerate(generated, start=1)
+    }
     rows = []
-    for week_start, week_end in spans:
-        match = None
-        for week in stored:
-            if week.week_start == week_start or (
-                week.week_start <= week_start <= week.week_end
-            ):
-                match = week
-                break
-        number = match.week_number if match else cc_week_number_for_span(
-            week_start, week_end, calendar=calendar
-        )
-        rows.append(
-            type(
-                "Week",
-                (),
-                {
-                    "week_start": week_start,
-                    "week_end": week_end,
-                    "week_number": number,
-                    "pk": getattr(match, "pk", None),
-                },
-            )()
-        )
+    for number in numbers:
+        match = by_number.get(number)
+        if match:
+            rows.append(match)
+            continue
+        span = generated_by_index.get(number)
+        if span:
+            rows.append(_week_stub(span[0], span[1], number))
     return rows
 
 
@@ -568,10 +851,23 @@ def program_year_range(calendar=None, on_date=None):
     return start, end
 
 
-def friday_of_program_week(week_start, week_end=None):
-    """Friday that decides which month a program week is billed in.
+def thursday_of_program_week(week_start, week_end=None):
+    """Thursday that decides which month a program week is billed in.
 
-    9/28/2026–10/2/2026 has Friday 10/2, so it is October week 1.
+    9/28/2026–10/2/2026 has Thursday 10/1, so it is October, not September.
+    A week whose Thursday is still in September stays September.
+    """
+    if week_end is not None and week_end.weekday() == 3:
+        return week_end
+    monday = week_start - timedelta(days=week_start.weekday())
+    return monday + timedelta(days=3)
+
+
+def friday_of_program_week(week_start, week_end=None):
+    """Wrong path: Friday-owned month. Kept to document why Thursday is used.
+
+    4/27/2026–5/1/2026 has Friday 5/1 (May) but Thursday 4/30 (April).
+    9/28/2026–10/2/2026 agrees on October either way (Thu 10/1, Fri 10/2).
     """
     if week_end is not None and week_end.weekday() == 4:
         return week_end
@@ -597,18 +893,36 @@ def billable_program_weeks(start=None, end=None, calendar=None):
 
 
 def group_program_weeks_by_month(weeks=None, calendar=None):
-    """A week belongs to the month of its Friday."""
-    if weeks is None:
-        weeks = billable_program_weeks(calendar=calendar)
+    """A week belongs to its configured month, else the month of its Thursday."""
+    calendar = calendar or get_program_calendar()
     groups = {}
+    if weeks is None:
+        for year, month in configured_month_keys(calendar):
+            for week in numbered_weeks_for_month(year, month, calendar=calendar):
+                groups.setdefault((year, month), []).append((week.week_start, week.week_end))
+        return groups
     for week_start, week_end in weeks:
-        friday = friday_of_program_week(week_start, week_end)
-        key = (friday.year, friday.month)
+        key = month_key_for_span(week_start, week_end, calendar)
         groups.setdefault(key, []).append((week_start, week_end))
     return groups
 
 
+def friday_owned_week_count(year, month, calendar=None):
+    """Wrong path: count weeks by Friday instead of Thursday / month config."""
+    weeks = billable_program_weeks(calendar=calendar)
+    return len(
+        [
+            1
+            for start, end in weeks
+            if friday_of_program_week(start, end).year == year
+            and friday_of_program_week(start, end).month == month
+        ]
+    )
+
+
 def billable_week_count_for_month(year, month, calendar=None, weeks=None):
+    if weeks is None:
+        return len(effective_week_numbers_for_month(year, month, calendar))
     groups = group_program_weeks_by_month(weeks=weeks, calendar=calendar)
     return len(groups.get((year, month), []))
 
@@ -616,8 +930,8 @@ def billable_week_count_for_month(year, month, calendar=None, weeks=None):
 def monthly_charge_for_date(weekly_rate, charge_date, calendar=None, weeks=None):
     """Return (amount, week_count) for the month that contains charge_date.
 
-    Weeks are owned by the month of their Friday, so 9/28/2026–10/2/2026
-    counts in October. A Monday-only count would drop that week.
+    Weeks are owned by the month of their Thursday, so 9/28/2026–10/2/2026
+    counts in October. A month override replaces that default list.
     """
     if weeks is None:
         details = monthly_charge_details(weekly_rate, charge_date, calendar=calendar)
@@ -644,23 +958,16 @@ def group_weeks_for_cadence(weeks, plan):
     if not rows:
         return []
     if key == "monthly":
-        groups = []
-        bucket = []
-        current = None
+        buckets = []
+        index = {}
+        calendar = get_program_calendar()
         for week in rows:
-            friday = friday_of_program_week(week.week_start, week.week_end)
-            month_key = (friday.year, friday.month)
-            if current is None:
-                current = month_key
-            if month_key != current:
-                groups.append(bucket)
-                bucket = [week]
-                current = month_key
-            else:
-                bucket.append(week)
-        if bucket:
-            groups.append(bucket)
-        return groups
+            month_key = month_key_for_span(week.week_start, week.week_end, calendar)
+            if month_key not in index:
+                index[month_key] = []
+                buckets.append(index[month_key])
+            index[month_key].append(week)
+        return buckets
     if key == "biweekly":
         return [rows[i : i + 2] for i in range(0, len(rows), 2)]
     return [[week] for week in rows]
@@ -799,14 +1106,15 @@ def parent_charge_periods(profile, plan, start_from=None):
     for group in group_weeks_for_cadence(weeks, plan):
         start, end = _period_dates(group, calendar)
         month_label = ""
-        friday = None
+        month_date = start
         if monthly and group:
-            friday = friday_of_program_week(group[0].week_start, group[0].week_end)
-            month_label = friday.strftime("%B %Y")
+            year, month = month_key_for_span(group[0].week_start, group[0].week_end, calendar)
+            month_date = date(year, month, 1)
+            month_label = month_date.strftime("%B %Y")
         numbers = cc_week_numbers_for_spans(group, calendar=calendar)
         date_label = format_week_label(start, end)
         if monthly:
-            label = monthly_charge_name(friday or start, numbers)
+            label = monthly_charge_name(month_date, numbers)
             if date_label:
                 label = f"{label} ({date_label})"
         elif cadence_key(plan) == "biweekly":
@@ -870,9 +1178,11 @@ def next_unposted_parent_period(profile, plan):
         if remaining:
             rebuilt = _period_from_remaining_weeks(remaining, calendar)
             if cadence_key(plan) == "monthly":
-                friday = friday_of_program_week(remaining[0].week_start, remaining[0].week_end)
+                year, month = month_key_for_span(
+                    remaining[0].week_start, remaining[0].week_end, calendar
+                )
                 numbers = cc_week_numbers_for_spans(remaining, calendar=calendar)
-                rebuilt["label"] = monthly_charge_name(friday, numbers)
+                rebuilt["label"] = monthly_charge_name(date(year, month, 1), numbers)
                 rebuilt["week_numbers"] = numbers
                 date_label = format_week_label(rebuilt["start"], rebuilt["end"])
                 if date_label:

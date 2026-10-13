@@ -6276,3 +6276,26 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   }
 }
 
+.portal-program-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.portal-program-month-edit {
+  display: none;
+}
+
+.portal-program-month-weeks {
+  min-width: 10rem;
+}
+
+.portal-program-month-count {
+  width: 4.5rem;
+}
+
+.portal-program-month-card .is-overridden strong {
+  color: #1f5c45;
+}
+

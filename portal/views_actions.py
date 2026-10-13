@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -1009,9 +1011,15 @@ def admin_program_calendar_save(request):
     from .agency_weeks import save_program_calendar
 
     month = (request.POST.get("month") or "").strip()
+    tab = (request.POST.get("tab") or "").strip()
     next_url = reverse("portal_admin_page", kwargs={"page": "program-calendar"})
+    query = []
     if month:
-        next_url = f"{next_url}?month={month}"
+        query.append(f"month={month}")
+    if tab:
+        query.append(f"tab={tab}")
+    if query:
+        next_url = f"{next_url}?{'&'.join(query)}"
     if not _admin_needs_live(request):
         return redirect(next_url)
     try:
@@ -1029,9 +1037,15 @@ def admin_program_week_save(request):
     from .agency_weeks import save_program_week_override
 
     month = (request.POST.get("month") or "").strip()
+    tab = (request.POST.get("tab") or "").strip()
     next_url = reverse("portal_admin_page", kwargs={"page": "program-calendar"})
+    query = []
     if month:
-        next_url = f"{next_url}?month={month}"
+        query.append(f"month={month}")
+    if tab:
+        query.append(f"tab={tab}")
+    if query:
+        next_url = f"{next_url}?{'&'.join(query)}"
     if not _admin_needs_live(request):
         return redirect(next_url)
     try:
@@ -1043,6 +1057,38 @@ def admin_program_week_save(request):
             action_label="Saved program week",
             object_type="calendar",
             object_label=f"CC WK {week.week_number}",
+        )
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect(next_url)
+
+
+@admin_login_required_post
+@require_POST
+def admin_program_month_save(request):
+    from .agency_weeks import save_program_month_override
+
+    month = (request.POST.get("view_month") or request.POST.get("month") or "").strip()
+    next_url = reverse("portal_admin_page", kwargs={"page": "program-calendar"})
+    query = ["tab=months"]
+    if month and "-" in month:
+        query.insert(0, f"month={month}")
+    next_url = f"{next_url}?{'&'.join(query)}"
+    if not _admin_needs_live(request):
+        return redirect(next_url)
+    try:
+        row = save_program_month_override(request.POST)
+        label = date(row.year, row.month, 1).strftime("%B %Y")
+        if row.overridden:
+            messages.success(request, f"Saved {label} · {len(row.week_numbers or [])} weeks.")
+        else:
+            messages.success(request, f"Restored {label} to Thursday weeks.")
+        _log_activity(
+            request,
+            "save",
+            action_label="Saved program month",
+            object_type="calendar",
+            object_label=label,
         )
     except Exception as exc:
         messages.error(request, str(exc))
