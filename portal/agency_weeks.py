@@ -115,12 +115,78 @@ def get_program_calendar():
     return PortalProgramCalendar.objects.create()
 
 
-def program_calendar_form(calendar=None):
+def program_calendar_form(calendar=None, month=None):
+    from calendar import Calendar as MonthCalendar
+
+    from .attendance_calendar import parse_calendar_month, shift_month
+
     calendar = calendar or get_program_calendar()
+    weeks = sync_program_weeks(calendar)
+    fallback = calendar.program_start or timezone.localdate()
+    month_start = parse_calendar_month(month, fallback)
+    days_off = date_set(calendar.days_off)
+    half_days = date_set(calendar.half_days)
+    by_date = {}
+    for week in weeks:
+        cursor = week.week_start
+        while cursor <= week.week_end:
+            by_date[cursor] = week
+            cursor += timedelta(days=1)
+    grid = []
+    for week_days in MonthCalendar(firstweekday=0).monthdatescalendar(month_start.year, month_start.month):
+        mon_fri = week_days[:5]
+        week_obj = None
+        for day in mon_fri:
+            week_obj = by_date.get(day)
+            if week_obj:
+                break
+        grid.append(
+            {
+                "cc_label": f"CC WK {week_obj.week_number}" if week_obj else "",
+                "week_number": week_obj.week_number if week_obj else None,
+                "days": [
+                    {
+                        "date": day,
+                        "iso": day.isoformat(),
+                        "day_num": day.day,
+                        "in_month": day.month == month_start.month,
+                        "off": day in days_off,
+                        "half": day in half_days,
+                        "cc_label": f"CC WK {by_date[day].week_number}" if day in by_date else "",
+                    }
+                    for day in week_days
+                ],
+            }
+        )
+    week_rows = []
+    for week in weeks:
+        week_rows.append(
+            {
+                "id": week.pk,
+                "week_start": week.week_start.isoformat(),
+                "week_end": week.week_end.isoformat(),
+                "week_number": week.week_number,
+                "cc_label": f"CC WK {week.week_number}",
+                "label": format_week_label(week.week_start, week.week_end),
+                "number_overridden": week.number_overridden,
+                "span_overridden": week.span_overridden,
+                "in_view_month": week.week_start.month == month_start.month
+                or week.week_end.month == month_start.month
+                or friday_of_program_week(week.week_start, week.week_end).month == month_start.month,
+            }
+        )
     return {
         "program_start": calendar.program_start.isoformat() if calendar.program_start else "",
         "days_off": format_date_list(calendar.days_off),
         "half_days": format_date_list(calendar.half_days),
+        "weeks": week_rows,
+        "grid": grid,
+        "month_start": month_start,
+        "month_value": month_start.strftime("%Y-%m"),
+        "month_label": month_start.strftime("%B %Y"),
+        "prev_month": shift_month(month_start, -1).strftime("%Y-%m"),
+        "next_month": shift_month(month_start, 1).strftime("%Y-%m"),
+        "weekday_headers": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
     }
 
 
@@ -131,6 +197,7 @@ def save_program_calendar(data):
     calendar.days_off = iso_date_list(parse_date_list(data.get("days_off")))
     calendar.half_days = iso_date_list(parse_date_list(data.get("half_days")))
     calendar.save()
+    sync_program_weeks(calendar)
     apply_program_calendar_to_profiles()
     return calendar
 
