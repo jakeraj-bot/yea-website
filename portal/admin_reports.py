@@ -678,6 +678,8 @@ def _ledger_paid_for_child(entries, child_name):
 
 
 def _account_balance_description(child, unpaid, paid_total, balance):
+    if balance < 0:
+        return "Credit"
     if balance <= 0:
         if paid_total > 0:
             return "Paid"
@@ -771,6 +773,8 @@ def balance_report_rows(filters=None):
         if owes == "yes" and balance <= 0:
             continue
         if owes == "no" and balance > 0:
+            continue
+        if owes == "credit" and balance >= 0:
             continue
         entries = entries_by_family.get(child.family_id, [])
         named = [
@@ -1052,7 +1056,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Account Balance",
-        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, paid, and notes. Active members stay on the list even at $0. Unapproved applications are left off. Use Unit and Active to match the School 18 printout. Stripe card fees do not count as still owed.",
+        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, paid, and notes. Choose Unit (School 18 / School 26 / All), Members (Active / Inactive / All), and Balance (With balance / Without balance / Credit / All). Active including $0 is the default roster; With balance is outstanding only. Unapproved applications are left off. Stripe card fees do not count as still owed.",
         "columns": [
             ("row_num", "#"),
             ("child", "Child's Name"),
@@ -1276,6 +1280,15 @@ def build_admin_report(slug, filters=None):
         extra["report_date"] = data.get("report_date")
         extra["print_title"] = "Balance Report"
         extra["print_header"] = True
+        extra["status_choices"] = [
+            ("Active", "Active"),
+            ("Inactive", "Inactive"),
+        ]
+        extra["owes_choices"] = [
+            ("yes", "With balance"),
+            ("no", "Without balance"),
+            ("credit", "Credit"),
+        ]
         from .family_list import unit_balance_summary
 
         extra["unit_balances"] = unit_balance_summary()

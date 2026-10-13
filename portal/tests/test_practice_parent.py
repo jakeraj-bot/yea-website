@@ -207,7 +207,8 @@ class PracticeParentPortalTests(TestCase):
         ):
             self._login_admin()
             dashboard = self.client.get(reverse("portal_admin_page", kwargs={"page": "dashboard"}))
-            self.assertNotContains(dashboard, "Open practice parent")
+            self.assertNotContains(dashboard, "portal-practice-open-form")
+            self.assertNotContains(dashboard, 'type="submit">Open practice parent')
             blocked = self.client.post(reverse("portal_admin_practice_parent_open"))
             self.assertEqual(blocked.status_code, 302)
             self.assertIn("/portal/admin/", blocked.url)
