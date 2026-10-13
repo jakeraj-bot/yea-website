@@ -21,6 +21,18 @@ from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
 
 
+def _approval_email():
+    """Approve can also post a first-week charge, which sends its own notice."""
+    for sent in mail.outbox:
+        body = sent.body or ""
+        if "Amount due to start" in body or "The membership fee to start" in body or "can start on" in body:
+            return sent
+    raise AssertionError(
+        "No approval email in outbox; subjects were "
+        + repr([sent.subject for sent in mail.outbox])
+    )
+
+
 class ApplicationEmailTemplateTests(TestCase):
     def setUp(self):
         self.unit = PortalUnit.objects.create(
@@ -150,8 +162,8 @@ class ApplicationEmailTemplateTests(TestCase):
             membership_amount=Decimal("20.00"),
             plan=plan,
         )
-        self.assertEqual(len(mail.outbox), 1)
-        body = mail.outbox[0].body
+        self.assertGreaterEqual(len(mail.outbox), 1)
+        body = _approval_email().body
         self.assertIn("Amount due to start: $90.00", body)
         self.assertIn("$20.00 membership fee", body)
         self.assertIn("$70.00 weekly tuition", body)
@@ -220,7 +232,7 @@ class ApplicationEmailTemplateTests(TestCase):
             membership_amount=Decimal("20.00"),
             plan=plan,
         )
-        body = mail.outbox[0].body
+        body = _approval_email().body
         self.assertIn("Amount due to start: $46.50", body)
         self.assertIn("$26.50 weekly parent copay", body)
         self.assertIn("jakeraj@yeanj.org", body)
@@ -340,9 +352,10 @@ class ApplicationEmailAdminViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         app.refresh_from_db()
         self.assertEqual(app.status, "approved")
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Amount due to start: $90.00", mail.outbox[0].body)
-        self.assertIn("$70.00 weekly tuition", mail.outbox[0].body)
+        self.assertGreaterEqual(len(mail.outbox), 1)
+        body = _approval_email().body
+        self.assertIn("Amount due to start: $90.00", body)
+        self.assertIn("$70.00 weekly tuition", body)
         child = PortalChild.objects.get(family=self.family, name="Ada Lee")
         self.assertEqual(child.billing_plan, "Weekly")
         self.assertEqual(child.billing_amount, Decimal("70.00"))
