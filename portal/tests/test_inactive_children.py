@@ -234,7 +234,8 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         pending.save(update_fields=["student_first_name", "student_last_name"])
         self.maya.is_active = False
         self.maya.save(update_fields=["is_active"])
-        self.assertEqual(self._child_names(get_admin_families_live(), "jacobs"), ["Jordan Jacobs", "Noah Jacobs"])
+        self.assertEqual(self._child_names(get_admin_families_live(), "jacobs"), ["Jordan Jacobs"])
+        self.assertNotIn("Noah Jacobs", self._child_names(get_admin_families_live(), "jacobs"))
         self.assertEqual(self._child_names(get_admin_families_live(inactive=True), "jacobs"), ["Maya Jacobs"])
 
     @override_settings(PORTAL_PREVIEW_MODE=False)

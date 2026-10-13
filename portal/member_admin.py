@@ -612,7 +612,7 @@ def applications_without_accounts():
 
 
 def families_without_parent_login():
-    from .family_list import is_waitlist_only_household
+    from .family_list import is_unapproved_only_household
 
     families = (
         PortalFamily.objects.filter(parent_account__isnull=True)
@@ -623,7 +623,7 @@ def families_without_parent_login():
     visible = []
     for family in families:
         children = [child for child in family.children.all() if child.is_active]
-        if is_waitlist_only_household(family.enrollment_applications.all(), children):
+        if is_unapproved_only_household(family.enrollment_applications.all(), children):
             continue
         visible.append(family)
     return visible

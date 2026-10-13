@@ -280,7 +280,7 @@ class MemberInformationReportTests(TestCase):
         self.assertEqual(jordan["four_cs"], "No")
         self.assertIn(PROGRAM_AFTER_CARE, jordan["program_types"])
         self.assertIn(PROGRAM_DROP_IN, rows["Ethan Chen"]["program_types"])
-        self.assertIn(PROGRAM_BEFORE_CARE, rows["Mina Lee"]["program_types"])
+        self.assertNotIn("Mina Lee", rows)
         sofia = rows["Sofia Martinez"]
         self.assertEqual(sofia["four_cs"], "Yes")
         self.assertEqual(sofia["four_cs_agency"], "Passaic County 4Cs")
@@ -296,10 +296,10 @@ class MemberInformationReportTests(TestCase):
     def test_each_column_filter(self):
         rows = member_information_rows(unit=self.school_18)
         names = lambda filtered: {row["child"] for row in filtered}
-        self.assertEqual(names(filter_member_information_rows(rows, {"school": "Riverside School"})), {"Mina Lee", "An Nguyen"})
+        self.assertEqual(names(filter_member_information_rows(rows, {"school": "Riverside School"})), {"An Nguyen"})
         self.assertEqual(names(filter_member_information_rows(rows, {"grade": "4th"})), {"Jordan Jacobs"})
         self.assertEqual(names(filter_member_information_rows(rows, {"program": PROGRAM_DROP_IN})), {"Ethan Chen"})
-        self.assertEqual(names(filter_member_information_rows(rows, {"program": PROGRAM_BEFORE_CARE})), {"Mina Lee"})
+        self.assertEqual(names(filter_member_information_rows(rows, {"program": PROGRAM_BEFORE_CARE})), set())
         after_care = names(filter_member_information_rows(rows, {"program": PROGRAM_AFTER_CARE}))
         self.assertIn("Jordan Jacobs", after_care)
         self.assertIn("Sofia Martinez", after_care)
@@ -337,8 +337,8 @@ class MemberInformationReportTests(TestCase):
         html = staff.content.decode()
         self.assertLess(html.index("An Nguyen"), html.index("Ethan Chen"))
         self.assertLess(html.index("Ethan Chen"), html.index("Jordan Jacobs"))
-        self.assertLess(html.index("Jordan Jacobs"), html.index("Mina Lee"))
-        self.assertLess(html.index("Mina Lee"), html.index("Sofia Martinez"))
+        self.assertLess(html.index("Jordan Jacobs"), html.index("Sofia Martinez"))
+        self.assertNotIn("Mina Lee", html)
         hub = self.client.get(reverse("portal_staff_page", kwargs={"page": "reports"}))
         self.assertContains(hub, reverse("portal_staff_member_information_report"))
 

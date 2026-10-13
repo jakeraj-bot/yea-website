@@ -274,7 +274,9 @@ def _build_row(child, profile, apps):
 
 def four_cs_payout_rows(*, unit=None, admin=False):
     """One row per 4Cs member. Staff pass unit to scope to that site."""
-    children = PortalChild.objects.select_related("family", "family__unit", "unit").prefetch_related(
+    from .enrollment_counts import visible_member_children_qs
+
+    children = visible_member_children_qs(active_only=False).prefetch_related(
         "billing_plans", "scholarships__fund", "family__enrollment_applications"
     )
     if not admin:

@@ -9,7 +9,7 @@ from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import displayed_payment_plan
 
 from .member_admin import is_placeholder_unit
-from .models import PortalAgencyProfile, PortalChild, PortalUnit
+from .models import PortalAgencyProfile, PortalUnit
 from .unit_visibility import children_for_unit, unit_label_for_child
 
 PROGRAM_AFTER_CARE = "After-Care"
@@ -225,10 +225,12 @@ def member_information_rows(*, unit=None):
 
     Default filters hide them unless Status is Inactive or All. Pass unit to scope to that site (staff).
     """
+    from .enrollment_counts import visible_member_children_qs
+
     if unit:
         children = children_for_unit(unit, active_only=False)
     else:
-        children = PortalChild.objects.select_related("family", "family__unit", "unit")
+        children = visible_member_children_qs(active_only=False)
     children = children.order_by("name", "family__name")
     child_list = list(children)
     if not child_list:
