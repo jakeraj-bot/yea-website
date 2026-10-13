@@ -1,8 +1,8 @@
 """One enrollment count for dashboard, units, programs, and reports.
 
 Enrolled means an active child at their own program site who is approved
-or already on the roster. Waitlist-only children are not enrolled, even
-when a sibling in the same household is approved.
+or already on the roster. Waitlist-only and other unapproved children are
+not enrolled, even when a sibling in the same household is approved.
 """
 
 from django.db.models import Exists, OuterRef, Q, Value
@@ -30,7 +30,35 @@ def _apps_for_child(*, statuses=None):
     )
     if statuses is not None:
         return qs.filter(status__in=statuses)
-    return qs.exclude(status="declined")
+    return qs
+
+
+def annotate_visible_members(qs):
+    """Keep roster kids with no application, or kids with an approved/enrolled app.
+
+    Pending, under-review, waitlist, pending-documents, and declined-only
+    leftovers are not members on family lists or reports.
+    """
+    return qs.annotate(
+        has_application=Exists(_apps_for_child()),
+        has_approved=Exists(_apps_for_child(statuses=COUNTED_ENROLLED_STATUSES)),
+    ).filter(Q(has_application=False) | Q(has_approved=True))
+
+
+def visible_member_children_qs(*, unit=None, active_only=True):
+    """Children that count as members on family lists and reports.
+
+    Approved/enrolled applications count. Roster kids with no application still
+    count (already-active members). Unapproved-only leftovers do not.
+    """
+    from .unit_visibility import child_unit_q
+
+    qs = PortalChild.objects.exclude(family__slug="practice")
+    if active_only:
+        qs = qs.filter(is_active=True)
+    if unit is not None:
+        qs = qs.filter(child_unit_q(unit))
+    return annotate_visible_members(qs.select_related("family", "family__unit", "unit"))
 
 
 def enrolled_children_qs(unit=None):
@@ -40,19 +68,7 @@ def enrolled_children_qs(unit=None):
     Children with only waitlist (or other non-approved) applications are left out.
     Children with no application still count — they are already on the roster.
     """
-    from .unit_visibility import child_unit_q
-
-    qs = PortalChild.objects.filter(is_active=True).exclude(family__slug="practice")
-    if unit is not None:
-        qs = qs.filter(child_unit_q(unit))
-    return (
-        qs.select_related("family", "family__unit", "unit")
-        .annotate(
-            has_application=Exists(_apps_for_child()),
-            has_approved=Exists(_apps_for_child(statuses=COUNTED_ENROLLED_STATUSES)),
-        )
-        .filter(Q(has_application=False) | Q(has_approved=True))
-    )
+    return visible_member_children_qs(unit=unit, active_only=True)
 
 
 def unit_enrollment_count(unit):
