@@ -1516,6 +1516,7 @@ def staff_billing_action(request, family_slug):
         default_entry_date,
         delete_ledger_entry,
         get_family_for_billing,
+        is_offline_staff_payment,
         post_charge,
         post_credit,
         post_payment,
@@ -1523,6 +1524,7 @@ def staff_billing_action(request, family_slug):
         staff_payment_note,
         update_child_billing_plan,
         update_ledger_description,
+        update_offline_payment,
         delete_child_billing_plan,
     )
     from .staff_auth import (
@@ -1733,18 +1735,45 @@ def staff_billing_action(request, family_slug):
                 object_type="family",
                 object_label=family.name,
             )
+        elif action == "edit_payment":
+            from .models import PortalLedgerEntry
+
+            entry = PortalLedgerEntry.objects.filter(family=family, pk=request.POST.get("entry_id")).first()
+            if not entry or not is_offline_staff_payment(entry):
+                raise ValueError("Only cash, check, or money order payments can be edited.")
+            update_offline_payment(
+                family,
+                request.POST.get("entry_id"),
+                payment_date=parse_date(request.POST.get("date") or "") or entry.date,
+                check_number=request.POST.get("check_number", ""),
+                money_order_number=request.POST.get("money_order_number", ""),
+                description=request.POST.get("description"),
+            )
+            messages.success(request, "Payment updated.")
+            _log_activity(
+                request,
+                "payment",
+                action_label="Edited a payment",
+                object_type="payment",
+                object_label=f"{family.name} ledger #{entry.pk}",
+                details=request.POST.get("date") or "",
+            )
         elif action == "delete":
-            if not permissions.get("can_delete_charge"):
+            from .models import PortalLedgerEntry
+
+            entry_id = request.POST.get("entry_id")
+            entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
+            offline_payment = bool(entry and is_offline_staff_payment(entry))
+            if not offline_payment and not permissions.get("can_delete_charge"):
                 raise ValueError("Your role cannot delete ledger entries.")
             reason = _require_delete_reason(request)
-            entry_id = request.POST.get("entry_id")
             notify_update = request.POST.get("notify_balance", "on") == "on"
             delete_ledger_entry(family, entry_id, notify=notify_update)
             _log_activity(
                 request,
                 "delete",
-                action_label="Deleted charge",
-                object_type="charge",
+                action_label="Deleted payment" if offline_payment else "Deleted charge",
+                object_type="payment" if offline_payment else "charge",
                 object_label=f"{family.name} ledger #{entry_id}",
                 delete_reason=reason,
             )

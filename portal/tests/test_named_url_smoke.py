@@ -158,6 +158,7 @@ STAFF_REPORTS = [
     "portal_staff_inactive_children_report",
     "portal_staff_four_cs_payout_report",
     "portal_staff_balances_export",
+    "portal_staff_account_balance_report",
     "portal_staff_agency_copay_export",
     "portal_staff_member_policies_print",
     "portal_staff_incidents_print",

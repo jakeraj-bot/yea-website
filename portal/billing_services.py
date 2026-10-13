@@ -337,6 +337,13 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 amount = f"{paid:.2f}" if entry.entry_type == "payment" else f"{applied:.2f}"
             else:
                 amount = f"{entry.amount:.2f}"
+            offline_payment = entry.entry_type == "payment" and is_offline_staff_payment(entry)
+            method_label = ""
+            if entry.entry_type == "payment":
+                method_label = method_label_for_reference(payments, entry.reference_number)
+                if not method_label:
+                    matched = matching_in_person_payment(entry)
+                    method_label = (matched.method_label if matched else "") or ""
             row = {
                 "id": entry.pk,
                 "date": entry.date.isoformat(),
@@ -348,14 +355,23 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 "applied": f"{applied:.2f}",
                 "manual": entry.is_manual,
                 "editable": entry.entry_type in ("charge", "payment", "membership"),
+                "offline_payment": offline_payment,
+                "payment_method": _offline_method_from_entry(entry) if offline_payment else "",
+                "reference_number": entry.reference_number or "",
             }
             if entry.entry_type == "payment":
                 attach_ledger_reference(
                     row,
                     entry.description,
                     entry.reference_number,
-                    method_label_for_reference(payments, entry.reference_number),
+                    method_label,
                 )
+                if not row.get("payment_method"):
+                    kind = (row.get("method") or "").strip().lower().replace(" ", "_")
+                    if kind in OFFLINE_PAYMENT_LABELS:
+                        row["payment_method"] = kind
+                    elif offline_payment:
+                        row["payment_method"] = _offline_method_from_entry(entry)
             ledger.append(row)
         billing["ledger"] = ledger
     if unit:
@@ -754,6 +770,123 @@ def post_payment(family, child_name, amount, entry_date, method_label, note="", 
     )
 
 
+OFFLINE_PAYMENT_LABELS = frozenset({"cash", "check", "money order", "money_order"})
+
+
+def _payment_method_key(method_label="", description=""):
+    from .payment_refs import payment_instrument_kind
+
+    kind = payment_instrument_kind(method_label, description)
+    if kind:
+        return kind
+    text = f"{method_label or ''} {description or ''}".lower()
+    if "cash" in text:
+        return "cash"
+    return ""
+
+
+def is_offline_staff_payment(entry):
+    """True for staff-entered cash / check / money order ledger credits.
+
+    Stripe card charges and parent portal card payments are not offline. Those
+    stay on the ledger unless a dedicated refund/void path is used.
+    """
+    if not entry or getattr(entry, "entry_type", None) != "payment":
+        return False
+    if getattr(entry, "fee_amount", None):
+        return False
+    if not getattr(entry, "is_manual", False):
+        return False
+    method = _payment_method_key("", getattr(entry, "description", "") or "")
+    if method in OFFLINE_PAYMENT_LABELS:
+        return True
+    payment = matching_in_person_payment(entry)
+    if payment:
+        if payment.stripe_session_id or payment.stripe_payment_intent_id:
+            return False
+        label = (payment.method_label or "").strip().lower().replace("_", " ")
+        return label in {"cash", "check", "money order"} or not payment.method_label
+    return True
+
+
+def matching_in_person_payment(entry):
+    if not entry or not getattr(entry, "family_id", None):
+        return None
+    qs = PortalPayment.objects.filter(
+        family_id=entry.family_id,
+        payment_kind="balance",
+        status=PortalPayment.STATUS_PAID,
+        amount=abs(entry.amount or Decimal("0")),
+    )
+    reference = (entry.reference_number or "").strip()
+    if reference:
+        match = qs.filter(reference_number=reference).first()
+        if match:
+            return match
+    child = (entry.child_name or "").strip()
+    dated = qs.filter(dropin_child=child)
+    if entry.date:
+        from django.db.models import Q
+
+        dated = dated.filter(Q(paid_at__date=entry.date) | Q(paid_at__isnull=True))
+    return dated.filter(stripe_session_id="", stripe_payment_intent_id="").first()
+
+
+def _offline_method_from_entry(entry, payment=None):
+    label = (getattr(payment, "method_label", None) or "") if payment else ""
+    method = _payment_method_key(label, getattr(entry, "description", "") or "")
+    if method in OFFLINE_PAYMENT_LABELS:
+        return method
+    if payment and not payment.stripe_session_id:
+        return "cash"
+    return "cash"
+
+
+@transaction.atomic
+def update_offline_payment(
+    family,
+    entry_id,
+    *,
+    payment_date=None,
+    check_number="",
+    money_order_number="",
+    description=None,
+):
+    """Edit check / money order number and payment date on a staff cash/check/MO."""
+    entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
+    if not entry:
+        raise ValueError("Ledger entry not found.")
+    if not is_offline_staff_payment(entry):
+        raise ValueError("Only cash, check, or money order payments can be edited this way.")
+    payment = matching_in_person_payment(entry)
+    method = _offline_method_from_entry(entry, payment)
+    if method == "money_order":
+        number = (money_order_number or check_number or "").strip()
+        if not number:
+            raise ValueError("Enter the money order number.")
+        entry.reference_number = number
+    elif method == "check":
+        entry.reference_number = (check_number or money_order_number or "").strip()
+    if payment_date is not None:
+        entry.date = payment_date
+    if description is not None:
+        label = (description or "").strip()
+        if label:
+            if len(label) > 255:
+                raise ValueError("Description is too long.")
+            entry.description = label
+    entry.save(update_fields=["date", "reference_number", "description"])
+    if payment:
+        payment.reference_number = entry.reference_number
+        if payment_date is not None:
+            payment.paid_at = datetime_for_entry_date(payment_date)
+        payment.save(update_fields=["reference_number", "paid_at"])
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)
+    return entry
+
+
 def _next_in_person_receipt_no():
     today = timezone.localdate().strftime("%y%m%d")
     prefix = f"RCPT-{today}"
@@ -840,9 +973,14 @@ def delete_ledger_entry(family, entry_id, notify=False):
         raise ValueError("Ledger entry not found.")
     if entry.entry_type not in ("payment", "credit", "discount", "charge", "membership"):
         raise ValueError("This entry cannot be deleted.")
+    if entry.entry_type == "payment" and not is_offline_staff_payment(entry):
+        raise ValueError("Card payments cannot be deleted here. Use a refund for Stripe charges.")
     snapshot = _DeletedCharge(entry) if entry.entry_type in ("charge", "membership") else None
     previous = entry.amount if entry.entry_type in ("charge", "membership") else None
+    offline_payment = matching_in_person_payment(entry) if entry.entry_type == "payment" else None
     entry.delete()
+    if offline_payment and not offline_payment.stripe_session_id and not offline_payment.stripe_payment_intent_id:
+        offline_payment.delete()
     from .family_list import sync_family_balance_from_ledger
 
     sync_family_balance_from_ledger(family)

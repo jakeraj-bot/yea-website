@@ -2,8 +2,11 @@
   <div class="portal-table-hscroll-inner"></div>
 </div>
 <div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}">
-  <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}">
+  <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}{% if report.print_header %} portal-account-balance-print-table portal-attendance-print-table{% endif %}">
     <thead>
+      {% if report.print_header %}
+      {% include "portal/staff/includes/account_balance_print_header.html" with colspan=report.columns|length sheet_title=report.print_title|default:report.title sheet_subtitle=report.summary selected_unit_name=report.selected_unit_name selected_status=report.selected_status report_date=report.report_date %}
+      {% endif %}
       <tr>
         {% for _key, label in report.columns %}
         <th>{{ label }}</th>

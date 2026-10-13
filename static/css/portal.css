@@ -6066,3 +6066,39 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   }
 }
 
+.portal-unit-balance-card {
+  margin-bottom: 1.25rem;
+}
+
+.portal-unit-balance-table .portal-cell-amount,
+.portal-account-balance-print-table .portal-cell-amount {
+  white-space: nowrap;
+}
+
+.portal-ledger-edit-form .portal-ledger-date {
+  min-width: 10rem;
+  flex: 0 1 12rem;
+}
+
+.portal-unit-balance-block {
+  margin: 0 0 1.25rem;
+}
+
+.portal-unit-balance-block h3 {
+  margin: 0 0 0.35rem;
+}
+
+@media print {
+  .portal-account-balance-sheet {
+    page: report-print;
+  }
+
+  .portal-account-balance-print-table > thead {
+    display: table-header-group;
+  }
+
+  .portal-account-balance-print-table .portal-print-title-row {
+    display: table-row;
+  }
+}
+

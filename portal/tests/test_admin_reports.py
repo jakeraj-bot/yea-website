@@ -140,9 +140,10 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("50.00", ledger["summary"])
         balances = build_admin_report("balances", {})
         jordan = next(row for row in balances["rows"] if row["child"] == "Jordan Jacobs")
-        self.assertEqual(jordan["balance"], "50.00")
+        self.assertEqual(jordan["amount_owe"], "50.00")
         self.assertNotIn("status", jordan)
-        self.assertEqual(balances["columns"][0], ("child", "Child"))
+        self.assertEqual(balances["columns"][0], ("row_num", "#"))
+        self.assertEqual(balances["columns"][1], ("child", "Child's Name"))
         self.assertNotIn(("family", "Family"), balances["columns"])
         self.assertNotIn(("status", "Status"), balances["columns"])
 
@@ -234,18 +235,21 @@ class AdminReportsAndScholarshipTests(TestCase):
 
         default_report = build_admin_report("balances", {})
         default_names = [row["child"] for row in default_report["rows"]]
-        self.assertEqual(default_names, ["Maya Jacobs", "Jordan Jacobs"])
-        self.assertEqual(default_report["rows"][0]["balance"], "45.00")
-        self.assertEqual(default_report["rows"][1]["balance"], "35.00")
+        self.assertIn("Maya Jacobs", default_names)
+        self.assertIn("Jordan Jacobs", default_names)
+        self.assertIn("Ada Rivera", default_names)
+        by_child = {row["child"]: row for row in default_report["rows"]}
+        self.assertEqual(by_child["Maya Jacobs"]["amount_owe"], "45.00")
+        self.assertEqual(by_child["Jordan Jacobs"]["amount_owe"], "35.00")
+        self.assertEqual(by_child["Ada Rivera"]["amount_owe"], "0.00")
         self.assertEqual(default_report["outstanding"], "80.00")
-        self.assertIn("children", default_report["summary"])
-        self.assertNotIn("Ada Rivera", default_names)
+        self.assertIn("Total:", default_report["summary"])
         self.assertNotIn("Nia Waitowe", default_names)
         self.assertNotIn("Omar Left", default_names)
         for row in default_report["rows"]:
             self.assertNotIn("status", row)
             display_keys = [cell["key"] for cell in row["display"]]
-            self.assertEqual(display_keys, ["child", "unit", "billing", "balance"])
+            self.assertEqual(display_keys, ["row_num", "child", "amount_owe", "description", "paid", "notes"])
 
         waitlist_report = build_admin_report("balances", {"status": "Waitlist"})
         self.assertEqual([row["child"] for row in waitlist_report["rows"]], ["Nia Waitowe"])
@@ -261,7 +265,7 @@ class AdminReportsAndScholarshipTests(TestCase):
 
         all_statuses = build_admin_report("balances", {"status": ""})
         all_names = {row["child"] for row in all_statuses["rows"]}
-        self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Nia Waitowe", "Omar Left"})
+        self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Ada Rivera", "Nia Waitowe", "Omar Left", "Sofia Martinez"})
         self.assertEqual(all_statuses["outstanding"], "175.00")
         self.assertIn("Waitlist", all_statuses["statuses"])
         self.assertIn("Withdrawn", all_statuses["statuses"])
@@ -318,7 +322,8 @@ class AdminReportsAndScholarshipTests(TestCase):
         page = self.client.get(url)
         self.assertEqual(page.status_code, 200)
         html = page.content.decode()
-        self.assertIn("<th>Child</th>", html)
+        self.assertIn("Child&#x27;s Name", html)
+        self.assertIn("Amount Owe", html)
         self.assertNotIn("<th>Family</th>", html)
         self.assertNotIn("<th>Status</th>", html)
         self.assertIn('name="status"', html)
@@ -326,9 +331,9 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn("Maya Jacobs", html)
         self.assertNotIn("Nia Waitowe", html)
         self.assertIn(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}), html)
-        self.assertContains(page, "How to use outstanding balances")
+        self.assertContains(page, "How to print Account Balance")
         self.assertContains(page, "Status is a filter")
-        self.assertContains(page, "after payments")
+        self.assertContains(page, "live ledger")
         self.assertContains(page, "processing fee")
 
         waitlist_page = self.client.get(url, {"status": "Waitlist"})
@@ -340,7 +345,7 @@ class AdminReportsAndScholarshipTests(TestCase):
         csv_response = self.client.get(url, {"format": "csv"})
         csv_text = csv_response.content.decode()
         header = csv_text.splitlines()[0]
-        self.assertEqual(header, "Child,Unit,Payment type,Balance")
+        self.assertEqual(header, "#,Child's Name,Amount Owe,Description,Paid,Notes")
         self.assertIn("Jordan Jacobs", csv_text)
         self.assertNotIn("Nia Waitowe", csv_text)
         self.assertNotIn("Status", header)

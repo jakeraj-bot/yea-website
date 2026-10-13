@@ -232,7 +232,7 @@
     </div>
 
     {% if not billing_permissions.can_delete_charge and not billing_permissions.can_add_credit %}
-    <p class="form-note">Your role can add charges and record payments. Delete charges and credits require permission — set in Portal admin → Billing permissions.</p>
+    <p class="form-note">Your role can add charges and record cash, check, or money order payments — including edit and delete of those payments. Delete charges and credits require permission — set in Portal admin → Billing permissions.</p>
     {% endif %}
 
     <h2>Ledger</h2>
@@ -264,10 +264,21 @@
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
-                <input type="hidden" name="action" value="edit_description">
+                <input type="hidden" name="action" value="{% if row.offline_payment %}edit_payment{% else %}edit_description{% endif %}">
                 <input type="hidden" name="entry_id" value="{{ row.id }}">
                 <label class="visually-hidden" for="ledger-desc-{{ row.id }}">Description</label>
                 <input id="ledger-desc-{{ row.id }}" name="description" type="text" class="portal-input" value="{{ row.description }}" maxlength="255" required>
+                {% if row.offline_payment %}
+                <label class="visually-hidden" for="ledger-date-{{ row.id }}">Payment date</label>
+                <input id="ledger-date-{{ row.id }}" name="date" type="date" class="portal-input portal-ledger-date" value="{{ row.date }}">
+                {% if row.payment_method == "check" or row.method == "Check" %}
+                <label class="visually-hidden" for="ledger-check-{{ row.id }}">Check number</label>
+                <input id="ledger-check-{{ row.id }}" name="check_number" type="text" class="portal-input" value="{{ row.reference_number }}" placeholder="Check #">
+                {% elif row.payment_method == "money_order" or row.method == "Money order" %}
+                <label class="visually-hidden" for="ledger-mo-{{ row.id }}">Money order number</label>
+                <input id="ledger-mo-{{ row.id }}" name="money_order_number" type="text" class="portal-input" value="{{ row.reference_number }}" placeholder="Money order #" required>
+                {% endif %}
+                {% endif %}
                 {% if row.type == 'charge' or row.type == 'membership' %}
                 <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Amount</label>
                 <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount }}" inputmode="decimal">
@@ -288,11 +299,10 @@
             <td class="portal-cell-amount">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
             <td class="portal-row-actions">
               {% if row.editable and billing_live %}
-              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="Edit amount or description">Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% else %}Edit amount or description{% endif %}">Edit</button>
               {% endif %}
-              {% if billing_permissions.can_delete_charge %}
               {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="Remove this ledger entry?">
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this cash, check, or money order payment? The credit comes off the ledger and the family balance is recalculated.{% else %}Remove this ledger entry?{% endif %}">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
@@ -304,11 +314,10 @@
                   Email updated balance
                 </label>
                 {% endif %}
-                <button type="submit" class="btn btn-secondary btn-sm" title="Remove this charge">Delete</button>
+                <button type="submit" class="btn btn-secondary btn-sm" title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
               </form>
               {% elif row.deletable %}
-              <button type="button" class="btn btn-secondary btn-sm" disabled title="Remove this charge">Delete</button>
-              {% endif %}
+              <button type="button" class="btn btn-secondary btn-sm" disabled title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
               {% endif %}
               {% if not row.editable and not row.deletable %}
               <span class="form-note">—</span>

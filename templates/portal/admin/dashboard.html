@@ -168,6 +168,36 @@
     </div>
     {% endif %}
 
+    {% if dashboard.unit_balances %}
+    <section class="card portal-profile-full portal-unit-balance-card">
+      <h2>Balances by unit</h2>
+      <p class="form-note">Live ledger (charges − payments − credits). Highest overdue first so you know which site to work down. A child’s remaining balance counts on that child’s unit — a family with kids at two sites is not counted twice on every unit. Unapproved applications and unfinished Stripe checkouts are not included.</p>
+      <div class="portal-table-wrap">
+        <table class="portal-table portal-unit-balance-table" id="overview-unit-balances">
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th class="portal-cell-amount">Balance</th>
+              <th class="portal-cell-amount">Overdue</th>
+              <th>Families with a balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in dashboard.unit_balances %}
+            <tr>
+              <td><strong>{{ row.unit }}</strong></td>
+              <td class="portal-cell-amount">${{ row.balance }}</td>
+              <td class="portal-cell-amount">${{ row.overdue }}</td>
+              <td>{{ row.family_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p><a href="{% url 'portal_admin_data_report' report_slug='balances' %}">Print Account Balance report →</a></p>
+    </section>
+    {% endif %}
+
     <div class="portal-profile-grid portal-dashboard-grid">
       <section class="card portal-profile-full">
         <h2>Enrollment by unit</h2>
