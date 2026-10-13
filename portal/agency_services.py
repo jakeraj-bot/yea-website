@@ -645,14 +645,14 @@ def copay_report_rows(unit):
 
 
 def balances_report_rows(unit):
-    from .family_list import household_ledger_totals
+    from .family_list import overdue_active_children_summary
     from .unit_visibility import families_qs_for_unit
 
+    _count, _total, owing = overdue_active_children_summary(unit=unit)
     rows = []
-    families = list(families_qs_for_unit(unit).order_by("name"))
-    totals = household_ledger_totals([family.pk for family in families])
+    families = list(families_qs_for_unit(unit).filter(pk__in=owing.keys()).order_by("name"))
     for family in families:
-        total = totals.get(family.pk, Decimal("0"))
+        total = owing.get(family.pk, Decimal("0"))
         if total <= 0:
             continue
         rows.append(

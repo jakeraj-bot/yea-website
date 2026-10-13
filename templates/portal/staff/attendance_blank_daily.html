@@ -11,7 +11,7 @@
 </section>
 <section class="page-content portal-blank-report">
   <div class="container">
-    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit and grades, then print. Names match the filled daily sheet for those filters. Fill in times and signatures by hand." %}
+    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit, then After-care, Before-care, or All. Check grades if you only need some classrooms. Names match the filled daily sheet for those filters." %}
 
     <div class="portal-medical-report-sheet card portal-blank-sheet portal-attendance-print-sheet">
       <header class="portal-medical-report-header portal-no-print">
@@ -20,7 +20,8 @@
           <h2>Daily attendance sign-in sheet</h2>
           <p class="portal-medical-report-meta">
             <strong>{{ selected_unit_name|default:unit_name }}</strong>
-            {% if program_name %} · {{ program_name }}{% endif %}<br>
+            {% if program_name %} · {{ program_name }}{% endif %}
+            {% if care_label %} · {{ care_label }}{% endif %}<br>
             <span class="portal-blank-sheet-date">Date: {{ sheet_date_display }}</span>
             · {{ listed_count }} listed
           </p>

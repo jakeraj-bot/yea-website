@@ -152,7 +152,9 @@ STAFF_REPORTS = [
     "portal_staff_attendance_blank_daily",
     "portal_staff_attendance_blank_weekly",
     "portal_staff_signout_blank",
+    "portal_staff_before_care_report",
     "portal_staff_owed_weeks_report",
+    "portal_staff_inactive_children_report",
     "portal_staff_four_cs_payout_report",
     "portal_staff_balances_export",
     "portal_staff_agency_copay_export",
@@ -170,6 +172,7 @@ ADMIN_REPORTS = [
     "portal_admin_enrollment_report",
     "portal_admin_member_information_report",
     "portal_admin_weekly_attendance_report",
+    "portal_admin_before_care_report",
     "portal_admin_attendance_report",
     "portal_admin_attendance_blank_daily",
     "portal_admin_attendance_blank_weekly",
@@ -196,6 +199,9 @@ SKIP_WALK_NAMES = {
     "portal_staff_logout",
     "portal_admin_logout",
     "dropin_logout",
+    "portal_admin_practice_parent_open",
+    "portal_admin_practice_parent_end",
+    "portal_admin_practice_parent_toggle",
 }
 
 

@@ -116,7 +116,7 @@
 
     <div class="portal-panel card" id="copay-panel" hidden>
       <h2>Record parent copay</h2>
-      <p class="form-note">Parent copays go to the <strong>regular family billing</strong> account (not the 4Cs agency account).</p>
+      <p class="form-note">Parent copays go to the <strong>regular family billing</strong> account (not the 4Cs agency account). Payment date is the day the money was received. It defaults to today.</p>
       <form class="portal-form-grid" method="post" action="{% url 'portal_staff_agency_action' %}">
         {% csrf_token %}
         <input type="hidden" name="action" value="copay">
@@ -132,6 +132,11 @@
         <div class="form-group">
           <label for="copay-amount">Amount</label>
           <input id="copay-amount" name="amount" type="text" class="portal-input" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="copay-date">Payment date</label>
+          <input id="copay-date" name="date" type="date" class="portal-input" value="{{ today }}">
+          <p class="form-note">The day the copay was received. Defaults to today.</p>
         </div>
         <div class="form-group">
           <label for="copay-method">Payment method</label>

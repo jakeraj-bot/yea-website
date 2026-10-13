@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from enrollment.models import EnrollmentApplication
@@ -23,6 +24,14 @@ def _money(value):
     if value is None:
         return "0.00"
     return f"{Decimal(value).quantize(Decimal('0.01')):.2f}"
+
+
+def _payment_calendar_date(payment):
+    """Local calendar date the payment belongs on (receipts and reports)."""
+    when = payment.paid_at or payment.created_at
+    if not when:
+        return None
+    return timezone.localtime(when).date()
 
 
 def _child_school(child):
@@ -305,9 +314,12 @@ def payment_report_rows(filters=None):
     for payment in payments:
         if is_placeholder_unit(payment.family.unit):
             continue
-        paid_on = (payment.paid_at.date() if payment.paid_at else payment.created_at.date()) if payment.paid_at or payment.created_at else None
+        paid_on = _payment_calendar_date(payment)
         children = [child.name for child in payment.family.children.all() if child.is_active]
         child = payment.dropin_child or (" · ".join(children) if children else "—")
+        if _is_waiting_for_card(payment):
+            # Started Stripe checkout only — the card was never charged.
+            continue
         _tuition, fee, charged = payment_charged_totals(payment)
         key = (payment.family_id, paid_on.isoformat() if paid_on else "", _money(payment.amount))
         seen_keys.add(key)
@@ -318,9 +330,7 @@ def payment_report_rows(filters=None):
         )
         method = clean_in_person_method_label(raw_method) or raw_method
         ref = display_payment_reference(raw_method, payment.reference_number, raw_method)
-        if payment.status == PortalPayment.STATUS_PENDING:
-            status = "Waiting for card payment"
-        elif payment.status == PortalPayment.STATUS_FAILED:
+        if payment.status == PortalPayment.STATUS_FAILED:
             status = "Failed"
         else:
             status = "Paid"
@@ -396,7 +406,7 @@ def payment_report_rows(filters=None):
 
 
 SETTLEMENT_STATUS_CHOICES = [
-    ("waiting_for_card", "Waiting for card payment"),
+    ("waiting_for_card", "Unfinished card checkout (not paid)"),
     ("received_by_stripe", "Stripe received — waiting to become available"),
     ("waiting_for_bank", "Available in Stripe — waiting for bank payout"),
     ("in_transit", "On the way to the bank"),
@@ -438,11 +448,19 @@ def _is_waiting_for_card(payment):
     return payment.status == PortalPayment.STATUS_PENDING
 
 
+def _show_unfinished_checkouts(filters):
+    """Unfinished card checkouts stay off payment reports unless staff asks."""
+    filters = filters or {}
+    if (filters.get("unfinished") or "").strip().lower() in {"1", "yes", "on", "true"}:
+        return True
+    return (filters.get("status") or "").strip() == "waiting_for_card"
+
+
 def _settlement_payment_row(payment):
     from .processing_fees import payment_charged_totals
     from .stripe_services import bank_status_label
 
-    paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+    paid_on = _payment_calendar_date(payment) or timezone.localdate()
     children = [child.name for child in payment.family.children.all() if child.is_active]
     child = payment.dropin_child or (" · ".join(children) if children else "—")
     _tuition, fee, charged = payment_charged_totals(payment)
@@ -562,7 +580,7 @@ def stripe_settlement_rows(filters=None):
     for payment in stripe_payments:
         if unit and payment.family.unit.slug != unit:
             continue
-        paid_on = payment.paid_at.date() if payment.paid_at else payment.created_at.date()
+        paid_on = _payment_calendar_date(payment) or timezone.localdate()
         if start and paid_on < start:
             continue
         if end and paid_on > end:
@@ -607,14 +625,16 @@ def stripe_settlement_rows(filters=None):
 
     waiting_to_receive = sum((Decimal(row["amount"]) for row in pending_rows), Decimal("0"))
     waiting_for_card = sum((Decimal(row["amount"]) for row in waiting_for_card_rows), Decimal("0"))
+    show_unfinished = _show_unfinished_checkouts(filters)
 
     rows = []
     for row in pending_rows:
         row["section"] = "Not paid out yet"
         rows.append(row)
-    for row in waiting_for_card_rows:
-        row["section"] = "Waiting for card"
-        rows.append(row)
+    if show_unfinished:
+        for row in waiting_for_card_rows:
+            row["section"] = "Unfinished checkout"
+            rows.append(row)
     for group in payout_groups:
         for row in group["rows"]:
             row["section"] = group["title"]
@@ -630,6 +650,7 @@ def stripe_settlement_rows(filters=None):
         "statuses": SETTLEMENT_STATUS_CHOICES,
         "waiting_to_receive_total": _money(waiting_to_receive),
         "waiting_for_card_total": _money(waiting_for_card),
+        "show_unfinished_checkouts": show_unfinished,
     }
 
 
@@ -668,9 +689,18 @@ def balance_report_rows(filters=None):
         if balance <= 0:
             continue
         row_status = _family_row_status(child.family)
+        if not child.is_active:
+            statuses.add("Inactive")
         statuses.add(row_status)
-        if status and row_status.lower() != status.lower():
-            continue
+        if status:
+            wanted = status.lower()
+            if wanted == "inactive":
+                if child.is_active:
+                    continue
+            elif row_status.lower() != wanted:
+                continue
+            elif wanted == "active" and not child.is_active:
+                continue
         unit_name, _slug = unit_label_for_child(child)
         outstanding += balance
         rows.append(
@@ -688,10 +718,73 @@ def balance_report_rows(filters=None):
     if status:
         statuses.add(status)
     statuses.add("Active")
+    statuses.add("Inactive")
     return {
         "rows": rows,
         "outstanding": _money(outstanding),
         "statuses": sorted(statuses),
+    }
+
+
+def inactive_children_report_rows(filters=None, *, unit=None):
+    """Children marked inactive, with remaining tuition. Waitlist-only kids stay off."""
+    from .family_list import child_balance_from_map, child_balance_maps, child_is_waitlist_only
+    from .unit_visibility import child_unit_q, child_unit_slug_q, unit_label_for_child
+
+    filters = filters or {}
+    query = (filters.get("q") or "").strip()
+    unit_slug = (filters.get("unit") or "").strip()
+    owes = (filters.get("owes") or "").strip().lower()
+    children = (
+        PortalChild.objects.filter(is_active=False)
+        .exclude(family__slug="practice")
+        .select_related("family", "family__unit", "unit")
+        .prefetch_related("family__enrollment_applications")
+        .order_by("name")
+    )
+    if unit is not None:
+        children = children.filter(child_unit_q(unit))
+    elif unit_slug:
+        children = children.filter(child_unit_slug_q(unit_slug))
+    if query:
+        children = children.filter(
+            Q(name__icontains=query) | Q(family__name__icontains=query) | Q(family__primary_contact__icontains=query)
+        )
+    child_list = []
+    for child in children:
+        if is_placeholder_unit(child.family.unit):
+            continue
+        apps = list(child.family.enrollment_applications.all())
+        if child_is_waitlist_only(child, apps):
+            continue
+        child_list.append(child)
+    maps = child_balance_maps([child.family_id for child in child_list])
+    rows = []
+    outstanding = Decimal("0")
+    for child in child_list:
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if owes == "yes" and balance <= 0:
+            continue
+        if owes == "no" and balance > 0:
+            continue
+        unit_name, _slug = unit_label_for_child(child)
+        outstanding += balance if balance > 0 else Decimal("0")
+        rows.append(
+            {
+                "child": child.name,
+                "family": child.family.name,
+                "family_slug": child.family.slug,
+                "family_id": child.family_id,
+                "unit": unit_name or child.family.unit.name,
+                "status": "Inactive",
+                "balance": _money(balance),
+            }
+        )
+    rows.sort(key=lambda row: (-Decimal(row["balance"]), row["child"].casefold()))
+    return {
+        "rows": rows,
+        "outstanding": _money(outstanding),
+        "count": len(rows),
     }
 
 
@@ -864,7 +957,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Outstanding balances",
-        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist or withdrawn accounts.",
+        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist, inactive, or withdrawn accounts.",
         "columns": [
             ("child", "Child"),
             ("unit", "Unit"),
@@ -874,9 +967,23 @@ ADMIN_DATA_REPORTS = {
         "filename": "outstanding-balances.csv",
         "filters": ("q", "unit", "status"),
     },
+    "inactive-children": {
+        "title": "Inactive children",
+        "lead": "Children marked inactive — accounts stay on file. Remaining balance is that child's live tuition (charges minus payments; Stripe fees do not count as still owed).",
+        "columns": [
+            ("child", "Child"),
+            ("family", "Family"),
+            ("unit", "Unit"),
+            ("status", "Status"),
+            ("balance", "Remaining balance"),
+        ],
+        "filename": "inactive-children.csv",
+        "filters": ("q", "unit", "owes"),
+        "child_link": "profile",
+    },
     "payments": {
         "title": "Who paid what",
-        "lead": "Every payment — who paid, which child, how much, and on what day.",
+        "lead": "Payments that were received — who paid, which child, how much, and on what day. A card checkout that was started but never finished is not a payment.",
         "columns": [
             ("date", "Date"),
             ("child", "Child"),
@@ -894,7 +1001,7 @@ ADMIN_DATA_REPORTS = {
     },
     "stripe-settlement": {
         "title": "Stripe & bank payouts",
-        "lead": "Only Stripe card payments. Succeeded charges not paid out to the bank yet are at the top, incomplete card checkouts are listed separately, then each Stripe payout.",
+        "lead": "Only Stripe card payments that actually charged the card. Succeeded charges not paid out to the bank yet are at the top, then each Stripe payout. Unfinished card checkouts are not payments.",
         "columns": [
             ("family", "Family"),
             ("child", "Child"),
@@ -909,7 +1016,7 @@ ADMIN_DATA_REPORTS = {
             ("bank_date", "Expected in bank"),
         ],
         "filename": "stripe-bank-payouts.csv",
-        "filters": ("q", "unit", "status", "start", "end"),
+        "filters": ("q", "unit", "status", "start", "end", "unfinished"),
         "layout": "payout_sections",
     },
     "plans": {
@@ -1066,6 +1173,12 @@ def build_admin_report(slug, filters=None):
         extra["summary"] = f"{len(rows)} children · ${data['outstanding']} outstanding"
         extra["statuses"] = data["statuses"]
         extra["outstanding"] = data["outstanding"]
+    elif slug == "inactive-children":
+        data = inactive_children_report_rows(filters)
+        rows = data["rows"]
+        extra["summary"] = f"{data['count']} inactive children · ${data['outstanding']} remaining"
+        extra["outstanding"] = data["outstanding"]
+        extra["child_link"] = "profile"
     elif slug == "payments":
         data = payment_report_rows(filters)
         rows = data["rows"]
@@ -1078,12 +1191,16 @@ def build_admin_report(slug, filters=None):
         payout_count = len(data["payout_groups"])
         extra["waiting_to_receive_total"] = data.get("waiting_to_receive_total") or "0.00"
         extra["waiting_for_card_total"] = data.get("waiting_for_card_total") or "0.00"
+        extra["show_unfinished_checkouts"] = bool(data.get("show_unfinished_checkouts"))
+        paid_count = pending_count + sum(len(group.get("rows") or []) for group in data.get("payout_groups") or [])
         extra["summary"] = (
             f"Waiting to receive ${extra['waiting_to_receive_total']} · "
-            f"Waiting for card ${extra['waiting_for_card_total']} · "
-            f"{pending_count} not paid out yet · {waiting_card_count} waiting for card · "
-            f"{payout_count} bank payout{'' if payout_count == 1 else 's'} · {len(rows)} Stripe payments"
+            f"{pending_count} not paid out yet · "
+            f"{payout_count} bank payout{'' if payout_count == 1 else 's'} · "
+            f"{paid_count} Stripe payments"
         )
+        if extra["show_unfinished_checkouts"]:
+            extra["summary"] += f" · {waiting_card_count} unfinished checkouts (not paid)"
         extra["statuses"] = [value for value, _label in data["statuses"]]
         extra["status_choices"] = data["statuses"]
         extra["pending_rows"] = data["pending_rows"]
@@ -1144,12 +1261,14 @@ def build_admin_report(slug, filters=None):
         return None
     extra["units"] = unit_options()
     extra.setdefault("layout", spec.get("layout") or "table")
+    extra.setdefault("child_link", spec.get("child_link") or "")
     extra.setdefault("pending_rows", [])
     extra.setdefault("waiting_for_card_rows", [])
     extra.setdefault("remaining_rows", [])
     extra.setdefault("payout_groups", [])
     extra.setdefault("waiting_to_receive_total", "0.00")
     extra.setdefault("waiting_for_card_total", "0.00")
+    extra.setdefault("show_unfinished_checkouts", False)
     for row in rows:
         row["display"] = [{"key": key, "value": row.get(key, "")} for key, _label in spec["columns"]]
     for group in extra.get("payout_groups") or []:

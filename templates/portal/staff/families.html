@@ -4,15 +4,16 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Families</h1>
-    <p class="lead">{{ staff_unit }} — {{ family_count }} families · {{ families|length }} children listed · click through to profile{% if can_see_billing %} or billing{% endif %}.</p>
+    <p class="lead">{% if families_tab == 'inactive' %}Inactive children at {{ staff_unit }} — accounts stay on file so they can come back, and parents can still pay or download tax statements.{% else %}{{ staff_unit }} — {{ family_count }} families · {{ families|length }} children listed · click through to profile{% if can_see_billing %} or billing{% endif %}.{% endif %}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
+    {% include "portal/includes/families_list_tabs.html" %}
     {% include "portal/staff/includes/families_list_toolbar.html" %}
 
     <div class="portal-table-wrap portal-families-table-wrap">
-      <table class="portal-table portal-families-table" id="families-table">
+      <table class="portal-table portal-families-table" id="families-table" data-families-tab="{{ families_tab|default:'active' }}">
         <thead>
           <tr>
             <th data-col="family">Family</th>
@@ -47,6 +48,7 @@
             data-family-balance="{{ family.family_balance }}"
             data-balance="{{ family.family_balance }}"
             data-status="{{ family.status|lower }}"
+            data-phones="{{ family.phone_digits|default:'' }}"
             data-has-application="{% if family.has_application %}1{% else %}0{% endif %}"
             {% if family.is_first_child %}data-family-group-start{% endif %}
           >
@@ -79,6 +81,9 @@
             {% endif %}
             <td data-col="status"><span class="portal-status portal-status-{{ family.status|slugify }}">{{ family.status }}</span></td>
             <td data-col="actions" class="portal-row-actions">
+              {% if families_tab == 'inactive' and family.child_id %}
+              {% include "portal/includes/child_inactive_form.html" with child_id=family.child_id child_name=family.child_name make_active=1 family_slug=family.slug family_id=family.id %}
+              {% endif %}
               {% if family.is_first_child %}
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_detail' family_slug=family.slug %}">Profile</a>
               <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_family_email' family_slug=family.slug %}">Email</a>
@@ -93,12 +98,12 @@
         </tbody>
       </table>
     </div>
-    <p class="form-note portal-families-empty" id="families-empty-state" hidden>No families match your search or filter.</p>
+    <p class="form-note portal-families-empty" id="families-empty-state" hidden>{% if families_tab == 'inactive' %}No inactive children match your search.{% else %}No families match your search or filter.{% endif %}</p>
     {% include "portal/staff/includes/school_name_options.html" %}
   </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/staff-families-table.js' %}?v=12"></script>
+<script src="{% static 'js/staff-families-table.js' %}?v=13"></script>
 {% endblock %}

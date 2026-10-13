@@ -169,12 +169,21 @@ class EnrollmentApplication(models.Model):
         ("declined", "Declined"),
     ]
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="under_review")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="When off, this program application is inactive. The child can stay active in another program.",
+    )
     internal_note = models.TextField(blank=True)
     staff_message = models.TextField(
         blank=True,
         help_text="Message shown to the parent when changes are requested or an application is declined.",
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    member_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date this child can start. Entered when staff approve the application.",
+    )
     portal_family = models.ForeignKey(
         "portal.PortalFamily",
         null=True,

@@ -249,6 +249,11 @@ urlpatterns = [
         name="portal_staff_signout_blank",
     ),
     path(
+        "staff/reports/before-care/",
+        views.staff_before_care_report,
+        name="portal_staff_before_care_report",
+    ),
+    path(
         "staff/reports/balances-export/",
         views.staff_balances_export,
         name="portal_staff_balances_export",
@@ -257,6 +262,11 @@ urlpatterns = [
         "staff/reports/owed-weeks/",
         views.staff_owed_weeks_report,
         name="portal_staff_owed_weeks_report",
+    ),
+    path(
+        "staff/reports/inactive-children/",
+        views.staff_inactive_children_report,
+        name="portal_staff_inactive_children_report",
     ),
     path(
         "staff/reports/four-cs-payout/",
@@ -444,6 +454,21 @@ urlpatterns = [
         name="portal_admin_parent_preview_sample_page",
     ),
     path(
+        "admin/practice-parent/open/",
+        views.admin_practice_parent_open,
+        name="portal_admin_practice_parent_open",
+    ),
+    path(
+        "admin/practice-parent/end/",
+        views.admin_practice_parent_end,
+        name="portal_admin_practice_parent_end",
+    ),
+    path(
+        "admin/practice-parent/toggle/",
+        views.admin_practice_parent_toggle,
+        name="portal_admin_practice_parent_toggle",
+    ),
+    path(
         "admin/parent-preview/<slug:family_slug>/end/",
         views.admin_parent_preview_end,
         name="portal_admin_parent_preview_end",
@@ -502,6 +527,11 @@ urlpatterns = [
         "staff/family/<slug:family_slug>/member/update/",
         views_actions.family_member_info_save,
         name="portal_staff_family_member_update",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/child-status/",
+        views_actions.family_child_status,
+        name="portal_staff_family_child_status",
     ),
     path(
         "staff/family/<slug:family_slug>/parent-password/",
@@ -587,6 +617,11 @@ urlpatterns = [
         "staff/application/<slug:app_slug>/policies/<slug:policy_slug>/print/",
         views.staff_application_policy_print,
         name="portal_staff_application_policy_print",
+    ),
+    path(
+        "staff/application/<slug:app_slug>/status/",
+        views_actions.application_program_status,
+        name="portal_staff_application_status",
     ),
     path(
         "staff/application/<slug:app_slug>/",
@@ -722,6 +757,11 @@ urlpatterns = [
         name="portal_admin_family_member_update",
     ),
     path(
+        "admin/family/<slug:family_slug>/child-status/",
+        views_actions.family_child_status,
+        name="portal_admin_family_child_status",
+    ),
+    path(
         "admin/family/<slug:family_slug>/parent-password/",
         views_actions.family_parent_password_reset,
         name="portal_admin_family_parent_password",
@@ -770,6 +810,11 @@ urlpatterns = [
         "admin/reports/print/weekly-attendance/",
         views.admin_weekly_attendance_report,
         name="portal_admin_weekly_attendance_report",
+    ),
+    path(
+        "admin/reports/print/before-care/",
+        views.admin_before_care_report,
+        name="portal_admin_before_care_report",
     ),
     path(
         "admin/reports/print/attendance/",
@@ -840,6 +885,11 @@ urlpatterns = [
         "admin/application/<slug:app_slug>/policies/<slug:policy_slug>/print/",
         views.admin_application_policy_print,
         name="portal_admin_application_policy_print",
+    ),
+    path(
+        "admin/application/<slug:app_slug>/status/",
+        views_actions.application_program_status,
+        name="portal_admin_application_status",
     ),
     path(
         "admin/application/<slug:app_slug>/",

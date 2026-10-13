@@ -634,9 +634,15 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Weekly attendance",
-        "description": "Monday–Friday attendance sheet — filter by unit, program, school, or multiple grades. Chosen grades stay on one sheet.",
+        "description": "Monday–Friday attendance sheet — filter by After-care, Before-care, or All, plus unit, school, or grades. Chosen grades stay on one sheet.",
         "format": "PDF / CSV",
         "slug": "weekly-attendance",
+    },
+    {
+        "name": "Before care",
+        "description": "Who is approved for before-care — child name, family, unit, school, and status. Waitlist-only stays off.",
+        "format": "PDF / CSV",
+        "slug": "before-care",
     },
     {
         "name": "Daily attendance",
@@ -689,6 +695,13 @@ ADMIN_REPORTS = [
         "report": "balances",
     },
     {
+        "name": "Inactive children",
+        "description": "Who is inactive and any remaining balance — accounts stay on file",
+        "format": "PDF / CSV",
+        "slug": "inactive-children",
+        "report": "inactive-children",
+    },
+    {
         "name": "Who still owes — by week",
         "description": "Families and children with a balance, which weeks they still owe, and a $15 late fee you pick per child",
         "format": "PDF / CSV",
@@ -696,14 +709,14 @@ ADMIN_REPORTS = [
     },
     {
         "name": "Who paid what",
-        "description": "Who paid, which child, how much, and on what day",
+        "description": "Who paid, which child, how much, and on what day — unfinished card checkouts are not listed",
         "format": "PDF / CSV",
         "slug": "payments",
         "report": "payments",
     },
     {
         "name": "Stripe & bank payouts",
-        "description": "Stripe card payments only — money not paid out yet, unfinished card checkouts, then each bank payout",
+        "description": "Stripe card payments only — money not paid out yet, then each bank payout. Unfinished card checkouts are not payments.",
         "format": "PDF / CSV",
         "slug": "stripe-settlement",
         "report": "stripe-settlement",
@@ -856,12 +869,12 @@ def prepare_billing_preview(billing, permissions):
     enriched = {**billing}
     ledger = []
     for index, row in enumerate(billing.get("ledger", [])):
-        is_manual = row.get("manual") or row.get("type") in ("charge", "credit")
+        is_manual = row.get("manual") or row.get("type") in ("charge", "credit", "membership")
         item = {
             **row,
             "id": row.get("id", index + 1),
             "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
-            "editable": row.get("type") in ("charge", "payment"),
+            "editable": row.get("type") in ("charge", "payment", "membership"),
         }
         if row.get("type") == "payment" and not item.get("reference_display"):
             from .payment_refs import attach_ledger_reference
@@ -1663,9 +1676,15 @@ STAFF_REPORTS = [
     },
     {
         "name": "Weekly attendance summary",
-        "description": "Mon–Fri totals per child. Check one or more grades to print those kids on the same sheet.",
+        "description": "Mon–Fri totals per child. Filter After-care, Before-care, or All. Check one or more grades to print those kids on the same sheet.",
         "format": "PDF / CSV",
         "slug": "weekly-attendance",
+    },
+    {
+        "name": "Before care",
+        "description": "Who is approved for before-care at this unit — child name, family, unit, school, and status.",
+        "format": "PDF / CSV",
+        "slug": "before-care",
     },
     {
         "name": "Daily attendance (blank)",
@@ -1681,7 +1700,7 @@ STAFF_REPORTS = [
     },
     {
         "name": "Sign-out sheet (blank)",
-        "description": "Enrolled children with parent signature & pickup time columns",
+        "description": "Enrolled children with parent signature & pickup time columns. Filter After-care, Before-care, or All.",
         "format": "PDF",
         "slug": "signout-blank",
     },
@@ -1736,6 +1755,12 @@ STAFF_REPORTS = [
     {"name": "Application (blank)", "description": "Printable enrollment form", "format": "PDF", "slug": "application-blank"},
     {"name": "Application (filled)", "description": "From submitted application", "format": "PDF", "slug": "application-filled", "link_arg": "jordan-jacobs"},
     {"name": "Outstanding balances", "description": "Families with balance due", "format": "PDF / Excel", "slug": "balances", "link_name": "portal_staff_page", "link_arg": "families"},
+    {
+        "name": "Inactive children",
+        "description": "Who is inactive at this unit and any remaining balance",
+        "format": "PDF / CSV",
+        "slug": "inactive-children",
+    },
     {
         "name": "Who still owes — by week",
         "description": "Children with a balance and the weeks they still owe. Pick who gets a $15 late fee.",
@@ -1926,6 +1951,24 @@ def enrich_demo_application(application):
         family_name = (application.get("family_name") or "").strip().lower()
         if family_name in {"jacobs", "patel", "lee", "martinez", "williams", "chen", "johnson"}:
             enriched["family_slug"] = family_name
+    if "membership_amount" not in enriched:
+        enriched["membership_amount"] = "20.00" if enriched.get("membership_required") else "0.00"
+    if "membership_description" not in enriched:
+        child_name = enriched.get("child_name") or "child"
+        enriched["membership_description"] = f"Membership fee (${enriched['membership_amount']}) — {child_name}"
+    enriched.setdefault("membership_already_posted", False)
+    enriched.setdefault("membership_fee_default", "20.00")
+    enriched.setdefault("member_start_date", "")
+    enriched.setdefault("member_start_date_display", "")
+    enriched.setdefault("approve_billing_type", "Private pay")
+    enriched.setdefault("approve_billing_plan", "Weekly")
+    enriched.setdefault("approve_plan_amount", "")
+    enriched.setdefault("approve_plan_parent_amount", "")
+    enriched.setdefault("approve_is_four_cs", False)
+    enriched.setdefault("approve_post_first", True)
+    enriched.setdefault("approve_plan_type_choices", [("", "Don't attach a plan (4Cs membership only)"), ("Private pay", "Private pay"), ("4Cs", "4Cs (parent copay)")])
+    enriched.setdefault("approve_plan_cadence_choices", [("Weekly", "Weekly"), ("Bi-weekly", "Bi-weekly"), ("Monthly", "Monthly")])
+    enriched.setdefault("approve_scholarship_funds", [])
     return enriched
 
 

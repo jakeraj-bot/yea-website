@@ -25,6 +25,7 @@
   }
 
   function startsCollapsed(el) {
+    if (el && el.hasAttribute("data-collapse-keep-open")) return false;
     return !(el && el.hasAttribute("data-collapse-open"));
   }
 
@@ -56,11 +57,16 @@
       return;
     }
     var heading = card.querySelector(":scope > h2, :scope > h3");
+    if (!heading) {
+      heading = card.querySelector(":scope > .portal-medical-card-header > h2, :scope > .portal-medical-card-header > h3");
+    }
     if (!heading) return;
     var key = sectionKey(heading);
-    var collapsed = Object.prototype.hasOwnProperty.call(pageState, key)
-      ? pageState[key]
-      : startsCollapsed(card);
+    var collapsed = card.hasAttribute("data-collapse-keep-open")
+      ? false
+      : Object.prototype.hasOwnProperty.call(pageState, key)
+        ? pageState[key]
+        : startsCollapsed(card);
     var button = document.createElement("button");
     button.type = "button";
     button.className = "portal-collapse-toggle";
@@ -139,6 +145,7 @@
     if (!button) return;
     var collapseAll = button.getAttribute("data-collapse-all") === "close";
     content.querySelectorAll(".portal-collapse").forEach(function (section) {
+      if (collapseAll && section.hasAttribute("data-collapse-keep-open")) return;
       applyCollapsed(section, collapseAll);
       persist(section, collapseAll);
     });

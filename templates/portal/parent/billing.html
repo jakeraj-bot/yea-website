@@ -86,7 +86,12 @@
         <span class="portal-payment-badge portal-payment-badge-sm">{% ptl child.type|default:"Private pay" %}</span>
         <dl class="portal-dl">
           <dt>{% pt "plan" %}</dt><dd>{% ptl child.plan|default:"Weekly" %}</dd>
-          {% if child.full_rate %}
+          {% if child.plans and child.plans|length > 1 %}
+          {% for plan in child.plans %}
+          <dt>{% if plan.description %}{{ plan.description }}{% else %}{% ptl plan.plan|default:"Weekly" %}{% endif %}</dt>
+          <dd>${{ plan.amount_display }}{% if plan.scholarship_discount %} <span class="portal-amount-credit">−${{ plan.scholarship_discount }}</span>{% endif %}</dd>
+          {% endfor %}
+          {% elif child.full_rate %}
           <dt>{% pt "full_program_rate" %}</dt><dd>${{ child.full_rate }}</dd>
           <dt>{% pt "scholarship_discount" %}</dt><dd class="portal-amount-credit">-${{ child.scholarship_discount }}</dd>
           <dt>{% pt "scholarship" %}</dt><dd>{{ child.scholarship_name }}</dd>

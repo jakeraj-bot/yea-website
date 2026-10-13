@@ -119,7 +119,7 @@ class Command(BaseCommand):
         deleted_parent_users, _ = User.objects.filter(id__in=parent_user_ids).delete()
         counts["parent users removed"] = deleted_parent_users
 
-        demo_usernames = ["jakeraj", "mmartinez", "dwilliams", "staff18"]
+        demo_usernames = ["jakeraj", "mmartinez", "dwilliams", "practiceparent", "staff18"]
         demo_deleted, _ = User.objects.filter(username__in=demo_usernames).exclude(
             portal_staff_account__role="Portal admin"
         ).delete()

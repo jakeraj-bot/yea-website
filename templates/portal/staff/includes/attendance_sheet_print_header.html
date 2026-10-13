@@ -8,6 +8,7 @@
         <p class="portal-medical-report-meta">
           <strong>{{ selected_unit_name|default:unit_name }}</strong>
           {% if program_name %} · {{ program_name }}{% endif %}
+          {% if care_label %} · {{ care_label }}{% endif %}
           {% if selected_grades %} · Grades {{ selected_grades|join:", " }}{% else %} · All grades{% endif %}
           · {{ sheet_subtitle }}
         </p>

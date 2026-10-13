@@ -384,10 +384,9 @@ def build_dashboard_live(unit, program):
     session = build_session_context(unit, program, today, roster) if unit and program else {}
     apps = applications_for_staff(unit) if unit else []
     open_apps = [a for a in apps if a.get("status") in ("Under review", "Pending documents", "Waitlist")]
-    from .family_list import overdue_ledger_summary
+    from .family_list import overdue_active_children_summary
 
-    unit_family_ids = list(families_qs_for_unit(unit).values_list("pk", flat=True))
-    past_due, _overdue_total, owing = overdue_ledger_summary(unit_family_ids)
+    past_due, _overdue_total, owing = overdue_active_children_summary(unit=unit)
     unread = count_messages_unread_live(for_admin=False)
 
     alerts = []
@@ -552,12 +551,16 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
     from .models import PortalProgram
     from .report_sheets import parse_sheet_date
 
+    from .care_program import filter_children_by_care, normalize_care_filter, truthy_query_flag
+
     filters = dict(filters or {})
     raw_date = (filters.get("date") or "").strip()
     sheet_date = parse_sheet_date(raw_date) if raw_date else timezone.localdate()
     selected_grades = _normalized_grade_list(filters.get("grades") or filters.get("grade"))
     program_id = (filters.get("program") or "").strip()
     unit_slug = (filters.get("unit") or "").strip()
+    care = normalize_care_filter(filters.get("care"))
+    show_parent_contact = truthy_query_flag(filters.get("parent_contact"))
     scoped_unit = resolve_weekly_attendance_unit(
         unit_slug, header_unit=unit, allowed_units=allowed_units, admin=admin
     )
@@ -572,6 +575,9 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
         ]
     else:
         roster_children = list(children_for_unit(scoped_unit, active_only=True).order_by("name", "id"))
+
+    option_children = list(roster_children)
+    roster_children = filter_children_by_care(roster_children, care)
 
     programs_qs = PortalProgram.objects.filter(is_active=True).select_related("unit").order_by("unit__name", "name")
     if scoped_unit:
@@ -591,6 +597,9 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
         "filters": filters,
         "sheet_date": sheet_date,
         "scoped_unit": scoped_unit,
+        "care": care,
+        "show_parent_contact": show_parent_contact,
+        "option_children": option_children,
         "roster_children": roster_children,
         "chosen_program": chosen_program,
         "record_programs": record_programs,
@@ -638,16 +647,18 @@ def _row_matches_sheet_filters(row, *, selected_grade_keys, query, school, statu
 
 
 def _sheet_filter_options(scope, statuses=None):
-    roster_children = scope["roster_children"]
+    from .care_program import CARE_FILTER_CHOICES
+
+    option_children = scope.get("option_children") or scope["roster_children"]
     all_programs = scope["all_programs"]
     admin = scope["admin"]
     return {
         "grades": sorted(
-            {(child.grade or "").strip() for child in roster_children if (child.grade or "").strip()},
+            {(child.grade or "").strip() for child in option_children if (child.grade or "").strip()},
             key=_grade_sort_key,
         ),
         "schools": sorted(
-            {(child.school or "").strip() for child in roster_children if (child.school or "").strip()},
+            {(child.school or "").strip() for child in option_children if (child.school or "").strip()},
             key=str.lower,
         ),
         "programs": [
@@ -656,10 +667,13 @@ def _sheet_filter_options(scope, statuses=None):
         ],
         "units": scope["unit_choices"],
         "statuses": sorted(statuses or [], key=str.lower),
+        "care_choices": list(CARE_FILTER_CHOICES),
     }
 
 
 def _sheet_unit_meta(scope):
+    from .care_program import care_filter_label
+
     scoped_unit = scope["scoped_unit"]
     admin = scope["admin"]
     chosen_program = scope["chosen_program"]
@@ -669,6 +683,8 @@ def _sheet_unit_meta(scope):
     )
     if admin and not scoped_unit:
         program_name = chosen_program.name if chosen_program else "All programs"
+    care = scope.get("care") or ""
+    show_parent_contact = bool(scope.get("show_parent_contact"))
     return {
         "selected_unit_slug": scoped_unit.slug if scoped_unit else "",
         "selected_unit_name": scoped_unit.name if scoped_unit else ("All units" if admin else ""),
@@ -678,6 +694,9 @@ def _sheet_unit_meta(scope):
         "sheet_date": scope["sheet_date"].isoformat(),
         "generated_date": timezone.localdate().strftime("%B %d, %Y"),
         "selected_grades": scope["selected_grades"],
+        "care": care,
+        "care_label": care_filter_label(care),
+        "show_parent_contact": show_parent_contact,
     }
 
 
@@ -721,6 +740,16 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
 
     rows = []
     option_statuses = set()
+    parent_apps_by_family = {}
+    match_apps = None
+    contact_for_child = None
+    if scope.get("show_parent_contact") and roster_children:
+        from .care_program import apps_by_family_for_children, parent_contact_for_child
+        from .member_report import _match_apps_for_child
+
+        parent_apps_by_family = apps_by_family_for_children(roster_children)
+        match_apps = _match_apps_for_child
+        contact_for_child = parent_contact_for_child
     for child in roster_children:
         day_marks = [bool(present_lookup.get((child.pk, day))) for day in weekdays]
         status_keys = [status_lookup.get((child.pk, day)) for day in weekdays]
@@ -733,6 +762,10 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
             "total": sum(1 for present in day_marks if present),
             "status": status_label,
         }
+        if contact_for_child:
+            row.update(
+                contact_for_child(child, match_apps(child, parent_apps_by_family.get(child.family_id, [])))
+            )
         if not _row_matches_sheet_filters(
             row,
             selected_grade_keys=scope["selected_grade_keys"],

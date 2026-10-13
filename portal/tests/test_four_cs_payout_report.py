@@ -4,7 +4,10 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from django.utils import timezone
+
 from portal.admin_config import save_scholarship_fund
+from portal.agency_weeks import billable_week_count_for_month
 from portal.four_cs_report import (
     child_is_4cs_member,
     filter_four_cs_payout_rows,
@@ -245,8 +248,9 @@ class FourCsPayoutReportTests(TestCase):
         # Bi-weekly: Miles 25 * 2
         self.assertEqual(totals["copay_biweekly_plans_amount"], Decimal("50.00"))
         self.assertEqual(totals["biweekly_count"], 1)
-        # Monthly: Ethan 20 * 4
-        self.assertEqual(totals["copay_monthly_plans_amount"], Decimal("80.00"))
+        today = timezone.localdate()
+        month_weeks = billable_week_count_for_month(today.year, today.month) or 4
+        self.assertEqual(totals["copay_monthly_plans_amount"], Decimal("20.00") * month_weeks)
         self.assertEqual(totals["monthly_count"], 1)
 
     def test_agency_totals_not_reduced_by_scholarship(self):

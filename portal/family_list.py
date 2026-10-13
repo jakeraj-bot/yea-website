@@ -32,6 +32,37 @@ def _normalize_child_name(name):
     return (name or "").strip()
 
 
+def phone_digits(value):
+    """Keep digits only so (201) 456-5698 matches 2014565698."""
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def family_phone_digits(family):
+    """Primary/secondary parent phones from applications, digits only."""
+    parts = []
+    seen = set()
+    cached = getattr(family, "_prefetched_objects_cache", None)
+    if cached and "enrollment_applications" in cached:
+        apps = family.enrollment_applications.all()
+    elif getattr(family, "pk", None):
+        apps = family.enrollment_applications.all()
+    else:
+        apps = []
+    for app in apps:
+        for raw in (getattr(app, "primary_phone", ""), getattr(app, "secondary_phone", "")):
+            digits = phone_digits(raw)
+            if digits and digits not in seen:
+                seen.add(digits)
+                parts.append(digits)
+    return " ".join(parts)
+
+
+def query_matches_phones(query, stored_digits):
+    needle = phone_digits(query)
+    haystack = phone_digits(stored_digits)
+    return bool(needle) and needle in haystack
+
+
 def _child_name_key(name):
     return _normalize_child_name(name).casefold()
 
@@ -84,6 +115,37 @@ def overdue_ledger_summary(family_ids):
     owing = ledger_owing_by_family(family_ids)
     total = sum(owing.values(), Decimal("0"))
     return len(owing), total, owing
+
+
+def overdue_active_children_summary(family_ids=None, *, unit=None):
+    """Overdue families/totals using only active children's remaining tuition.
+
+    Inactive children who still owe are left off Overview cards and default
+    reports. Review them on the Inactive tab, Inactive report, or status All.
+    """
+    from .member_admin import is_placeholder_unit
+    from .models import PortalChild
+    from .unit_visibility import child_unit_q
+
+    qs = (
+        PortalChild.objects.filter(is_active=True)
+        .exclude(family__slug="practice")
+        .select_related("family", "family__unit", "unit")
+    )
+    if unit is not None:
+        qs = qs.filter(child_unit_q(unit))
+    elif family_ids is not None:
+        qs = qs.filter(family_id__in=list(family_ids))
+    children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
+    maps = child_balance_maps([child.family_id for child in children])
+    family_owing = {}
+    for child in children:
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if balance <= 0:
+            continue
+        family_owing[child.family_id] = family_owing.get(child.family_id, Decimal("0")) + balance
+    total = sum(family_owing.values(), Decimal("0"))
+    return len(family_owing), total, family_owing
 
 
 def household_balance_from_child_map(family_balances):
@@ -273,9 +335,7 @@ def child_balance_maps(family_ids):
         family_map[key] += row["total"] or Decimal("0")
 
     child_names_by_family = defaultdict(list)
-    for family_id, name in PortalChild.objects.filter(family_id__in=ids, is_active=True).values_list(
-        "family_id", "name"
-    ):
+    for family_id, name in PortalChild.objects.filter(family_id__in=ids).values_list("family_id", "name"):
         child_names_by_family[family_id].append(name)
     for family_id, family_map in maps.items():
         allocate_unlabeled_to_children(family_map, child_names_by_family.get(family_id, []))
@@ -311,6 +371,25 @@ def prefetch_family_table_queryset(qs):
 
 def _active_prefetched_children(family):
     return [child for child in family.children.all() if child.is_active]
+
+
+def _inactive_prefetched_children(family):
+    return [child for child in family.children.all() if not child.is_active]
+
+
+def child_is_waitlist_only(child, apps):
+    """True when this child has only waitlist applications (never enrolled)."""
+    name = (getattr(child, "name", None) or "").strip()
+    if not name:
+        return False
+    matching = [app for app in (apps or []) if child_name_in_collection(application_child_name(app), [name])]
+    if not matching:
+        return False
+    if any(app.status in APPROVED_APPLICATION_STATUSES for app in matching):
+        return False
+    if any(app.status in PENDING_REVIEW_STATUSES for app in matching):
+        return False
+    return all(app.status == WAITLIST_APPLICATION_STATUS for app in matching)
 
 
 def application_child_name(app):
@@ -364,8 +443,14 @@ def _location_label(key, units_by_slug):
     return (key or "").replace("_", " ").title() if key else ""
 
 
-def live_family_child_rows(families, *, staff_unit=None, include_parent_login=False):
-    """Build Families-table child rows without N+1 queries or per-request data repair."""
+def live_family_child_rows(families, *, staff_unit=None, include_parent_login=False, inactive=False):
+    """Build Families-table child rows without N+1 queries or per-request data repair.
+
+    ``inactive=True`` lists enrolled children who left the program. Waitlist-only
+    kids stay off both tabs. Mixed households keep the active child on the main
+    list and the inactive child on the Inactive tab. Make inactive toggles the
+    existing child — it does not create a second child, family, or Active row.
+    """
     from enrollment.portal_integration import family_display_label, family_name_duplicate_keys
 
     from .unit_visibility import application_belongs_to_unit, child_belongs_to_unit, unit_label_for_child
@@ -378,19 +463,35 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
     units_by_slug = _units_by_slug()
     rows = []
     for family in families:
-        family_balances = balances.get(family.pk, {})
-        household_children = _active_prefetched_children(family)
-        apps = list(family.enrollment_applications.all())
-        if is_waitlist_only_household(apps, household_children):
+        if getattr(family, "slug", "") == "practice":
             continue
-        active_children = [
-            child
-            for child in household_children
-            if not staff_unit or child_belongs_to_unit(child, staff_unit)
-        ]
+        family_balances = balances.get(family.pk, {})
+        apps = list(family.enrollment_applications.all())
+        household_children = _active_prefetched_children(family)
+        inactive_children = _inactive_prefetched_children(family)
+        if not inactive and is_waitlist_only_household(apps, household_children):
+            continue
+        if inactive:
+            listed_children = [
+                child
+                for child in inactive_children
+                if not child_is_waitlist_only(child, apps)
+                and (not staff_unit or child_belongs_to_unit(child, staff_unit))
+            ]
+        else:
+            listed_children = [
+                child
+                for child in household_children
+                if not staff_unit or child_belongs_to_unit(child, staff_unit)
+            ]
         children_specs = []
-        listed_names = []
-        for child in active_children:
+        # Skip application fallbacks for kids who already have a PortalChild,
+        # including inactive ones. Otherwise Make inactive looks like a duplicate
+        # (Active keeps the approved-application row; Inactive adds the child).
+        listed_names = [child.name for child in household_children] + [
+            child.name for child in inactive_children
+        ]
+        for child in listed_children:
             unit_name, unit_slug = unit_label_for_child(child)
             children_specs.append(
                 {
@@ -403,33 +504,44 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                 }
             )
             listed_names.append(child.name)
-        for app in apps:
-            child_name = application_child_name(app)
-            if app.status in {"declined", "enrolled", WAITLIST_APPLICATION_STATUS}:
+        if not inactive:
+            for app in apps:
+                child_name = application_child_name(app)
+                if app.status in {"declined", "enrolled", WAITLIST_APPLICATION_STATUS}:
+                    continue
+                if child_name_in_collection(child_name, listed_names):
+                    continue
+                if staff_unit and not application_belongs_to_unit(app, staff_unit):
+                    continue
+                app_unit = _unit_for_enrollment_key(app.program_location, units_by_slug)
+                children_specs.append(
+                    {
+                        "name": child_name,
+                        "application_id": app.pk,
+                        "school": app.student_school or "—",
+                        "balance": child_balance_from_map(family_balances, child_name),
+                        "unit": (app_unit.name if app_unit else "")
+                        or _location_label(app.program_location, units_by_slug)
+                        or (family.unit.name if family.unit_id else ""),
+                        "unit_slug": (app_unit.slug if app_unit else "") or (family.unit.slug if family.unit_id else ""),
+                    }
+                )
+                listed_names.append(child_name)
+        if not children_specs:
+            if inactive or staff_unit:
                 continue
-            if child_name_in_collection(child_name, listed_names):
+            # Fully inactive households must leave Active — no blank family row.
+            if inactive_children:
                 continue
-            if staff_unit and not application_belongs_to_unit(app, staff_unit):
-                continue
-            app_unit = _unit_for_enrollment_key(app.program_location, units_by_slug)
-            children_specs.append(
-                {
-                    "name": child_name,
-                    "application_id": app.pk,
-                    "school": app.student_school or "—",
-                    "balance": child_balance_from_map(family_balances, child_name),
-                    "unit": (app_unit.name if app_unit else "")
-                    or _location_label(app.program_location, units_by_slug)
-                    or (family.unit.name if family.unit_id else ""),
-                    "unit_slug": (app_unit.slug if app_unit else "") or (family.unit.slug if family.unit_id else ""),
-                }
-            )
-            listed_names.append(child_name)
-        if staff_unit and not children_specs:
-            continue
         has_application = getattr(family, "list_has_application", None)
         if has_application is None:
             has_application = bool(family.enrollment_applications.all())
+        if inactive:
+            row_status = "Inactive"
+        elif family.is_suspended:
+            row_status = "Suspended"
+        else:
+            row_status = family.status
         base_row = {
             "id": family.pk,
             "slug": family.slug,
@@ -437,8 +549,10 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
             "primary_contact": family.primary_contact or "—",
             "program": family.program_label or "—",
             "billing_type": family.billing_type or "Private pay",
-            "status": "Suspended" if family.is_suspended else family.status,
+            "status": row_status,
             "has_application": bool(has_application),
+            "phone_digits": family_phone_digits(family),
+            "is_inactive_child": inactive,
         }
         if family.unit_id:
             base_row["unit"] = family.unit.name
@@ -681,6 +795,9 @@ def _row_balance(row, *keys):
 def parse_family_list_nav(query):
     """Read Families-table filters from a QueryDict or mapping."""
     get = query.get
+    tab = (get("tab") or "").strip().lower()
+    if tab not in ("inactive",):
+        tab = ""
     return {
         "q": (get("q") or "").strip(),
         "unit": (get("unit") or "all").strip() or "all",
@@ -689,6 +806,7 @@ def parse_family_list_nav(query):
         "school": (get("school") or "").strip(),
         "child_id": (get("child_id") or "").strip(),
         "child": (get("child") or "").strip(),
+        "tab": tab,
         "from_list": get("list") == "1",
     }
 
@@ -700,6 +818,7 @@ def family_list_nav_filters(nav):
         "ff": (nav.get("ff") or "all") or "all",
         "sort": (nav.get("sort") or DEFAULT_LIST_SORT) or DEFAULT_LIST_SORT,
         "school": (nav.get("school") or "").strip(),
+        "tab": (nav.get("tab") or "").strip(),
     }
 
 
@@ -710,6 +829,7 @@ def has_active_list_filters(nav):
         or (nav.get("unit") or "all") not in ("", "all")
         or (nav.get("ff") or "all") not in ("", "all")
         or (nav.get("sort") or DEFAULT_LIST_SORT) not in ("", DEFAULT_LIST_SORT)
+        or (nav.get("tab") or "").strip()
     )
 
 
@@ -766,7 +886,7 @@ def row_matches_list_nav(row, nav):
             row.get("billing_type"),
             row.get("status"),
         )
-        if query not in haystack:
+        if query not in haystack and not query_matches_phones(query, row.get("phone_digits")):
             return False
 
     status = str(row.get("status") or "").casefold()
@@ -946,6 +1066,9 @@ def family_list_querystring(nav, *, family_id=None, child_id=None, child_name=No
         sort = nav.get("sort") or DEFAULT_LIST_SORT
         if sort not in ("", DEFAULT_LIST_SORT):
             items.append(("sort", sort))
+        tab = (nav.get("tab") or "").strip()
+        if tab:
+            items.append(("tab", tab))
         if include_list_flag and (nav.get("from_list") or has_active_list_filters(nav)):
             items.append(("list", "1"))
     return urlencode(items)

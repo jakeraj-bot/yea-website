@@ -70,7 +70,11 @@
 
           {% if parent_stripe_enabled %}
           <div class="portal-callout card portal-form-full">
+            {% if practice_checkout_standin %}
+            <p><strong>{% pt "practice_pay_standin" %}</strong></p>
+            {% else %}
             <p><strong>{% pt "secure_card" %}</strong></p>
+            {% endif %}
           </div>
           {% elif portal_live and parent_authenticated %}
           <div class="portal-callout card portal-callout-warning portal-form-full">

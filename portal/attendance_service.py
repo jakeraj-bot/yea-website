@@ -225,11 +225,11 @@ def undo_absent(child_id, program, attendance_date):
     return record
 
 
-def families_for_staff(unit):
+def families_for_staff(unit, inactive=False):
     from .family_list import live_family_child_rows, prefetch_family_table_queryset
 
     families = prefetch_family_table_queryset(families_qs_for_unit(unit).order_by("name"))
-    return live_family_child_rows(families, staff_unit=unit)
+    return live_family_child_rows(families, staff_unit=unit, inactive=inactive)
 
 
 def attendance_redirect(request, attendance_date, extra_query=""):

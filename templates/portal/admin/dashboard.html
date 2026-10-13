@@ -16,6 +16,12 @@
     <div class="portal-callout card portal-collapse-skip">
       <p><strong>YEA Parent Portal</strong> is a phone Home Screen app (Add to Home Screen). App Store wrap later — $99/year when you list YEA Parent Portal.</p>
     </div>
+    {% if practice_parent_available %}
+    <div class="portal-callout card portal-collapse-skip">
+      <p><strong>Practice parent portal.</strong> Open a sandbox family and do everything a parent can do, including Pay now. Test payments only — not a real family. This is not Parent view.</p>
+      {% include "portal/includes/practice_parent_open.html" with button_class="btn-primary" %}
+    </div>
+    {% endif %}
     <div class="portal-stat-row portal-stat-row--colorful">
       <div class="portal-stat card">
         <span class="portal-stat-label">Children enrolled</span>

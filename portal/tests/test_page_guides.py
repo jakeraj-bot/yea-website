@@ -27,12 +27,15 @@ class PageGuideCatalogTests(TestCase):
             "reports",
             "owed-weeks",
             "four-cs-payout",
+            "inactive-children",
             "member-information",
             "emergency-contacts",
             "weekly-attendance",
             "weekly-attendance-blank",
             "daily-attendance",
             "daily-attendance-blank",
+            "signout-blank",
+            "before-care",
             "admin-attendance",
             "emails-sent",
             "parent-emails",
@@ -62,6 +65,15 @@ class PageGuideCatalogTests(TestCase):
         ):
             self.assertIsNotNone(guide_for(f"family-{tab}"), tab)
 
+    def test_family_attendance_guide_explains_switching_children(self):
+        guide = guide_for("family-attendance")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Switch children", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("two children", bodies)
+        self.assertIn("names", bodies)
+        self.assertIn("Inactive", bodies)
+
     def test_waitlist_guide_explains_adding_after_care(self):
         guide = guide_for("waitlist")
         titles = [step["title"] for step in guide["steps"]]
@@ -70,10 +82,44 @@ class PageGuideCatalogTests(TestCase):
         self.assertEqual(titles[2], "Save")
         self.assertIn("new enrollment form", guide["steps"][1]["body"])
         self.assertIn("Confirm to save", guide["steps"][2]["body"])
+        approve_body = guide["steps"][3]["body"]
+        self.assertIn("All families Active", approve_body)
+        self.assertIn("no duplicate", approve_body)
+        self.assertIn("Pay now", approve_body)
+        self.assertIn("member start date", approve_body)
+        self.assertIn("billing plan", approve_body.lower())
+        self.assertIn("jakeraj@yeanj.org", approve_body)
+
+    def test_application_detail_guide_explains_editable_membership_amount(self):
+        guide = guide_for("application-detail")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Change the membership amount before you approve", titles)
+        self.assertIn("Attach a billing plan before you approve", titles)
+        self.assertIn("Edit the application if details are wrong", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("Type 0 to waive", bodies)
+        self.assertIn("family ledger", bodies.lower())
+        self.assertIn("All families Active", bodies)
+        self.assertIn("no second family", bodies)
+        self.assertIn("Pay now", bodies)
+        self.assertIn("member start date", bodies)
+        self.assertIn("jakeraj@yeanj.org", bodies)
+        self.assertIn("parent copay", bodies.lower())
+        self.assertIn("Edit application", bodies)
+        self.assertIn("Program director", bodies)
+        self.assertIn("Django /admin/", bodies)
+
+    def test_family_billing_guide_explains_editing_membership_amount(self):
+        guide = guide_for("family-billing")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Edit a membership charge", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("amount", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
         titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Enter a weekly rate on monthly plans", titles)
         self.assertIn("Add a scholarship on a regular plan", titles)
         self.assertIn("Add a scholarship on a 4Cs plan", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
@@ -81,6 +127,10 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("agency week amounts stay the same", bodies.lower())
         self.assertIn("private-pay", bodies.lower())
         self.assertIn("family-pays", bodies.lower())
+        self.assertIn("plan amount", bodies.lower())
+        self.assertIn("friday", bodies.lower())
+        self.assertIn("9/28/2026", bodies)
+        self.assertIn("october", bodies.lower())
 
     def test_family_profile_guide_explains_password_reset(self):
         guide = guide_for("family-profile")
@@ -113,6 +163,45 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("filter", bodies.lower())
         self.assertIn("payment", bodies.lower())
         self.assertIn("fee", bodies.lower())
+        self.assertIn("inactive", bodies.lower())
+
+    def test_families_guide_explains_inactive_tab_and_phone_search(self):
+        guide = guide_for("families")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Inactive tab", titles)
+        self.assertIn("Make them active again", titles)
+        self.assertIn("Parents can still pay and get tax forms", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("phone", bodies.lower())
+        self.assertIn("Pay now", bodies)
+        self.assertIn("tax statements", bodies.lower())
+        self.assertIn("not a copy", bodies)
+        self.assertIn("will not see that child on both tabs", bodies)
+        profile = guide_for("family-profile")
+        titles = [step["title"] for step in profile["steps"]]
+        self.assertIn("Make a child inactive or active", titles)
+        self.assertIn("Make one application inactive", titles)
+        self.assertIn("Fold profile sections", titles)
+        self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("does not copy", " ".join(step["body"] for step in profile["steps"]))
+        self.assertIn("before-care", " ".join(step["body"] for step in profile["steps"]).lower())
+        inactive = guide_for("inactive-children")
+        self.assertIsNotNone(inactive)
+        self.assertIn("remaining balance", inactive["intro"].lower())
+        self.assertIn("not a second copy", " ".join(step["body"] for step in inactive["steps"]))
+
+    def test_attendance_and_before_care_guides_explain_after_before_all(self):
+        weekly = guide_for("weekly-attendance")
+        self.assertIn("Choose After-care, Before-care, or All", [step["title"] for step in weekly["steps"]])
+        self.assertIn("Optionally add parent contact", [step["title"] for step in weekly["steps"]])
+        signout = guide_for("signout-blank")
+        self.assertIsNotNone(signout)
+        self.assertIn("After-care", " ".join(step["body"] for step in signout["steps"]))
+        before = guide_for("before-care")
+        self.assertIsNotNone(before)
+        self.assertIn("approved", before["intro"].lower())
+        self.assertIn("waitlist", before["intro"].lower())
 
     def test_program_calendar_guide_explains_two_calendars(self):
         guide = guide_for("program-calendar")
@@ -148,6 +237,8 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("+ After-care", bodies)
         self.assertIn("No new enrollment application", bodies)
+        self.assertIn("Approved", bodies)
+        self.assertIn("second family", bodies)
 
     def test_parent_applications_guide_explains_after_care(self):
         guide = guide_for("parent-applications")
@@ -233,8 +324,25 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, "Find the waitlisted child")
         self.assertContains(page, "Add After-care")
         self.assertContains(page, "Confirm to save")
+        self.assertContains(page, "All families Active")
+        self.assertContains(page, "no duplicate")
+        self.assertContains(page, "Pay now")
         self.assertContains(page, 'data-open-page-guide')
         self.assertContains(page, "portal-page-guide.js")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "families waiting for a before care spot, in request order")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_waitlist_page_keeps_howto_without_banner(self):
+        self._login(self.admin_user, "admin")
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "How to use this page")
+        self.assertContains(page, "no duplicate")
+        self.assertContains(page, "Pay now")
+        self.assertContains(page, "member start date")
+        self.assertNotContains(page, "Type the member start date first")
+        self.assertNotContains(page, "Before care waitlist in request order")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_open_staff_attendance_with_same_login(self):
@@ -312,3 +420,4 @@ class StaffPageGuideViewTests(TestCase):
         apps = application_permissions_for_staff(self.admin_account, portal_area="staff")
         self.assertTrue(apps["can_approve_applications"])
         self.assertTrue(apps["can_approve_waitlist"])
+        self.assertTrue(apps["can_edit_applications"])

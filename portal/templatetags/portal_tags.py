@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from django import template
 
 from portal.demo_data import CHILD_MEDICAL, MEDICAL_ALERT_TYPES
+from portal.phone_format import format_us_phone
 
 register = template.Library()
 
@@ -41,7 +42,8 @@ def child_medical_card(context, child_name, child=None):
     from portal.staff_services import get_medical_data_for_child
 
     child = child or {}
-    family_slug = child.get("family_slug") if isinstance(child, dict) else context.get("family_slug")
+    family_slug = child.get("family_slug") if isinstance(child, dict) else None
+    family_slug = family_slug or context.get("family_slug")
     medical = child.get("medical") if isinstance(child, dict) else None
     medical = medical or get_medical_data_for_child(child_name, family_slug)
     return {
@@ -50,8 +52,12 @@ def child_medical_card(context, child_name, child=None):
         "alerts": _alerts_for_child(child_name, family_slug),
         "medical": medical,
         "request": context.get("request"),
+        "csrf_token": context.get("csrf_token"),
         "school_options": context.get("school_options", []),
         "portal_live": context.get("portal_live"),
+        "portal_area": context.get("portal_area"),
+        "family_slug": family_slug,
+        "family_id": context.get("family_id"),
     }
 
 
@@ -77,3 +83,8 @@ def append_query(existing_query="", **kwargs):
         separator = "&" if existing_query.startswith("?") else "?"
         return f"{existing_query}{separator}{encoded}"
     return f"?{encoded}"
+
+
+@register.filter
+def format_phone(value):
+    return format_us_phone(value)

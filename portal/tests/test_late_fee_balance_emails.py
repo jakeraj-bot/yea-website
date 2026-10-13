@@ -128,6 +128,8 @@ class UpdatedBalanceEmailTests(TestCase):
         self.assertIn("50.00", kwargs["message"])
         self.assertIn("Maya Lee", kwargs["message"])
         self.assertIn("Family balance (what the household owes): $20.00", kwargs["message"])
+        self.assertIn("/portal/parent/payment/", kwargs["message"])
+        self.assertIn("Pay now", kwargs["message"])
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_voiding_charge_sends_updated_balance_email(self, send_email):

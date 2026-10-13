@@ -133,7 +133,7 @@ def families_qs_for_unit(unit):
     empty_home = PortalFamily.objects.filter(unit=unit, children__isnull=True).values("pk")
     return PortalFamily.objects.filter(
         Q(pk__in=child_family_ids) | Q(pk__in=app_family_ids) | Q(pk__in=empty_home)
-    ).distinct()
+    ).exclude(slug="practice").distinct()
 
 
 def family_can_move_home_unit(family, new_unit):

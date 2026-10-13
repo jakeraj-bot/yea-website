@@ -12,9 +12,13 @@
       <a class="btn btn-primary" href="{% url 'portal_admin_page' page='communications' %}?add=announcement">+ New announcement</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='communications' %}?add=newsletter">+ New newsletter</a>
       <a class="btn btn-secondary" href="{% url 'portal_admin_parent_preview_sample' %}">Sample parent portal</a>
+      {% include "portal/includes/practice_parent_open.html" with button_class="btn-primary" %}
       <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='families' %}">Open a member’s portal</a>
     </div>
-    <p class="form-note">Use the sample parent portal to check updates without a parent login. To help a family who reported an issue, open <strong>Parent view</strong> from their account or the families list — they see a notice while you look. Card numbers stay hidden.</p>
+    <p class="form-note"><strong>Practice parent</strong> signs you into a sandbox family so you can pay (test mode), add emergency contacts, switch to Spanish, and use Help just like a parent. <strong>Sample parent portal</strong> and <strong>Parent view</strong> on a real family only show the screens — they do not charge a card. Card numbers stay hidden in Parent view.</p>
+    {% if practice_parent_available and practice_parent_login %}
+    <p class="form-note">Practice login if you want to type it: <code>{{ practice_parent_login.url }}</code> · username <strong>{{ practice_parent_login.username }}</strong> · password <strong>{{ practice_parent_login.password }}</strong>. Or click <strong>Open practice parent</strong> so you do not have to remember it.</p>
+    {% endif %}
 
     {% if show_add_announcement %}
     <div class="portal-panel card portal-program-form">

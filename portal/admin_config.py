@@ -616,6 +616,18 @@ def save_scholarship_assignment(data, assignment_pk=None):
 
 def _sync_child_plan_from_scholarship(assignment):
     child = assignment.child
+    try:
+        from .billing_services import ensure_primary_billing_plan
+
+        primary = ensure_primary_billing_plan(child)
+        if assignment.billing_plan_id is None and primary:
+            assignment.billing_plan = primary
+            assignment.save(update_fields=["billing_plan"])
+        extra_plans = child.billing_plans.exclude(pk=primary.pk).exists() if primary else False
+        if extra_plans and assignment.billing_plan_id and assignment.billing_plan_id != primary.pk:
+            return child
+    except Exception:
+        pass
     child.billing_amount = assignment.parent_amount
     if not (child.billing_plan or "").strip():
         child.billing_plan = "Weekly"
