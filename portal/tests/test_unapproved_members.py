@@ -237,7 +237,9 @@ class UnapprovedMembersHiddenTests(TestCase):
         waitlist = self.client.get(reverse("portal_admin_page", kwargs={"page": "waitlist"}))
         self.assertEqual(waitlist.status_code, 200)
 
-        enrollment = self.client.get(reverse("portal_admin_data_report", kwargs={"slug": "member-information"}))
+        enrollment = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "member-information"})
+        )
         self.assertEqual(enrollment.status_code, 200)
         self.assertContains(enrollment, "Mia Listed")
         self.assertNotContains(enrollment, "Nia Hiddenpending")
