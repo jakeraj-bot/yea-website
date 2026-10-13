@@ -4492,11 +4492,18 @@ def staff_account_balance_report(request):
     else:
         report = {
             **spec,
+            "slug": "balances",
             "rows": [],
             "summary": "Choose a unit to see the Account Balance report.",
             "outstanding": "0.00",
             "units": [],
             "statuses": ["Active", "Inactive"],
+            "status_choices": [("Active", "Active"), ("Inactive", "Inactive")],
+            "owes_choices": [
+                ("yes", "With balance"),
+                ("no", "Without balance"),
+                ("credit", "Credit"),
+            ],
             "layout": spec.get("layout") or "table",
             "print_header": True,
             "print_title": "Balance Report",
@@ -4504,7 +4511,7 @@ def staff_account_balance_report(request):
             "selected_status": filters.get("status") or "Active",
             "unit_balances": [],
         }
-    report = {**report, "filters": ("q", "status", "owes")}
+    report = {**report, "slug": "balances", "filters": ("q", "status", "owes")}
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
