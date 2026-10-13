@@ -3,13 +3,20 @@
 </div>
 <div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}">
   <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}{% if report.print_header %} portal-account-balance-print-table portal-attendance-print-table{% endif %}">
+    {% if report.print_header %}
+    <colgroup>
+      {% for key, _label in report.columns %}
+      <col class="portal-ab-col-{{ key }}">
+      {% endfor %}
+    </colgroup>
+    {% endif %}
     <thead>
       {% if report.print_header %}
       {% include "portal/staff/includes/account_balance_print_header.html" with colspan=report.columns|length sheet_title=report.print_title|default:report.title sheet_subtitle=report.summary selected_unit_name=report.selected_unit_name selected_status=report.selected_status report_date=report.report_date %}
       {% endif %}
       <tr>
-        {% for _key, label in report.columns %}
-        <th>{{ label }}</th>
+        {% for key, label in report.columns %}
+        <th{% if key == "row_num" %} class="portal-row-num"{% elif key == "amount_owe" or key == "paid" or key == "balance" %} class="portal-cell-amount"{% elif key == "child" or key == "description" or key == "notes" %} class="portal-cell-wrap"{% endif %}>{{ label }}</th>
         {% endfor %}
       </tr>
     </thead>
@@ -17,7 +24,7 @@
       {% for row in rows %}
       <tr>
         {% for cell in row.display %}
-        <td{% if cell.key == "amount_owe" or cell.key == "paid" or cell.key == "balance" %} class="portal-cell-amount"{% elif cell.key == "child" or cell.key == "description" or cell.key == "notes" %} class="portal-cell-wrap"{% endif %}>
+        <td{% if cell.key == "row_num" %} class="portal-row-num"{% elif cell.key == "amount_owe" or cell.key == "paid" or cell.key == "balance" %} class="portal-cell-amount"{% elif cell.key == "child" or cell.key == "description" or cell.key == "notes" %} class="portal-cell-wrap"{% endif %}>
           {% if cell.key == "child" and row.family_slug %}
           {% if report.child_link == "profile" %}
           {% if portal_area == 'staff' %}

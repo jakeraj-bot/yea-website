@@ -6084,6 +6084,30 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   width: 100%;
 }
 
+.portal-account-balance-print-table col.portal-ab-col-row_num {
+  width: 2.2rem;
+}
+
+.portal-account-balance-print-table col.portal-ab-col-child {
+  width: 14%;
+}
+
+.portal-account-balance-print-table col.portal-ab-col-amount_owe {
+  width: 6.6rem;
+}
+
+.portal-account-balance-print-table col.portal-ab-col-description {
+  width: 40%;
+}
+
+.portal-account-balance-print-table col.portal-ab-col-paid {
+  width: 5.2rem;
+}
+
+.portal-account-balance-print-table col.portal-ab-col-notes {
+  width: 16%;
+}
+
 .portal-account-balance-print-table th,
 .portal-account-balance-print-table td,
 .portal-account-balance-print-table .portal-cell-wrap {
@@ -6092,24 +6116,14 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   word-break: break-word;
 }
 
-.portal-account-balance-print-table th:nth-child(1),
-.portal-account-balance-print-table td:nth-child(1) {
+.portal-account-balance-print-table th.portal-row-num,
+.portal-account-balance-print-table td.portal-row-num {
   width: 2.2rem;
-}
-
-.portal-account-balance-print-table th:nth-child(2),
-.portal-account-balance-print-table td:nth-child(2) {
-  width: 18%;
-}
-
-.portal-account-balance-print-table th:nth-child(3),
-.portal-account-balance-print-table td:nth-child(3) {
-  width: 7.2rem;
-}
-
-.portal-account-balance-print-table th:nth-child(5),
-.portal-account-balance-print-table td:nth-child(5) {
-  width: 5.5rem;
+  min-width: 2.2rem;
+  max-width: 2.5rem;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .portal-ledger-edit-form .portal-ledger-date {
@@ -6151,6 +6165,21 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     overflow-wrap: anywhere;
     word-break: break-word;
     max-width: none !important;
+  }
+
+  .portal-account-balance-print-table col.portal-ab-col-row_num,
+  .portal-account-balance-print-table th.portal-row-num,
+  .portal-account-balance-print-table td.portal-row-num {
+    width: 2.2rem !important;
+    min-width: 2.2rem !important;
+    max-width: 2.5rem !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .portal-account-balance-print-table col.portal-ab-col-description {
+    width: 40%;
   }
 
   .portal-account-balance-print-table .portal-cell-amount {
