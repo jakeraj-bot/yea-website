@@ -23,7 +23,23 @@
 
     {% if receipts %}
     <h2>{% pt "payment_history" %}</h2>
-    <div class="portal-table-wrap">
+    <div class="portal-receipt-cards">
+      {% for receipt in receipts %}
+      <article class="card portal-receipt-card portal-collapse-skip">
+        <p class="portal-receipt-card-date">{{ receipt.date }}</p>
+        <p><strong>{{ receipt.child }}</strong> · ${{ receipt.amount }}</p>
+        <p class="form-note">{{ receipt.description }}</p>
+        <p class="form-note">{{ receipt.method }}{% if receipt.payment_reference_display %} · {{ receipt.payment_reference_display }}{% endif %}</p>
+        <p><code class="portal-ref-code">{{ receipt.reference }}</code></p>
+        {% if "RCPT" in receipt.reference %}
+        <a class="btn btn-primary portal-parent-fat-btn" href="{% url 'portal_parent_receipts_print' %}{% append_query parent_pay_query ref=receipt.reference %}">{% pt "view_receipt" %}</a>
+        {% else %}
+        <span class="form-note">{% pt "invoice_unpaid" %}</span>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    <div class="portal-table-wrap portal-receipt-table">
       <table class="portal-table">
         <thead>
           <tr>

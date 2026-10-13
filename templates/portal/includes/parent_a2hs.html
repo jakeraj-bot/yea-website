@@ -1,0 +1,15 @@
+{% load static parent_i18n %}
+<div class="portal-a2hs" id="yea-a2hs" hidden role="dialog" aria-labelledby="yea-a2hs-title">
+  <img class="portal-a2hs-icon" src="{% static 'images/pwa/yea-parent-192.png' %}" alt="">
+  <div class="portal-a2hs-copy">
+    <p class="portal-a2hs-kicker">{% pt "app_name" %}</p>
+    <strong id="yea-a2hs-title">{% pt "a2hs_title" %}</strong>
+    <p>{% pt "a2hs_body" %}</p>
+    <p class="form-note" data-a2hs-ios>{% pt "a2hs_ios" %}</p>
+    <p class="form-note" data-a2hs-android>{% pt "a2hs_android" %}</p>
+  </div>
+  <div class="portal-a2hs-actions">
+    <button type="button" class="btn btn-primary portal-parent-fat-btn" data-a2hs-install hidden>{% pt "a2hs_add" %}</button>
+    <button type="button" class="btn btn-secondary" data-a2hs-dismiss>{% pt "a2hs_dismiss" %}</button>
+  </div>
+</div>
