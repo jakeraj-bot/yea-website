@@ -435,7 +435,7 @@ FAMILIES_BILLING = {
             {"date": "2026-09-08", "child": "Aiden Williams", "type": "discount", "description": "YEA General Scholarship", "amount": "-20.00"},
             {"date": "2026-09-08", "child": "Olivia Williams", "type": "charge", "description": "Weekly tuition", "amount": "75.00"},
             {"date": "2026-09-07", "child": "Aiden Williams", "type": "payment", "description": "Autopay — card ending 4242", "amount": "-50.00"},
-            {"date": "2026-09-07", "child": "Olivia Williams", "type": "payment", "description": "Staff — check #1042", "amount": "-75.00"},
+            {"date": "2026-09-07", "child": "Olivia Williams", "type": "payment", "description": "Staff — check #1042", "amount": "-75.00", "manual": True, "method": "Check", "reference_number": "1042"},
         ],
     },
     "chen": {
@@ -491,7 +491,7 @@ FAMILIES_BILLING = {
         "ledger": [
             {"date": "2026-09-07", "child": "Marcus Lee", "type": "charge", "description": "Membership fee", "amount": "20.00"},
             {"date": "2026-09-07", "child": "Marcus Lee", "type": "charge", "description": "Weekly tuition", "amount": "55.00"},
-            {"date": "2026-09-07", "child": "Marcus Lee", "type": "payment", "description": "Check #2201", "amount": "-75.00"},
+            {"date": "2026-09-07", "child": "Marcus Lee", "type": "payment", "description": "Check #2201", "amount": "-75.00", "manual": True, "method": "Check", "reference_number": "2201"},
         ],
     },
 }
