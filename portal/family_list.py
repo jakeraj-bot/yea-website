@@ -215,13 +215,16 @@ def unit_balance_summary(*, include_inactive=False):
             bucket["owing_family_ids"].add(child.family_id)
     rows = []
     for bucket in buckets.values():
+        copy = credit_fields(bucket["balance"])
         rows.append(
             {
                 "slug": bucket["slug"],
                 "unit": bucket["unit"],
-                "balance": f"{bucket['balance']:.2f}",
+                "balance": copy["running_balance"],
                 "overdue": f"{bucket['overdue']:.2f}",
                 "family_count": len(bucket["owing_family_ids"]),
+                "has_credit": copy["has_credit"],
+                "account_credit": copy["account_credit"],
             }
         )
     rows.sort(key=lambda row: (-Decimal(row["overdue"]), -Decimal(row["balance"]), row["unit"].casefold()))
@@ -357,11 +360,26 @@ def child_balance(child, balances=None):
     return child_balance_from_map(maps, getattr(child, "name", "") or "")
 
 
+def credit_fields(amount):
+    """Staff/parent copy for a signed ledger total. Overpay is credit, not $0."""
+    total = amount if isinstance(amount, Decimal) else Decimal(str(amount or "0"))
+    has_credit = total < 0
+    credit = abs(total) if has_credit else Decimal("0")
+    return {
+        "has_credit": has_credit,
+        "account_credit": f"{credit:.2f}",
+        "balance_due": f"{max(total, Decimal('0')):.2f}",
+        "running_balance": f"{total:.2f}",
+        "credit_label": f"${credit:.2f} credit" if has_credit else "",
+    }
+
+
 def family_balance(family, balances=None, child_names=None):
     """Household ledger: charges minus tuition payments. Stripe fees excluded.
 
     Family-level payments (empty child column) are included here. This is not
     the sum of the child-balance column — child balances are updated separately.
+    Overpayments stay as a negative total (account credit), never clamped to $0.
     """
     if not family or not getattr(family, "pk", None):
         return Decimal("0")

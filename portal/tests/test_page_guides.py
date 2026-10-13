@@ -113,8 +113,11 @@ class PageGuideCatalogTests(TestCase):
         guide = guide_for("family-billing")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Edit a membership charge", titles)
+        self.assertIn("Edit a scholarship or credit", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("amount", bodies.lower())
+        self.assertIn("account credit", bodies.lower())
+        self.assertIn("discount", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
@@ -159,11 +162,27 @@ class PageGuideCatalogTests(TestCase):
         self.assertIsNotNone(guide)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("child", bodies.lower())
-        self.assertIn("status", bodies.lower())
+        self.assertIn("members", bodies.lower())
         self.assertIn("filter", bodies.lower())
         self.assertIn("payment", bodies.lower())
         self.assertIn("fee", bodies.lower())
         self.assertIn("inactive", bodies.lower())
+        self.assertIn("unit", bodies.lower())
+        self.assertIn("with balance", bodies.lower())
+
+    def test_admin_dashboard_guide_holds_moved_howto_cards(self):
+        guide = guide_for("admin-dashboard")
+        self.assertIsNotNone(guide)
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Need attendance or a unit roster?", titles)
+        self.assertIn("YEA Parent Portal Home Screen app", titles)
+        self.assertIn("Practice parent portal", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("no extra staff account", bodies)
+        self.assertIn("App Store wrap later", bodies)
+        self.assertIn("$99/year", bodies)
+        self.assertIn("sandbox family", bodies)
+        self.assertIn("positive child balances", bodies)
 
     def test_families_guide_explains_inactive_tab_and_phone_search(self):
         guide = guide_for("families")
@@ -376,6 +395,16 @@ class StaffPageGuideViewTests(TestCase):
         self.assertContains(page, reverse("portal_area_switch", kwargs={"area": "staff"}))
         self.assertContains(page, "How to use this page")
         self.assertContains(page, "Open staff without a second account")
+        html = page.content.decode()
+        self.assertNotIn("portal-callout", html)
+        self.assertNotContains(page, "Policies signed")
+        self.assertContains(page, "Need attendance or a unit roster?")
+        self.assertContains(page, "phone Home Screen app")
+        self.assertContains(page, "App Store wrap later")
+        self.assertContains(page, "$99/year")
+        self.assertContains(page, "Practice parent portal")
+        self.assertContains(page, "Open a sandbox family")
+        self.assertContains(page, "id=\"portal-page-guide\"")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_access_page_says_not_to_create_second_account(self):

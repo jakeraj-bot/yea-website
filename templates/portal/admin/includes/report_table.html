@@ -17,7 +17,7 @@
       {% for row in rows %}
       <tr>
         {% for cell in row.display %}
-        <td>
+        <td{% if cell.key == "amount_owe" or cell.key == "paid" or cell.key == "balance" %} class="portal-cell-amount"{% elif cell.key == "child" or cell.key == "description" or cell.key == "notes" %} class="portal-cell-wrap"{% endif %}>
           {% if cell.key == "child" and row.family_slug %}
           {% if report.child_link == "profile" %}
           {% if portal_area == 'staff' %}

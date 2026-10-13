@@ -45,9 +45,6 @@ def get_admin_dashboard_live():
     )
     overdue_count, overdue_total, _owing = overdue_active_children_summary(overdue_ids)
     staff_count = PortalStaffAccount.objects.filter(is_active=True).count()
-    signed_apps = EnrollmentApplication.objects.filter(status="enrolled").count()
-    total_apps = max(EnrollmentApplication.objects.count(), 1)
-    policy_pct = min(100, int(signed_apps / total_apps * 100)) if total_apps else 0
     active_programs = PortalProgram.objects.filter(is_active=True).count()
     from .member_admin import pending_4cs_children
 
@@ -66,7 +63,6 @@ def get_admin_dashboard_live():
         "overdue_families": overdue_count,
         "overdue_amount": f"{overdue_total:.2f}",
         "unit_balances": unit_balances,
-        "policy_completion_pct": policy_pct,
         "staff_count": staff_count,
         "active_programs": active_programs,
         "agency_children": agency_children,

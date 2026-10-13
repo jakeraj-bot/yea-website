@@ -2,12 +2,14 @@
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from portal.admin_config import save_scholarship_fund
 from portal.admin_reports import build_admin_report
 from portal.admin_services import get_admin_dashboard_live
 from portal.billing_services import (
@@ -16,9 +18,13 @@ from portal.billing_services import (
     post_charge,
     post_credit,
     post_payment,
+    prepare_billing_for_staff,
+    update_child_billing_plan,
+    update_ledger_credit,
     update_offline_payment,
 )
 from portal.family_list import family_balance, unit_balance_summary
+from portal.live_services import family_meta_live
 from portal.models import (
     PortalChild,
     PortalFamily,
@@ -27,7 +33,7 @@ from portal.models import (
     PortalStaffAccount,
     PortalUnit,
 )
-from portal.parent_services import record_successful_payment
+from portal.parent_services import get_billing_live, record_successful_payment
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 from portal.tests.test_family_units import _make_application
 
@@ -321,3 +327,211 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         staff_page = staff.get(reverse("portal_staff_account_balance_report"))
         self.assertEqual(staff_page.status_code, 200)
         self.assertContains(staff_page, "Account Balance")
+
+    def test_overpay_keeps_credit_and_delete_other_payment_leaves_it(self):
+        self._charge("70.00")
+        post_payment(self.family, "Jordan Jacobs", "10.00", date(2026, 9, 9), "Cash", "Small cash")
+        post_payment(self.family, "Jordan Jacobs", "100.00", date(2026, 9, 10), "Cash", "Overpay cash")
+        self.assertEqual(family_balance(self.family), Decimal("-40.00"))
+        billing = get_billing_live(self.family)
+        self.assertTrue(billing["has_credit"])
+        self.assertEqual(billing["account_credit"], "40.00")
+        self.assertEqual(billing["running_balance"], "-40.00")
+        self.assertEqual(billing["balance_due"], "0.00")
+        meta = family_meta_live("jacobs", family_id=self.family.pk)
+        self.assertTrue(meta["has_credit"])
+        self.assertEqual(meta["account_credit"], "40.00")
+
+        small = PortalLedgerEntry.objects.get(family=self.family, description="Small cash")
+        delete_ledger_entry(self.family, small.pk)
+        self.assertEqual(family_balance(self.family), Decimal("-30.00"))
+        billing = get_billing_live(self.family)
+        self.assertTrue(billing["has_credit"])
+        self.assertEqual(billing["account_credit"], "30.00")
+        report = build_admin_report("balances", {})
+        jordan = next(row for row in report["rows"] if row["child"] == "Jordan Jacobs")
+        self.assertEqual(jordan["amount_owe"], "-30.00")
+        self.assertEqual(jordan["description"], "Credit $30.00")
+        unit_rows = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertTrue(unit_rows["school-18"]["has_credit"])
+        self.assertEqual(unit_rows["school-18"]["account_credit"], "30.00")
+        self.assertEqual(unit_rows["school-18"]["overdue"], "0.00")
+
+        overpay = PortalLedgerEntry.objects.get(family=self.family, description="Overpay cash")
+        delete_ledger_entry(self.family, overpay.pk)
+        self.assertEqual(family_balance(self.family), Decimal("70.00"))
+        billing = get_billing_live(self.family)
+        self.assertFalse(billing["has_credit"])
+        self.assertEqual(billing["running_balance"], "70.00")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_billing_page_shows_credit_and_deletes_this_payment_copy(self):
+        self._charge("70.00")
+        post_payment(self.family, "Jordan Jacobs", "100.00", date(2026, 9, 10), "Cash")
+        self._login(self.admin, "admin")
+        page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Account credit")
+        self.assertContains(page, "$30.00 credit")
+        self.assertContains(page, "Delete this payment?")
+        self.assertContains(page, "the account keeps that credit")
+        self.assertNotContains(page, "The credit comes off the ledger")
+        preview = prepare_billing_for_staff(self.family, {"can_delete_charge": True, "can_add_credit": True})
+        self.assertTrue(preview["has_credit"])
+        self.assertEqual(preview["account_credit"], "30.00")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_edit_credit_description_date_and_amount(self):
+        self._charge("70.00")
+        post_credit(self.family, "Jordan Jacobs", "20.00", date(2026, 9, 11), "Goodwill")
+        self.assertEqual(family_balance(self.family), Decimal("50.00"))
+        entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="credit")
+        preview = prepare_billing_for_staff(self.family, {"can_delete_charge": True, "can_add_credit": True})
+        credit_row = next(row for row in preview["ledger"] if row["type"] == "credit")
+        self.assertTrue(credit_row["editable"])
+        update_ledger_credit(
+            self.family,
+            entry.pk,
+            description="Billing correction — extra week",
+            entry_date=date(2026, 9, 4),
+            amount="40.00",
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "Billing correction — extra week")
+        self.assertEqual(entry.date, date(2026, 9, 4))
+        self.assertEqual(entry.amount, Decimal("-40.00"))
+        self.assertEqual(family_balance(self.family), Decimal("30.00"))
+
+        self._login(self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "edit_description",
+                "entry_id": str(entry.pk),
+                "description": "Staff credit — September",
+                "date": "2026-09-01",
+                "amount": "15.00",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "Staff credit — September")
+        self.assertEqual(entry.date, date(2026, 9, 1))
+        self.assertEqual(entry.amount, Decimal("-15.00"))
+        self.assertEqual(family_balance(self.family), Decimal("55.00"))
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Staff credit — September")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_edit_scholarship_description_persists(self):
+        today = timezone.localdate()
+        fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "70.00",
+            billing_type="Scholarship",
+            scholarship_fund_id=fund.pk,
+            scholarship_full_rate="70.00",
+            scholarship_parent_amount="50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=today.weekday(),
+        )
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        preview = prepare_billing_for_staff(self.family, {"can_delete_charge": True})
+        discount_row = next(row for row in preview["ledger"] if row["type"] == "discount")
+        self.assertTrue(discount_row["editable"])
+        self._login(self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "edit_description",
+                "entry_id": str(discount.pk),
+                "description": "After care — YEA General Scholarship scholarship",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        discount.refresh_from_db()
+        self.assertEqual(discount.description, "After care — YEA General Scholarship scholarship")
+        page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(page, "After care — YEA General Scholarship scholarship")
+        self.assertEqual(family_balance(self.family), Decimal("50.00"))
+
+    def test_account_balance_filters_unit_members_and_balance(self):
+        at_26 = PortalChild.objects.create(
+            family=self.family,
+            name="Ben School26",
+            unit=self.unit_26,
+            billing_plan="Weekly",
+            is_active=True,
+        )
+        inactive = PortalChild.objects.create(
+            family=self.family,
+            name="Omar Inactive",
+            unit=self.unit,
+            billing_plan="Weekly",
+            is_active=False,
+        )
+        self._charge("100.00", "Jordan Jacobs")
+        post_payment(self.family, "Jordan Jacobs", "40.00", date(2026, 9, 9), "Cash")
+        post_credit(self.family, "Jordan Jacobs", "20.00", date(2026, 9, 10), "Scholarship")
+        post_charge(self.family, at_26.name, "tuition", "50.00", date(2026, 9, 8), "Tuition 26", notify=False)
+        post_payment(self.family, at_26.name, "80.00", date(2026, 9, 11), "Check", "Overpay", "9")
+        post_charge(self.family, inactive.name, "tuition", "15.00", date(2026, 9, 8), "Past due inactive", notify=False)
+
+        active = build_admin_report("balances", {"status": "Active"})
+        active_names = {row["child"] for row in active["rows"]}
+        self.assertEqual(active_names, {"Jordan Jacobs", "Ben School26"})
+        by_child = {row["child"]: row for row in active["rows"]}
+        self.assertEqual(by_child["Jordan Jacobs"]["amount_owe"], "40.00")
+        self.assertEqual(by_child["Ben School26"]["amount_owe"], "-30.00")
+        self.assertEqual(by_child["Ben School26"]["description"], "Credit $30.00")
+
+        unit_18 = build_admin_report("balances", {"unit": "school-18", "status": "Active"})
+        self.assertEqual([row["child"] for row in unit_18["rows"]], ["Jordan Jacobs"])
+
+        unit_26 = build_admin_report("balances", {"unit": "school-26", "status": "Active"})
+        self.assertEqual([row["child"] for row in unit_26["rows"]], ["Ben School26"])
+
+        with_balance = build_admin_report("balances", {"status": "Active", "owes": "yes"})
+        self.assertEqual([row["child"] for row in with_balance["rows"]], ["Jordan Jacobs"])
+
+        without_balance = build_admin_report("balances", {"status": "Active", "owes": "no"})
+        self.assertEqual([row["child"] for row in without_balance["rows"]], ["Ben School26"])
+
+        credit = build_admin_report("balances", {"status": "Active", "owes": "credit"})
+        self.assertEqual([row["child"] for row in credit["rows"]], ["Ben School26"])
+
+        inactive_report = build_admin_report("balances", {"status": "Inactive"})
+        self.assertEqual([row["child"] for row in inactive_report["rows"]], ["Omar Inactive"])
+
+        all_members = build_admin_report("balances", {"status": ""})
+        self.assertEqual(
+            {row["child"] for row in all_members["rows"]},
+            {"Jordan Jacobs", "Ben School26", "Omar Inactive"},
+        )
+
+        self._login(self.admin, "admin")
+        page = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "balances"}),
+            {"unit": "school-18", "status": "Active", "owes": "yes"},
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "id=\"account-balance-filters\"")
+        self.assertContains(page, "id=\"account-balance-unit\"")
+        self.assertContains(page, "id=\"account-balance-members\"")
+        self.assertContains(page, "id=\"account-balance-owes\"")
+        self.assertContains(page, "Jordan Jacobs")
+        self.assertNotContains(page, "Ben School26")
+        self.assertNotContains(page, "Omar Inactive")
+        self.assertContains(page, "portal-cell-wrap")
+        self.assertContains(page, "All units")
+        self.assertContains(page, "With balance")
+        css = (Path(__file__).resolve().parents[2] / "static" / "css" / "portal.css").read_text()
+        self.assertIn(".portal-account-balance-print-table .portal-cell-wrap", css)
+        self.assertIn("overflow-wrap: anywhere", css)
+        self.assertIn("table-layout: fixed", css)

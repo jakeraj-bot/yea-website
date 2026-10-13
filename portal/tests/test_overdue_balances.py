@@ -8,12 +8,19 @@ from django.test import TestCase
 from portal.admin_reports import build_admin_report
 from portal.admin_services import get_admin_alerts_live, get_admin_dashboard_live, get_member_families_live
 from portal.agency_services import balances_report_rows
-from portal.billing_services import post_charge, post_payment
-from portal.family_list import child_balance, family_balance, live_family_child_rows, prefetch_family_table_queryset
+from portal.billing_services import post_charge, post_credit, post_payment
+from portal.family_list import (
+    child_balance,
+    family_balance,
+    live_family_child_rows,
+    overdue_active_children_summary,
+    prefetch_family_table_queryset,
+)
 from portal.models import PortalChild, PortalFamily, PortalPayment, PortalUnit
 from portal.owed_weeks import families_with_balance, owed_weeks_report
 from portal.parent_services import record_successful_payment
 from portal.staff_services import build_dashboard_live
+from portal.tests.test_family_units import _make_application
 
 
 class OverdueBalancesFollowPaymentsTests(TestCase):
@@ -193,3 +200,89 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
         texts = [alert["text"] for alert in staff_dashboard["alerts"]]
         self.assertFalse(any("balance due" in text.lower() for text in texts))
         self.assertEqual(balances_report_rows(self.unit), [])
+
+    def test_overview_overdue_matches_sum_of_positive_child_balances_only(self):
+        self._charge("Jordan Jacobs", "100.00")
+        self._charge("Maya Jacobs", "50.00")
+        post_payment(self.family, "Jordan Jacobs", "40.00", date(2026, 9, 9), "Cash")
+        post_credit(self.family, "Jordan Jacobs", "20.00", date(2026, 9, 10), "Scholarship")
+        post_payment(self.family, "Maya Jacobs", "80.00", date(2026, 9, 11), "Check", "Overpay", "2201")
+
+        inactive = PortalChild.objects.create(
+            family=self.family,
+            name="Omar Inactive",
+            school="School 18",
+            is_active=False,
+        )
+        post_charge(
+            self.family,
+            inactive.name,
+            "tuition",
+            "99.00",
+            date(2026, 9, 8),
+            "Past due — Omar Inactive",
+            notify=False,
+        )
+
+        pending_family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="pending-overdue",
+            name="Pending Overdue",
+            billing_type="Private pay",
+            status="Active",
+        )
+        pending_child = PortalChild.objects.create(
+            family=pending_family,
+            name="Ada Pending",
+            school="School 18",
+            is_active=True,
+        )
+        _make_application(pending_family, status="under_review")
+        pending_family.enrollment_applications.update(student_first_name="Ada", student_last_name="Pending")
+        post_charge(
+            pending_family,
+            pending_child.name,
+            "tuition",
+            "88.00",
+            date(2026, 9, 8),
+            "Weekly tuition — Ada Pending",
+            notify=False,
+        )
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            fee_amount=Decimal("1.46"),
+            total_charged=Decimal("41.46"),
+            payment_kind="balance",
+            dropin_child="Jordan Jacobs",
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_waiting_card",
+        )
+
+        self.family.balance = Decimal("999.00")
+        self.family.save(update_fields=["balance"])
+
+        jordan_balance = child_balance(self.jordan)
+        maya_balance = child_balance(self.maya)
+        self.assertEqual(jordan_balance, Decimal("40.00"))
+        self.assertEqual(maya_balance, Decimal("-30.00"))
+        self.assertEqual(child_balance(inactive), Decimal("99.00"))
+        self.assertEqual(family_balance(self.family), Decimal("109.00"))
+
+        positive_only = sum(
+            amount for amount in (jordan_balance, maya_balance) if amount > 0
+        )
+        self.assertEqual(positive_only, Decimal("40.00"))
+
+        dashboard = get_admin_dashboard_live()
+        self.assertNotIn("policy_completion_pct", dashboard)
+        self.assertEqual(dashboard["overdue_families"], 1)
+        self.assertEqual(dashboard["overdue_amount"], "40.00")
+        self.assertNotEqual(dashboard["overdue_amount"], f"{self.family.balance:.2f}")
+        self.assertNotEqual(dashboard["overdue_amount"], f"{family_balance(self.family):.2f}")
+
+        count, total, owing = overdue_active_children_summary([self.family.pk, pending_family.pk])
+        self.assertEqual(count, 1)
+        self.assertEqual(total, Decimal("40.00"))
+        self.assertEqual(owing[self.family.pk], Decimal("40.00"))
+        self.assertNotIn(pending_family.pk, owing)

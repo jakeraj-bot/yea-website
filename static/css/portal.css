@@ -970,6 +970,10 @@ nav.portal-nav-admin-groups {
   color: var(--text-heading);
 }
 
+.portal-balance-total.is-credit {
+  color: var(--yea-green);
+}
+
 .portal-child-balance-list {
   list-style: none;
   padding: 0;
@@ -6075,6 +6079,39 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   white-space: nowrap;
 }
 
+.portal-account-balance-print-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.portal-account-balance-print-table th,
+.portal-account-balance-print-table td,
+.portal-account-balance-print-table .portal-cell-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.portal-account-balance-print-table th:nth-child(1),
+.portal-account-balance-print-table td:nth-child(1) {
+  width: 2.2rem;
+}
+
+.portal-account-balance-print-table th:nth-child(2),
+.portal-account-balance-print-table td:nth-child(2) {
+  width: 18%;
+}
+
+.portal-account-balance-print-table th:nth-child(3),
+.portal-account-balance-print-table td:nth-child(3) {
+  width: 7.2rem;
+}
+
+.portal-account-balance-print-table th:nth-child(5),
+.portal-account-balance-print-table td:nth-child(5) {
+  width: 5.5rem;
+}
+
 .portal-ledger-edit-form .portal-ledger-date {
   min-width: 10rem;
   flex: 0 1 12rem;
@@ -6093,12 +6130,31 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     page: report-print;
   }
 
+  .portal-account-balance-print-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   .portal-account-balance-print-table > thead {
     display: table-header-group;
   }
 
   .portal-account-balance-print-table .portal-print-title-row {
     display: table-row;
+  }
+
+  .portal-account-balance-print-table th,
+  .portal-account-balance-print-table td,
+  .portal-account-balance-print-table .portal-cell-wrap {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: none !important;
+  }
+
+  .portal-account-balance-print-table .portal-cell-amount {
+    white-space: nowrap !important;
   }
 }
 

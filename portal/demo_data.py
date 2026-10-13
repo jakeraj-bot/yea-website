@@ -532,7 +532,6 @@ ADMIN_DASHBOARD = {
         {"slug": "dale-ave", "unit": "Dale Ave", "balance": "90.00", "overdue": "90.00", "family_count": 1},
         {"slug": "caldwell", "unit": "Caldwell University", "balance": "60.00", "overdue": "60.00", "family_count": 0},
     ],
-    "policy_completion_pct": 94,
     "staff_count": 12,
     "active_programs": 2,
     "agency_children": 12,
@@ -887,7 +886,7 @@ def prepare_billing_preview(billing, permissions):
                 (permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment")
                 or is_offline_payment
             ),
-            "editable": row.get("type") in ("charge", "payment", "membership"),
+            "editable": row.get("type") in ("charge", "payment", "membership", "credit", "discount"),
             "payment_editable": is_offline_payment,
         }
         if row.get("type") == "payment" and not item.get("reference_display"):

@@ -386,12 +386,36 @@ class BillingPlanChargeTests(TestCase):
         entry.refresh_from_db()
         self.assertEqual(entry.description, "Cash — week of Sep 4")
 
-    def test_cannot_edit_credit_description(self):
+    def test_can_edit_credit_description(self):
         today = timezone.localdate()
         post_credit(self.family, "Jordan Jacobs", "10.00", today, "Adjustment")
         entry = PortalLedgerEntry.objects.get(family=self.family, entry_type="credit")
-        with self.assertRaises(ValueError):
-            update_ledger_description(self.family, entry.pk, "Changed")
+        update_ledger_description(self.family, entry.pk, "Changed")
+        entry.refresh_from_db()
+        self.assertEqual(entry.description, "Changed")
+
+    def test_can_edit_scholarship_discount_description(self):
+        today = timezone.localdate()
+        fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "70.00",
+            billing_type="Scholarship",
+            scholarship_fund_id=fund.pk,
+            scholarship_full_rate="70.00",
+            scholarship_parent_amount="50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=today.weekday(),
+        )
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertIn("YEA General Scholarship", discount.description)
+        update_ledger_description(self.family, discount.pk, "After care — YEA General Scholarship")
+        discount.refresh_from_db()
+        self.assertEqual(discount.description, "After care — YEA General Scholarship")
+        self.assertEqual(household_balance(self.family), Decimal("50.00"))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_save_edited_charge_description(self):
