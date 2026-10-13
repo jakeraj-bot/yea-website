@@ -219,7 +219,7 @@
               {% for row in report.unit_balances %}
               <tr>
                 <td><strong>{{ row.unit }}</strong></td>
-                <td class="portal-cell-amount">${{ row.balance }}</td>
+                <td class="portal-cell-amount">{% if row.has_credit %}${{ row.account_credit }} credit{% else %}${{ row.balance }}{% endif %}</td>
                 <td class="portal-cell-amount">${{ row.overdue }}</td>
                 <td>{{ row.family_count }}</td>
               </tr>
