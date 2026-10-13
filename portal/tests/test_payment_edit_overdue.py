@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -457,3 +458,78 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(page, "After care — YEA General Scholarship scholarship")
         self.assertEqual(family_balance(self.family), Decimal("50.00"))
+
+    def test_account_balance_filters_unit_members_and_balance(self):
+        at_26 = PortalChild.objects.create(
+            family=self.family,
+            name="Ben School26",
+            unit=self.unit_26,
+            billing_plan="Weekly",
+            is_active=True,
+        )
+        inactive = PortalChild.objects.create(
+            family=self.family,
+            name="Omar Inactive",
+            unit=self.unit,
+            billing_plan="Weekly",
+            is_active=False,
+        )
+        self._charge("100.00", "Jordan Jacobs")
+        post_payment(self.family, "Jordan Jacobs", "40.00", date(2026, 9, 9), "Cash")
+        post_credit(self.family, "Jordan Jacobs", "20.00", date(2026, 9, 10), "Scholarship")
+        post_charge(self.family, at_26.name, "tuition", "50.00", date(2026, 9, 8), "Tuition 26", notify=False)
+        post_payment(self.family, at_26.name, "80.00", date(2026, 9, 11), "Check", "Overpay", "9")
+        post_charge(self.family, inactive.name, "tuition", "15.00", date(2026, 9, 8), "Past due inactive", notify=False)
+
+        active = build_admin_report("balances", {"status": "Active"})
+        active_names = {row["child"] for row in active["rows"]}
+        self.assertEqual(active_names, {"Jordan Jacobs", "Ben School26"})
+        by_child = {row["child"]: row for row in active["rows"]}
+        self.assertEqual(by_child["Jordan Jacobs"]["amount_owe"], "40.00")
+        self.assertEqual(by_child["Ben School26"]["amount_owe"], "-30.00")
+        self.assertEqual(by_child["Ben School26"]["description"], "Credit $30.00")
+
+        unit_18 = build_admin_report("balances", {"unit": "school-18", "status": "Active"})
+        self.assertEqual([row["child"] for row in unit_18["rows"]], ["Jordan Jacobs"])
+
+        unit_26 = build_admin_report("balances", {"unit": "school-26", "status": "Active"})
+        self.assertEqual([row["child"] for row in unit_26["rows"]], ["Ben School26"])
+
+        with_balance = build_admin_report("balances", {"status": "Active", "owes": "yes"})
+        self.assertEqual([row["child"] for row in with_balance["rows"]], ["Jordan Jacobs"])
+
+        without_balance = build_admin_report("balances", {"status": "Active", "owes": "no"})
+        self.assertEqual([row["child"] for row in without_balance["rows"]], ["Ben School26"])
+
+        credit = build_admin_report("balances", {"status": "Active", "owes": "credit"})
+        self.assertEqual([row["child"] for row in credit["rows"]], ["Ben School26"])
+
+        inactive_report = build_admin_report("balances", {"status": "Inactive"})
+        self.assertEqual([row["child"] for row in inactive_report["rows"]], ["Omar Inactive"])
+
+        all_members = build_admin_report("balances", {"status": ""})
+        self.assertEqual(
+            {row["child"] for row in all_members["rows"]},
+            {"Jordan Jacobs", "Ben School26", "Omar Inactive"},
+        )
+
+        self._login(self.admin, "admin")
+        page = self.client.get(
+            reverse("portal_admin_data_report", kwargs={"report_slug": "balances"}),
+            {"unit": "school-18", "status": "Active", "owes": "yes"},
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "id=\"account-balance-filters\"")
+        self.assertContains(page, "id=\"account-balance-unit\"")
+        self.assertContains(page, "id=\"account-balance-members\"")
+        self.assertContains(page, "id=\"account-balance-owes\"")
+        self.assertContains(page, "Jordan Jacobs")
+        self.assertNotContains(page, "Ben School26")
+        self.assertNotContains(page, "Omar Inactive")
+        self.assertContains(page, "portal-cell-wrap")
+        self.assertContains(page, "All units")
+        self.assertContains(page, "With balance")
+        css = (Path(__file__).resolve().parents[2] / "static" / "css" / "portal.css").read_text()
+        self.assertIn(".portal-account-balance-print-table .portal-cell-wrap", css)
+        self.assertIn("overflow-wrap: anywhere", css)
+        self.assertIn("table-layout: fixed", css)

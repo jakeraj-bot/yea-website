@@ -25,8 +25,20 @@ GUIDES = {
     },
     "admin-dashboard": {
         "title": "How to use organization admin",
-        "intro": "Admin is for the whole organization. Day-to-day unit work lives in the staff portal — same login.",
+        "intro": "Admin is for the whole organization. Day-to-day unit work lives in the staff portal — same login. Use How to use this page anytime you need these notes.",
         "steps": [
+            {
+                "title": "Need attendance or a unit roster?",
+                "body": "Open Staff portal in the header. Same login — no extra staff account. Choose the site from the unit menu once you are there. Click How to use this page on any staff screen for the steps.",
+            },
+            {
+                "title": "YEA Parent Portal Home Screen app",
+                "body": "YEA Parent Portal is a phone Home Screen app (Add to Home Screen). App Store wrap later — $99/year when you list YEA Parent Portal.",
+            },
+            {
+                "title": "Practice parent portal",
+                "body": "Open practice parent in the header. Open a sandbox family and do everything a parent can do, including Pay now. Test payments only — not a real family. This is not Parent view.",
+            },
             {
                 "title": "Open staff without a second account",
                 "body": "Click Staff portal in the header (or Switch to staff in the menu). You do not need a separate staff login to take attendance, see families, or run a unit.",
@@ -41,7 +53,7 @@ GUIDES = {
             },
             {
                 "title": "Enrollment and overdue hide inactive children",
-                "body": "Children enrolled and overdue balances count active children only, from the live ledger — not a stored family balance. When a child is inactive they leave those numbers. Unapproved applications are not in overdue. Balances by unit shows which site still owes the most. Review inactive children on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
+                "body": "Children enrolled and overdue balances count active children only, from the live ledger — not a stored family balance. When a child is inactive they leave those numbers. Unapproved applications are not in overdue. Overdue is the sum of positive child balances (charges minus payments minus credits). A credit is not overdue. Stripe card fees do not inflate it. Balances by unit shows which site still owes the most. Review inactive children on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
             },
         ],
     },
@@ -457,19 +469,23 @@ GUIDES = {
     },
     "outstanding-balances": {
         "title": "How to print Account Balance",
-        "intro": "This is the printable Account Balance roster — child's name, amount owe, description, paid, and notes. The YEA logo repeats at the top of every printed page. Status is a filter, not a column.",
+        "intro": "This is the printable Account Balance roster — child's name, amount owe, description, paid, and notes. The YEA logo repeats at the top of every printed page. Members and Balance are filters, not columns. Long names and descriptions wrap onto extra lines so every column stays on one printed page.",
         "steps": [
             {
+                "title": "Choose the unit",
+                "body": "Use the Filters card. Unit is School 18, School 26, or All — the same kind of control as weekly attendance. Staff printing from a unit uses the unit in the header.",
+            },
+            {
                 "title": "Match the paper report",
-                "body": "Filter by Unit (School 18, School 26, and so on) and Status Active. The header shows Total and Balance Report. Each row is a child. Amount Owe is that child's live ledger (charges minus payments and credits). Stripe's processing fee is not still owed. Paid children stay on the Active list at $0.00.",
+                "body": "Members defaults to Active, including children at $0.00. Amount Owe is that child's live ledger (charges minus payments and credits). Stripe's processing fee is not still owed. Unapproved applications stay off.",
             },
             {
                 "title": "Read description, paid, and notes",
-                "body": "Description is what they still owe for (weeks, membership, or Paid). Paid is tuition already received for that child. Notes is the billing plan. Child names open the family billing account.",
+                "body": "Description is what they still owe for (weeks, membership, Paid, or Credit). Paid is tuition already received for that child. Notes is the billing plan. Child names open the family billing account.",
             },
             {
-                "title": "Filter and print",
-                "body": "The report starts on Active approved members. Unapproved applications stay off. Use Status for waitlist, inactive, withdrawn, or all. Still owes Yes keeps only children with a remaining balance. Apply filters, then Print / Save PDF. The logo, total, unit, and column titles repeat on every page.",
+                "title": "Filter members and balances, then print",
+                "body": "Members: Active, Inactive, or All. Balance: With balance (amount owed greater than $0), Without balance ($0 or credit), Credit, or All. Default Active + All balances is the useful roster; switch Balance to With balance for outstanding only. Apply filters, then Print / Save PDF. Names and descriptions wrap; columns do not run off the page.",
             },
         ],
     },

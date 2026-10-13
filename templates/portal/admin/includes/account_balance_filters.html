@@ -1,0 +1,61 @@
+<form method="get" class="card portal-report-filter-card portal-collapse-skip portal-no-print" id="account-balance-filters">
+  <h2>Filters</h2>
+  <p class="form-note">{{ filter_help|default:"Choose a unit, then Members and Balance. Active including $0 is the usual roster. With balance is outstanding only. Credits stay on All and Without balance, or pick Credit." }}</p>
+  <div class="portal-report-filters">
+    {% if "unit" in report.filters %}
+    <label class="portal-filter-label">
+      Unit
+      <select class="portal-select" name="unit" id="account-balance-unit">
+        <option value="">All units</option>
+        {% for slug, name in report.units %}
+        <option value="{{ slug }}"{% if filters.unit == slug %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    {% if "q" in report.filters %}
+    <label class="portal-filter-label">
+      Child or family
+      <input class="portal-input" type="search" name="q" value="{{ filters.q }}" placeholder="Search name">
+    </label>
+    {% endif %}
+    <label class="portal-filter-label">
+      Members
+      <select class="portal-select" name="status" id="account-balance-members">
+        <option value=""{% if not filters.status %} selected{% endif %}>All</option>
+        {% if report.status_choices %}
+        {% for value, label in report.status_choices %}
+        <option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+        {% else %}
+        <option value="Active"{% if filters.status == "Active" %} selected{% endif %}>Active</option>
+        <option value="Inactive"{% if filters.status == "Inactive" %} selected{% endif %}>Inactive</option>
+        {% endif %}
+      </select>
+    </label>
+    <label class="portal-filter-label">
+      Balance
+      <select class="portal-select" name="owes" id="account-balance-owes">
+        <option value=""{% if not filters.owes %} selected{% endif %}>All</option>
+        {% if report.owes_choices %}
+        {% for value, label in report.owes_choices %}
+        <option value="{{ value }}"{% if filters.owes == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+        {% else %}
+        <option value="yes"{% if filters.owes == "yes" %} selected{% endif %}>With balance</option>
+        <option value="no"{% if filters.owes == "no" %} selected{% endif %}>Without balance</option>
+        <option value="credit"{% if filters.owes == "credit" %} selected{% endif %}>Credit</option>
+        {% endif %}
+      </select>
+    </label>
+  </div>
+  {% if "unit" not in report.filters %}
+  <p class="form-note">This printout is for the unit in the header. Switch units there, or open Account Balance from Organization admin to choose School 18, School 26, or All.</p>
+  {% endif %}
+  <div class="portal-toolbar" style="margin-top:0.85rem;margin-bottom:0;">
+    <button type="submit" class="btn btn-secondary">Apply filters</button>
+    <a class="btn btn-secondary" href="{{ request.path }}">Clear</a>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+    <a class="btn btn-secondary" href="{{ request.path }}?{{ csv_query }}">Download CSV</a>
+  </div>
+</form>

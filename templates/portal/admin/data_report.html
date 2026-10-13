@@ -11,6 +11,9 @@
 </section>
 <section class="page-content">
   <div class="container">
+    {% if report.slug == "balances" %}
+    {% include "portal/admin/includes/account_balance_filters.html" with filter_help="Choose a unit (School 18 / School 26 / All), then Members (Active / Inactive / All) and Balance (With balance / Without balance / Credit / All). Active including $0 is the usual roster. Switch Balance to With balance for outstanding only. Credits stay on All." %}
+    {% else %}
     <form method="get" class="portal-toolbar portal-form-inline portal-no-print">
       {% if "q" in report.filters %}
       <label class="portal-filter-label">
@@ -188,6 +191,7 @@
       <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
       <a class="btn btn-secondary" href="{{ request.path }}?{{ csv_query }}">Download CSV</a>
     </form>
+    {% endif %}
 
     <div class="portal-medical-report-sheet card{% if report.print_header %} portal-account-balance-sheet{% endif %}">
       <header class="portal-medical-report-header{% if report.print_header %} portal-no-print{% endif %}">
