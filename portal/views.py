@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -389,6 +389,16 @@ def _attach_email_ledger(extra, request, *, area, family_slug=None, family_id=No
     )
 
 
+def _attach_email_compose(extra):
+    from core.email_service import portal_bcc_email, portal_sending_email
+
+    from .member_admin import staff_email_cc_choices
+
+    extra.setdefault("staff_cc_choices", staff_email_cc_choices())
+    extra.setdefault("portal_sending_email", portal_sending_email())
+    extra.setdefault("portal_bcc_email", portal_bcc_email())
+
+
 def _staff_family_context(family_slug, page_title, family_tab, request=None, unit=None, **extra):
     if unit is None and request is not None:
         unit = _staff_unit(request)
@@ -441,6 +451,7 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
             family_id=extra.get("family_id"),
             unit=unit,
         )
+        _attach_email_compose(extra)
     return _staff_context(
         page_title,
         request=request,
@@ -511,6 +522,7 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
             family_id=extra.get("family_id"),
             unit=unit,
         )
+        _attach_email_compose(extra)
     if area == "admin":
         if _portal_families_live():
             from .member_admin import resolve_family
@@ -1068,6 +1080,7 @@ def _parent_context(request, page_title, page_slug="", **extra):
         pending_profile_changes=pending_profile_changes,
         parent_support_view_active=bool(support_view),
         show_drop_off_tab=show_drop_off_tab,
+        parent_pwa=True,
         **extra,
     )
     family = account.family if account else extra.get("preview_family")
@@ -1474,6 +1487,57 @@ def parent_set_language(request):
         next_url = reverse("portal_parent_page", kwargs={"page": "dashboard"})
     response = redirect(next_url)
     response.set_cookie(**language_cookie_kwargs(lang))
+    return response
+
+
+@require_GET
+def parent_web_manifest(request):
+    """Installable Home Screen app. Same name/icons for a later Capacitor wrap."""
+    from django.templatetags.static import static
+
+    payload = {
+        "id": "/portal/parent/dashboard/",
+        "name": "YEA Parent Portal",
+        "short_name": "YEA Parent",
+        "description": "Pay your balance, view receipts, update emergency contacts, and get help.",
+        "start_url": reverse("portal_parent_page", kwargs={"page": "dashboard"}),
+        "scope": "/portal/",
+        "display": "standalone",
+        "orientation": "portrait",
+        "background_color": "#ffffff",
+        "theme_color": "#1565c0",
+        "lang": "en",
+        "icons": [
+            {
+                "src": static("images/pwa/yea-parent-192.png"),
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": static("images/pwa/yea-parent-512.png"),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": static("images/pwa/yea-parent-512-maskable.png"),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "maskable",
+            },
+        ],
+    }
+    return JsonResponse(payload, content_type="application/manifest+json")
+
+
+@require_GET
+def parent_service_worker(request):
+    path = settings.BASE_DIR / "static" / "js" / "yea-parent-sw.js"
+    body = path.read_text(encoding="utf-8")
+    response = HttpResponse(body, content_type="application/javascript; charset=utf-8")
+    response["Service-Worker-Allowed"] = "/portal/"
+    response["Cache-Control"] = "no-cache"
     return response
 
 
@@ -4536,6 +4600,7 @@ def admin_page(request, page):
         "member-billing": "portal/admin/member_billing.html",
         "billing-settings": "portal/admin/billing_settings.html",
         "billing-permissions": "portal/admin/billing_permissions.html",
+        "email-settings": "portal/admin/email_settings.html",
         "scholarships": "portal/admin/scholarships.html",
         "discounts": "portal/admin/discounts.html",
         "collections": "portal/admin/collections.html",
@@ -4953,6 +5018,18 @@ def admin_page(request, page):
             "Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal.",
             "Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
         ]
+    if page == "email-settings":
+        from core.email_service import portal_bcc_email, portal_sending_email
+
+        from .models import PortalOrgSetting
+
+        setting = PortalOrgSetting.load()
+        context["email_settings"] = setting
+        context["portal_sending_email"] = setting.portal_sending_email or portal_sending_email()
+        context["portal_bcc_email"] = setting.portal_bcc_email
+        context["portal_sending_email_default"] = portal_sending_email()
+        context["portal_bcc_email_default"] = portal_bcc_email()
+        context["page_title"] = "Email"
     if page == "scholarships":
         if context.get("portal_live"):
             from .admin_config import get_scholarships_admin
@@ -5070,6 +5147,7 @@ def admin_page(request, page):
         context["application_template_placeholders"] = APPLICATION_TEMPLATE_PLACEHOLDERS
         context["preselect_family_id"] = request.GET.get("family_id", "")
         _attach_email_ledger(context, request, area="admin", full=False)
+        _attach_email_compose(context)
     if page == "emails-sent":
         context["page_title"] = "Emails sent"
         _attach_email_ledger(

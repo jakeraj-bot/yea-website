@@ -197,11 +197,9 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
     program = (filters.get("program") or "").strip()
     unit_slug = (filters.get("unit") or "").strip()
     if admin:
-        children = (
-            PortalChild.objects.filter(is_active=True)
-            .select_related("family", "family__unit", "unit")
-            .order_by("family__name", "name")
-        )
+        from .enrollment_counts import visible_member_children_qs
+
+        children = visible_member_children_qs(active_only=True).order_by("family__name", "name")
         if unit_slug:
             from .unit_visibility import child_unit_slug_q
 

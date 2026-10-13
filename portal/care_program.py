@@ -13,7 +13,6 @@ from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import program_display_for_application
 
 from .member_report import _family_status, _match_apps_for_child
-from .models import PortalChild
 from .phone_format import format_us_phone
 
 CARE_ALL = "all"
@@ -116,6 +115,8 @@ def child_matches_care_filter(child, apps, care):
     if care == CARE_ALL:
         if not keys and inactive_keys:
             return False
+        if not keys and apps and not any(_is_approved_care_app(app) for app in apps):
+            return False
         return True
     if care == CARE_BEFORE:
         return CARE_BEFORE in keys
@@ -210,11 +211,11 @@ def before_care_roster_rows(*, unit=None, admin=False, query=""):
     from .unit_visibility import children_for_unit, unit_label_for_child
 
     if admin and not unit:
+        from .enrollment_counts import visible_member_children_qs
+
         children = [
             child
-            for child in PortalChild.objects.filter(is_active=True)
-            .select_related("family", "family__unit", "unit")
-            .order_by("name", "id")
+            for child in visible_member_children_qs(active_only=True).order_by("name", "id")
             if not is_placeholder_unit(child.unit or (child.family.unit if child.family_id else None))
         ]
     elif unit:

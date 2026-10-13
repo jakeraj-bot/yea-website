@@ -19,7 +19,9 @@
           {% include "portal/includes/parent_pay_now.html" %}
         </div>
       </div>
+      <div class="portal-phone-secondary">
       {% include "portal/includes/add_child_button.html" %}
+      </div>
     </div>
   </div>
 </section>
@@ -32,7 +34,7 @@
     </div>
     {% endif %}
 
-    <div class="portal-parent-compact-grid">
+    <div class="portal-parent-compact-grid portal-phone-secondary">
       {% include "portal/parent/includes/payment_walkthrough.html" %}
 
       <div class="portal-stat-row">
@@ -47,7 +49,7 @@
       </div>
     </div>
 
-    <div class="portal-program-cards card-grid card-grid-3">
+    <div class="portal-program-cards card-grid card-grid-3 portal-phone-secondary">
       <article class="card card-accent portal-collapse-skip">
         <h2>{% pt "program_after_school" %}</h2>
         <p class="form-note">{% pt "after_school_note" %}</p>

@@ -13,6 +13,9 @@ LIST_NAV_SESSION_KEY = "yea_family_list_nav"
 APPROVED_APPLICATION_STATUSES = frozenset({"approved", "enrolled"})
 PENDING_REVIEW_STATUSES = frozenset({"under_review", "pending_documents"})
 WAITLIST_APPLICATION_STATUS = "waitlist"
+UNAPPROVED_APPLICATION_STATUSES = frozenset(
+    {"under_review", "pending_documents", "waitlist", "declined"}
+)
 
 DEMO_CHILD_SCHOOLS = {
     "Jordan Jacobs": "Paterson School 18",
@@ -152,27 +155,16 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
     reports. Unapproved applications are excluded. Review inactive children on
     the Inactive tab, Inactive report, or status All.
     """
+    from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
-    from .models import PortalChild
-    from .unit_visibility import child_unit_q
 
-    qs = (
-        PortalChild.objects.filter(is_active=True)
-        .exclude(family__slug="practice")
-        .select_related("family", "family__unit", "unit")
-        .prefetch_related("family__enrollment_applications")
-    )
-    if unit is not None:
-        qs = qs.filter(child_unit_q(unit))
-    elif family_ids is not None:
+    qs = visible_member_children_qs(unit=unit, active_only=True)
+    if unit is None and family_ids is not None:
         qs = qs.filter(family_id__in=list(family_ids))
     children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
     maps = child_balance_maps([child.family_id for child in children])
     family_owing = {}
     for child in children:
-        apps = list(child.family.enrollment_applications.all())
-        if not child_is_approved_member(child, apps):
-            continue
         balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
         if balance <= 0:
             continue
@@ -188,8 +180,9 @@ def unit_balance_summary(*, include_inactive=False):
     home unit when they differ. A multi-unit family is counted only on units
     where a child still has a balance — not once on every site.
     """
+    from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
-    from .models import PortalChild, PortalUnit
+    from .models import PortalUnit
     from .unit_visibility import child_effective_unit
 
     units = list(
@@ -197,13 +190,7 @@ def unit_balance_summary(*, include_inactive=False):
         .exclude(slug__in=("main-location", "main_location"))
         .order_by("name")
     )
-    qs = (
-        PortalChild.objects.exclude(family__slug="practice")
-        .select_related("family", "family__unit", "unit")
-        .prefetch_related("family__enrollment_applications")
-    )
-    if not include_inactive:
-        qs = qs.filter(is_active=True)
+    qs = visible_member_children_qs(active_only=not include_inactive)
     children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
     maps = child_balance_maps([child.family_id for child in children])
     buckets = {
@@ -217,9 +204,6 @@ def unit_balance_summary(*, include_inactive=False):
         for unit in units
     }
     for child in children:
-        apps = list(child.family.enrollment_applications.all())
-        if not child_is_approved_member(child, apps):
-            continue
         unit = child_effective_unit(child)
         if not unit or unit.slug not in buckets:
             continue
@@ -491,12 +475,30 @@ def _inactive_prefetched_children(family):
     return [child for child in family.children.all() if not child.is_active]
 
 
-def child_is_waitlist_only(child, apps):
-    """True when this child has only waitlist applications (never enrolled)."""
+def matching_applications_for_child(child, apps):
     name = (getattr(child, "name", None) or "").strip()
     if not name:
+        return []
+    return [
+        app for app in (apps or []) if child_name_in_collection(application_child_name(app), [name])
+    ]
+
+
+def child_is_unapproved_only(child, apps):
+    """True when this child has applications and none are approved/enrolled.
+
+    Roster children with no application still count as members. Pending,
+    under-review, waitlist, pending-documents, and declined-only leftovers do not.
+    """
+    matching = matching_applications_for_child(child, apps)
+    if not matching:
         return False
-    matching = [app for app in (apps or []) if child_name_in_collection(application_child_name(app), [name])]
+    return not any(app.status in APPROVED_APPLICATION_STATUSES for app in matching)
+
+
+def child_is_waitlist_only(child, apps):
+    """True when this child has only waitlist applications (never enrolled)."""
+    matching = matching_applications_for_child(child, apps)
     if not matching:
         return False
     if any(app.status in APPROVED_APPLICATION_STATUSES for app in matching):
@@ -508,6 +510,27 @@ def child_is_waitlist_only(child, apps):
 
 def application_child_name(app):
     return f"{app.student_first_name} {app.student_last_name}".strip()
+
+
+def is_unapproved_only_household(apps, active_children=None):
+    """True when this household has no approved/enrolled member.
+
+    Pending-only and waitlist-only families stay off All families. A household
+    stays listed when any application is approved/enrolled, or a roster child
+    is not tied only to unapproved applications.
+    """
+    apps = list(apps or [])
+    if any(app.status in APPROVED_APPLICATION_STATUSES for app in apps):
+        return False
+    unapproved_apps = [app for app in apps if app.status in UNAPPROVED_APPLICATION_STATUSES]
+    if not unapproved_apps:
+        return False
+    unapproved_names = [application_child_name(app) for app in unapproved_apps]
+    for child in active_children or []:
+        name = (getattr(child, "name", None) or "").strip()
+        if name and not child_name_in_collection(name, unapproved_names):
+            return False
+    return True
 
 
 def is_waitlist_only_household(apps, active_children=None):
@@ -560,10 +583,11 @@ def _location_label(key, units_by_slug):
 def live_family_child_rows(families, *, staff_unit=None, include_parent_login=False, inactive=False):
     """Build Families-table child rows without N+1 queries or per-request data repair.
 
-    ``inactive=True`` lists enrolled children who left the program. Waitlist-only
-    kids stay off both tabs. Mixed households keep the active child on the main
-    list and the inactive child on the Inactive tab. Make inactive toggles the
-    existing child — it does not create a second child, family, or Active row.
+    ``inactive=True`` lists enrolled children who left the program. Unapproved
+    kids (pending, under review, waitlist-only) stay off both tabs. Mixed
+    households keep the approved child on the main list and the inactive
+    approved child on the Inactive tab. Make inactive toggles the existing
+    child — it does not create a second child, family, or Active row.
     """
     from enrollment.portal_integration import family_display_label, family_name_duplicate_keys
 
@@ -583,20 +607,21 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
         apps = list(family.enrollment_applications.all())
         household_children = _active_prefetched_children(family)
         inactive_children = _inactive_prefetched_children(family)
-        if not inactive and is_waitlist_only_household(apps, household_children):
+        if not inactive and is_unapproved_only_household(apps, household_children):
             continue
         if inactive:
             listed_children = [
                 child
                 for child in inactive_children
-                if not child_is_waitlist_only(child, apps)
+                if not child_is_unapproved_only(child, apps)
                 and (not staff_unit or child_belongs_to_unit(child, staff_unit))
             ]
         else:
             listed_children = [
                 child
                 for child in household_children
-                if not staff_unit or child_belongs_to_unit(child, staff_unit)
+                if not child_is_unapproved_only(child, apps)
+                and (not staff_unit or child_belongs_to_unit(child, staff_unit))
             ]
         children_specs = []
         # Skip application fallbacks for kids who already have a PortalChild,
@@ -621,7 +646,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
         if not inactive:
             for app in apps:
                 child_name = application_child_name(app)
-                if app.status in {"declined", "enrolled", WAITLIST_APPLICATION_STATUS}:
+                if app.status not in APPROVED_APPLICATION_STATUSES:
                     continue
                 if child_name_in_collection(child_name, listed_names):
                     continue
@@ -642,11 +667,7 @@ def live_family_child_rows(families, *, staff_unit=None, include_parent_login=Fa
                 )
                 listed_names.append(child_name)
         if not children_specs:
-            if inactive or staff_unit:
-                continue
-            # Fully inactive households must leave Active — no blank family row.
-            if inactive_children:
-                continue
+            continue
         has_application = getattr(family, "list_has_application", None)
         if has_application is None:
             has_application = bool(family.enrollment_applications.all())

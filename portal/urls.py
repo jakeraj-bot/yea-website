@@ -181,6 +181,16 @@ urlpatterns = [
         views.parent_set_language,
         name="portal_parent_set_language",
     ),
+    path(
+        "parent/manifest.webmanifest",
+        views.parent_web_manifest,
+        name="portal_parent_manifest",
+    ),
+    path(
+        "parent/sw.js",
+        views.parent_service_worker,
+        name="portal_parent_sw",
+    ),
     path("parent/<slug:page>/", views.parent_page, name="portal_parent_page"),
     # Staff — reports and detail routes before catch-all
     path(
@@ -385,6 +395,11 @@ urlpatterns = [
         "admin/billing-permissions/program-director/",
         views_actions.admin_program_director_billing_toggle,
         name="portal_admin_program_director_billing",
+    ),
+    path(
+        "admin/email-settings/save/",
+        views_actions.admin_email_settings_save,
+        name="portal_admin_email_settings_save",
     ),
     path(
         "admin/staff/invite/",

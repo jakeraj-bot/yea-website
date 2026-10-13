@@ -90,6 +90,7 @@ def parent_login(request):
             "form": form,
             "page_title": "Parent login",
             "portal_area": "public",
+            "parent_pwa": True,
         },
     )
 

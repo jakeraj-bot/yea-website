@@ -566,11 +566,11 @@ def attendance_sheet_scope(unit, program, filters=None, *, admin=False, allowed_
     )
 
     if admin and not scoped_unit:
+        from .enrollment_counts import visible_member_children_qs
+
         roster_children = [
             child
-            for child in PortalChild.objects.filter(is_active=True)
-            .select_related("family", "family__unit", "unit")
-            .order_by("name", "id")
+            for child in visible_member_children_qs(active_only=True).order_by("name", "id")
             if not is_placeholder_unit(child.unit or (child.family.unit if child.family_id else None))
         ]
     else:

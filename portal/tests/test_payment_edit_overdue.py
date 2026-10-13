@@ -247,6 +247,9 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         dashboard = get_admin_dashboard_live()
         self.assertEqual(dashboard["overdue_families"], 0)
         self.assertEqual(dashboard["overdue_amount"], "0.00")
+        unit_rows = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertEqual(unit_rows["school-18"]["overdue"], "0.00")
+        self.assertEqual(unit_rows["school-18"]["family_count"], 0)
         report = build_admin_report("balances", {})
         names = [row["child"] for row in report["rows"]]
         self.assertNotIn("Ada Pending", names)
@@ -346,6 +349,10 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         jordan = next(row for row in report["rows"] if row["child"] == "Jordan Jacobs")
         self.assertEqual(jordan["amount_owe"], "-30.00")
         self.assertEqual(jordan["description"], "Credit $30.00")
+        unit_rows = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertTrue(unit_rows["school-18"]["has_credit"])
+        self.assertEqual(unit_rows["school-18"]["account_credit"], "30.00")
+        self.assertEqual(unit_rows["school-18"]["overdue"], "0.00")
 
         overpay = PortalLedgerEntry.objects.get(family=self.family, description="Overpay cash")
         delete_ledger_entry(self.family, overpay.pk)

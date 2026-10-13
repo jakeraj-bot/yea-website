@@ -8,6 +8,7 @@
 </section>
 <section class="page-content">
   <div class="container">
+    {% include "portal/includes/parent_email_identity_note.html" %}
     {% if application_submitted_template %}
     {% include "portal/includes/email_template_editor.html" with email_template=application_submitted_template editor_title="Application submitted — regular" editor_note="Parents get this when they submit an after-school, drop-off, or summer application." enabled_label="Send this email when a regular application is submitted" save_label="Save regular submitted template" %}
     {% endif %}
@@ -147,6 +148,7 @@
             <textarea id="email-body" name="body" class="portal-input portal-textarea" rows="8" required></textarea>
           </div>
           {% include "portal/includes/parent_email_upload.html" with upload_id="parent-emails" %}
+          {% include "portal/includes/parent_email_cc.html" with form_id="parent-emails" %}
         </div>
       </section>
       <section class="card" data-collapse-open>

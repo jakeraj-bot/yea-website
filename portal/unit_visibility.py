@@ -32,13 +32,12 @@ def child_unit_slug_q(unit_slug, prefix=""):
 
 
 def children_for_unit(unit, *, active_only=True):
+    """Unit-scoped members. Unapproved-only children stay off rosters and reports."""
+    from .enrollment_counts import visible_member_children_qs
+
     if not unit:
-        qs = PortalChild.objects.none()
-    else:
-        qs = PortalChild.objects.filter(child_unit_q(unit))
-    if active_only:
-        qs = qs.filter(is_active=True)
-    return qs.select_related("family", "family__unit", "unit")
+        return PortalChild.objects.none()
+    return visible_member_children_qs(unit=unit, active_only=active_only)
 
 
 def child_belongs_to_unit(child, unit):
