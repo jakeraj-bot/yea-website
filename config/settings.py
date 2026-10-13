@@ -25,6 +25,8 @@ STAGING_SITE = os.environ.get("STAGING_SITE", "False") == "True"
 PORTALS_PUBLIC = os.environ.get("PORTALS_PUBLIC", "True") == "True"
 # Demo families/logins from seed_portal — never enable on the live site.
 ALLOW_PORTAL_DEMO_SEED = os.environ.get("ALLOW_PORTAL_DEMO_SEED", "False") == "True"
+# Practice parent portal (sandbox family). Local seed turns this on automatically.
+ALLOW_PORTAL_PRACTICE = os.environ.get("ALLOW_PORTAL_PRACTICE", "False") == "True"
 
 PORTAL_LOGIN_RATE_LIMIT = int(os.environ.get("PORTAL_LOGIN_RATE_LIMIT", "8"))
 PORTAL_LOGIN_RATE_WINDOW_SECONDS = int(os.environ.get("PORTAL_LOGIN_RATE_WINDOW_SECONDS", "900"))
@@ -68,7 +70,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "portal.middleware.ParentLanguageMiddleware",
     "portal.middleware.PortalActivityMiddleware",
+]
+
+AUTHENTICATION_BACKENDS = [
+    "portal.auth_backends.PortalUsernameBackend",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -85,6 +92,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.site_settings",
                 "core.context_processors.portal_deploy",
+                "portal.parent_i18n.parent_language_context",
             ],
         },
     },

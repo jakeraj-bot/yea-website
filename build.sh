@@ -31,3 +31,6 @@ if [ -n "${WEBSITE_ADMIN_USERNAME}" ] && [ -n "${WEBSITE_ADMIN_PASSWORD}" ]; the
     --password "${WEBSITE_ADMIN_PASSWORD}" \
     --email "${WEBSITE_ADMIN_EMAIL:-}"
 fi
+
+# Flip is_staff/is_superuser for the portal admin without changing the password.
+python manage.py ensure_django_superuser --username "${PORTAL_ADMIN_USERNAME:-yeaadmin}" || true

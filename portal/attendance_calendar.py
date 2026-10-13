@@ -57,15 +57,46 @@ def merge_attendance_query(base_query, **updates):
     return urlencode(items)
 
 
-def resolve_account_child(family, *, child_id=None, child_name=None, unit=None):
-    """Return the visible enrolled child for this account, or None."""
+def visible_family_children(family, unit=None):
+    """Children on this account that staff at `unit` are allowed to see."""
     if not family:
-        return None
-    children = [
-        child
-        for child in family.children.filter(is_active=True).select_related("unit", "family", "family__unit")
-        if child_belongs_to_unit(child, unit)
-    ]
+        return []
+    children = list(family.children.select_related("unit", "family", "family__unit"))
+    visible = [child for child in children if child_belongs_to_unit(child, unit)]
+    visible.sort(key=lambda child: (not child.is_active, (child.name or "").casefold(), child.pk or 0))
+    return visible
+
+
+def _child_ids_with_attendance(children):
+    ids = [child.pk for child in children if getattr(child, "pk", None)]
+    if not ids:
+        return set()
+    return set(AttendanceRecord.objects.filter(child_id__in=ids).values_list("child_id", flat=True))
+
+
+def attendance_children_for_account(family, unit=None, *, include_child_id=None, include_child_name=None):
+    """Active children at this unit, plus inactive children with attendance history.
+
+    Inactive children without history stay off the switcher unless this account was
+    opened on that child's profile (so their empty calendar is still reachable).
+    """
+    visible = visible_family_children(family, unit)
+    if not visible:
+        return []
+    history_ids = _child_ids_with_attendance(visible)
+    include_id = str(include_child_id).strip() if include_child_id not in (None, "") else ""
+    include_name = (include_child_name or "").strip().casefold()
+    switcher = []
+    for child in visible:
+        name = (child.name or "").strip().casefold()
+        opened_here = (include_id and str(child.pk) == include_id) or (include_name and name == include_name)
+        if child.is_active or child.pk in history_ids or opened_here:
+            switcher.append(child)
+    return switcher
+
+
+def pick_attendance_child(children, *, child_id=None, child_name=None):
+    """Prefer the opened child, then the first active child, then the first listed."""
     child_id_text = str(child_id).strip() if child_id not in (None, "") else ""
     if child_id_text:
         for child in children:
@@ -75,9 +106,46 @@ def resolve_account_child(family, *, child_id=None, child_name=None, unit=None):
     name = (child_name or "").strip().casefold()
     if name:
         for child in children:
-            if child.name.strip().casefold() == name:
+            if (child.name or "").strip().casefold() == name:
                 return child
+        return None
+    for child in children:
+        if child.is_active:
+            return child
     return children[0] if children else None
+
+
+def resolve_account_child(family, *, child_id=None, child_name=None, unit=None):
+    """Return the visible attendance child for this account, or None."""
+    children = attendance_children_for_account(
+        family,
+        unit,
+        include_child_id=child_id,
+        include_child_name=child_name,
+    )
+    return pick_attendance_child(children, child_id=child_id, child_name=child_name)
+
+
+def attendance_child_switcher_items(children, selected, base_query, month_value):
+    """Name links that stay on this family account and load that child's calendar."""
+    items = []
+    for child in children:
+        items.append(
+            {
+                "id": child.pk,
+                "name": child.name,
+                "is_active": child.is_active,
+                "is_selected": bool(selected and child.pk == selected.pk),
+                "query": merge_attendance_query(
+                    base_query,
+                    child_id=child.pk,
+                    child=child.name,
+                    month=month_value,
+                    day=None,
+                ),
+            }
+        )
+    return items
 
 
 def _mark_for_records(records):

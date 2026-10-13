@@ -212,18 +212,23 @@ def four_cs_snapshot(child, profile=None, on_date=None):
     }
 
 
-def _family_status(family):
+def _family_status(family, child=None):
+    if child is not None and not child.is_active:
+        return "Inactive"
     if family.is_suspended:
         return "Suspended"
     return (family.status or "Active").strip() or "Active"
 
 
 def member_information_rows(*, unit=None):
-    """One row per active child, A–Z by child name. Pass unit to scope to that site (staff)."""
+    """One row per child, A–Z by child name. Inactive kids are included with status Inactive.
+
+    Default filters hide them unless Status is Inactive or All. Pass unit to scope to that site (staff).
+    """
     if unit:
-        children = children_for_unit(unit, active_only=True)
+        children = children_for_unit(unit, active_only=False)
     else:
-        children = PortalChild.objects.filter(is_active=True).select_related("family", "family__unit", "unit")
+        children = PortalChild.objects.select_related("family", "family__unit", "unit")
     children = children.order_by("name", "family__name")
     child_list = list(children)
     if not child_list:
@@ -269,7 +274,7 @@ def member_information_rows(*, unit=None):
                 "family_slug": family.slug,
                 "family_id": family.pk,
                 "contact": family.primary_contact or BLANK,
-                "status": _family_status(family),
+                "status": _family_status(family, child),
                 "unit": unit_name or (family.unit.name if family.unit_id else BLANK),
                 "unit_slug": unit_slug or (family.unit.slug if family.unit_id else ""),
                 "school": school or BLANK,
@@ -298,6 +303,9 @@ def member_information_options(rows):
     billings = sorted({row["billing"] for row in rows if row.get("billing")}, key=str.lower)
     plans = sorted({row["plan"] for row in rows if row.get("plan") and row["plan"] != BLANK}, key=str.lower)
     statuses = sorted({row["status"] for row in rows if row.get("status")}, key=str.lower)
+    if "Inactive" not in statuses:
+        statuses.append("Inactive")
+        statuses.sort(key=str.lower)
     units = []
     seen = set()
     for row in rows:
@@ -330,6 +338,7 @@ def filter_member_information_rows(rows, filters=None):
     four_cs = (filters.get("four_cs") or "").strip().lower()
     agency_status = (filters.get("agency_status") or "").strip().lower()
     status = (filters.get("status") or "").strip()
+    exclude_inactive = bool(filters.get("_exclude_inactive"))
 
     filtered = []
     for row in rows:
@@ -355,7 +364,10 @@ def filter_member_information_rows(rows, filters=None):
             continue
         if agency_status and row.get("agency_status_key") != agency_status:
             continue
-        if status and (row.get("status") or "").lower() != status.lower():
+        row_status = (row.get("status") or "").strip()
+        if exclude_inactive and row_status.lower() == "inactive":
+            continue
+        if status and row_status.lower() != status.lower():
             continue
         filtered.append(row)
     return filtered
@@ -413,6 +425,8 @@ def four_cs_roster_rows(filters=None):
         for profile in PortalAgencyProfile.objects.select_related("agency")
     }
     for row in all_rows:
+        if (row.get("status") or "").lower() == "inactive":
+            continue
         if not row.get("four_cs_yes"):
             continue
         if unit and row.get("unit_slug") != unit:

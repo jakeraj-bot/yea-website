@@ -811,6 +811,8 @@ class FamiliesListVisitTests(TestCase):
         self.assertIn("applyListLinks", script)
         self.assertIn('params.set("list", "1")', script)
         self.assertIn('params.set("unit", state.unit)', script)
+        self.assertIn("data-phones", script)
+        self.assertIn("replace(/\\D/g, \"\")", script)
         self.assertIn("child_id", script)
         self.assertIn("packVisibleColumns", script)
         self.assertIn("portal-families-table--packed", script)

@@ -1,0 +1,51 @@
+<div class="form-group">
+  <label for="{{ field_prefix|default:'approve' }}-billing-type">Billing plan</label>
+  <select id="{{ field_prefix|default:'approve' }}-billing-type" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_billing_type" class="portal-select">
+    {% for value, label in approve_plan_type_choices %}
+    <option value="{{ value }}" {% if value == approve_billing_type %}selected{% endif %}>{{ label }}</option>
+    {% empty %}
+    <option value="" {% if not approve_billing_type %}selected{% endif %}>Don't attach a plan (4Cs membership only)</option>
+    <option value="Private pay" {% if approve_billing_type == "Private pay" %}selected{% endif %}>Private pay</option>
+    <option value="4Cs" {% if approve_billing_type == "4Cs" %}selected{% endif %}>4Cs (parent copay)</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="form-group">
+  <label for="{{ field_prefix|default:'approve' }}-billing-plan">Plan type</label>
+  <select id="{{ field_prefix|default:'approve' }}-billing-plan" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_billing_plan" class="portal-select">
+    {% for value, label in approve_plan_cadence_choices %}
+    <option value="{{ value }}" {% if value == approve_billing_plan %}selected{% endif %}>{{ label }}</option>
+    {% empty %}
+    <option value="Weekly" {% if approve_billing_plan == "Weekly" or not approve_billing_plan %}selected{% endif %}>Weekly</option>
+    <option value="Bi-weekly" {% if approve_billing_plan == "Bi-weekly" %}selected{% endif %}>Bi-weekly</option>
+    <option value="Monthly" {% if approve_billing_plan == "Monthly" %}selected{% endif %}>Monthly</option>
+    {% endfor %}
+  </select>
+</div>
+<div class="form-group">
+  <label for="{{ field_prefix|default:'approve' }}-plan-amount">{% if approve_is_four_cs %}Parent copay amount{% else %}Plan amount{% endif %}</label>
+  <input id="{{ field_prefix|default:'approve' }}-plan-amount" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_plan_amount" type="text" class="portal-input" value="{{ approve_plan_amount }}" inputmode="decimal" placeholder="70.00">
+</div>
+{% if show_scholarship %}
+<div class="form-group">
+  <label for="{{ field_prefix|default:'approve' }}-plan-parent-amount">Family pays after scholarship ($)</label>
+  <input id="{{ field_prefix|default:'approve' }}-plan-parent-amount" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_plan_parent_amount" type="text" class="portal-input" value="{{ approve_plan_parent_amount }}" inputmode="decimal" placeholder="optional">
+</div>
+{% if approve_scholarship_funds %}
+<div class="form-group">
+  <label for="{{ field_prefix|default:'approve' }}-scholarship-fund">Scholarship type</label>
+  <select id="{{ field_prefix|default:'approve' }}-scholarship-fund" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_scholarship_fund_id" class="portal-select">
+    <option value="">No scholarship</option>
+    {% for fund in approve_scholarship_funds %}
+    <option value="{{ fund.pk }}">{{ fund.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}
+{% endif %}
+<div class="form-group portal-form-full">
+  <label class="portal-check-label">
+    <input type="checkbox" {% if form_id %}form="{{ form_id }}" {% endif %}name="approve_post_first" value="on"{% if approve_post_first != False %} checked{% endif %}>
+    Post the first plan charge now
+  </label>
+</div>

@@ -27,7 +27,7 @@
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" with family_slug=family.slug family_id=family.pk family_tab='applications' %}
 
-    <p class="form-note">Approved applications leave the review queue. The full application for each child is here so you can view or edit it from this family account. If a waitlisted before-care child also needs after-school, use <strong>+ After-care</strong> — no new application.</p>
+    <p class="form-note">Approved applications leave the review queue. After you approve a waitlisted before-care child, this tab shows before care as <strong>Approved</strong> on the existing account — we do not create a second family. If a waitlisted before-care child also needs after-school, use <strong>+ After-care</strong> — no new application.</p>
 
     {% if family_applications|length > 1 %}
     <nav class="portal-family-app-jump" aria-label="Children on this account">
@@ -42,15 +42,22 @@
       <div class="portal-toolbar portal-review-actions">
         <h2 class="portal-family-app-title">{{ item.application.child_name }}</h2>
         <span class="portal-status portal-status-{{ item.application.status|slugify }}">{{ item.application.status }}</span>
+        {% if item.application.is_active %}
+        <span class="portal-status portal-status-active">{{ item.application.program }} application active</span>
+        {% include "portal/includes/application_inactive_form.html" with app_slug=item.app_slug child_name=item.application.child_name program_short=item.application.program_short make_active=0 button_class="btn btn-secondary btn-sm" %}
+        {% else %}
+        <span class="portal-status portal-status-inactive">{{ item.application.program }} application inactive</span>
+        {% include "portal/includes/application_inactive_form.html" with app_slug=item.app_slug child_name=item.application.child_name program_short=item.application.program_short make_active=1 button_class="btn btn-primary btn-sm" %}
+        {% endif %}
         <span class="form-note">Ref {{ item.application.reference }} · {{ item.application.submitted }}</span>
         <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_print' app_slug=item.app_slug %}{% else %}{% url 'portal_staff_application_print' app_slug=item.app_slug %}{% endif %}">Print PDF</a>
         {% include "portal/includes/add_after_care_form.html" with app_slug=item.app_slug child_name=item.application.child_name show_add_after_care=item.application.can_add_after_school next_url=request.get_full_path %}
-        {% if portal_area == 'admin' %}
+        {% if can_edit_applications %}
         <a class="btn btn-secondary" href="#edit-application-panel-{{ item.app_slug }}">Edit</a>
         {% endif %}
       </div>
       {% include "portal/includes/application_full_body.html" with application=item.application %}
-      {% if portal_area == 'admin' %}
+      {% if can_edit_applications %}
       {% include "portal/includes/application_edit_form.html" with application=item.application app_slug=item.app_slug id_suffix=item.app_slug location_choices=item.location_choices program_location=item.program_location next_url=request.get_full_path %}
       {% endif %}
     </article>

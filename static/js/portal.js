@@ -59,7 +59,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll(".portal-preview-action").forEach(function (button) {
-    button.addEventListener("click", function () {
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
       window.portalPreviewToast(button.getAttribute("data-preview-message") || "Updated for preview.");
     });
   });
@@ -183,9 +185,11 @@ document.addEventListener("DOMContentLoaded", () => {
     function applyCollapsed(collapsed) {
       document.documentElement.classList.toggle("portal-nav-collapsed", collapsed);
       toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-      toggle.setAttribute("title", collapsed ? "Expand menu" : "Collapse menu");
+      var collapseLabel = toggle.getAttribute("data-collapse-label") || "Collapse menu";
+      var expandLabel = toggle.getAttribute("data-expand-label") || "Expand menu";
+      toggle.setAttribute("title", collapsed ? expandLabel : collapseLabel);
       var label = toggle.querySelector(".portal-sidebar-toggle-label");
-      if (label) label.textContent = collapsed ? "Expand menu" : "Collapse menu";
+      if (label) label.textContent = collapsed ? expandLabel : collapseLabel;
       groups.forEach(function (group, index) {
         if (collapsed) {
           groupWasOpen[index] = group.hasAttribute("open");

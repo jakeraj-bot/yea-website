@@ -1,0 +1,9 @@
+{% if app_slug %}
+<form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_application_status' app_slug=app_slug %}{% else %}{% url 'portal_staff_application_status' app_slug=app_slug %}{% endif %}" class="portal-inline-form" onsubmit="return confirm('{% if make_active %}Restore this {{ program_short|default:'program' }} application for {{ child_name }}? They will show on {{ program_short|default:'that program' }} attendance again. The whole child stays as they are.{% else %}Make this {{ program_short|default:'program' }} application inactive for {{ child_name }}? They will leave {{ program_short|default:'that program' }} attendance. Other programs and the child account stay as they are.{% endif %}');">
+  {% csrf_token %}
+  {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+  <input type="hidden" name="active" value="{% if make_active %}1{% else %}0{% endif %}">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <button type="submit" class="{{ button_class|default:'btn btn-secondary btn-sm' }}">{% if make_active %}Restore this {{ program_short|default:'program' }} application{% else %}Make this {{ program_short|default:'program' }} application inactive{% endif %}</button>
+</form>
+{% endif %}

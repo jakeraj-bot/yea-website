@@ -11,7 +11,7 @@ GUIDES = {
             },
             {
                 "title": "Open what needs attention",
-                "body": "If a Needs attention list appears, tap a line to go straight to that family, application, or message.",
+                "body": "If a Needs attention list appears, tap a line to go straight to that family, application, or message. Overdue balances on this page count active children only. Inactive children who still owe are on the Inactive children report, not this card.",
             },
             {
                 "title": "Use the yellow buttons",
@@ -38,6 +38,10 @@ GUIDES = {
             {
                 "title": "Come back to admin anytime",
                 "body": "Use Admin portal in the header when you need billing settings, staff accounts, or organization reports.",
+            },
+            {
+                "title": "Enrollment and overdue hide inactive children",
+                "body": "Children enrolled and overdue balances count active children only. When a child is inactive they leave those numbers. Review them on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
             },
         ],
     },
@@ -187,7 +191,7 @@ GUIDES = {
             },
             {
                 "title": "Approve when a before-care spot opens",
-                "body": "Approve adds them to the roster. You do not need a new application.",
+                "body": "Open Review (or use Approve on this list) and type the member start date — each child can start on a different day, and that date goes in the approval email. Attach a billing plan before you approve if you want the email to show tuition or parent copay. Skip the plan for 4Cs so the email states the membership fee and reminds the parent to send their contract to jakeraj@yeanj.org. Approve removes them from this waitlist and adds them to All families Active. If the child already has a family account, we use that account — no duplicate family or second membership. The parent gets an email that payment is due before the program start, with payment steps and a Pay now link.",
             },
         ],
     },
@@ -219,7 +223,19 @@ GUIDES = {
             },
             {
                 "title": "Approve, waitlist, request changes, or reject",
-                "body": "Approve puts them on the roster (and may add the membership fee). Waitlist holds a spot in order. Request changes sends a note the parent can see. Reject needs a clear reason.",
+                "body": "Enter the member start date first — it is required and goes into the approval email. Attach a billing plan before you approve if you want that email to show the amount due (membership plus first tuition or parent copay). Skip the plan for 4Cs so the email states the membership fee and reminds the parent to send their contract to jakeraj@yeanj.org. Approve puts them on All families Active and emails the parent that they can start on that date, that payment is due before the program start, with Pay now steps and a payment-page link. Waitlist holds a before-care spot in order — they stay off Active until you approve. If the child already has an account, we add before care as Approved on that account (no second family). Request changes sends a note the parent can see. Reject needs a clear reason.",
+            },
+            {
+                "title": "Change the membership amount before you approve",
+                "body": "The membership charge defaults to the current membership fee. You can change the amount (and description) before you confirm. Type 0 to waive. That edited amount is what posts to the family ledger. A second waitlist or after-care application for the same child does not charge membership again.",
+            },
+            {
+                "title": "Attach a billing plan before you approve",
+                "body": "Use the billing plan picker on Approve details — the same weekly, bi-weekly, and monthly private-pay or 4Cs copay types as family Plans. Fill the parent amount so the approval email can show amount due. Amount due is what the parent owes, not the 4Cs agency week amount. Leave the plan off for 4Cs until copay is set: the email then states the membership fee and the contract reminder (send to jakeraj@yeanj.org, YEA signs it and emails it back for 4Cs). You can still add or change the plan later on the family Plans tab.",
+            },
+            {
+                "title": "Edit the application if details are wrong",
+                "body": "Portal admin and Program director can use Edit application on this page to fix names, school, grade, contacts, program, and payment details before or while they approve. That is program work — it does not use Django /admin/. Front desk staff can still approve when they have permission, but they cannot rewrite the application.",
             },
             {
                 "title": "Print if you need a paper copy",
@@ -233,11 +249,23 @@ GUIDES = {
     },
     "families": {
         "title": "How to use the families list",
-        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household.",
+        "intro": "Every child at this unit is a row, A–Z by child name. Family balance sits on the first child in the household. Inactive children have their own tab.",
         "steps": [
             {
                 "title": "Search or filter",
-                "body": "Search by name. Filters help you find balances, billing type, or status.",
+                "body": "Search by family name, child name, or parent phone. (201) 456-5698 and 2014565698 both work. Filters help you find balances, billing type, or status.",
+            },
+            {
+                "title": "Inactive tab",
+                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
+            },
+            {
+                "title": "Make them active again",
+                "body": "Open the Inactive tab and use Make active, or open the family account and use Make active there. They return to this list and to attendance.",
+            },
+            {
+                "title": "Parents can still pay and get tax forms",
+                "body": "Inactive does not delete anything. Parents can still see the balance, use Pay now if they owe, download receipts, and get tax statements.",
             },
             {
                 "title": "Save school attending",
@@ -287,6 +315,10 @@ GUIDES = {
                 "title": "Agency ledger is separate",
                 "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
             },
+            {
+                "title": "Record a parent copay date",
+                "body": "When you record a parent copay, Payment date is the day the money was received. It defaults to today.",
+            },
         ],
     },
     "agencies": {
@@ -312,6 +344,10 @@ GUIDES = {
             {
                 "title": "Agency ledger is separate",
                 "body": "Agency expected amounts stay on the 4Cs tab. Check Received when the agency check for that week comes in. That does not post to the parent ledger.",
+            },
+            {
+                "title": "Record a parent copay date",
+                "body": "When you record a parent copay, Payment date is the day the money was received. It defaults to today.",
             },
         ],
     },
@@ -389,7 +425,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check one or more grades to keep those kids on the same page. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check After-care, Before-care, or All, then one or more grades to keep those kids on the same page. Before care is the roster of who is approved for before-care. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
@@ -397,21 +433,39 @@ GUIDES = {
             },
             {
                 "title": "Exports",
-                "body": "If you can see billing, balance files download as CSV and 4Cs expected amounts shows copay and agency totals by child. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check.",
+                "body": "If you can see billing, balance files download as CSV and 4Cs expected amounts shows copay and agency totals by child. Program director does not see those unless billing is turned on. Who still owes — by week lists unpaid weeks and lets you charge a $15 late fee only on the children you check. Inactive children is who left the program and any remaining balance — they stay off other reports unless Status is Inactive or All.",
+            },
+        ],
+    },
+    "inactive-children": {
+        "title": "How to review inactive children",
+        "intro": "This list is children marked inactive. Accounts stay on file. Remaining balance is that child's live tuition (charges minus payments; Stripe card fees do not count as still owed).",
+        "steps": [
+            {
+                "title": "Read who left and what they still owe",
+                "body": "Each row is an inactive child who moved off Active — not a second copy of the account. Child names open the family profile. Remaining balance is that child's tuition after payments. Parents can still Pay now and download tax statements.",
+            },
+            {
+                "title": "Filter the list",
+                "body": "Search by child or family. Still owes Yes keeps only children with a remaining balance. Unit is for admin across sites. Apply, then print or download CSV.",
+            },
+            {
+                "title": "Make them active again",
+                "body": "Open the child name, then use Make active on Program status at the top of the profile. They return to All families, attendance, and Overview counts.",
             },
         ],
     },
     "outstanding-balances": {
         "title": "How to use outstanding balances",
-        "intro": "This list is one row per child who still owes. Child names open the family billing account. Status is a filter, not a column.",
+        "intro": "This list is one row per child who still owes after payments. Child names open the family billing account. Status is a filter, not a column.",
         "steps": [
             {
                 "title": "Read child names and amounts",
-                "body": "Each row is a child with that child's outstanding amount, not the household last name. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
+                "body": "Each row is a child with that child's remaining amount after payments, not the household last name. Parent card, check, or money order payments drop this number by the tuition applied — Stripe's processing fee is not still owed. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
             },
             {
                 "title": "Filter by status",
-                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, withdrawn, suspended, or all statuses. Apply filters, then print or download CSV.",
+                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, inactive, withdrawn, suspended, or all statuses. Inactive children who still owe stay on this report when you choose Inactive or All. Apply filters, then print or download CSV.",
             },
         ],
     },
@@ -425,11 +479,11 @@ GUIDES = {
             },
             {
                 "title": "Weekly, bi-weekly, and monthly copay totals",
-                "body": "Those cards group children by the child’s copay payment plan. Weekly-plan totals are one week of family-pays. Bi-weekly-plan totals are two weeks. Monthly-plan totals are four weeks. Each child also has a row with that same cadence amount.",
+                "body": "Those cards group children by the child’s copay payment plan. Weekly-plan totals are one week of family-pays. Bi-weekly-plan totals are two weeks. Monthly-plan totals use the program weeks in this month (4 or 5). Each child also has a row with that same cadence amount.",
             },
             {
                 "title": "Weekly copay for all 4Cs members",
-                "body": "That column and card put everyone on a weekly copay, no matter their plan. It uses the plan’s weekly copay (daily × 5 school days, or the weekly override). If only a cycle amount exists, bi-weekly is divided by 2 and monthly by 4. After-scholarship family-pays is the number you should collect.",
+                "body": "That column and card put everyone on a weekly copay, no matter their plan. It uses the plan’s weekly copay (daily × 5 school days, or the weekly override). If only a cycle amount exists, bi-weekly is divided by 2. Monthly uses the weekly rate (or this month’s week count). After-scholarship family-pays is the number you should collect.",
             },
             {
                 "title": "What 4Cs will pay",
@@ -447,7 +501,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Read the weeks",
-                "body": "Weeks come from the charge description (plan notes, 4Cs week dates, or the school week of the charge date). Family-level payments count toward the household balance.",
+                "body": "Weeks come from the charge description (plan notes, 4Cs week dates, or the school week of the charge date). Amounts are remaining after payments, including family-level payments with no child on the row. Children at $0 stay off the list.",
             },
             {
                 "title": "Charge a late fee only if you pick them",
@@ -457,11 +511,19 @@ GUIDES = {
     },
     "weekly-attendance": {
         "title": "How to print weekly attendance",
-        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
+        "intro": "This is the Monday–Friday attendance sheet. Pick a unit, then After-care, Before-care, or All. Check one or more grades to print those children together — they stay on the same sheet, not split into grade tables.",
         "steps": [
             {
                 "title": "Pick a unit",
                 "body": "Use the Unit filter on this page. Staff can choose any unit they are allowed to open; it starts on the unit in the header, so you do not have to hunt through the header switcher. Staff cannot see children at a unit they are not assigned to. Admins can choose one unit or All units. A child whose family account is at another site still appears if they attend the unit you picked.",
+            },
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All is the starting list so you do not miss anyone. After-care keeps after-school kids and hides children who only have approved before-care. Before-care keeps approved before-care kids and hides after-school-only children. A child on both programs stays on After-care and Before-care unless that application is inactive. An inactive before-care application stays off Before-care; an inactive after-care application stays off After-care. The printed names follow this filter.",
+            },
+            {
+                "title": "Optionally add parent contact",
+                "body": "Check Show primary parent contact on this sheet if you need the parent name, phone, and email under each child. It stays off unless you check it, then Apply filters. The choice stays in the URL so print and reload keep it.",
             },
             {
                 "title": "Pick the week and grades",
@@ -487,11 +549,15 @@ GUIDES = {
     },
     "weekly-attendance-blank": {
         "title": "How to print a blank weekly sheet",
-        "intro": "This is the Monday–Friday grid with names filled in and empty lines to mark by hand. Filters match the filled weekly sheet.",
+        "intro": "This is the Monday–Friday grid with names filled in and empty lines to mark by hand. Filters match the filled weekly sheet, including After-care, Before-care, or All.",
         "steps": [
             {
                 "title": "Pick a unit",
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All starts with every enrolled child. After-care hides before-care-only kids. Before-care hides after-school-only kids. The printed names follow this filter.",
             },
             {
                 "title": "Pick the week and grades",
@@ -516,6 +582,10 @@ GUIDES = {
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units. You will not see children from a unit you cannot open.",
             },
             {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All is the starting list. After-care keeps after-school kids. Before-care keeps approved before-care kids. The printed names follow this filter.",
+            },
+            {
                 "title": "Pick the day and grades",
                 "body": "Change the date if you need another day. Check grades to keep those kids on one sheet.",
             },
@@ -538,6 +608,10 @@ GUIDES = {
                 "body": "Staff start on the header unit and can choose another site they are allowed to open. Admins can choose one unit or All units.",
             },
             {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "Same as the filled daily sheet. All prints both programs. After-care and Before-care change the printed names.",
+            },
+            {
                 "title": "Pick the day and grades",
                 "body": "Set the date, then check grades if you only need some classrooms. Names match the filled daily sheet for those filters.",
             },
@@ -548,6 +622,38 @@ GUIDES = {
             {
                 "title": "Print",
                 "body": "Use Print / Save PDF. The header, listed count, page number, and print date/time appear on every printed page.",
+            },
+        ],
+    },
+    "signout-blank": {
+        "title": "How to print a sign-out sheet",
+        "intro": "This is the paper pickup sheet. Choose After-care, Before-care, or All, then print the names that match.",
+        "steps": [
+            {
+                "title": "Choose After-care, Before-care, or All",
+                "body": "All starts with every enrolled child at your unit so you do not miss anyone. After-care hides children who only have approved before-care. Before-care hides after-school-only children. A child on both programs stays on both lists. The printed names follow this filter.",
+            },
+            {
+                "title": "Set the date and print",
+                "body": "Change the date if you need another day. Use Print / Save PDF. Parents sign and write the pickup time. Only release children to adults on the authorized pickup list.",
+            },
+        ],
+    },
+    "before-care": {
+        "title": "How to see before-care kids",
+        "intro": "This roster is who is approved for before-care. Waitlist-only children stay off until you approve them. Inactive children stay off. A child whose before-care application is inactive also stays off, even if they still attend after-care.",
+        "steps": [
+            {
+                "title": "Read the list",
+                "body": "Each row is a child with approved or enrolled before-care. You see the child name, family, unit, school, and status. Staff see their unit only. Admins can choose one unit or All units.",
+            },
+            {
+                "title": "Open the family account",
+                "body": "Click a child name to open that family account. The printed page shows the name without the link.",
+            },
+            {
+                "title": "Print a before-care attendance sheet",
+                "body": "Need a weekly or sign-out sheet for only these kids? Open Weekly attendance or Sign-out sheet and choose Before-care. All prints after-school and before-care together.",
             },
         ],
     },
@@ -608,12 +714,24 @@ GUIDES = {
                 "body": "Allergies and action plans are on this page. Hover icons in lists for a short reminder.",
             },
             {
+                "title": "Fold profile sections",
+                "body": "Use Expand all / Collapse all at the top of Profile, or the chevron on a card. Program status stays open so Make inactive stays in view. Edit member info starts folded.",
+            },
+            {
                 "title": "Correct parent info",
-                "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets.",
+                "body": "Use Edit member info on this page to change the parent email, phone, names, or address after approval. Saving also updates the parent login email so they can sign in and get password resets. Open that section with the chevron if it is folded.",
+            },
+            {
+                "title": "Make a child inactive or active",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+            },
+            {
+                "title": "Make one application inactive",
+                "body": "If a child has before-care and after-care, you can turn off one program without making the whole child inactive. On Program status, each application has Make this before-care application inactive or Make this after-care application inactive. That child leaves attendance and the before-care roster for that program only. Restore this application if they come back to that program. You can also do this from the application page or the Applications tab.",
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the current password. Use Reset parent password to email the parent a one-time link to create a new password. The link expires in 72 hours. If they forget again, send another link.",
+                "body": "You cannot look up the current password. On this family account, scroll to Reset parent password and click Email create-password link. The parent gets a one-time link to create a new password (it expires in 72 hours), then they sign in on Parent login. If you need to tell them a password right now, open Set a temporary password instead — that password is shown once. If they forget again, send another link. Parents can also use Forgot password on the Parent login page themselves.",
             },
             {
                 "title": "Email the parent",
@@ -641,8 +759,12 @@ GUIDES = {
     },
     "family-attendance": {
         "title": "How to read this child’s attendance",
-        "intro": "This month calendar is only for the child on this account. It shows saved present, absent, and not-marked days.",
+        "intro": "This month calendar is for one child on this family account. It shows saved present, absent, and not-marked days.",
         "steps": [
+            {
+                "title": "Switch children",
+                "body": "If this account has two children, use the names under the Attendance tab to switch calendars. You stay on the family account. Inactive children with saved attendance stay on the list and are labeled Inactive.",
+            },
             {
                 "title": "Read the colors",
                 "body": "Green is present. Red is absent. Gray is not marked. Days stay not marked unless staff already saved attendance.",
@@ -653,7 +775,7 @@ GUIDES = {
             },
             {
                 "title": "Change month",
-                "body": "Use Previous month and Next month. Staff only see the child at their unit.",
+                "body": "Use Previous month and Next month. Staff only see children at their unit.",
             },
         ],
     },
@@ -684,8 +806,16 @@ GUIDES = {
                 "body": "+ Add charge for membership, tuition, late fee, field trip, or other. Record payment for cash, check, or money order. Take a card payment opens Stripe Checkout so the card is entered on Stripe, not in this portal.",
             },
             {
+                "title": "Set the payment date",
+                "body": "Payment date is the day the money was received — the check date, or the day cash or a money order came in. It defaults to today. You can change it. Card payments through Stripe keep the time Stripe charged the card.",
+            },
+            {
                 "title": "Credits and deletes",
                 "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions.",
+            },
+            {
+                "title": "Edit a membership charge",
+                "body": "Use Edit on a membership line to change the amount or the description. Deletes still ask for a reason.",
             },
         ],
     },
@@ -700,6 +830,14 @@ GUIDES = {
             {
                 "title": "4Cs vs private pay",
                 "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
+            },
+            {
+                "title": "Enter a weekly rate on monthly plans",
+                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Friday. Example: 9/28/2026–10/2/2026 is the first week of October, not September. Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 4 weeks × $70 = $280; October, 5 × $70 = $350. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
+            },
+            {
+                "title": "Add a scholarship on a regular plan",
+                "body": "On a private-pay Weekly, Bi-weekly, or Monthly plan, keep the plan amount (the full tuition before scholarship — weekly rate on a Monthly plan). Choose a scholarship type, enter the plan rate before the scholarship, and enter how much the family pays. The card still shows the plan amount plus scholarship and family-pays. The ledger posts the full rate and a scholarship discount, so the family owes the family-pays amount. On Monthly, family-pays is the weekly figure; each month’s table is weeks × that family-pays.",
             },
             {
                 "title": "Add a scholarship on a 4Cs plan",
@@ -745,6 +883,10 @@ GUIDES = {
                 "title": "Add After-care for a waitlisted before-care child",
                 "body": "Find the waitlisted before-care child, then use + After-care and confirm to save. No new enrollment application is required. After-care is added onto this record; before-care waitlist stays the same.",
             },
+            {
+                "title": "After you approve before care",
+                "body": "The waitlist row is gone. This Applications tab shows before care as Approved on the existing account. We do not create a second family.",
+            },
         ],
     },
     "family-policies": {
@@ -771,7 +913,7 @@ GUIDES = {
             },
             {
                 "title": "Add days off and half days",
-                "body": "Full closures skip parent weeks that have no remaining school days. Half days are stored on this calendar and do not change the weekly copay amount.",
+                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. Half days are stored on this calendar and do not change the weekly copay amount.",
             },
             {
                 "title": "4Cs still follows the contract",
@@ -785,7 +927,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Create a Program director",
-                "body": "Use Create staff account. Choose Program director. Pick a primary unit. They sign in at the staff portal. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They can switch units because they are in charge of programming. Billing stays hidden unless you turn it on.",
+                "body": "Use Create staff account. Choose Program director. Pick a primary unit. They sign in at the staff portal. They see families, attendance, waitlist, applications, Activity calendar, Groups, and Outside programs. They can switch units because they are in charge of programming. They can edit an application while approving, the same as Portal admin. Billing stays hidden unless you turn it on.",
             },
             {
                 "title": "Create Front desk staff",
@@ -965,7 +1107,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the old password. Use Reset password to open the family profile and email the parent a one-time link to create a new password.",
+                "body": "You cannot look up the old password. Open the family profile, then Email create-password link for a one-time link to create a new password. Optional: set a temporary password that is shown once. Parents can also use Forgot password on Parent login.",
             },
         ],
     },
@@ -1040,6 +1182,10 @@ GUIDES = {
             {
                 "title": "Read the ledger",
                 "body": "Emails sent under the form is every parent email from the portal. Click a row to read the full message. Use Emails sent in the menu for filters when the list gets long.",
+            },
+            {
+                "title": "Edit application emails",
+                "body": "The four application templates (submitted and approved, regular vs waitlist) are on this page. Change the wording anytime. Placeholders include parent name, child name, program, unit, start date, payment link, and first-payment steps. The start date is filled in when you approve the application.",
             },
             {
                 "title": "Collapse sections",

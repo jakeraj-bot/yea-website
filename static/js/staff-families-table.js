@@ -137,7 +137,10 @@
     ]
       .join(" ")
       .toLowerCase();
-    return haystack.indexOf(q) !== -1;
+    if (haystack.indexOf(q) !== -1) return true;
+    var qDigits = String(state.search || "").replace(/\D/g, "");
+    var phones = row.getAttribute("data-phones") || "";
+    return Boolean(qDigits) && phones.replace(/\D/g, "").indexOf(qDigits) !== -1;
   }
 
   function sortRows(list) {
@@ -320,6 +323,8 @@
     if (state.filter && state.filter !== "all") params.set("ff", state.filter);
     if (unitFilterSelect && state.unit && state.unit !== "all") params.set("unit", state.unit);
     if (state.sort && state.sort !== "child-asc") params.set("sort", state.sort);
+    var familiesTab = table.getAttribute("data-families-tab") || "";
+    if (familiesTab && familiesTab !== "active") params.set("tab", familiesTab);
     params.set("list", "1");
     return params;
   }
@@ -331,7 +336,7 @@
         if (!isFamilyAccountLink(link.getAttribute("href"))) return;
         try {
           var url = new URL(link.getAttribute("href"), window.location.origin);
-          ["id", "child_id", "child", "q", "ff", "unit", "sort", "school", "list"].forEach(function (key) {
+          ["id", "child_id", "child", "q", "ff", "unit", "sort", "school", "tab", "list"].forEach(function (key) {
             url.searchParams.delete(key);
           });
           params.forEach(function (value, key) {

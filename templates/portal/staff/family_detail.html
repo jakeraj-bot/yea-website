@@ -24,6 +24,7 @@
 <section class="page-content">
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
+    {% include "portal/includes/child_program_status.html" %}
 
     {% if parent_password_reset %}
     <section class="card portal-password-once portal-profile-full portal-collapse-skip" id="parent-password-once">
@@ -56,7 +57,7 @@
 
     <div class="portal-profile-grid">
       {% if member_info %}
-      <section class="card portal-profile-full portal-collapse-skip" id="edit-member-info">
+      <section class="card portal-profile-full" id="edit-member-info">
         <h2>Edit member info</h2>
         <p class="form-note">Change parent names, phone, address, and login email here after approval. The parent does not need to re-apply. Saving updates the email they use to sign in and reset their password.</p>
         <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_member_update' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_member_update' family_slug=family_slug %}{% endif %}" class="portal-form-grid">
@@ -174,7 +175,7 @@
         <dl class="portal-dl">
           <dt>Name</dt><dd>{{ profile.primary.name }}</dd>
           {% if profile.primary.email or parent_email %}<dt>Email</dt><dd>{{ profile.primary.email|default:parent_email }}</dd>{% endif %}
-          {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone }}</dd>{% endif %}
+          {% if profile.primary.phone %}<dt>Phone</dt><dd>{{ profile.primary.phone|format_phone }}</dd>{% endif %}
         </dl>
         {% if profile.primary.email or parent_email %}
         <p class="portal-profile-email-action">
@@ -188,7 +189,7 @@
         <dl class="portal-dl">
           <dt>Name</dt><dd>{{ profile.secondary.name }}</dd>
           <dt>Email</dt><dd>{{ profile.secondary.email }}</dd>
-          <dt>Phone</dt><dd>{{ profile.secondary.phone }}</dd>
+          <dt>Phone</dt><dd>{{ profile.secondary.phone|format_phone }}</dd>
         </dl>
       </section>
       {% endif %}
@@ -211,7 +212,7 @@
                 {% for c in child.emergency_contacts %}
                 <tr>
                   <td>{{ c.name }}</td>
-                  <td>{{ c.phone }}</td>
+                  <td>{{ c.phone|format_phone }}</td>
                   <td>{{ c.relationship|default:"—" }}</td>
                   <td>{% if c.authorized_pickup %}Yes{% else %}No{% endif %}</td>
                 </tr>
@@ -231,7 +232,7 @@
             <thead><tr><th>Name</th><th>Phone</th><th>Relationship</th></tr></thead>
             <tbody>
               {% for c in profile.emergency_contacts %}
-              <tr><td>{{ c.name }}</td><td>{{ c.phone }}</td><td>{{ c.relationship }}</td></tr>
+              <tr><td>{{ c.name }}</td><td>{{ c.phone|format_phone }}</td><td>{{ c.relationship }}</td></tr>
               {% endfor %}
             </tbody>
           </table>

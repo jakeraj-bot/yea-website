@@ -58,59 +58,13 @@ def notify_staff_new_application(application):
 
 
 def notify_parent_application_received(application, *, staff_created=False, save_draft=False):
-    portal_url = settings.SITE_URL.rstrip("/") + reverse("portal_parent_login")
-    child_name = f"{application.student_first_name} {application.student_last_name}".strip()
-
-    if save_draft:
-        subject = "[YEA] Complete your enrollment application"
-        body = (
-            f"Hello {application.primary_first_name},\n\n"
-            f"YEA staff started an enrollment application for {child_name}. "
-            f"Please sign in to the parent portal to complete medical information, policies, and billing.\n\n"
-            f"Reference: {application.reference}\n\n"
-            f"Parent portal:\n{portal_url}\n\n"
-            f"Youth Education Academy\n"
-        )
-    elif staff_created:
-        subject = f"[YEA] Application received — {child_name}"
-        body = (
-            f"Hello {application.primary_first_name},\n\n"
-            f"Your enrollment application for {child_name} has been submitted to Youth Education Academy.\n\n"
-            f"Reference: {application.reference}\n"
-            f"Program: {application.get_program_display()} — {get_location_label(application.program_location)}\n\n"
-            f"We'll review your application and contact you if we need anything else. "
-            f"Track status anytime in the parent portal:\n{portal_url}\n\n"
-            f"Youth Education Academy\n"
-        )
-    else:
-        subject = f"[YEA] Application received — {child_name}"
-        location_label = get_location_label(application.program_location)
-        if application.program == "before_care" or application.status == "waitlist":
-            body = (
-                f"Hello {application.primary_first_name},\n\n"
-                f"Thank you for joining the before care waitlist at {location_label} for {child_name}.\n\n"
-                f"Reference: {application.reference}\n"
-                f"Program: {application.get_program_display()} — {location_label}\n\n"
-                f"Families on the waitlist are contacted in the order requests were received when a spot opens. "
-                f"Track status anytime in the parent portal:\n{portal_url}\n\n"
-                f"Youth Education Academy\n"
-            )
-        else:
-            body = (
-                f"Hello {application.primary_first_name},\n\n"
-                f"Thank you for submitting your enrollment application for {child_name}.\n\n"
-                f"Reference: {application.reference}\n"
-                f"Program: {application.get_program_display()} — {location_label}\n\n"
-                f"We'll review your application and contact you if we need anything else. "
-                f"Track status anytime in the parent portal:\n{portal_url}\n\n"
-                f"Youth Education Academy\n"
-            )
+    from portal.email_templates import send_application_submitted_parent_email
 
     return bool(
-        send_site_email(
-            subject=subject,
-            message=body,
-            recipient_list=[application.primary_email],
+        send_application_submitted_parent_email(
+            application,
+            staff_created=staff_created,
+            save_draft=save_draft,
         )
     )
 

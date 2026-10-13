@@ -1,6 +1,6 @@
-{% load static %}
+{% load static parent_i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ parent_lang|default:'en' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,7 +13,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'css/site.css' %}?v=36">
-  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=92">
+  <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=99">
+  {% if portal_area == 'parent' %}<link rel="stylesheet" href="{% static 'css/portal-parent.css' %}?v=3">{% endif %}
   {% include "portal/includes/report_print_chrome.html" %}
   <script>
     try {
@@ -33,16 +34,28 @@
   <div class="portal-preview-banner portal-support-view-banner" role="status">
     <div>
     {% if admin_preview_sample %}
-    <strong>Sample parent portal</strong> — no parent login needed · Card numbers hidden · Read-only
+    <strong>{% pt "sample_preview_banner" %}</strong>
     {% else %}
-    <strong>Support view</strong> — you are looking at the {{ preview_family_name|default:"Family" }} parent portal. Card numbers are hidden. The parent sees a notice while this view is open.
+    <strong>{% pt "support_view_banner" family=preview_family_name|default:"Family" %}</strong>
     {% endif %}
     </div>
     {% include "portal/includes/family_neighbor_nav.html" %}
   </div>
+  {% elif practice_parent_session %}
+  <div class="portal-preview-banner portal-practice-parent-banner" role="status">
+    <div>
+      <strong>{% pt "practice_parent_banner" %}</strong>
+    </div>
+    {% if practice_can_return_to_admin %}
+    <form method="post" action="{% url 'portal_admin_practice_parent_end' %}" class="portal-practice-end-form">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-secondary btn-sm">{% pt "back_to_admin" %}</button>
+    </form>
+    {% endif %}
+  </div>
   {% elif parent_support_view_active %}
   <div class="portal-preview-banner portal-support-view-banner portal-support-view-banner-parent" role="status">
-    <strong>A YEA admin is viewing your portal</strong> to help with a support request. They can see the same screens you see. Your card numbers stay hidden.
+    <strong>{% pt "admin_viewing_banner" %}</strong>
   </div>
   {% endif %}
 
@@ -80,6 +93,7 @@
         {% if can_open_staff_portal %}
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_area_switch' area='staff' %}" title="Take attendance and work at a unit — same login">Staff portal</a>
         {% endif %}
+        {% include "portal/includes/practice_parent_open.html" with button_class="btn-primary" button_size="btn-sm" %}
         {% if admin_authenticated %}
         <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_admin_logout' %}">Sign out</a>
         {% endif %}
@@ -92,21 +106,35 @@
             <span class="portal-avatar-initials">{{ parent_avatar.initials }}</span>
             {% endif %}
           </div>
-          <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {{ parent_preview.label|default:"Parent account" }}</span>
-          {% if admin_preview_sample %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_sample_page' page='contact-us' %}">Contact us</a>
-          {% elif admin_support_preview and admin_preview_family_slug %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='contact-us' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}">Contact us</a>
-          {% else %}
-          <a class="btn btn-primary btn-sm" href="{% url 'portal_parent_page' page='contact-us' %}{{ parent_pay_query }}">Contact us</a>
+          <span class="portal-badge portal-badge-parent">{{ parent_preview.family_name|default:"Parent" }} · {% if parent_preview.label %}{% ptl parent_preview.label %}{% else %}{% pt "parent_account" %}{% endif %}</span>
+          {% if parent_header %}
+          <div class="portal-header-balance{% if parent_header.has_credit %} is-credit{% elif parent_header.is_zero %} is-zero{% else %} is-due{% endif %}">
+            <div class="portal-header-balance-copy">
+              <span class="portal-stat-label">{% pt "family_balance" %}</span>
+              {% if parent_header.has_credit %}
+              <strong class="portal-header-balance-amount">{% pt "credit_amount" credit=parent_header.credit %}</strong>
+              {% else %}
+              <strong class="portal-header-balance-amount">${{ parent_header.amount }}</strong>
+              {% endif %}
+            </div>
+            {% include "portal/includes/parent_pay_now.html" with button_class="btn-sm" %}
+          </div>
           {% endif %}
-          {% if parent_authenticated and not admin_support_preview %}
-          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">Sign out</a>
+            <form class="portal-lang-switch" method="post" action="{% url 'portal_parent_set_language' %}" role="group" aria-label="{% pt 'lang_group' %}" data-lang-cookie="yea_parent_lang">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" name="lang" value="en" class="btn btn-secondary btn-sm{% if parent_lang != 'es' %} is-active{% endif %}">{% pt "lang_en" %}</button>
+            <button type="submit" name="lang" value="es" class="btn btn-secondary btn-sm{% if parent_lang == 'es' %} is-active{% endif %}">{% pt "lang_es" %}</button>
+          </form>
+          {% if parent_authenticated and not admin_support_preview and not practice_parent_session %}
+          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
+          {% elif practice_parent_session and not practice_can_return_to_admin %}
+          <a class="btn btn-secondary btn-sm portal-header-signout" href="{% url 'portal_parent_logout' %}">{% pt "sign_out" %}</a>
           {% endif %}
         </div>
         {% endif %}
-        <a class="portal-back-link" href="{% url 'portal_home' %}">← All portals</a>
-        <a class="portal-back-link" href="{% url 'home' %}">Public site</a>
+        <a class="portal-back-link" href="{% url 'portal_home' %}">← {% if portal_area == 'parent' %}{% pt "all_portals" %}{% else %}All portals{% endif %}</a>
+        <a class="portal-back-link" href="{% url 'home' %}">{% if portal_area == 'parent' %}{% pt "public_site" %}{% else %}Public site{% endif %}</a>
       </div>
     </div>
   </header>
@@ -136,15 +164,23 @@
   {% endif %}
 
   <script src="{% static 'js/site.js' %}?v=3"></script>
-  <script src="{% static 'js/portal.js' %}?v=7"></script>
-  {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=4"></script>{% endif %}
-  <script src="{% static 'js/portal-pending-review.js' %}?v=2"></script>
+  <script src="{% static 'js/portal.js' %}?v=8"></script>
+  {% if portal_area == 'staff' or portal_area == 'admin' or portal_area == 'parent' %}<script src="{% static 'js/portal-collapse.js' %}?v=5"></script>{% endif %}
+  <script src="{% static 'js/portal-pending-review.js' %}?v=3"></script>
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/staff-list-toolbar.js' %}?v=2"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-parent-email.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-family-search.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'admin' %}<script src="{% static 'js/admin-portal.js' %}?v=1"></script>{% endif %}
   {% if portal_area == 'staff' or portal_area == 'admin' %}<script src="{% static 'js/portal-delete-reason.js' %}?v=1"></script>{% endif %}
-  {% if page_guide %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
+  {% if page_guide and portal_area != 'parent' %}<script src="{% static 'js/portal-page-guide.js' %}?v=2"></script>{% endif %}
+  {% if portal_area == 'parent' %}
+  <script>
+    window.YEA_PARENT_I18N = {
+      pending_review: "{% filter escapejs %}{% pt 'pending_review' %}{% endfilter %}",
+      currently_on_file: "{% filter escapejs %}{% pt 'currently_on_file' %}{% endfilter %}"
+    };
+  </script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

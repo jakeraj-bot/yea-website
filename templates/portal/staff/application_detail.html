@@ -12,6 +12,15 @@
   <div class="container">
     <div class="portal-toolbar portal-review-actions">
       <span class="portal-status portal-status-{{ application.status|slugify }}">{{ application.status }}</span>
+      {% if is_live_application %}
+      {% if application.is_active %}
+      <span class="portal-status portal-status-active">{{ application.program }} application active</span>
+      {% include "portal/includes/application_inactive_form.html" with app_slug=app_slug child_name=application.child_name program_short=application.program_short make_active=0 button_class="btn btn-secondary" %}
+      {% else %}
+      <span class="portal-status portal-status-inactive">{{ application.program }} application inactive</span>
+      {% include "portal/includes/application_inactive_form.html" with app_slug=app_slug child_name=application.child_name program_short=application.program_short make_active=1 button_class="btn btn-primary" %}
+      {% endif %}
+      {% endif %}
       {% if application.prev_slug %}
       <a class="btn btn-secondary" href="{% if portal_area == 'admin' %}{% url 'portal_admin_application_detail' app_slug=application.prev_slug %}{% else %}{% url 'portal_staff_application_detail' app_slug=application.prev_slug %}{% endif %}">Previous</a>
       {% endif %}
@@ -22,15 +31,15 @@
       <span class="form-note">{{ application.queue_position }} of {{ application.queue_total }}</span>
       {% endif %}
       {% if is_live_application and application.can_review and can_approve_this_application %}
-      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form">
+      <form method="post" action="{{ application_urls.review }}" class="portal-inline-form" id="approve-application-form" data-child-name="{{ application.child_name }}" data-waitlist="{% if application.status_slug == 'waitlist' %}1{% else %}0{% endif %}">
         {% csrf_token %}
         <input type="hidden" name="action" value="approve">
         <input type="hidden" name="program_location" id="approve-program-location" value="{{ program_location }}">
         {% if application.status_slug == "waitlist" %}
         <input type="hidden" name="next" value="{{ application_urls.list }}">
-        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('A spot opened — approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve — add to roster</button>
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove()">Approve — add to roster</button>
         {% else %}
-        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove('Approve {{ application.child_name }} and add them to the roster?{% if application.membership_required %} A $20 membership fee will post to the family account.{% endif %}')">Approve</button>
+        <button type="submit" class="btn btn-primary" onclick="return syncApplicationLocationForApprove()">Approve</button>
         {% endif %}
       </form>
       {% endif %}
@@ -63,8 +72,10 @@
       <a class="btn btn-secondary" href="{% url 'portal_staff_family_policies' family_slug=application.family_slug %}{% if application.family_id %}?id={{ application.family_id }}{% endif %}">Policies</a>
       {% endif %}
       {% endif %}
-      {% if portal_area == 'admin' and is_live_application %}
+      {% if can_edit_applications and is_live_application %}
       <a class="btn btn-secondary" href="#edit-application-panel-{{ app_slug }}">Edit application</a>
+      {% endif %}
+      {% if portal_area == 'admin' and is_live_application %}
       {% if not application.has_parent_login %}
       <a class="btn btn-secondary" href="#create-login-panel">Create parent login</a>
       {% endif %}
@@ -87,15 +98,45 @@
     {% if is_live_application and application.can_review and application.status_slug == "waitlist" %}
     <div class="portal-callout card">
       {% if can_approve_this_application %}
-      <p><strong>Waitlist.</strong> This family is waiting for a spot. When one opens, use <strong>Approve — add to roster</strong> here or on the Waitlist tab. No new application is needed.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Type the member start date, then Approve — that date goes in the email. Attach a billing plan in Approve details if you want the email to show tuition; skip the plan for 4Cs membership-only plus the contract reminder. Approve removes them from the waitlist and adds them to All families Active. If they already have a family account, we use that account — no duplicate. The parent is emailed to pay before the program start, with a Pay now link.{% if application.can_add_after_school %} If they also need after-school, use <strong>+ After-care</strong> — that reuses this record.{% endif %}</p>
       {% else %}
-      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
+      <p><strong>Waitlist.</strong> This family is waiting for a before care spot. Approval is done in the admin portal unless a portal admin gives you waitlist approval permission. Approve will use the existing family account if the child already has one.{% if application.can_add_after_school %} You can still use <strong>+ After-care</strong> if they also need after-school — no new application.{% endif %}</p>
       {% endif %}
     </div>
     {% elif is_live_application and application.can_review and not can_approve_this_application %}
     <div class="portal-callout card">
       <p><strong>View only for approval.</strong> You can request changes or leave notes. Application approval is done in the admin portal unless a portal admin gives you approval permission.</p>
     </div>
+    {% endif %}
+
+    {% if is_live_application and application.can_review and can_approve_this_application %}
+    <section class="card portal-review-panel" id="membership-charge-panel" data-collapse-open>
+      <h2>Approve details</h2>
+      <p class="form-note">Type the member start date before you Approve — it is required and goes into the approval email. Attach a billing plan here if you want the email to show tuition or parent copay. Skip the plan for 4Cs when you only need the membership fee and the contract reminder. You can change that email on Email parents (regular vs waitlist).</p>
+      <div class="portal-form-grid">
+        <div class="form-group">
+          <label for="approve-member-start-date">Member start date</label>
+          <input id="approve-member-start-date" form="approve-application-form" name="member_start_date" type="date" class="portal-input" value="{{ application.member_start_date }}" required>
+        </div>
+        {% if not application.membership_already_posted %}
+        <div class="form-group">
+          <label for="approve-membership-amount">Membership amount</label>
+          <input id="approve-membership-amount" form="approve-application-form" name="membership_amount" type="text" class="portal-input" value="{{ application.membership_amount }}" inputmode="decimal">
+        </div>
+        <div class="form-group portal-form-full">
+          <label for="approve-membership-description">Membership description</label>
+          <input id="approve-membership-description" form="approve-application-form" name="membership_description" type="text" class="portal-input" value="{{ application.membership_description }}" maxlength="255">
+        </div>
+        {% endif %}
+        {% include "portal/includes/approve_billing_plan_fields.html" with form_id="approve-application-form" field_prefix="approve" show_scholarship=True approve_billing_type=application.approve_billing_type approve_billing_plan=application.approve_billing_plan approve_plan_amount=application.approve_plan_amount approve_plan_parent_amount=application.approve_plan_parent_amount approve_is_four_cs=application.approve_is_four_cs approve_plan_type_choices=application.approve_plan_type_choices approve_plan_cadence_choices=application.approve_plan_cadence_choices approve_scholarship_funds=application.approve_scholarship_funds approve_post_first=application.approve_post_first %}
+      </div>
+      <p class="form-note">Amount due in the email is what the <strong>parent</strong> owes (membership plus first tuition or copay, after scholarship if you enter family-pays). It is not the 4Cs agency week amount. Leave the plan blank for 4Cs until copay is set — the email will state the membership fee and remind the parent to send their contract to jakeraj@yeanj.org.</p>
+      {% if application.membership_already_posted %}
+      <p class="form-note">Membership is already on this family account for {{ application.child_name }}. Approving will not post a second membership fee (including waitlist or after-care add-on).</p>
+      {% else %}
+      <p class="form-note">The membership amount posts to the family ledger when you Approve. Change it if needed. Type 0 to waive.</p>
+      {% endif %}
+    </section>
     {% endif %}
 
     {% if is_live_application and application.can_review %}
@@ -158,20 +199,57 @@
 
     {% if is_live_application and application.can_review and can_approve_this_application %}
     <script>
-      function syncApplicationLocationForApprove(message) {
+      function syncApplicationLocationForApprove() {
         var select = document.getElementById("app-program-location");
         var hidden = document.getElementById("approve-program-location");
         if (select && hidden) {
           hidden.value = select.value;
+        }
+        var startInput = document.getElementById("approve-member-start-date");
+        if (!startInput || !startInput.value) {
+          alert("Enter the member start date before sending the approval email.");
+          if (startInput) startInput.focus();
+          return false;
+        }
+        var form = document.getElementById("approve-application-form");
+        var amountInput = document.getElementById("approve-membership-amount");
+        var planType = document.getElementById("approve-billing-type");
+        var planAmount = document.getElementById("approve-plan-amount");
+        var childName = (form && form.getAttribute("data-child-name")) || "{{ application.child_name|escapejs }}";
+        var waitlist = form && form.getAttribute("data-waitlist") === "1";
+        var message = waitlist
+          ? ("A spot opened — approve " + childName + " and add them to the roster?")
+          : ("Approve " + childName + " and add them to the roster?");
+        message += " They can start on " + startInput.value + ".";
+        if (!amountInput) {
+          message += " Membership is already on this account — it will not be charged again.";
+        } else {
+          var raw = (amountInput.value || "").replace("$", "").replace(",", "").trim();
+          var amount = parseFloat(raw);
+          if (!raw || isNaN(amount) || amount === 0) {
+            message += " Membership will be waived ($0).";
+          } else {
+            message += " A $" + amount.toFixed(2) + " membership fee will post to the family account.";
+          }
+        }
+        var planKind = planType ? (planType.value || "") : "";
+        var planRaw = planAmount ? (planAmount.value || "").replace("$", "").replace(",", "").trim() : "";
+        var planVal = parseFloat(planRaw);
+        if (planKind && planRaw && !isNaN(planVal) && planVal > 0) {
+          message += " A " + planKind + " plan of $" + planVal.toFixed(2) + " will be attached so the email can show amount due.";
+        } else if (planKind === "4Cs" || (planType && !planKind)) {
+          message += " No private-pay plan — the email will state the membership fee and, for 4Cs, the contract reminder.";
         }
         return confirm(message);
       }
     </script>
     {% endif %}
 
-    {% if portal_area == 'admin' and is_live_application %}
+    {% if can_edit_applications and is_live_application %}
     {% include "portal/includes/application_edit_form.html" with id_suffix=app_slug %}
+    {% endif %}
 
+    {% if portal_area == 'admin' and is_live_application %}
     {% if not application.has_parent_login %}
     <section class="card portal-review-panel" id="create-login-panel">
       <h2>Create parent login</h2>
@@ -218,13 +296,15 @@
           <h2>On approval</h2>
           <ul class="portal-link-list">
             {% if application.status_slug == "waitlist" %}
-            <li>Move child from waitlist to the roster</li>
+            <li>Move child from waitlist to All families Active</li>
+            <li>Use the existing family account if this child already has one (no duplicate)</li>
             {% else %}
             <li>Add child to program roster</li>
             {% endif %}
             <li>Activate family account if pending</li>
-            <li>Post membership fee if required ($20)</li>
-            <li>Email parent welcome notification</li>
+            <li>Post the membership charge you enter (0 waives; already-posted membership is not charged again)</li>
+            <li>Attach a billing plan if you want the email to show tuition or parent copay; skip the plan for 4Cs membership-only plus the contract reminder</li>
+            <li>Email parent: start date you enter, amount due or membership fee, 4Cs contract steps when needed, pay before the program start, payment steps, and a Pay now link</li>
           </ul>
           {% if not can_approve_this_application %}
           <p class="form-note">Staff can view this application. Approval is available in the admin portal, or here if you have been given permission.</p>

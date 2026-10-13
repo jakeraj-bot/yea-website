@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("portal", "0033_family_staff_notes"),
+        ("portal", "0040_scholarship_billing_plan"),
     ]
 
     operations = [

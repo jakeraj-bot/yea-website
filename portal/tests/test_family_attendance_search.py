@@ -4,7 +4,13 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from portal.attendance_calendar import child_attendance_month, parse_calendar_month, shift_month
+from portal.attendance_calendar import (
+    attendance_children_for_account,
+    child_attendance_month,
+    parse_calendar_month,
+    pick_attendance_child,
+    shift_month,
+)
 from portal.models import (
     AttendanceRecord,
     PortalChild,
@@ -198,6 +204,8 @@ class ChildAttendanceCalendarTests(TestCase):
         self.assertEqual(own.status_code, 200)
         self.assertContains(own, "Child A Rivera")
         self.assertContains(own, "is-present")
+        self.assertNotContains(own, "portal-attendance-child-switcher")
+        self.assertNotContains(own, "Child B Rivera")
         other = self.client.get(
             reverse("portal_staff_family_attendance", kwargs={"family_slug": "rivera"}),
             {"child_id": self.child_b.pk, "child": "Child B Rivera", "month": "2026-09"},
@@ -246,3 +254,162 @@ class ChildAttendanceCalendarTests(TestCase):
         self.assertEqual(opened.status_code, 200)
         self.assertContains(opened, "Sofia Martinez")
         self.assertContains(opened, reverse("portal_staff_family_attendance", kwargs={"family_slug": "martinez"}))
+
+    def test_switcher_includes_inactive_with_history_and_skips_empty_inactive(self):
+        family = PortalFamily.objects.create(unit=self.school_18, slug="patel", name="Patel")
+        ami = PortalChild.objects.create(
+            family=family, name="Ami Patel", unit=self.school_18, is_active=True
+        )
+        ravi = PortalChild.objects.create(
+            family=family, name="Ravi Patel", unit=self.school_18, is_active=False
+        )
+        ghost = PortalChild.objects.create(
+            family=family, name="Ghost Patel", unit=self.school_18, is_active=False
+        )
+        AttendanceRecord.objects.create(
+            child=ravi,
+            program=self.program_18,
+            date=self.present_day,
+            status=AttendanceRecord.STATUS_PRESENT,
+        )
+        names = [child.name for child in attendance_children_for_account(family, self.school_18)]
+        self.assertEqual(names, ["Ami Patel", "Ravi Patel"])
+        self.assertNotIn("Ghost Patel", names)
+        opened = attendance_children_for_account(
+            family, self.school_18, include_child_id=ghost.pk
+        )
+        self.assertEqual([child.name for child in opened], ["Ami Patel", "Ghost Patel", "Ravi Patel"])
+        self.assertEqual(pick_attendance_child(opened).name, "Ami Patel")
+        self.assertEqual(pick_attendance_child(opened, child_id=ghost.pk).name, "Ghost Patel")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_admin_two_child_account_switches_calendars_with_child_id(self):
+        self._login(self.admin, "admin")
+        page = self.client.get(
+            reverse("portal_admin_family_attendance", kwargs={"family_slug": "rivera"}),
+            {"id": self.family.pk, "child_id": self.child_a.pk, "month": "2026-09"},
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "portal-attendance-child-switcher")
+        self.assertContains(page, "Child A Rivera")
+        self.assertContains(page, "Child B Rivera")
+        self.assertContains(page, f"child_id={self.child_b.pk}")
+        self.assertContains(page, "Child A Rivera — Attendance")
+        self.assertNotContains(page, "Child B Rivera — Attendance")
+        switched = self.client.get(
+            reverse("portal_admin_family_attendance", kwargs={"family_slug": "rivera"}),
+            {
+                "id": self.family.pk,
+                "child_id": self.child_b.pk,
+                "child": "Child B Rivera",
+                "month": "2026-09",
+            },
+        )
+        self.assertEqual(switched.status_code, 200)
+        self.assertContains(switched, "Child B Rivera — Attendance")
+        self.assertNotContains(switched, "Child A Rivera — Attendance")
+        self.assertContains(switched, 'aria-current="page"')
+        self.assertContains(switched, f"child_id={self.child_a.pk}")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_same_unit_siblings_switch_calendars(self):
+        family = PortalFamily.objects.create(unit=self.school_18, slug="nguyen", name="Nguyen")
+        ami = PortalChild.objects.create(
+            family=family, name="Ami Nguyen", unit=self.school_18, is_active=True
+        )
+        ravi = PortalChild.objects.create(
+            family=family, name="Ravi Nguyen", unit=self.school_18, is_active=True
+        )
+        AttendanceRecord.objects.create(
+            child=ami,
+            program=self.program_18,
+            date=self.present_day,
+            status=AttendanceRecord.STATUS_PRESENT,
+        )
+        AttendanceRecord.objects.create(
+            child=ravi,
+            program=self.program_18,
+            date=self.absent_day,
+            status=AttendanceRecord.STATUS_ABSENT,
+        )
+        self._login(self.staff, "staff")
+        page = self.client.get(
+            reverse("portal_staff_family_attendance", kwargs={"family_slug": "nguyen"}),
+            {"child_id": ami.pk, "month": "2026-09"},
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "portal-attendance-child-switcher")
+        self.assertContains(page, "Ami Nguyen")
+        self.assertContains(page, "Ravi Nguyen")
+        self.assertContains(page, f"child_id={ravi.pk}")
+        self.assertContains(page, "Ami Nguyen — Attendance")
+        self.assertContains(page, "is-present")
+        self.assertNotContains(page, "Ravi Nguyen — Attendance")
+        switched = self.client.get(
+            reverse("portal_staff_family_attendance", kwargs={"family_slug": "nguyen"}),
+            {"child_id": ravi.pk, "child": "Ravi Nguyen", "month": "2026-09"},
+        )
+        self.assertEqual(switched.status_code, 200)
+        self.assertContains(switched, "Ravi Nguyen — Attendance")
+        self.assertNotContains(switched, "Ami Nguyen — Attendance")
+        self.assertContains(switched, "is-absent")
+        default = self.client.get(
+            reverse("portal_staff_family_attendance", kwargs={"family_slug": "nguyen"}),
+            {"month": "2026-09"},
+        )
+        self.assertContains(default, "Ami Nguyen — Attendance")
+        opened = self.client.get(
+            reverse("portal_staff_family_attendance", kwargs={"family_slug": "nguyen"}),
+            {"child_id": ravi.pk, "month": "2026-09"},
+        )
+        self.assertContains(opened, "Ravi Nguyen — Attendance")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_single_child_family_has_no_switcher_tabs(self):
+        self._login(self.admin, "admin")
+        page = self.client.get(
+            reverse("portal_admin_family_attendance", kwargs={"family_slug": "martinez"}),
+            {"id": self.other.pk, "child_id": self.sofia.pk, "month": "2026-09"},
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Sofia Martinez — Attendance")
+        self.assertNotContains(page, "portal-attendance-child-switcher")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_inactive_sibling_with_history_is_labeled_on_switcher(self):
+        family = PortalFamily.objects.create(unit=self.school_18, slug="cole", name="Cole")
+        active = PortalChild.objects.create(
+            family=family, name="Casey Cole", unit=self.school_18, is_active=True
+        )
+        inactive = PortalChild.objects.create(
+            family=family, name="Ivy Cole", unit=self.school_18, is_active=False
+        )
+        PortalChild.objects.create(
+            family=family, name="Quiet Cole", unit=self.school_18, is_active=False
+        )
+        AttendanceRecord.objects.create(
+            child=inactive,
+            program=self.program_18,
+            date=self.present_day,
+            status=AttendanceRecord.STATUS_PRESENT,
+        )
+        self._login(self.admin, "admin")
+        page = self.client.get(
+            reverse("portal_admin_family_attendance", kwargs={"family_slug": "cole"}),
+            {"id": family.pk, "child_id": active.pk, "month": "2026-09"},
+        )
+        self.assertContains(page, "portal-attendance-child-switcher")
+        self.assertContains(page, "Casey Cole")
+        self.assertContains(page, "Ivy Cole")
+        self.assertContains(page, "Inactive")
+        switcher = page.content.decode().split("portal-attendance-child-switcher", 1)[1].split(
+            "portal-child-calendar-card", 1
+        )[0]
+        self.assertIn("Ivy Cole", switcher)
+        self.assertNotIn("Quiet Cole", switcher)
+        history = self.client.get(
+            reverse("portal_admin_family_attendance", kwargs={"family_slug": "cole"}),
+            {"id": family.pk, "child_id": inactive.pk, "month": "2026-09"},
+        )
+        self.assertContains(history, "Ivy Cole — Attendance")
+        self.assertContains(history, "is-present")

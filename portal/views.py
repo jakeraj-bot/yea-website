@@ -135,6 +135,7 @@ from .parent_auth import (
 )
 from .staff_auth import (
     admin_login_required,
+    admin_login_required_post,
     staff_login_required,
     staff_login_required_post,
     staff_or_admin_login_required_post,
@@ -253,15 +254,15 @@ def _attach_member_info(extra, family_slug, unit=None, family_id=None):
     return extra
 
 
-def _family_list_rows_for_neighbors(area, unit=None):
+def _family_list_rows_for_neighbors(area, unit=None, *, inactive=False):
     from .family_list import demo_family_list_rows
 
     if _portal_families_live():
         if area == "admin":
             from .admin_services import get_admin_families_live
 
-            return get_admin_families_live()
-        return families_for_staff(unit) if unit else []
+            return get_admin_families_live(inactive=inactive)
+        return families_for_staff(unit, inactive=inactive) if unit else []
     return demo_family_list_rows(area)
 
 
@@ -337,7 +338,11 @@ def _family_neighbor_nav(request, area, family_slug, family_tab, family_id=None,
 
     unit = None if area == "admin" else _staff_unit(request)
     list_nav = resolve_family_list_nav(request, area)
-    rows = apply_family_list_nav(_family_list_rows_for_neighbors(area, unit), list_nav)
+    inactive = (list_nav.get("tab") or "") == "inactive"
+    rows = apply_family_list_nav(
+        _family_list_rows_for_neighbors(area, unit, inactive=inactive),
+        list_nav,
+    )
     previous, nxt, index, count = adjacent_child_rows(
         rows,
         slug=family_slug,
@@ -633,12 +638,15 @@ def _family_billing_bundle(request, area, family_slug):
 
 def _finalize_admin_context(request, context):
     from .parent_auth import portal_preview_mode
+    from .practice_parent import practice_parent_available, practice_login_hint
     from .staff_auth import is_admin_portal_authenticated
 
     context["admin_authenticated"] = portal_preview_mode() or is_admin_portal_authenticated(request)
     from .staff_auth import portal_switch_flags
 
     context.update(portal_switch_flags(request.user))
+    context["practice_parent_available"] = practice_parent_available()
+    context["practice_parent_login"] = practice_login_hint() if context["practice_parent_available"] else None
     return context
 
 
@@ -800,6 +808,7 @@ def _portal_context(area, page_title, **extra):
     if area == "admin":
         context.setdefault("can_approve_applications", True)
         context.setdefault("can_approve_waitlist", True)
+        context.setdefault("can_edit_applications", True)
         context.setdefault("can_see_billing", True)
         context.setdefault("can_manage_outside_programs", True)
     if area == "staff":
@@ -880,7 +889,7 @@ def _parent_live_mode(request):
 PARENT_CONTACT_EMAIL = "Jakeraj@yeanj.org"
 
 
-def _parent_contact_form(data=None, account=None):
+def _parent_contact_form(data=None, account=None, lang="en"):
     from .forms import ParentContactForm
 
     initial = {}
@@ -892,13 +901,15 @@ def _parent_contact_form(data=None, account=None):
         email = (user.email if user else "") or ""
         initial = {"name": name, "email": email}
     if data is not None:
-        return ParentContactForm(data, initial=initial)
-    return ParentContactForm(initial=initial)
+        return ParentContactForm(data, initial=initial, lang=lang)
+    return ParentContactForm(initial=initial, lang=lang)
 
 
 def _parent_contact_page_extras(request, account=None):
+    from .parent_i18n import get_parent_language
+
     return {
-        "contact_form": _parent_contact_form(account=account),
+        "contact_form": _parent_contact_form(account=account, lang=get_parent_language(request)),
         "contact_submitted": request.GET.get("sent") == "1",
         "parent_contact_email": PARENT_CONTACT_EMAIL,
     }
@@ -957,6 +968,40 @@ def _parent_pay_query(request):
     return f"?pay={demo_key}"
 
 
+def _attach_parent_ui(request, context, family=None):
+    from .parent_i18n import (
+        SUPPORTED_LANGUAGES,
+        YEA_ORG_NAME,
+        get_parent_language,
+        header_balance,
+        last_paid_receipt,
+        page_title_for,
+        translations,
+    )
+
+    lang = get_parent_language(request)
+    context["parent_lang"] = lang
+    context["parent_languages"] = SUPPORTED_LANGUAGES
+    context["yea_org_name"] = YEA_ORG_NAME
+    slug = context.get("parent_page_slug") or ""
+    if slug:
+        context["page_title"] = page_title_for(lang, slug, context.get("page_title") or "")
+    context["parent_header"] = header_balance(context.get("parent_preview"))
+    preview_key = context.get("parent_preview_key")
+    raw = last_paid_receipt(context.get("receipts"))
+    if raw:
+        if raw.get("company_name"):
+            context["last_receipt"] = raw
+        else:
+            context["last_receipt"] = enrich_receipt_for_print(
+                raw, preview_key or _parent_preview_key(request), family=family
+            )
+    else:
+        context["last_receipt"] = None
+    context.pop("receipt_previews", None)
+    return context
+
+
 def _parent_context(request, page_title, page_slug="", **extra):
     preview_key = _parent_preview_key(request)
     account = get_parent_account(request.user) if request.user.is_authenticated else None
@@ -1000,7 +1045,19 @@ def _parent_context(request, page_title, page_slug="", **extra):
         from .support_view import active_support_view
 
         support_view = active_support_view(account.family)
-    return _portal_context(
+    from .practice_parent import (
+        can_return_to_admin,
+        is_practice_parent_session,
+        practice_can_use_stripe_checkout,
+    )
+
+    practice_session = is_practice_parent_session(request, account)
+    practice_standin = practice_session and not practice_can_use_stripe_checkout()
+    parent_stripe_ok = (
+        practice_session
+        or (_parent_live_mode(request) and stripe_configured())
+    )
+    context = _portal_context(
         "parent",
         page_title,
         parent_preview_key=preview_key,
@@ -1013,7 +1070,10 @@ def _parent_context(request, page_title, page_slug="", **extra):
         account=account_data,
         policy_data=policy_data,
         policies_per_child=POLICIES_PER_CHILD,
-        parent_stripe_enabled=_parent_live_mode(request) and stripe_configured(),
+        parent_stripe_enabled=parent_stripe_ok,
+        practice_parent_session=practice_session,
+        practice_checkout_standin=practice_standin,
+        practice_can_return_to_admin=can_return_to_admin(request),
         parent_authenticated=parent_signed_in or portal_preview_mode(),
         parent_avatar=parent_avatar,
         parent_can_manage_photo=bool(account) and not portal_preview_mode(),
@@ -1022,6 +1082,8 @@ def _parent_context(request, page_title, page_slug="", **extra):
         show_drop_off_tab=show_drop_off_tab,
         **extra,
     )
+    family = account.family if account else extra.get("preview_family")
+    return _attach_parent_ui(request, context, family=family)
 
 
 def _staff_attendance_context(request):
@@ -1184,9 +1246,14 @@ def _messages_context(area, page_title, request, **extra):
     return base
 
 
-def _support_context(area, page_title, request, preview_family=None, **extra):
+def _support_context(area, page_title, request, preview_family=None, base_context=None, **extra):
     ticket_id = request.GET.get("ticket")
-    if area == "parent":
+    if base_context is not None:
+        base = dict(base_context)
+        base["page_title"] = page_title
+        base.setdefault("parent_page_slug", "support")
+        base.update(extra)
+    elif area == "parent":
         base = _parent_context(request, page_title, page_slug="support", **extra)
     elif area == "staff":
         base = _staff_context(page_title, **extra)
@@ -1239,14 +1306,15 @@ def parent_page(request, page):
         "support": "portal/support/support.html",
         "contact-us": "portal/parent/contact.html",
         "emergency-contacts": "portal/parent/emergency_contacts.html",
+        "help": "portal/parent/help.html",
     }
     template = templates.get(page)
     if not template:
         return render(request, "portal/404.html", status=404)
 
-    page_title = "Contact us" if page == "contact-us" else page.replace("-", " ").title()
-    if page == "emergency-contacts":
-        page_title = "Emergency contacts"
+    from .parent_i18n import get_parent_language, page_title_for
+
+    page_title = page_title_for(get_parent_language(request), page, page.replace("-", " ").title())
     context = _parent_context(request, page_title, page_slug=page)
     if page == "billing":
         context["billing"] = context["parent_preview"]["billing"]
@@ -1375,29 +1443,50 @@ def parent_page(request, page):
         else:
             preview_key = _parent_preview_key(request)
             context["tax_eligibility"] = TAX_STATEMENT_ELIGIBILITY.get(preview_key, {})
-    if page == "receipts":
-        preview_key = _parent_preview_key(request)
-        account = get_parent_account(request.user) if request.user.is_authenticated else None
-        family = None
-        if _parent_live_mode(request) and account:
-            preview_key = preview_key_for_family(account.family)
-            family = account.family
-        paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
-        context["receipt_previews"] = [enrich_receipt_for_print(r, preview_key, family=family) for r in paid_receipts[:2]]
     if page == "support":
-        preview_key = _parent_preview_key(request)
-        family_slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
+        family_slug = None
         if _parent_live_mode(request):
             account = get_parent_account(request.user)
             if account:
                 family_slug = account.family.slug
-        context = _support_context("parent", "Support", request, preview_family=family_slug)
+        if not family_slug:
+            preview_key = _parent_preview_key(request)
+            family_slug = PREVIEW_FAMILY_SLUG.get(preview_key, "jacobs")
+        context = _support_context(
+            "parent",
+            "Support",
+            request,
+            preview_family=family_slug,
+            base_context=context,
+        )
     if page == "contact-us":
         account = get_parent_account(request.user) if request.user.is_authenticated else None
         context.update(_parent_contact_page_extras(request, account))
     if page == "emergency-contacts":
         context.update(_parent_emergency_contacts_extras(request, context))
+    family = None
+    account = get_parent_account(request.user) if request.user.is_authenticated else None
+    if account:
+        family = account.family
+    context = _attach_parent_ui(request, context, family=family)
     return render(request, template, context)
+
+
+@require_POST
+def parent_set_language(request):
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from .parent_i18n import language_cookie_kwargs, set_parent_language
+
+    lang = set_parent_language(request, request.POST.get("lang"))
+    next_url = request.POST.get("next") or ""
+    if not url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        next_url = reverse("portal_parent_page", kwargs={"page": "dashboard"})
+    response = redirect(next_url)
+    response.set_cookie(**language_cookie_kwargs(lang))
+    return response
 
 
 @require_POST
@@ -1406,8 +1495,11 @@ def parent_contact_submit(request):
     from core.email_service import send_site_email
     from core.spam_protection import is_honeypot_triggered
 
+    from .forms import ParentContactForm
+    from .parent_i18n import get_parent_language
+
     account = get_parent_account(request.user) if request.user.is_authenticated else None
-    form = _parent_contact_form(request.POST, account=account)
+    form = _parent_contact_form(request.POST, account=account, lang=get_parent_language(request))
     if not form.is_valid():
         context = _parent_context(request, "Contact us", page_slug="contact-us")
         context.update(
@@ -1425,7 +1517,7 @@ def parent_contact_submit(request):
     name = form.cleaned_data["name"]
     email = form.cleaned_data["email"]
     topic_label = form.cleaned_data.get("topic")
-    topic_display = dict(form.fields["topic"].choices).get(topic_label, topic_label)
+    topic_display = dict(ParentContactForm.TOPIC_CHOICES).get(topic_label, topic_label)
     family_name = account.family.name if account and account.family else ""
     body = (
         f"Name: {name}\n"
@@ -1589,11 +1681,20 @@ def parent_payment_success(request):
     session_id = request.GET.get("session_id")
     payment = None
     account = get_parent_account(request.user)
+    practice_payment_id = request.session.pop("practice_last_payment_id", None)
+    if practice_payment_id and account:
+        from .models import PortalPayment
+
+        payment = PortalPayment.objects.filter(
+            pk=practice_payment_id,
+            family=account.family,
+            status="paid",
+        ).first()
     if stripe_configured():
         from .stripe_services import confirm_checkout_payment, reconcile_pending_stripe_payments_for_family
 
         if session_id:
-            payment = confirm_checkout_payment(session_id)
+            payment = confirm_checkout_payment(session_id) or payment
         if not payment and account:
             reconciled = reconcile_pending_stripe_payments_for_family(account.family)
             if reconciled:
@@ -1902,11 +2003,14 @@ def staff_page(request, page):
     if page == "families":
         from .family_list import demo_family_list_rows
 
+        families_tab = "inactive" if request.GET.get("tab") == "inactive" else "active"
+        context["families_tab"] = families_tab
+        inactive = families_tab == "inactive"
         if portal_is_live():
             unit = _staff_unit(request)
-            context["families"] = families_for_staff(unit) if unit else []
+            context["families"] = families_for_staff(unit, inactive=inactive) if unit else []
         else:
-            context["families"] = demo_family_list_rows("staff")
+            context["families"] = [] if inactive else demo_family_list_rows("staff")
         context["family_count"] = len({row["slug"] for row in context["families"]})
     if page == "emails-sent":
         context["page_title"] = "Emails sent"
@@ -2024,7 +2128,7 @@ def staff_page(request, page):
         if portal_is_live():
             from .staff_services import build_dashboard_live
 
-            if unit and program:
+            if unit:
                 context.update(build_dashboard_live(unit, program))
             else:
                 today = date.today()
@@ -2247,13 +2351,18 @@ def staff_school_bus_report(request):
 
 
 def _weekly_attendance_filters(request):
+    from .care_program import normalize_care_filter, truthy_query_flag
+
+    care = normalize_care_filter(request.GET.get("care", ""))
     return {
         "q": request.GET.get("q", "").strip(),
         "unit": request.GET.get("unit", "").strip(),
         "program": request.GET.get("program", "").strip(),
+        "care": "" if care == "all" else care,
         "school": request.GET.get("school", "").strip(),
         "date": request.GET.get("date", "").strip(),
         "status": request.GET.get("status", "").strip(),
+        "parent_contact": "1" if truthy_query_flag(request.GET.get("parent_contact")) else "",
         "grades": [value.strip() for value in request.GET.getlist("grade") if value.strip()],
     }
 
@@ -2301,7 +2410,16 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
     live = _portal_data_live() if admin else bool(_portal_data_live() and unit)
     program = None if admin else (get_active_program(unit) if live and unit else None)
     hub = _attendance_sheet_hub(request, admin=admin)
-    empty_options = {"grades": [], "schools": [], "programs": [], "units": [], "statuses": []}
+    from .care_program import CARE_FILTER_CHOICES
+
+    empty_options = {
+        "grades": [],
+        "schools": [],
+        "programs": [],
+        "units": [],
+        "statuses": [],
+        "care_choices": list(CARE_FILTER_CHOICES),
+    }
     sheet_date = parse_sheet_date(filters.get("date"))
     base = {
         "report_filters": filters,
@@ -2342,6 +2460,7 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
                 "unit_name": unit.name if unit else ATTENDANCE_SESSION.get("unit", ""),
             }
         count_label = "listed" if blank else "present"
+        show_parent_contact = bool(weekly.get("show_parent_contact") or filters.get("parent_contact"))
         return {
             **base,
             "date_label": "Week of",
@@ -2357,6 +2476,9 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
             "count_label": count_label,
             "program_name": weekly.get("program_name") or "",
             "unit_name": weekly.get("unit_name") or weekly.get("selected_unit_name") or "",
+            "care_label": weekly.get("care_label") or "",
+            "show_parent_contact": show_parent_contact,
+            "show_parent_contact_filter": True,
             "report_filters": filters,
             "page_guide_key": "weekly-attendance-blank" if blank else "weekly-attendance",
         }
@@ -2449,7 +2571,13 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
+    include_parent = any(
+        row.get("parent_name") or row.get("parent_phone") or row.get("parent_email")
+        for row in weekly_rows or []
+    )
     headers = ["Child", "Family", "Grade", "Unit", "School"]
+    if include_parent:
+        headers.extend(["Parent", "Parent phone", "Parent email"])
     headers.extend(
         [
             f"{day['label']} {day['date_short']} ({day.get('present_count', 0)} present)"
@@ -2459,9 +2587,14 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
     headers.append("Total present")
     writer.writerow(headers)
     present_counts = [day.get("present_count", 0) for day in week_days or []]
-    writer.writerow(["Kids present", "", "", "", ""] + present_counts + [""])
+    blank_parent = ["", "", ""] if include_parent else []
+    writer.writerow(["Kids present", "", "", "", ""] + blank_parent + present_counts + [""])
     for row in weekly_rows or []:
         values = [row.get("child"), row.get("family"), row.get("grade"), row.get("unit"), row.get("school")]
+        if include_parent:
+            values.extend(
+                [row.get("parent_name") or "", row.get("parent_phone") or "", row.get("parent_email") or ""]
+            )
         values.extend(["Present" if present else "" for present in row.get("days") or []])
         values.append(row.get("total", 0))
         writer.writerow(values)
@@ -2538,23 +2671,111 @@ def staff_attendance_blank_weekly(request):
 @staff_login_required
 @require_GET
 def staff_signout_blank(request):
+    from .care_program import normalize_care_filter
+    from .staff_services import resolve_weekly_attendance_unit
+
     sheet_date = parse_sheet_date(request.GET.get("date"))
-    live, unit, program = _report_sheet_sources(request)
+    live, header_unit, program = _report_sheet_sources(request)
+    _, allowed_units = _attendance_sheet_allowed_units(request, admin=False)
+    unit = resolve_weekly_attendance_unit(
+        request.GET.get("unit", "").strip(),
+        header_unit=header_unit,
+        allowed_units=allowed_units,
+    ) or header_unit
+    if live and unit and (not program or program.unit_id != unit.pk):
+        program = get_active_program(unit)
     unit_name, program_name = _report_names(unit, program)
+    care = normalize_care_filter(request.GET.get("care", ""))
+    extras = signout_blank_context(
+        sheet_date,
+        unit_name,
+        program_name,
+        live=live,
+        unit=unit,
+        program_obj=program,
+        care=care,
+    )
+    extras["report_filters"] = {
+        **(extras.get("report_filters") or {}),
+        "unit": unit.slug if unit else "",
+        "date": extras.get("sheet_date_value") or sheet_date.isoformat(),
+    }
+    extras["show_unit_filter"] = bool(allowed_units)
+    extras["unit_filter_allows_all"] = False
+    extras["filter_options"] = {
+        "units": [(item.slug, item.name) for item in allowed_units],
+        "care_choices": extras.get("care_choices") or [],
+    }
     return render(
         request,
         "portal/staff/signout_blank.html",
         _staff_context(
             "Sign-out sheet — blank",
+            request=request,
             staff_page_slug="reports",
-            **signout_blank_context(
-                sheet_date,
-                unit_name,
-                program_name,
-                live=live,
-                unit=unit,
-                program_obj=program,
-            ),
+            page_guide_key="signout-blank",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            **extras,
+        ),
+    )
+
+
+def _before_care_filters(request):
+    return {
+        "q": request.GET.get("q", "").strip(),
+        "unit": request.GET.get("unit", "").strip(),
+    }
+
+
+def _before_care_csv(report_rows, filename):
+    import csv
+
+    from django.http import HttpResponse
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(["Child", "Family", "Unit", "School", "Status"])
+    for row in report_rows or []:
+        writer.writerow(
+            [row.get("child"), row.get("family"), row.get("unit"), row.get("school"), row.get("status")]
+        )
+    return response
+
+
+@staff_login_required
+@require_GET
+def staff_before_care_report(request):
+    from .care_program import before_care_roster_bundle
+
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = _before_care_filters(request)
+    if _portal_data_live() and unit:
+        bundle = before_care_roster_bundle(filters=filters, unit=unit, admin=False)
+    else:
+        bundle = {
+            "report_rows": [],
+            "listed_count": 0,
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_unit_name": unit.name if unit else "",
+            "filter_options": {"units": []},
+        }
+    if request.GET.get("format") == "csv":
+        return _before_care_csv(bundle["report_rows"], "before-care-roster.csv")
+    return render(
+        request,
+        "portal/staff/before_care_report.html",
+        _staff_context(
+            "Before care",
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="before-care",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            show_unit_filter=False,
+            report_filters=filters,
+            **bundle,
         ),
     )
 
@@ -2907,9 +3128,11 @@ def admin_data_report(request, report_slug):
 
     if report_slug not in ADMIN_DATA_REPORTS:
         return render(request, "portal/404.html", status=404)
-    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status")}
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "school", "billing", "plan", "unit", "entry_type", "agency", "fund", "status", "start", "end", "grade", "program", "four_cs", "agency_status", "owes", "unfinished")}
     if report_slug == "balances" and "status" not in request.GET:
         filters["status"] = "Active"
+    if report_slug == "member-information" and "status" not in request.GET:
+        filters["_exclude_inactive"] = True
     report = build_admin_report(report_slug, filters) if _portal_data_live() else {
         **ADMIN_DATA_REPORTS[report_slug],
         "rows": [],
@@ -2919,6 +3142,7 @@ def admin_data_report(request, report_slug):
         "payout_groups": [],
         "waiting_to_receive_total": "0.00",
         "waiting_for_card_total": "0.00",
+        "show_unfinished_checkouts": False,
         "summary": "No live data in preview mode.",
         "units": [],
         "schools": [],
@@ -2968,6 +3192,8 @@ def admin_data_report(request, report_slug):
                     if report_slug == "member-information"
                     else "outstanding-balances"
                     if report_slug == "balances"
+                    else "inactive-children"
+                    if report_slug == "inactive-children"
                     else None
                 ),
                 report=report,
@@ -3044,7 +3270,11 @@ def _family_account_search_results(request, area):
 
     query = (request.GET.get("q") or "").strip()
     unit = None if area == "admin" else _staff_unit(request)
-    rows = family_account_search_rows(_family_list_rows_for_neighbors(area, unit), query)
+    rows = family_account_search_rows(
+        _family_list_rows_for_neighbors(area, unit)
+        + _family_list_rows_for_neighbors(area, unit, inactive=True),
+        query,
+    )
     return query, [_family_search_result_payload(area, row) for row in rows]
 
 
@@ -3088,10 +3318,12 @@ def _family_attendance_context(request, area, family_slug):
     from django.utils.dateparse import parse_date
 
     from .attendance_calendar import (
+        attendance_child_switcher_items,
+        attendance_children_for_account,
         child_attendance_month,
         merge_attendance_query,
         parse_calendar_month,
-        visible_child_for_attendance,
+        pick_attendance_child,
     )
     from .member_admin import resolve_family
 
@@ -3106,8 +3338,20 @@ def _family_attendance_context(request, area, family_slug):
             family_id=context.get("family_id") or _family_id_from_request(request),
             unit=unit,
         )
-    requested_child = bool((request.GET.get("child_id") or "").strip() or (request.GET.get("child") or "").strip())
-    child = visible_child_for_attendance(family, request, unit=unit) if family else None
+    requested_id = (request.GET.get("child_id") or "").strip()
+    requested_name = (request.GET.get("child") or "").strip()
+    requested_child = bool(requested_id or requested_name)
+    siblings = (
+        attendance_children_for_account(
+            family,
+            unit,
+            include_child_id=requested_id,
+            include_child_name=requested_name,
+        )
+        if family
+        else []
+    )
+    child = pick_attendance_child(siblings, child_id=requested_id, child_name=requested_name) if siblings else None
     if family and requested_child and child is None:
         return None
     month_start = parse_calendar_month(request.GET.get("month"))
@@ -3119,8 +3363,11 @@ def _family_attendance_context(request, area, family_slug):
     calendar["prev_query"] = merge_attendance_query(base_query, month=calendar["prev_month"], day=None)
     calendar["next_query"] = merge_attendance_query(base_query, month=calendar["next_month"], day=None)
     calendar["month_query"] = merge_attendance_query(base_query, month=calendar["month_value"], day=None)
+    switcher = attendance_child_switcher_items(siblings, child, base_query, calendar["month_value"])
     context["attendance_calendar"] = calendar
     context["attendance_child"] = child
+    context["attendance_children"] = switcher
+    context["show_attendance_child_switcher"] = len(switcher) > 1
     context["page_title"] = (
         f"{child.name} — Attendance" if child else f"{context['profile']['family_name']} — Attendance"
     )
@@ -3244,7 +3491,10 @@ MEMBER_INFORMATION_FILTER_KEYS = (
 
 
 def _member_information_filters(request):
-    return {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
+    filters = {key: request.GET.get(key, "").strip() for key in MEMBER_INFORMATION_FILTER_KEYS}
+    if "status" not in request.GET:
+        filters["_exclude_inactive"] = True
+    return filters
 
 
 def _member_information_csv(report_rows, filename):
@@ -3518,6 +3768,64 @@ def staff_four_cs_payout_report(request):
             show_unit_filter=False,
             report_filters=filters,
             **bundle,
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
+def staff_inactive_children_report(request):
+    import csv
+    from urllib.parse import urlencode
+
+    from django.http import HttpResponse
+
+    from .admin_reports import ADMIN_DATA_REPORTS, build_admin_report
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
+    spec = ADMIN_DATA_REPORTS["inactive-children"]
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "owes")}
+    if _portal_data_live() and unit:
+        report = build_admin_report("inactive-children", {**filters, "unit": unit.slug})
+    else:
+        report = {
+            **spec,
+            "rows": [],
+            "summary": "Choose a unit to see inactive children.",
+            "outstanding": "0.00",
+            "units": [],
+            "statuses": [],
+            "layout": spec.get("layout") or "table",
+            "child_link": "profile",
+        }
+    report = {**report, "filters": ("q", "owes")}
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
+        writer = csv.writer(response)
+        writer.writerow([label for _key, label in report["columns"]])
+        for row in report.get("rows", []):
+            writer.writerow([cell["value"] for cell in row["display"]])
+        return response
+    query = {key: value for key, value in filters.items() if value}
+    query["format"] = "csv"
+    return render(
+        request,
+        "portal/admin/data_report.html",
+        _staff_context(
+            report["title"],
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="inactive-children",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            report=report,
+            filters=filters,
+            csv_query=urlencode(query),
         ),
     )
 
@@ -4517,18 +4825,21 @@ def admin_page(request, page):
             context["families"] = ADMIN_MEMBER_FAMILIES
             context["parent_accounts"] = []
     if page == "families":
+        families_tab = "inactive" if request.GET.get("tab") == "inactive" else "active"
+        context["families_tab"] = families_tab
+        inactive = families_tab == "inactive"
         if context.get("portal_live"):
             from .admin_services import get_admin_families_live, get_units_live
             from .member_admin import families_without_applications, families_without_parent_login
 
-            context["families"] = get_admin_families_live()
+            context["families"] = get_admin_families_live(inactive=inactive)
             context["units"] = get_units_live()
-            context["families_without_login"] = families_without_parent_login()
-            context["families_without_applications"] = families_without_applications()
+            context["families_without_login"] = [] if inactive else families_without_parent_login()
+            context["families_without_applications"] = [] if inactive else families_without_applications()
         else:
             from .family_list import demo_family_list_rows
 
-            context["families"] = demo_family_list_rows("admin")
+            context["families"] = [] if inactive else demo_family_list_rows("admin")
             context["units"] = UNITS
             context["families_without_login"] = []
             context["families_without_applications"] = []
@@ -4582,6 +4893,7 @@ def admin_page(request, page):
         from .models import PortalOrgSetting
 
         context["program_director_can_see_billing"] = PortalOrgSetting.load().program_director_can_see_billing
+        context["practice_parent_enabled"] = PortalOrgSetting.load().practice_parent_enabled
         context["billing_permission_notes"] = [
             "Add charge — post fees to a member account.",
             "Delete charge — remove a posted charge.",
@@ -4686,7 +4998,19 @@ def admin_page(request, page):
             context["first_day_template"] = get_email_template(PortalEmailTemplate.KEY_FIRST_DAY_REMINDER)
             context["balance_updated_template"] = get_email_template(PortalEmailTemplate.KEY_BALANCE_UPDATED)
             context["late_payment_template"] = get_email_template(PortalEmailTemplate.KEY_LATE_PAYMENT)
-            from .email_templates import late_notice_preview_rows
+            context["application_submitted_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_SUBMITTED
+            )
+            context["application_submitted_waitlist_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_SUBMITTED_WAITLIST
+            )
+            context["application_approved_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_APPROVED
+            )
+            context["application_approved_waitlist_template"] = get_email_template(
+                PortalEmailTemplate.KEY_APPLICATION_APPROVED_WAITLIST
+            )
+            from .email_templates import APPLICATION_TEMPLATE_PLACEHOLDERS, late_notice_preview_rows
             from .owed_weeks import late_fee_amount
 
             context["late_notice_preview"] = late_notice_preview_rows()
@@ -4696,8 +5020,15 @@ def admin_page(request, page):
             context["first_day_template"] = None
             context["balance_updated_template"] = None
             context["late_payment_template"] = None
+            context["application_submitted_template"] = None
+            context["application_submitted_waitlist_template"] = None
+            context["application_approved_template"] = None
+            context["application_approved_waitlist_template"] = None
             context["late_notice_preview"] = []
             context["late_fee_amount"] = "15.00"
+        from .email_templates import APPLICATION_TEMPLATE_PLACEHOLDERS
+
+        context["application_template_placeholders"] = APPLICATION_TEMPLATE_PLACEHOLDERS
         context["preselect_family_id"] = request.GET.get("family_id", "")
         _attach_email_ledger(context, request, area="admin", full=False)
         _attach_email_compose(context)
@@ -4857,6 +5188,44 @@ def _admin_attendance_sheet(request, kind, title, template):
 def admin_weekly_attendance_report(request):
     return _admin_attendance_sheet(
         request, "weekly", "Weekly attendance summary", "portal/staff/weekly_attendance_report.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_before_care_report(request):
+    from .care_program import before_care_roster_bundle
+
+    filters = _before_care_filters(request)
+    if _portal_data_live():
+        bundle = before_care_roster_bundle(filters=filters, admin=True)
+    else:
+        bundle = {
+            "report_rows": [],
+            "listed_count": 0,
+            "generated_date": date.today().strftime("%B %d, %Y"),
+            "selected_unit_name": "All units",
+            "filter_options": {"units": []},
+        }
+    if request.GET.get("format") == "csv":
+        return _before_care_csv(bundle["report_rows"], "before-care-roster.csv")
+    return render(
+        request,
+        "portal/staff/before_care_report.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Before care",
+                admin_page_slug="reports",
+                page_guide_key="before-care",
+                hub_url=reverse("portal_admin_page", kwargs={"page": "reports"}),
+                hub_label="Organization reports",
+                show_unit_filter=True,
+                report_filters=filters,
+                **bundle,
+            ),
+        ),
     )
 
 
@@ -5071,6 +5440,7 @@ PARENT_PREVIEW_TEMPLATES = {
     "support": "portal/support/support.html",
     "contact-us": "portal/parent/contact.html",
     "emergency-contacts": "portal/parent/emergency_contacts.html",
+    "help": "portal/parent/help.html",
 }
 
 
@@ -5140,8 +5510,9 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
                 "display_name": family.primary_contact or family.name,
             },
             parent_can_manage_photo=False,
-            pending_profile_changes=[],
+            pending_profile_changes=get_pending_profile_changes(account) if account else [],
             preview_family_name=family.name,
+            parent_preview_key=preview_key_for_family(family),
         )
         context.update(
             _family_neighbor_nav(
@@ -5186,13 +5557,14 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
         if page == "tax-statements":
             context["tax_settings"] = TAX_STATEMENT_SETTINGS
             context["tax_eligibility"] = get_tax_eligibility_live(family)
-        if page == "receipts":
-            paid_receipts = [r for r in context.get("receipts", []) if r.get("reference")]
-            context["receipt_previews"] = [
-                enrich_receipt_for_print(r, preview_key_for_family(family), family=family) for r in paid_receipts[:2]
-            ]
         if page == "support":
-            context = _support_context("parent", "Support", request, preview_family=family.slug)
+            context = _support_context(
+                "parent",
+                "Support",
+                request,
+                preview_family=family.slug,
+                base_context=context,
+            )
             context["admin_support_preview"] = True
             context["admin_preview_family_slug"] = family.slug
             context["admin_preview_family_id"] = family.pk
@@ -5200,7 +5572,6 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             context["parent_page_slug"] = "support"
             context["portal_area"] = "parent"
             context["preview_family_name"] = family.name
-            context["portal_live"] = False
             context.update(
                 _family_neighbor_nav(
                     request,
@@ -5215,7 +5586,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             context.update(_parent_contact_page_extras(request, account))
         if page == "emergency-contacts":
             context.update(_parent_emergency_contacts_extras(request, context))
-        return render(request, template, context)
+        return render(request, template, _attach_parent_ui(request, context, family=family))
 
     preview_key = {"jacobs": "private-pay", "martinez": "4cs", "williams": "scholarship"}.get(family_slug, "private-pay")
     request.GET = request.GET.copy()
@@ -5244,7 +5615,8 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             "parent",
             "Support",
             request,
-            preview_family=PREVIEW_FAMILY_SLUG.get(preview_key, family_slug),
+            preview_family=family_slug,
+            base_context=context,
         )
         context["admin_support_preview"] = True
         context["admin_preview_family_slug"] = family_slug
@@ -5265,7 +5637,7 @@ def admin_parent_preview(request, family_slug, page="dashboard"):
             parent_page=page,
         )
     )
-    return render(request, template, context)
+    return render(request, template, _attach_parent_ui(request, context))
 
 
 @require_GET
@@ -5303,7 +5675,65 @@ def admin_parent_preview_sample(request, page="dashboard"):
         context.update(_parent_contact_page_extras(request))
     if page == "emergency-contacts":
         context.update(_parent_emergency_contacts_extras(request, context))
-    return render(request, template, context)
+    return render(request, template, _attach_parent_ui(request, context))
+
+
+@require_POST
+@admin_login_required_post
+def admin_practice_parent_open(request):
+    from .practice_parent import practice_parent_available, start_practice_parent_session
+
+    if not practice_parent_available():
+        messages.error(
+            request,
+            "Practice parent is off. Turn it on under Settings → Billing permissions, or set ALLOW_PORTAL_PRACTICE=True locally.",
+        )
+        return redirect("portal_admin_page", page="communications")
+    account = start_practice_parent_session(request)
+    messages.success(
+        request,
+        f"Practice parent — {account.family.name}. Test payments only, not a real family.",
+    )
+    return redirect("portal_parent_page", page="dashboard")
+
+
+@require_POST
+def admin_practice_parent_end(request):
+    from .practice_parent import restore_admin_from_practice
+
+    if restore_admin_from_practice(request):
+        messages.success(request, "Back in portal admin. Practice parent is closed.")
+        return redirect("portal_admin_page", page="dashboard")
+    messages.info(request, "Practice parent session ended.")
+    return redirect("portal_admin_login")
+
+
+@require_POST
+@admin_login_required_post
+def admin_practice_parent_toggle(request):
+    from .models import PortalOrgSetting
+    from .practice_parent import ensure_practice_parent_account
+
+    if not _admin_needs_live_for_practice(request):
+        return redirect("portal_admin_page", page="billing-permissions")
+    setting = PortalOrgSetting.load()
+    setting.practice_parent_enabled = request.POST.get("practice_parent_enabled") == "on"
+    setting.save(update_fields=["practice_parent_enabled"])
+    if setting.practice_parent_enabled:
+        ensure_practice_parent_account()
+        messages.success(request, "Practice parent is on. Open it from Parent comms or the header.")
+    else:
+        messages.success(request, "Practice parent is off. The sandbox family is unchanged.")
+    return redirect("portal_admin_page", page="billing-permissions")
+
+
+def _admin_needs_live_for_practice(request):
+    from .attendance_service import portal_is_live
+
+    if not portal_is_live():
+        messages.error(request, "Portal admin saves are disabled in preview mode.")
+        return False
+    return True
 
 
 @require_http_methods(["GET", "POST"])

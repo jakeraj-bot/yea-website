@@ -26,6 +26,18 @@
       </form>
     </div>
 
+    <div class="portal-panel card" style="margin-bottom:1.5rem;">
+      <h2>Practice parent</h2>
+      <p class="form-note">Off on yeanj.org unless you turn this on. When it is on, admins get <strong>Open practice parent</strong> — a sandbox family for paying (Stripe test mode only), emergency contacts, Spanish, and Help. It never uses a live family’s account. Local demo seed turns this on automatically.</p>
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_practice_parent_toggle' %}{% else %}#{% endif %}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <label class="portal-check-label"><input type="checkbox" name="practice_parent_enabled" {% if practice_parent_enabled %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Show Practice parent</label>
+        <div class="portal-form-actions" style="margin-top:0.75rem;">
+          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save Practice parent</button>
+        </div>
+      </form>
+    </div>
+
     <div class="portal-table-wrap">
       <form method="post" action="{% if portal_live %}{% url 'portal_admin_billing_permissions' %}{% else %}#{% endif %}">
         {% if portal_live %}{% csrf_token %}{% endif %}

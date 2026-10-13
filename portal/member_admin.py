@@ -536,6 +536,24 @@ def matching_prior_balances(family):
     return matches
 
 
+def set_child_active(child, active):
+    """Keep the account; toggle whether this child is on the attending roster."""
+    if child is None:
+        raise ValueError("Child not found.")
+    child.is_active = bool(active)
+    child.save(update_fields=["is_active"])
+    return child
+
+
+def set_application_active(application, active):
+    """Toggle one program application. The child account can stay active."""
+    if application is None:
+        raise ValueError("Application not found.")
+    application.is_active = bool(active)
+    application.save(update_fields=["is_active"])
+    return application
+
+
 @transaction.atomic
 def suspend_family(family, reason, note=""):
     reason = (reason or "other").strip()
@@ -694,7 +712,7 @@ def delete_application_record(application):
 def parent_email_recipients():
     rows = []
     seen = set()
-    for family in PortalFamily.objects.select_related("unit", "parent_account__user").order_by("name"):
+    for family in PortalFamily.objects.exclude(slug="practice").select_related("unit", "parent_account__user").order_by("name"):
         email = parent_email_for_family(family)
         if not email or email.lower() in seen:
             continue
@@ -918,12 +936,15 @@ def apply_discount_to_family(family, plan_id, child_name=""):
     if child_name:
         label = f"{label} ({child_name})"
     if plan.kind == PortalDiscountPlan.KIND_PERCENT:
+        from .family_list import family_balance
+
         child = family.children.filter(name=child_name).first() if child_name else family.children.filter(is_active=True).first()
         base = Decimal("0")
+        ledger_total = family_balance(family)
         if child and child.billing_amount:
             base = child.billing_amount
-        elif family.balance > 0:
-            base = family.balance
+        elif ledger_total > 0:
+            base = ledger_total
         credit_amount = (base * plan.value / Decimal("100")).quantize(Decimal("0.01"))
         if credit_amount <= 0:
             raise ValueError("Percent discounts need a child plan amount or a family balance to calculate from.")
@@ -996,6 +1017,43 @@ def link_application_to_family(application, family):
     application.portal_family = family
     application.save(update_fields=["portal_family"])
     return application
+
+
+def application_update_payload(application, data):
+    from django.utils.dateparse import parse_date
+
+    dob = parse_date(data.get("student_dob") or "")
+    return {
+        "family_name": data.get("family_name", application.family_name),
+        "primary_email": data.get("primary_email", application.primary_email),
+        "home_address": data.get("home_address", application.home_address),
+        "primary_first_name": data.get("primary_first_name", application.primary_first_name),
+        "primary_last_name": data.get("primary_last_name", application.primary_last_name),
+        "primary_phone": data.get("primary_phone", application.primary_phone),
+        "student_first_name": data.get("student_first_name", application.student_first_name),
+        "student_last_name": data.get("student_last_name", application.student_last_name),
+        "student_school": data.get("student_school", application.student_school),
+        "student_grade": data.get("student_grade", application.student_grade),
+        "student_dob": dob,
+        "program": data.get("program", application.program),
+        "program_location": data.get("program_location", application.program_location),
+        "payment_method": data.get("payment_method", application.payment_method),
+        "payment_method_other": data.get("payment_method_other", application.payment_method_other),
+        "payment_plan": data.get("payment_plan", application.payment_plan),
+        "allergies": data.get("allergies", application.allergies),
+        "medical_condition_explain": data.get(
+            "medical_condition_explain", application.medical_condition_explain
+        ),
+        "doctor_name": data.get("doctor_name", application.doctor_name),
+        "doctor_phone": data.get("doctor_phone", application.doctor_phone),
+        "insurance_provider": data.get("insurance_provider", application.insurance_provider),
+        "secondary_first_name": data.get("secondary_first_name", application.secondary_first_name),
+        "secondary_last_name": data.get("secondary_last_name", application.secondary_last_name),
+        "secondary_phone": data.get("secondary_phone", application.secondary_phone),
+        "secondary_email_address": data.get(
+            "secondary_email_address", application.secondary_email_address
+        ),
+    }
 
 
 @transaction.atomic

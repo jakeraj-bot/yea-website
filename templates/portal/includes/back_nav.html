@@ -1,11 +1,12 @@
+{% load parent_i18n %}
 {% if portal_area != 'public' and portal_back_fallback %}
-<nav class="portal-back-nav portal-no-print" aria-label="Back navigation">
+<nav class="portal-back-nav portal-no-print" aria-label="{% if portal_area == 'parent' %}{% pt 'back' %}{% else %}Back navigation{% endif %}">
   <button
     type="button"
     class="btn btn-secondary btn-sm portal-back-btn"
     data-fallback="{{ portal_back_fallback }}"
   >
-    ← Back
+    ← {% if portal_area == 'parent' %}{% pt "back" %}{% else %}Back{% endif %}
   </button>
 </nav>
 {% endif %}

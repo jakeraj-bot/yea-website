@@ -7,12 +7,17 @@ window.PortalPendingReview = (function () {
       .replace(/"/g, "&quot;");
   }
 
+  function t(key, fallback) {
+    var catalog = window.YEA_PARENT_I18N || {};
+    return catalog[key] || fallback;
+  }
+
   function pendingMarkup(newValue, oldValue, phoneSuffix) {
     var suffix = phoneSuffix ? " (" + escapeHtml(phoneSuffix) + ")" : "";
     return (
       '<span class="portal-pending-value">' + escapeHtml(newValue) + suffix + "</span> " +
-      '<span class="portal-pending-badge">Pending review</span><br>' +
-      '<span class="portal-approved-value">Currently on file: ' + escapeHtml(oldValue) + "</span>"
+      '<span class="portal-pending-badge">' + escapeHtml(t("pending_review", "Pending review")) + "</span><br>" +
+      '<span class="portal-approved-value">' + escapeHtml(t("currently_on_file", "Currently on file")) + ": " + escapeHtml(oldValue) + "</span>"
     );
   }
 
@@ -119,7 +124,7 @@ window.PortalPendingReview = (function () {
         "<td>" + escapeHtml(change.label) + "</td>" +
         "<td>" + escapeHtml(change.oldValue) + "</td>" +
         "<td><strong>" + escapeHtml(change.newValue) + "</strong></td>" +
-        '<td><span class="portal-pending-badge">Pending review</span></td>';
+        '<td><span class="portal-pending-badge">' + escapeHtml(t("pending_review", "Pending review")) + "</span></td>";
       tableBody.appendChild(row);
     }
 

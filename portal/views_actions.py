@@ -74,6 +74,20 @@ def _require_delete_reason(request):
     return require_delete_reason(request)
 
 
+def _membership_charge_from_request(request):
+    from enrollment.application_review import parse_member_start_date, parse_membership_amount
+
+    amount = None
+    if "membership_amount" in request.POST:
+        amount = parse_membership_amount(request.POST.get("membership_amount"))
+    return {
+        "membership_amount": amount,
+        "membership_description": request.POST.get("membership_description", ""),
+        "start_date": parse_member_start_date(request.POST.get("member_start_date"), required=True),
+        "require_start_date": True,
+    }
+
+
 def _add_after_school_from_review(request, app, area):
     from enrollment.add_program import can_add_after_school_for_application, create_after_school_from_application
 
@@ -1106,17 +1120,40 @@ def admin_profile_change_action(request):
 @parent_login_required_post
 def parent_payment_checkout(request):
     from decimal import Decimal, InvalidOperation
+    from urllib.parse import urlencode
+
+    from django.http import HttpResponseRedirect
+    from django.urls import reverse
 
     from .models import PortalPayment
     from .parent_auth import get_parent_account, portal_preview_mode
     from .stripe_services import (
+        checkout_error_message,
         create_balance_checkout_session,
         create_dropin_checkout_session,
         stripe_configured,
     )
 
+    def _pay_redirect(url_name, **params):
+        query = urlencode({key: value for key, value in params.items() if value not in (None, "")})
+        url = reverse(url_name)
+        return redirect(f"{url}?{query}" if query else url)
+
+    is_dropin = request.POST.get("source") == "dropin"
+    amount_raw = request.POST.get("amount", "0")
+    dropin_params = {}
+    if is_dropin:
+        dropin_params = {
+            "source": "dropin",
+            "child": request.POST.get("child", ""),
+            "program_label": request.POST.get("program_label") or request.POST.get("program", ""),
+            "location": request.POST.get("location", ""),
+            "date": request.POST.get("date", ""),
+            "booking_id": request.POST.get("booking_id", ""),
+        }
+
     if portal_preview_mode():
-        messages.info(request, "Design preview mode — use the sample payment flow.")
+        messages.info(request, "Parent view — this does not charge a card.")
         return redirect("portal_parent_payment_complete")
 
     account = get_parent_account(request.user)
@@ -1124,18 +1161,47 @@ def parent_payment_checkout(request):
         messages.error(request, "Sign in to your parent account to pay online.")
         return redirect("portal_parent_login")
 
-    if not stripe_configured():
-        messages.error(request, "Stripe is not configured yet. Add MEMBER_STRIPE keys to your .env file.")
-        return redirect("portal_parent_page", page="billing")
+    from .practice_parent import (
+        complete_practice_test_payment,
+        is_practice_family,
+        practice_can_use_stripe_checkout,
+    )
 
-    is_dropin = request.POST.get("source") == "dropin"
+    practice = is_practice_family(account.family)
+    use_stripe = practice_can_use_stripe_checkout() if practice else stripe_configured()
+
+    if not practice and not stripe_configured():
+        messages.error(
+            request,
+            "Online card payments are not enabled yet. Contact YEA at 609-357-8608 to pay in the office.",
+        )
+        return _pay_redirect("portal_parent_payment", amount=amount_raw, **dropin_params)
+
     try:
-        amount = Decimal(str(request.POST.get("amount", "0")).replace(",", ""))
+        amount = Decimal(str(amount_raw).replace(",", ""))
     except (InvalidOperation, TypeError):
         amount = Decimal("0")
     if amount <= 0:
         messages.error(request, "Enter an amount to pay or add as account credit.")
         return redirect("portal_parent_payment")
+    if amount < Decimal("0.50"):
+        messages.error(request, "Enter at least $0.50 to pay by card.")
+        return _pay_redirect("portal_parent_payment", amount=f"{amount:.2f}", **dropin_params)
+
+    if practice and not use_stripe:
+        payment = complete_practice_test_payment(
+            account,
+            amount,
+            is_dropin=is_dropin,
+            dropin={
+                "child": request.POST.get("child", ""),
+                "program": request.POST.get("program_label") or request.POST.get("program", ""),
+                "location": request.POST.get("location", ""),
+                "date": request.POST.get("date", ""),
+            },
+        )
+        request.session["practice_last_payment_id"] = payment.pk
+        return redirect("portal_parent_payment_success")
 
     payment = PortalPayment.objects.create(
         family=account.family,
@@ -1165,11 +1231,35 @@ def parent_payment_checkout(request):
             session = create_dropin_checkout_session(request, payment)
         else:
             session = create_balance_checkout_session(request, payment)
+        if not getattr(session, "url", None):
+            raise ValueError("Stripe did not return a checkout page.")
     except Exception as exc:
+        if practice:
+            from .parent_services import record_successful_payment
+            from .processing_fees import apply_fee_to_payment
+
+            apply_fee_to_payment(payment)
+            payment = record_successful_payment(
+                payment,
+                method_label="Stripe test (practice)",
+                ledger_note="Practice parent test payment — Stripe test mode",
+            )
+            request.session["practice_last_payment_id"] = payment.pk
+            messages.info(
+                request,
+                "Stripe test checkout was unavailable, so this practice payment was recorded locally.",
+            )
+            return redirect("portal_parent_payment_success")
         payment.delete()
-        messages.error(request, str(exc))
-        return redirect("portal_parent_payment_preview")
-    return redirect(session.url, code=303)
+        messages.error(request, checkout_error_message(exc))
+        return _pay_redirect(
+            "portal_parent_payment_preview",
+            amount=f"{amount:.2f}",
+            **dropin_params,
+        )
+    checkout_redirect = HttpResponseRedirect(session.url)
+    checkout_redirect.status_code = 303
+    return checkout_redirect
 
 
 @require_POST
@@ -1288,7 +1378,14 @@ def staff_application_review(request, app_slug):
             if not can_approve_enrollment_application(get_staff_account(request.user), app, "staff"):
                 messages.error(request, "You don't have permission to approve this application.")
                 return redirect(redirect_url)
-            approve_application(app, program_location=program_location or None)
+            from enrollment.application_review import parse_approve_billing_plan
+
+            approve_application(
+                app,
+                program_location=program_location or None,
+                plan=parse_approve_billing_plan(request.POST, app),
+                **_membership_charge_from_request(request),
+            )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster.")
         elif action == "waitlist":
             place_on_waitlist(app)
@@ -1310,6 +1407,15 @@ def staff_application_review(request, app_slug):
             messages.success(request, "Internal note saved.")
         elif action == "add_after_school":
             return _add_after_school_from_review(request, app, "staff")
+        elif action == "update_application":
+            from .member_admin import application_update_payload, update_application_fields
+            from .staff_auth import can_edit_enrollment_application, get_staff_account
+
+            if not can_edit_enrollment_application(get_staff_account(request.user), "staff"):
+                messages.error(request, "You do not have permission to edit this application.")
+                return redirect(redirect_url)
+            update_application_fields(app, application_update_payload(app, request.POST))
+            messages.success(request, "Application updated.")
         else:
             messages.error(request, "Unknown review action.")
     except ValueError as exc:
@@ -1353,7 +1459,14 @@ def admin_application_review(request, app_slug):
     program_location = request.POST.get("program_location", "").strip()
     try:
         if action == "approve":
-            approve_application(app, program_location=program_location or None)
+            from enrollment.application_review import parse_approve_billing_plan
+
+            approve_application(
+                app,
+                program_location=program_location or None,
+                plan=parse_approve_billing_plan(request.POST, app),
+                **_membership_charge_from_request(request),
+            )
             messages.success(request, f"Approved — {app.student_first_name} {app.student_last_name} is on the roster. Open the family Applications tab to view or edit their full application.")
         elif action == "waitlist":
             place_on_waitlist(app)
@@ -2009,6 +2122,169 @@ def family_member_info_save(request, family_slug):
         messages.error(request, str(exc))
 
     return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+
+@require_POST
+def family_child_status(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import resolve_family, set_child_active
+    from .models import PortalChild
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from .unit_visibility import child_belongs_to_unit
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_admin_page", kwargs={"page": "families"})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_staff_page", kwargs={"page": "families"})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    child = PortalChild.objects.filter(pk=request.POST.get("child_id"), family=family).first()
+    if not child or not child_belongs_to_unit(child, unit):
+        messages.error(request, "Child not found.")
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    make_active = request.POST.get("active") == "1"
+    try:
+        set_child_active(child, make_active)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    if make_active:
+        messages.success(
+            request,
+            f"{child.name} is active again. They are back on the Active families list.",
+        )
+        default_next = _with_family_id(fallback, family)
+    else:
+        messages.success(
+            request,
+            f"{child.name} is inactive. Their account stays. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
+        )
+        default_next = families_page + "?tab=inactive"
+    _log_activity(
+        request,
+        "save",
+        action_label="Made child active" if make_active else "Made child inactive",
+        object_type="child",
+        object_label=child.name,
+        details=family.name,
+    )
+    return redirect(_portal_next_url(request, default_next))
+
+
+@require_POST
+def application_program_status(request, app_slug):
+    from django.conf import settings
+
+    from enrollment.portal_integration import get_application_by_reference, program_display_for_application
+    from portal.care_program import program_action_label
+    from portal.member_admin import set_application_active
+    from portal.parent_auth import portal_preview_mode
+    from portal.staff_auth import (
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from portal.unit_visibility import application_belongs_to_unit
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_application_detail", kwargs={"app_slug": app_slug})
+        unit = None
+    else:
+        fallback = reverse("portal_staff_application_detail", kwargs={"app_slug": app_slug})
+        unit = resolve_staff_unit(request)
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    app = get_application_by_reference(app_slug)
+    if not app:
+        messages.error(request, "Application not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="applications")
+
+    if unit and not application_belongs_to_unit(app, unit) and not admin_ok:
+        messages.error(request, "Application not found.")
+        return redirect(fallback)
+
+    make_active = request.POST.get("active") == "1"
+    try:
+        set_application_active(app, make_active)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, fallback))
+
+    child_name = f"{app.student_first_name} {app.student_last_name}".strip()
+    program_label = program_display_for_application(app, short=True) or app.get_program_display() or "this program"
+    program_short = program_action_label(app)
+    if make_active:
+        messages.success(
+            request,
+            f"{child_name}'s {program_label} application is active again. They will show on {program_short} attendance.",
+        )
+    else:
+        messages.success(
+            request,
+            f"{child_name}'s {program_label} application is inactive. They stay off {program_short} attendance. "
+            "Other programs for this child are unchanged. Use Make this application active to restore it.",
+        )
+    family = app.portal_family
+    if family:
+        if admin_ok and not staff_ok:
+            fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family.slug})
+        else:
+            fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family.slug})
+        fallback = _with_family_id(fallback, family)
+    _log_activity(
+        request,
+        "save",
+        action_label="Made application active" if make_active else "Made application inactive",
+        object_type="application",
+        object_label=f"{child_name} · {program_label}",
+        details=family.name if family else program_label,
+    )
+    return redirect(_portal_next_url(request, fallback))
 
 
 @require_POST
@@ -2841,37 +3117,9 @@ def admin_member_ops(request):
             app = get_application_by_reference(request.POST.get("app_slug", ""))
             if not app:
                 raise ValueError("Application not found.")
-            dob = parse_date(request.POST.get("student_dob") or "")
-            update_application_fields(
-                app,
-                {
-                    "family_name": request.POST.get("family_name", app.family_name),
-                    "primary_email": request.POST.get("primary_email", app.primary_email),
-                    "home_address": request.POST.get("home_address", app.home_address),
-                    "primary_first_name": request.POST.get("primary_first_name", app.primary_first_name),
-                    "primary_last_name": request.POST.get("primary_last_name", app.primary_last_name),
-                    "primary_phone": request.POST.get("primary_phone", app.primary_phone),
-                    "student_first_name": request.POST.get("student_first_name", app.student_first_name),
-                    "student_last_name": request.POST.get("student_last_name", app.student_last_name),
-                    "student_school": request.POST.get("student_school", app.student_school),
-                    "student_grade": request.POST.get("student_grade", app.student_grade),
-                    "student_dob": dob,
-                    "program": request.POST.get("program", app.program),
-                    "program_location": request.POST.get("program_location", app.program_location),
-                    "payment_method": request.POST.get("payment_method", app.payment_method),
-                    "payment_method_other": request.POST.get("payment_method_other", app.payment_method_other),
-                    "payment_plan": request.POST.get("payment_plan", app.payment_plan),
-                    "allergies": request.POST.get("allergies", app.allergies),
-                    "medical_condition_explain": request.POST.get("medical_condition_explain", app.medical_condition_explain),
-                    "doctor_name": request.POST.get("doctor_name", app.doctor_name),
-                    "doctor_phone": request.POST.get("doctor_phone", app.doctor_phone),
-                    "insurance_provider": request.POST.get("insurance_provider", app.insurance_provider),
-                    "secondary_first_name": request.POST.get("secondary_first_name", app.secondary_first_name),
-                    "secondary_last_name": request.POST.get("secondary_last_name", app.secondary_last_name),
-                    "secondary_phone": request.POST.get("secondary_phone", app.secondary_phone),
-                    "secondary_email_address": request.POST.get("secondary_email_address", app.secondary_email_address),
-                },
-            )
+            from .member_admin import application_update_payload
+
+            update_application_fields(app, application_update_payload(app, request.POST))
             messages.success(request, "Application updated.")
             if not request.POST.get("next"):
                 next_url = reverse("portal_admin_application_detail", kwargs={"app_slug": str(app.reference)})

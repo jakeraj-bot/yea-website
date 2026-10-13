@@ -29,7 +29,7 @@ class EnrollmentApplicationAdmin(admin.ModelAdmin):
         "family_group",
         "print_link",
     )
-    list_filter = ("program", "program_location", "submitted_at")
+    list_filter = ("program", "program_location", "status", "is_active", "submitted_at")
     search_fields = (
         "student_first_name",
         "student_last_name",

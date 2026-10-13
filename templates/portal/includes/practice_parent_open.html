@@ -1,0 +1,6 @@
+{% if practice_parent_available %}
+<form method="post" action="{% url 'portal_admin_practice_parent_open' %}" class="portal-practice-open-form">
+  {% csrf_token %}
+  <button type="submit" class="btn {% if button_class %}{{ button_class }}{% else %}btn-primary{% endif %}{% if button_size %} {{ button_size }}{% endif %}">Open practice parent</button>
+</form>
+{% endif %}

@@ -85,6 +85,7 @@ class PortalChild(models.Model):
     note = models.CharField(max_length=255, blank=True)
     billing_plan = models.CharField(max_length=64, default="Weekly")
     billing_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    weekly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     auto_charge = models.BooleanField(default=False)
     next_charge_date = models.DateField(null=True, blank=True)
     last_auto_charge_date = models.DateField(null=True, blank=True)
@@ -113,6 +114,7 @@ class PortalChildBillingPlan(models.Model):
     description = models.CharField(max_length=120, blank=True)
     billing_plan = models.CharField(max_length=64, default="Weekly")
     billing_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    weekly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     auto_charge = models.BooleanField(default=False)
     next_charge_date = models.DateField(null=True, blank=True)
     last_auto_charge_date = models.DateField(null=True, blank=True)
@@ -715,6 +717,13 @@ class PortalScholarshipFund(models.Model):
 
 class PortalScholarshipAssignment(models.Model):
     child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="scholarships")
+    billing_plan = models.ForeignKey(
+        "PortalChildBillingPlan",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="scholarships",
+    )
     fund = models.ForeignKey(PortalScholarshipFund, on_delete=models.CASCADE, related_name="assignments")
     full_rate = models.DecimalField(max_digits=10, decimal_places=2)
     parent_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -1129,12 +1138,20 @@ class PortalEmailTemplate(models.Model):
     KEY_FIRST_DAY_REMINDER = "first_day_reminder"
     KEY_BALANCE_UPDATED = "balance_updated"
     KEY_LATE_PAYMENT = "late_payment"
+    KEY_APPLICATION_SUBMITTED = "application_submitted"
+    KEY_APPLICATION_SUBMITTED_WAITLIST = "application_submitted_waitlist"
+    KEY_APPLICATION_APPROVED = "application_approved"
+    KEY_APPLICATION_APPROVED_WAITLIST = "application_approved_waitlist"
     KEY_CHOICES = (
         (KEY_STAFF_WELCOME, "Staff / admin welcome"),
         (KEY_CHARGE_NOTICE, "Charge posted"),
         (KEY_FIRST_DAY_REMINDER, "First-day payment reminder"),
         (KEY_BALANCE_UPDATED, "Balance updated"),
         (KEY_LATE_PAYMENT, "Late payment reminder"),
+        (KEY_APPLICATION_SUBMITTED, "Application submitted"),
+        (KEY_APPLICATION_SUBMITTED_WAITLIST, "Waitlist application submitted"),
+        (KEY_APPLICATION_APPROVED, "Application approved"),
+        (KEY_APPLICATION_APPROVED_WAITLIST, "Waitlist application approved"),
     )
 
     key = models.SlugField(unique=True, choices=KEY_CHOICES)
@@ -1339,6 +1356,10 @@ class PortalOrgSetting(models.Model):
     """Singleton organization toggles for portal roles."""
 
     program_director_can_see_billing = models.BooleanField(default=False)
+    practice_parent_enabled = models.BooleanField(
+        default=False,
+        help_text="Show Open practice parent. Off on production unless an admin turns this on.",
+    )
     portal_sending_email = models.EmailField(
         blank=True,
         help_text="From address for automated portal mail. Leave blank to keep the current server default.",

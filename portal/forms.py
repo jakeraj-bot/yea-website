@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.core.exceptions import ValidationError
@@ -18,11 +19,21 @@ class ParentContactForm(ContactForm):
         ("summer_camp", "Summer camp"),
         ("general", "General"),
     ]
+    TOPIC_KEYS = [
+        ("billing", "contact_topic_billing"),
+        ("programming", "contact_topic_programming"),
+        ("after_school", "program_after_school_full"),
+        ("summer_camp", "program_summer"),
+        ("general", "contact_topic_general"),
+    ]
 
     topic = forms.ChoiceField(choices=TOPIC_CHOICES)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, lang="en", **kwargs):
         super().__init__(*args, **kwargs)
+        from .parent_i18n import translate
+
+        self.fields["topic"].choices = [(value, translate(lang, key)) for value, key in self.TOPIC_KEYS]
         for name, field in self.fields.items():
             if name == "company":
                 continue
@@ -56,6 +67,33 @@ class PortalAuthenticationForm(AuthenticationForm):
         from .usernames import resolve_auth_username
 
         return resolve_auth_username(self.portal_type, username)
+
+
+class DjangoAdminAuthenticationForm(AdminAuthenticationForm):
+    """Django /admin/ login — map typed yeaadmin to stored admin:yeaadmin.
+
+    AdminSite uses this form even if AUTHENTICATION_BACKENDS is only ModelBackend.
+    confirm_login_allowed still requires is_staff, so portal org admins are
+    flipped to staff+superuser here (parents are left alone).
+    """
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        from .usernames import resolve_auth_username
+
+        resolved = resolve_auth_username("admin", username)
+        User = get_user_model()
+        if User.objects.filter(username__iexact=resolved).exists():
+            return resolved
+        if User.objects.filter(username__iexact=username).exists():
+            return username
+        return resolved
+
+    def confirm_login_allowed(self, user):
+        from .staff_auth import sync_django_backend_access
+
+        sync_django_backend_access(user)
+        super().confirm_login_allowed(user)
 
 
 class ParentSignupForm(forms.Form):

@@ -1,7 +1,7 @@
 <section class="card portal-review-panel" id="edit-application-panel-{{ id_suffix }}">
   <h2>Edit application</h2>
   <p class="form-note">Update names, school, program, billing, and contact details if the family cannot finish this themselves.</p>
-  <form method="post" action="{% url 'portal_admin_member_ops' %}" class="portal-form-grid">
+  <form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_member_ops' %}{% else %}{% url 'portal_staff_application_review' app_slug=app_slug %}{% endif %}" class="portal-form-grid">
     {% csrf_token %}
     <input type="hidden" name="action" value="update_application">
     <input type="hidden" name="app_slug" value="{{ app_slug }}">

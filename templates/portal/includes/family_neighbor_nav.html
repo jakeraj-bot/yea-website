@@ -1,10 +1,11 @@
+{% load parent_i18n %}
 {% if family_prev or family_next %}
-<nav class="portal-family-neighbor-nav portal-no-print" aria-label="Other families">
+<nav class="portal-family-neighbor-nav portal-no-print" aria-label="{% if portal_area == 'parent' %}{% pt 'family_account_link' %}{% else %}Other families{% endif %}">
   {% if family_prev %}
-  <a class="btn btn-secondary btn-sm" href="{{ family_prev.url }}">Previous: {{ family_prev.name }}</a>
+  <a class="btn btn-secondary btn-sm" href="{{ family_prev.url }}">{% if portal_area == 'parent' %}{% pt "previous_family" name=family_prev.name %}{% else %}Previous: {{ family_prev.name }}{% endif %}</a>
   {% endif %}
   {% if family_next %}
-  <a class="btn btn-primary btn-sm" href="{{ family_next.url }}">Next: {{ family_next.name }}</a>
+  <a class="btn btn-primary btn-sm" href="{{ family_next.url }}">{% if portal_area == 'parent' %}{% pt "next_family" name=family_next.name %}{% else %}Next: {{ family_next.name }}{% endif %}</a>
   {% endif %}
 </nav>
 {% endif %}

@@ -1,0 +1,9 @@
+<nav class="portal-family-tabs portal-family-tabs-scroll portal-staff-family-tabs" aria-label="Family lists">
+  {% if portal_area == 'admin' %}
+  <a class="portal-family-tab {% if families_tab != 'inactive' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}">Active</a>
+  <a class="portal-family-tab {% if families_tab == 'inactive' %}is-active{% endif %}" href="{% url 'portal_admin_page' page='families' %}?tab=inactive">Inactive</a>
+  {% else %}
+  <a class="portal-family-tab {% if families_tab != 'inactive' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='families' %}">Active</a>
+  <a class="portal-family-tab {% if families_tab == 'inactive' %}is-active{% endif %}" href="{% url 'portal_staff_page' page='families' %}?tab=inactive">Inactive</a>
+  {% endif %}
+</nav>

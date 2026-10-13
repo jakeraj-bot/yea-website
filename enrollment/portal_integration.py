@@ -11,6 +11,7 @@ from portal.models import PortalFamily, PortalParentAccount, PortalUnit
 from .models import EnrollmentApplication
 from .policy_display import get_application_policies
 from .locations import applications_queryset_for_unit, get_location_label
+from .validators import format_us_phone
 
 LOCATION_TO_UNIT_SLUG = {
     "school_18": "school-18",
@@ -40,6 +41,18 @@ STATUS_LABELS = {
     "enrolled": "Enrolled",
     "declined": "Declined",
 }
+
+
+def program_display_for_application(app, *, short=False):
+    """Hide the waitlist tag after before care is approved."""
+    if not app:
+        return ""
+    if app.program == "before_care" and app.status in {"approved", "enrolled"}:
+        return "Before care"
+    label = app.get_program_display() or ""
+    if short:
+        return label.replace(" program", "")
+    return label
 
 
 def billing_plan_from_application(app):
@@ -380,7 +393,7 @@ def application_to_portal_dict(app):
     contacts = [
         {
             "name": f"{contact.first_name} {contact.last_name}".strip(),
-            "phone": contact.phone,
+            "phone": format_us_phone(contact.phone),
         }
         for contact in app.emergency_contacts.all()
     ]
@@ -393,7 +406,7 @@ def application_to_portal_dict(app):
         "submitted": timezone.localtime(app.submitted_at).strftime("%B %d, %Y"),
         "submitted_short": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "child_name": f"{app.student_first_name} {app.student_last_name}",
-        "program": app.get_program_display(),
+        "program": program_display_for_application(app),
         "program_location": app.program_location,
         "location": get_location_label(app.program_location),
         "family_name": app.family_name,
@@ -401,7 +414,15 @@ def application_to_portal_dict(app):
         "grade": app.get_student_grade_display(),
         "primary_parent": f"{app.primary_first_name} {app.primary_last_name}".strip(),
         "primary_email": app.primary_email,
-        "primary_phone": app.primary_phone,
+        "primary_phone": format_us_phone(app.primary_phone),
+        "is_active": bool(getattr(app, "is_active", True)),
+        "program_key": app.program,
+        "program_short": {
+            "after_school": "after-care",
+            "before_care": "before-care",
+            "drop_off": "drop-off",
+            "summer_camp": "summer camp",
+        }.get(app.program, (app.get_program_display() or "program").lower()),
         "home_address": app.home_address,
         "student_school": app.student_school or "",
         "payment_method": app.get_payment_method_display(),
@@ -440,37 +461,51 @@ def get_applications_for_family(family):
     return EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
 
 
+def _before_care_for_child(apps, primary):
+    from portal.child_identity import child_names_match
+
+    primary_name = f"{primary.student_first_name} {primary.student_last_name}".strip()
+    for app in apps:
+        if app.program != "before_care" or app.status == "declined":
+            continue
+        if child_names_match(primary_name, f"{app.student_first_name} {app.student_last_name}"):
+            return app
+    return None
+
+
 def parent_application_list_items(family):
-    """Show one row per child. Before-care waitlist is a note on the after-school application."""
-    from .add_program import child_key
+    """Show one row per child. Before-care waitlist or approval is a note on the after-school row."""
+    from portal.child_identity import child_names_match
 
     apps = list(get_applications_for_family(family))
-    before_care_by_child = {}
-    for app in apps:
-        if app.program == "before_care" and app.status != "declined":
-            before_care_by_child.setdefault(child_key(app), app)
-
     folded = set()
     items = []
     for app in apps:
         if app.pk in folded:
             continue
-        key = child_key(app)
         if app.program == "before_care":
             has_primary = any(
-                other.program != "before_care" and child_key(other) == key for other in apps
+                other.program != "before_care"
+                and other.status != "declined"
+                and child_names_match(
+                    f"{app.student_first_name} {app.student_last_name}",
+                    f"{other.student_first_name} {other.student_last_name}",
+                )
+                for other in apps
             )
             if has_primary:
                 continue
         item = application_list_item(app)
         if app.program != "before_care":
-            before = before_care_by_child.get(key)
+            before = _before_care_for_child(apps, app)
             if before:
                 folded.add(before.pk)
                 item["can_add_before_care"] = False
                 item["can_add_after_school"] = False
                 if before.status == "waitlist":
                     item["program"] = f"{item['program']} · before care waitlist"
+                elif before.status in {"approved", "enrolled"}:
+                    item["program"] = f"{item['program']} · before care approved"
         items.append(item)
     return items
 
@@ -516,19 +551,19 @@ def _application_family_label(app):
 
 
 def _application_can_add_program(app, program, family_apps=None):
+    from portal.child_identity import child_names_match
+
     from .add_program import can_add_program_for_application
 
     if family_apps is None:
         return can_add_program_for_application(app, program)
     if not app or not app.portal_family_id or app.program == program:
         return False
-    first = (app.student_first_name or "").strip().lower()
-    last = (app.student_last_name or "").strip().lower()
+    target = f"{app.student_first_name} {app.student_last_name}".strip()
     return not any(
-        (other.student_first_name or "").strip().lower() == first
-        and (other.student_last_name or "").strip().lower() == last
-        and other.program == program
+        other.program == program
         and other.status != "declined"
+        and child_names_match(target, f"{other.student_first_name} {other.student_last_name}")
         for other in family_apps
     )
 
@@ -586,13 +621,22 @@ def staff_application_row(
         "unit_slug": unit_slug,
         "submitted": timezone.localtime(app.submitted_at).strftime("%b %d, %Y"),
         "submitted_sort": timezone.localtime(app.submitted_at).isoformat(),
-        "program": app.get_program_display().replace(" program", ""),
+        "program": program_display_for_application(app, short=True),
         "school": app.student_school or "—",
         "status": STATUS_LABELS.get(app.status, "Under review"),
         "status_slug": (app.status or "under_review").replace("_", "-"),
         "returning": False,
         "can_add_after_school": _application_can_add_program(app, "after_school", family_apps),
         "can_add_before_care": _application_can_add_program(app, "before_care", family_apps),
+        "payment_method_key": app.payment_method,
+        "payment_plan_key": app.payment_plan,
+        "approve_billing_type": "" if (app.payment_method or "").lower() == "4cs" else "Private pay",
+        "approve_billing_plan": {
+            "weekly": "Weekly",
+            "biweekly": "Bi-weekly",
+            "monthly": "Monthly",
+        }.get((app.payment_plan or "").lower(), "Weekly"),
+        "approve_is_four_cs": (app.payment_method or "").lower() == "4cs",
     }
 
 
@@ -627,8 +671,16 @@ def staff_application_rows(apps):
     ]
 
 
+def _membership_charge_fields(app):
+    from .application_review import membership_charge_context
+
+    return membership_charge_context(app)
+
+
 def staff_application_detail(app, unit=None):
     from .add_program import can_add_after_school_for_application, can_add_before_care_for_application
+    from .application_review import approve_plan_form_context
+    from portal.email_templates import format_member_start_date
 
     data = application_to_portal_dict(app)
     data.update(
@@ -641,6 +693,9 @@ def staff_application_detail(app, unit=None):
             ),
             "returning_member": False,
             "membership_required": app.membership_fee_agreed == "yes",
+            **_membership_charge_fields(app),
+            "member_start_date": app.member_start_date.isoformat() if app.member_start_date else "",
+            "member_start_date_display": format_member_start_date(app.member_start_date),
             "internal_note": app.internal_note or "",
             "staff_message": app.staff_message or "",
             "can_review": app.status in {"under_review", "pending_documents", "waitlist"},
@@ -661,7 +716,7 @@ def staff_application_detail(app, unit=None):
             "has_special_needs": app.get_has_special_needs_display() if app.has_special_needs else "",
             "requires_medication": app.get_requires_medication_display() if app.requires_medication else "",
             "doctor_name": app.doctor_name or "",
-            "doctor_phone": app.doctor_phone or "",
+            "doctor_phone": format_us_phone(app.doctor_phone or ""),
             "insurance_provider": app.insurance_provider or "",
             "insurance_policy_group": app.insurance_policy_group or "",
             "no_insurance": app.no_insurance,
@@ -676,11 +731,13 @@ def staff_application_detail(app, unit=None):
             "secondary_first_name": app.secondary_first_name or "",
             "secondary_last_name": app.secondary_last_name or "",
             "secondary_email": app.secondary_email_address or "",
-            "secondary_phone": app.secondary_phone or "",
+            "secondary_phone": format_us_phone(app.secondary_phone or ""),
             "program_key": app.program,
+            "is_active": bool(getattr(app, "is_active", True)),
             "can_add_after_school": can_add_after_school_for_application(app),
             "can_add_before_care": can_add_before_care_for_application(app),
             "payment_plan_key": app.payment_plan,
+            **approve_plan_form_context(app),
             "grade_choices": EnrollmentApplication.GRADE_CHOICES,
             "program_choices": EnrollmentApplication.PROGRAM_CHOICES,
             "payment_method_choices": EnrollmentApplication.PAYMENT_METHOD_CHOICES,

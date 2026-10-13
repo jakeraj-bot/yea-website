@@ -370,7 +370,12 @@ def _staff_login_redirect(request):
 
 @require_GET
 def parent_logout(request):
+    from .practice_parent import is_practice_parent_session, restore_admin_from_practice
     from .staff_auth import clear_portal_auth
+
+    if is_practice_parent_session(request) and restore_admin_from_practice(request):
+        messages.success(request, "Practice parent closed. You are back in portal admin.")
+        return redirect("portal_admin_page", page="dashboard")
 
     clear_portal_auth(request)
     logout(request)
@@ -378,8 +383,25 @@ def parent_logout(request):
     return redirect("portal_home")
 
 
+def _safe_parent_next(next_url):
+    """Keep email Pay now links on the payment page after login.
+
+    Accepts a portal path or an absolute SITE_URL link so https://yeanj.org
+    payment URLs are not dropped on the dashboard.
+    """
+    next_url = (next_url or "").strip()
+    if not next_url:
+        return None
+    site = str(getattr(settings, "SITE_URL", None) or "").rstrip("/")
+    if site and next_url.startswith(site):
+        next_url = next_url[len(site) :] or "/"
+    if next_url.startswith("/portal/") or next_url.startswith("/apply/"):
+        return next_url
+    return None
+
+
 def _login_redirect(request):
-    next_url = request.GET.get("next") or request.POST.get("next")
-    if next_url and (next_url.startswith("/portal/") or next_url.startswith("/apply/")):
+    next_url = _safe_parent_next(request.GET.get("next") or request.POST.get("next"))
+    if next_url:
         return next_url
     return reverse("portal_parent_page", kwargs={"page": "dashboard"})

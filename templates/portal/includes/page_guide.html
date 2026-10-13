@@ -1,4 +1,5 @@
-{% if page_guide %}
+{% load parent_i18n %}
+{% if page_guide and portal_area != 'parent' %}
 <div class="portal-howto-bar portal-no-print">
   <button type="button" class="btn btn-secondary btn-sm portal-howto-open" data-open-page-guide>
     How to use this page

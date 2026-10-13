@@ -24,6 +24,7 @@ Your partner gets a private link. The public website stays on WordPress until yo
 - **Seed (once):** `python manage.py seed_portal` in Render Shell
 - **Test logins** (share privately — not shown on the site):
   - Parent: `jakeraj` / `JacobsFamily2026!`
+  - Practice parent: `practiceparent` / `PracticeFamily2026!` (sandbox family; test payments only)
   - Staff: `staff18` / `StaffSchool18!`
   - Admin: `/portal/admin/dashboard/`
 

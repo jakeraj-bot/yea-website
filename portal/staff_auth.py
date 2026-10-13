@@ -19,7 +19,7 @@ ROLE_FRONT_DESK_ALIAS = "Front desk"
 ROLE_UNIT_STAFF = "Unit staff"
 
 FRONT_DESK_ROLES = {ROLE_FRONT_DESK, ROLE_FRONT_DESK_ALIAS}
-PAYMENT_REPORT_SLUGS = {"balances", "4cs", "owed-weeks"}
+PAYMENT_REPORT_SLUGS = {"balances", "4cs", "owed-weeks", "inactive-children"}
 
 
 def set_portal_auth(request, area):
@@ -107,6 +107,26 @@ def is_portal_admin(user):
     if is_program_director(account) or is_front_desk(account):
         return False
     return account.role == ROLE_PORTAL_ADMIN or account.all_units_access
+
+
+def sync_django_backend_access(user):
+    """Let portal org admins use Django /admin/. Never grant this to parents."""
+    if user is None or not getattr(user, "pk", None):
+        return user
+    if hasattr(user, "_yea_staff_account"):
+        delattr(user, "_yea_staff_account")
+    if not is_portal_admin(user):
+        return user
+    fields = []
+    if not user.is_staff:
+        user.is_staff = True
+        fields.append("is_staff")
+    if not user.is_superuser:
+        user.is_superuser = True
+        fields.append("is_superuser")
+    if fields:
+        user.save(update_fields=fields)
+    return user
 
 
 def org_program_director_can_see_billing():
@@ -198,20 +218,42 @@ def billing_permissions_for_staff(account=None, portal_area="staff"):
     }
 
 
+def can_edit_enrollment_application(account, portal_area="staff"):
+    """Fix names, school, contacts, and program fields on an application.
+
+    Portal admin (in either portal) and Program director can edit because
+    that is program work. Front desk and unit-scoped staff cannot. Admin
+    portal sessions are already portal-admin-authenticated.
+    """
+    if portal_area == "admin":
+        return True
+    if is_front_desk(account):
+        return False
+    if is_program_director(account):
+        return True
+    if account and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access):
+        return True
+    return False
+
+
 def application_permissions_for_staff(account=None, portal_area="staff"):
+    can_edit = can_edit_enrollment_application(account, portal_area)
     if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):
         return {
             "can_approve_applications": True,
             "can_approve_waitlist": True,
+            "can_edit_applications": can_edit,
         }
     if not account:
         return {
             "can_approve_applications": False,
             "can_approve_waitlist": False,
+            "can_edit_applications": False,
         }
     return {
         "can_approve_applications": bool(account.can_approve_applications),
         "can_approve_waitlist": bool(account.can_approve_waitlist),
+        "can_edit_applications": can_edit,
     }
 
 

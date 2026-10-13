@@ -18,6 +18,102 @@ from .demo_data import (
 from .models import PortalLedgerEntry, PortalParentAccount, PortalPayment, PortalProfileChangeRequest
 
 SEED_FAMILY_SLUGS = frozenset({"jacobs", "martinez", "williams"})
+
+# family_plans.html uses child.X as |default: filter arguments. Missing dict
+# keys 500 (VariableDoesNotExist) instead of rendering empty.
+_PLANS_CHILD_DEFAULTS = {
+    "description": "",
+    "child_id": "",
+    "amount": "—",
+    "plan": "Weekly",
+    "type": "Private pay",
+    "auto_charge": False,
+    "next_charge_date": "",
+    "charge_weekday": "",
+    "charge_month_day": "",
+    "auto_charge_label": "Off",
+    "is_drop_off": False,
+    "program_label": "After-school",
+    "is_active": True,
+    "weekly_rate": "",
+    "full_rate": "",
+    "parent_amount": "",
+    "scholarship_name": "",
+    "scholarship_discount": "",
+    "scholarship_fund_id": "",
+    "four_cs": False,
+    "monthly_schedule": [],
+}
+_PLANS_PLAN_DEFAULTS = {
+    "id": "",
+    "description": "",
+    "plan": "Weekly",
+    "amount": "",
+    "amount_display": "—",
+    "weekly_rate": "",
+    "monthly_schedule": [],
+    "auto_charge": False,
+    "next_charge_date": "",
+    "charge_weekday": "",
+    "charge_month_day": "",
+    "auto_charge_label": "Off",
+    "billing_type": "Private pay",
+    "is_primary": True,
+    "scholarship_fund_id": "",
+    "full_rate": "",
+    "parent_amount": "",
+    "scholarship_name": "",
+    "scholarship_discount": "",
+}
+
+
+def complete_plans_child_row(row):
+    """Fill keys the Plans tab template always reads so incomplete children 200."""
+    if not isinstance(row, dict):
+        return row
+    for key, value in _PLANS_CHILD_DEFAULTS.items():
+        row.setdefault(key, value)
+    if not row.get("plan"):
+        row["plan"] = "Weekly"
+    plans = row.get("plans")
+    if not plans:
+        stub = dict(_PLANS_PLAN_DEFAULTS)
+        stub["plan"] = row.get("plan") or "Weekly"
+        stub["description"] = row.get("description") or ""
+        stub["billing_type"] = row.get("type") or "Private pay"
+        stub["auto_charge"] = bool(row.get("auto_charge"))
+        stub["next_charge_date"] = row.get("next_charge_date") or ""
+        stub["charge_weekday"] = "" if row.get("charge_weekday") is None else row.get("charge_weekday")
+        stub["charge_month_day"] = "" if row.get("charge_month_day") is None else row.get("charge_month_day")
+        stub["auto_charge_label"] = row.get("auto_charge_label") or "Off"
+        amount = row.get("amount")
+        stub["amount"] = "" if amount in (None, "—") else amount
+        stub["amount_display"] = amount if amount not in (None, "") else "—"
+        stub["weekly_rate"] = row.get("weekly_rate") or ""
+        stub["full_rate"] = row.get("full_rate") or ""
+        stub["parent_amount"] = row.get("parent_amount") or ""
+        stub["scholarship_name"] = row.get("scholarship_name") or ""
+        stub["scholarship_discount"] = row.get("scholarship_discount") or ""
+        stub["scholarship_fund_id"] = row.get("scholarship_fund_id") or ""
+        stub["monthly_schedule"] = row.get("monthly_schedule") or []
+        row["plans"] = [stub]
+    else:
+        filled = []
+        for plan in plans:
+            if not isinstance(plan, dict):
+                filled.append(plan)
+                continue
+            completed = dict(_PLANS_PLAN_DEFAULTS)
+            completed.update(plan)
+            if not completed.get("plan"):
+                completed["plan"] = row.get("plan") or "Weekly"
+            if not completed.get("description"):
+                completed["description"] = row.get("description") or ""
+            if not completed.get("billing_type"):
+                completed["billing_type"] = row.get("type") or "Private pay"
+            filled.append(completed)
+        row["plans"] = filled
+    return row
 SEED_PREVIEW_KEYS = {
     "jacobs": "private-pay",
     "martinez": "4cs",
@@ -54,17 +150,25 @@ def _child_balances_from_ledger(family):
             for row in children:
                 row["is_drop_off"] = live_flags.get(row.get("name"), False)
                 row["program_label"] = "Drop-off" if row["is_drop_off"] else "After-school"
-            return children
+            return [complete_plans_child_row(row) for row in children]
 
-    portal_children = list(family.children.filter(is_active=True))
+    portal_children = list(family.children.all().order_by("-is_active", "name"))
     if portal_children:
-        from .agency_weeks import cadence_key, get_program_calendar, parent_charge_periods, serialize_week
+        from .agency_weeks import (
+            cadence_key,
+            get_program_calendar,
+            parent_charge_periods,
+            serialize_week,
+            weekly_rate_for_plan,
+        )
         from .billing_services import (
-            active_scholarship_for_child,
+            active_scholarship_for_plan,
             agency_profile_for,
+            monthly_schedule_rows,
             plan_repeat_label,
             serialize_billing_plan,
             serialize_child_primary_plan,
+            scholarship_display_fields,
         )
         from .family_list import child_balance_from_map
 
@@ -72,7 +176,9 @@ def _child_balances_from_ledger(family):
 
         rows = []
         for child in portal_children:
-            assignment = active_scholarship_for_child(child)
+            stored_plans = list(child.billing_plans.all())
+            primary_plan = stored_plans[0] if stored_plans else None
+            assignment = active_scholarship_for_plan(child, primary_plan)
             row = {
                 "name": child.name,
                 "balance": f"{child_balance_from_map(balances, child.name):.2f}",
@@ -87,19 +193,11 @@ def _child_balances_from_ledger(family):
                 "auto_charge_label": plan_repeat_label(child),
                 "is_drop_off": child.is_drop_off,
                 "program_label": "Drop-off" if child.is_drop_off else "After-school",
+                "is_active": child.is_active,
+                "weekly_rate": f"{child.weekly_rate:.2f}" if child.weekly_rate is not None else "",
             }
             if assignment:
-                discount = assignment.full_rate - assignment.parent_amount
-                row.update(
-                    {
-                        "full_rate": f"{assignment.full_rate:.2f}",
-                        "scholarship_discount": f"{discount:.2f}",
-                        "scholarship_name": assignment.fund.name,
-                        "parent_amount": f"{assignment.parent_amount:.2f}",
-                        "scholarship_fund_id": assignment.fund_id,
-                    }
-                )
-            stored_plans = list(child.billing_plans.all())
+                row.update(scholarship_display_fields(assignment))
             if stored_plans:
                 row["plans"] = [serialize_billing_plan(plan, child) for plan in stored_plans]
                 row["description"] = stored_plans[0].description or ""
@@ -107,6 +205,12 @@ def _child_balances_from_ledger(family):
                 row["plans"] = [serialize_child_primary_plan(child, row)]
                 row["description"] = ""
             profile = agency_profile_for(child)
+            if cadence_key(child.billing_plan) == "monthly":
+                weekly = weekly_rate_for_plan(child)
+                if weekly:
+                    row["weekly_rate"] = f"{weekly:.2f}"
+                    if not profile:
+                        row["monthly_schedule"] = monthly_schedule_rows(weekly, scholarship=assignment)
             if profile:
                 row["agency_profile_id"] = profile.pk
                 row["agency_name"] = profile.agency.name if profile.agency_id else ""
@@ -133,9 +237,7 @@ def _child_balances_from_ledger(family):
                 row["four_cs_weeks"] = [
                     serialize_week(week) for week in profile.contract_weeks.order_by("week_start")
                 ]
-            elif assignment:
-                row["type"] = "Scholarship"
-            rows.append(row)
+            rows.append(complete_plans_child_row(row))
         return rows
 
     from enrollment.models import EnrollmentApplication
@@ -146,13 +248,15 @@ def _child_balances_from_ledger(family):
         if app.status == "declined":
             continue
         rows.append(
-            {
-                "name": f"{app.student_first_name} {app.student_last_name}".strip(),
-                "balance": "0.00",
-                "plan": app.get_payment_plan_display(),
-                "type": app.get_payment_method_display(),
-                "status": STATUS_LABELS.get(app.status, "Under review"),
-            }
+            complete_plans_child_row(
+                {
+                    "name": f"{app.student_first_name} {app.student_last_name}".strip(),
+                    "balance": "0.00",
+                    "plan": app.get_payment_plan_display() or "Weekly",
+                    "type": app.get_payment_method_display() or "Private pay",
+                    "status": STATUS_LABELS.get(app.status, "Under review"),
+                }
+            )
         )
     return rows
 
@@ -367,7 +471,7 @@ def _profile_from_application(family, account):
         }
 
     enrolled_names = set()
-    for child in family.children.filter(is_active=True):
+    for child in family.children.all().order_by("-is_active", "name"):
         enrolled_names.add(child.name.lower())
         from .unit_visibility import unit_label_for_child
 
@@ -378,10 +482,11 @@ def _profile_from_application(family, account):
                 "dob": "",
                 "grade": child.grade,
                 "location": unit_name or (family.unit.name if getattr(family, "unit_id", None) else "School 18"),
-                "program": family.program_label or "After-school program",
+                "program": (family.program_label or "After-school program") if child.is_active else "Inactive",
                 "allergies": "",
                 "medications": "",
                 "child_id": child.pk,
+                "is_active": child.is_active,
             }
         )
 
@@ -468,13 +573,16 @@ def _dashboard_status_for_family(family):
     from enrollment.models import EnrollmentApplication
     from enrollment.portal_integration import STATUS_LABELS
 
+    has_active = family.children.filter(is_active=True).exists()
+    if not has_active and family.children.filter(is_active=False).exists():
+        return "Inactive"
     apps = EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at")
     latest = apps.first()
     if latest:
         return STATUS_LABELS.get(latest.status, "Under review")
     if family.status == "Pending enrollment":
         return "Under review"
-    if family.children.filter(is_active=True).exists():
+    if has_active:
         return "Enrolled"
     return "No active application"
 
@@ -793,9 +901,12 @@ def get_parent_announcement_live(family):
 def get_tax_eligibility_live(family):
     preview_key = SEED_PREVIEW_KEYS.get(family.slug, family.slug)
     demo = TAX_STATEMENT_ELIGIBILITY.get(preview_key) if _parent_demo_fallbacks_enabled() else None
-    balance = f"{family.balance:.2f}"
+    from .family_list import family_balance
+
+    ledger_total = family_balance(family)
+    balance = f"{ledger_total:.2f}"
     require_zero = TAX_STATEMENT_SETTINGS.get("require_zero_balance", True)
-    if require_zero and family.balance > 0:
+    if require_zero and ledger_total > 0:
         return {
             "eligible": False,
             "balance": balance,
@@ -931,9 +1042,9 @@ def send_payment_receipt_email(payment):
         return
     from core.email_service import send_site_email
 
-    subject = f"YEA payment receipt — {payment.receipt_no}"
+    subject = f"Youth Education Academy payment receipt — {payment.receipt_no}"
     body = (
-        f"Thank you for your payment.\n\n"
+        f"Thank you for your payment to Youth Education Academy.\n\n"
         f"Receipt: {payment.receipt_no}\n"
         f"Amount: ${payment.total_charged or payment.amount:.2f}\n"
         f"Description: {_payment_description(payment)}\n\n"

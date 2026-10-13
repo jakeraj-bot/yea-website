@@ -53,37 +53,47 @@ def sheet_meta(unit_name=None, program=None):
     return {"unit": unit, "program": program}
 
 
-def enrolled_rows_for_sheet(sheet_date, live=False, unit=None, program=None):
+def enrolled_rows_for_sheet(sheet_date, live=False, unit=None, program=None, care="all"):
     """Active/enrolled children for the unit at the given date."""
-    if live and unit and program:
-        from .attendance_service import build_roster
+    from .care_program import filter_children_by_care, normalize_care_filter
+    from .unit_visibility import children_for_unit
 
-        roster = build_roster(unit, program, sheet_date)
-        rows = [
+    care = normalize_care_filter(care)
+    if live and unit:
+        children = filter_children_by_care(
+            list(children_for_unit(unit, active_only=True).order_by("name", "id")),
+            care,
+        )
+        return [
             {
-                "child": row["child"],
-                "family": row.get("family", ""),
-                "grade": row.get("grade", ""),
+                "child": child.name,
+                "family": child.family.name if child.family_id else "",
+                "grade": (child.grade or "").strip(),
             }
-            for row in roster
+            for child in children
         ]
-    else:
-        rows = [
-            {
-                "child": row["child"],
-                "family": row.get("family", ""),
-                "grade": row.get("grade", ""),
-            }
-            for row in PROGRAM_ROSTER
-            if row.get("status", "").lower() == "active"
-        ]
-        rows.sort(key=lambda row: row["child"].lower())
 
+    rows = [
+        {
+            "child": row["child"],
+            "family": row.get("family", ""),
+            "grade": row.get("grade", ""),
+        }
+        for row in PROGRAM_ROSTER
+        if row.get("status", "").lower() == "active"
+    ]
+    rows.sort(key=lambda row: row["child"].lower())
+    if care == "before":
+        return []
     return rows
 
 
-def _sheet_roster_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None):
-    enrolled_rows = enrolled_rows_for_sheet(sheet_date, live=live, unit=unit, program=program_obj)
+def _sheet_roster_context(
+    sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None, care="all"
+):
+    enrolled_rows = enrolled_rows_for_sheet(
+        sheet_date, live=live, unit=unit, program=program_obj, care=care
+    )
     return {
         "enrolled_rows": enrolled_rows,
         "enrolled_count": len(enrolled_rows),
@@ -91,25 +101,25 @@ def _sheet_roster_context(sheet_date, unit_name=None, program=None, live=False, 
     }
 
 
-def daily_blank_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None):
+def daily_blank_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None, care="all"):
     meta = sheet_meta(unit_name, program)
     return {
         **meta,
-        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj),
+        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj, care=care),
         "sheet_date": sheet_date,
         "sheet_date_display": _format_long(sheet_date),
         "sheet_date_value": _format_iso(sheet_date),
     }
 
 
-def weekly_blank_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None):
+def weekly_blank_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None, care="all"):
     meta = sheet_meta(unit_name, program)
     monday = _weekday_monday(sheet_date)
     weekdays = [monday + timedelta(days=i) for i in range(5)]
     friday = weekdays[4]
     return {
         **meta,
-        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj),
+        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj, care=care),
         "sheet_date": sheet_date,
         "sheet_date_value": _format_iso(sheet_date),
         "week_start_display": _format_long(monday),
@@ -119,12 +129,21 @@ def weekly_blank_context(sheet_date, unit_name=None, program=None, live=False, u
     }
 
 
-def signout_blank_context(sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None):
+def signout_blank_context(
+    sheet_date, unit_name=None, program=None, live=False, unit=None, program_obj=None, care="all"
+):
+    from .care_program import CARE_FILTER_CHOICES, care_filter_label, normalize_care_filter
+
+    care = normalize_care_filter(care)
     meta = sheet_meta(unit_name, program)
     return {
         **meta,
-        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj),
+        **_sheet_roster_context(sheet_date, unit_name, program, live, unit, program_obj, care=care),
         "sheet_date": sheet_date,
         "sheet_date_display": _format_long(sheet_date),
         "sheet_date_value": _format_iso(sheet_date),
+        "care": "" if care == "all" else care,
+        "care_label": care_filter_label(care),
+        "care_choices": list(CARE_FILTER_CHOICES),
+        "report_filters": {"care": "" if care == "all" else care},
     }
