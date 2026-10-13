@@ -113,8 +113,11 @@ class PageGuideCatalogTests(TestCase):
         guide = guide_for("family-billing")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Edit a membership charge", titles)
+        self.assertIn("Edit a scholarship or credit", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("amount", bodies.lower())
+        self.assertIn("account credit", bodies.lower())
+        self.assertIn("discount", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")

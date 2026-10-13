@@ -819,7 +819,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Read the balance",
-                "body": "The banner is the family total. The table is every charge, payment, credit, and discount.",
+                "body": "The banner is the family total. If the family paid more than they owed, it shows as account credit (for example $30.00 credit), not $0. The table is every charge, payment, credit, and discount.",
             },
             {
                 "title": "Add a charge or record a payment",
@@ -831,7 +831,11 @@ GUIDES = {
             },
             {
                 "title": "Credits and deletes",
-                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete it (confirm and give a reason). Card payments through Stripe stay on the ledger unless you refund.",
+                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete that payment (confirm and give a reason). Deleting a payment only removes that payment — remaining charges minus remaining payments and credits is the new balance. An overpayment still shows as account credit. Card payments through Stripe stay on the ledger unless you refund.",
+            },
+            {
+                "title": "Edit a scholarship or credit",
+                "body": "Use Edit on a Discount (scholarship) line to change the description parents and staff see. Use Edit on a Credit line to change the description, date, and amount — the family balance recalculates. Membership and charge lines still let you edit amount or description.",
             },
             {
                 "title": "Edit a membership charge",
