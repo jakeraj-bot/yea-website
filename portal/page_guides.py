@@ -41,7 +41,7 @@ GUIDES = {
             },
             {
                 "title": "Enrollment and overdue hide inactive children",
-                "body": "Children enrolled and overdue balances count active children only. When a child is inactive they leave those numbers. Review them on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
+                "body": "Children enrolled and overdue balances count active children only, from the live ledger — not a stored family balance. When a child is inactive they leave those numbers. Unapproved applications are not in overdue. Balances by unit shows which site still owes the most. Review inactive children on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
             },
         ],
     },
@@ -456,16 +456,20 @@ GUIDES = {
         ],
     },
     "outstanding-balances": {
-        "title": "How to use outstanding balances",
-        "intro": "This list is one row per child who still owes after payments. Child names open the family billing account. Status is a filter, not a column.",
+        "title": "How to print Account Balance",
+        "intro": "This is the printable Account Balance roster — child's name, amount owe, description, paid, and notes. The YEA logo repeats at the top of every printed page. Status is a filter, not a column.",
         "steps": [
             {
-                "title": "Read child names and amounts",
-                "body": "Each row is a child with that child's remaining amount after payments, not the household last name. Parent card, check, or money order payments drop this number by the tuition applied — Stripe's processing fee is not still owed. Siblings who both owe appear as two rows. Children at $0 stay off the list.",
+                "title": "Match the paper report",
+                "body": "Filter by Unit (School 18, School 26, and so on) and Status Active. The header shows Total and Balance Report. Each row is a child. Amount Owe is that child's live ledger (charges minus payments and credits). Stripe's processing fee is not still owed. Paid children stay on the Active list at $0.00.",
             },
             {
-                "title": "Filter by status",
-                "body": "The report starts on Active children who owe. Use Status to switch to waitlist, inactive, withdrawn, suspended, or all statuses. Inactive children who still owe stay on this report when you choose Inactive or All. Apply filters, then print or download CSV.",
+                "title": "Read description, paid, and notes",
+                "body": "Description is what they still owe for (weeks, membership, or Paid). Paid is tuition already received for that child. Notes is the billing plan. Child names open the family billing account.",
+            },
+            {
+                "title": "Filter and print",
+                "body": "The report starts on Active approved members. Unapproved applications stay off. Use Status for waitlist, inactive, withdrawn, or all. Still owes Yes keeps only children with a remaining balance. Apply filters, then Print / Save PDF. The logo, total, unit, and column titles repeat on every page.",
             },
         ],
     },
@@ -811,7 +815,7 @@ GUIDES = {
             },
             {
                 "title": "Credits and deletes",
-                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions.",
+                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete it (confirm and give a reason). Card payments through Stripe stay on the ledger unless you refund.",
             },
             {
                 "title": "Edit a membership charge",

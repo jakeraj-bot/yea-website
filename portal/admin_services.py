@@ -56,12 +56,16 @@ def get_admin_dashboard_live():
     approved_4cs = PortalChild.objects.filter(is_active=True, family__billing_type__iexact="4Cs").exclude(
         family__unit__slug__in=("main-location", "main_location")
     ).count()
+    from .family_list import unit_balance_summary
+
+    unit_balances = unit_balance_summary()
     return {
         "total_enrolled": enrolled,
         "total_families": families,
         "open_applications": open_apps,
         "overdue_families": overdue_count,
         "overdue_amount": f"{overdue_total:.2f}",
+        "unit_balances": unit_balances,
         "policy_completion_pct": policy_pct,
         "staff_count": staff_count,
         "active_programs": active_programs,

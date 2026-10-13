@@ -117,11 +117,40 @@ def overdue_ledger_summary(family_ids):
     return len(owing), total, owing
 
 
+def child_is_approved_member(child, apps=None):
+    """True for enrolled members. Unapproved applications stay off overdue/reports.
+
+    A child with an approved/enrolled application counts. A child with only
+    unapproved applications (under review, documents, waitlist, rejected) does
+    not. Staff-created Active children with no application still count.
+    """
+    name = (getattr(child, "name", None) or "").strip()
+    if apps is None:
+        family = getattr(child, "family", None)
+        if family is not None and getattr(family, "pk", None):
+            apps = list(family.enrollment_applications.all())
+        else:
+            apps = []
+    matching = [
+        app
+        for app in (apps or [])
+        if name and child_name_in_collection(application_child_name(app), [name])
+    ]
+    if matching:
+        return any(app.status in APPROVED_APPLICATION_STATUSES for app in matching)
+    family = getattr(child, "family", None)
+    status = ((getattr(family, "status", None) or "Active") if family else "Active").strip().lower()
+    return status == "active" and bool(getattr(child, "is_active", True))
+
+
 def overdue_active_children_summary(family_ids=None, *, unit=None):
     """Overdue families/totals using only active children's remaining tuition.
 
+    Uses the live ledger (charges minus payments/credits). Stripe fees and a
+    stale ``PortalFamily.balance`` cache do not inflate these numbers.
     Inactive children who still owe are left off Overview cards and default
-    reports. Review them on the Inactive tab, Inactive report, or status All.
+    reports. Unapproved applications are excluded. Review inactive children on
+    the Inactive tab, Inactive report, or status All.
     """
     from .member_admin import is_placeholder_unit
     from .models import PortalChild
@@ -131,6 +160,7 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
         PortalChild.objects.filter(is_active=True)
         .exclude(family__slug="practice")
         .select_related("family", "family__unit", "unit")
+        .prefetch_related("family__enrollment_applications")
     )
     if unit is not None:
         qs = qs.filter(child_unit_q(unit))
@@ -140,12 +170,78 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
     maps = child_balance_maps([child.family_id for child in children])
     family_owing = {}
     for child in children:
+        apps = list(child.family.enrollment_applications.all())
+        if not child_is_approved_member(child, apps):
+            continue
         balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
         if balance <= 0:
             continue
         family_owing[child.family_id] = family_owing.get(child.family_id, Decimal("0")) + balance
     total = sum(family_owing.values(), Decimal("0"))
     return len(family_owing), total, family_owing
+
+
+def unit_balance_summary(*, include_inactive=False):
+    """Per-unit live ledger totals for Overview and the Account Balance report.
+
+    A child's remaining tuition counts on that child's unit, not the family
+    home unit when they differ. A multi-unit family is counted only on units
+    where a child still has a balance — not once on every site.
+    """
+    from .member_admin import is_placeholder_unit
+    from .models import PortalChild, PortalUnit
+    from .unit_visibility import child_effective_unit
+
+    units = list(
+        PortalUnit.objects.filter(is_active=True)
+        .exclude(slug__in=("main-location", "main_location"))
+        .order_by("name")
+    )
+    qs = (
+        PortalChild.objects.exclude(family__slug="practice")
+        .select_related("family", "family__unit", "unit")
+        .prefetch_related("family__enrollment_applications")
+    )
+    if not include_inactive:
+        qs = qs.filter(is_active=True)
+    children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
+    maps = child_balance_maps([child.family_id for child in children])
+    buckets = {
+        unit.slug: {
+            "slug": unit.slug,
+            "unit": unit.name,
+            "balance": Decimal("0"),
+            "overdue": Decimal("0"),
+            "owing_family_ids": set(),
+        }
+        for unit in units
+    }
+    for child in children:
+        apps = list(child.family.enrollment_applications.all())
+        if not child_is_approved_member(child, apps):
+            continue
+        unit = child_effective_unit(child)
+        if not unit or unit.slug not in buckets:
+            continue
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        bucket = buckets[unit.slug]
+        bucket["balance"] += balance
+        if balance > 0:
+            bucket["overdue"] += balance
+            bucket["owing_family_ids"].add(child.family_id)
+    rows = []
+    for bucket in buckets.values():
+        rows.append(
+            {
+                "slug": bucket["slug"],
+                "unit": bucket["unit"],
+                "balance": f"{bucket['balance']:.2f}",
+                "overdue": f"{bucket['overdue']:.2f}",
+                "family_count": len(bucket["owing_family_ids"]),
+            }
+        )
+    rows.sort(key=lambda row: (-Decimal(row["overdue"]), -Decimal(row["balance"]), row["unit"].casefold()))
+    return rows
 
 
 def household_balance_from_child_map(family_balances):

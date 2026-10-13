@@ -4406,6 +4406,70 @@ def staff_unit_switch(request):
 
 @staff_login_required
 @require_GET
+def staff_account_balance_report(request):
+    import csv
+    from urllib.parse import urlencode
+
+    from django.http import HttpResponse
+
+    from .admin_reports import ADMIN_DATA_REPORTS, build_admin_report
+    from .staff_auth import staff_billing_forbidden
+
+    blocked = staff_billing_forbidden(request)
+    if blocked:
+        return blocked
+    spec = ADMIN_DATA_REPORTS["balances"]
+    unit = _staff_unit(request) if _portal_data_live() else None
+    filters = {key: request.GET.get(key, "").strip() for key in ("q", "status", "owes")}
+    if "status" not in request.GET:
+        filters["status"] = "Active"
+    if _portal_data_live() and unit:
+        report = build_admin_report("balances", {**filters, "unit": unit.slug})
+    else:
+        report = {
+            **spec,
+            "rows": [],
+            "summary": "Choose a unit to see the Account Balance report.",
+            "outstanding": "0.00",
+            "units": [],
+            "statuses": ["Active", "Inactive"],
+            "layout": spec.get("layout") or "table",
+            "print_header": True,
+            "print_title": "Balance Report",
+            "selected_unit_name": "",
+            "selected_status": filters.get("status") or "Active",
+            "unit_balances": [],
+        }
+    report = {**report, "filters": ("q", "status", "owes")}
+    if request.GET.get("format") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
+        writer = csv.writer(response)
+        writer.writerow([label for _key, label in report["columns"]])
+        for row in report.get("rows", []):
+            writer.writerow([cell["value"] for cell in row["display"]])
+        return response
+    query = {key: value for key, value in filters.items() if value or key == "status"}
+    query["format"] = "csv"
+    return render(
+        request,
+        "portal/admin/data_report.html",
+        _staff_context(
+            report["title"],
+            request=request,
+            staff_page_slug="reports",
+            page_guide_key="outstanding-balances",
+            hub_url=reverse("portal_staff_page", kwargs={"page": "reports"}),
+            hub_label="Reports",
+            report=report,
+            filters=filters,
+            csv_query=urlencode(query),
+        ),
+    )
+
+
+@staff_login_required
+@require_GET
 def staff_balances_export(request):
     from .staff_auth import staff_billing_forbidden
 

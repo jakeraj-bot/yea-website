@@ -660,19 +660,85 @@ def _family_row_status(family):
     return (family.status or "Active").strip() or "Active"
 
 
+def _ledger_paid_for_child(entries, child_name):
+    from .family_list import _child_name_key
+
+    paid = Decimal("0")
+    needle = _child_name_key(child_name)
+    for entry in entries:
+        if entry.entry_type != "payment":
+            continue
+        name = _child_name_key(entry.child_name)
+        if name != needle:
+            continue
+        amount = entry.amount or Decimal("0")
+        paid += abs(amount)
+    return paid
+
+
+def _account_balance_description(child, unpaid, paid_total, balance):
+    if balance <= 0:
+        if paid_total > 0:
+            return "Paid"
+        return "Paid in full"
+    weeks = []
+    seen_weeks = set()
+    has_membership = False
+    other = []
+    for charge in unpaid:
+        desc = (charge.get("description") or "").strip()
+        lower = desc.lower()
+        if "membership" in lower:
+            has_membership = True
+        week = (charge.get("week") or "").strip()
+        if week and week not in seen_weeks:
+            seen_weeks.add(week)
+            weeks.append(week)
+        elif desc and "membership" not in lower and desc not in other:
+            other.append(desc)
+    parts = []
+    if weeks:
+        parts.append("Owe for " + ", ".join(weeks))
+    elif other:
+        parts.append("Owe for " + "; ".join(other[:3]))
+    else:
+        parts.append("Owe for account balance")
+    if has_membership:
+        parts[0] = f"{parts[0]} & Membership Fee"
+    return parts[0]
+
+
+def _account_balance_notes(child):
+    plan = (child.billing_plan or "").strip()
+    billing = (child.family.billing_type or "").strip()
+    bits = [bit for bit in (plan, billing if billing and billing.lower() != "private pay" else "") if bit]
+    return " · ".join(bits)
+
+
 def balance_report_rows(filters=None):
-    """One row per child who still owes, using the same child-balance rules as All families."""
+    """Account Balance report: one row per approved child, matching the printed PDF."""
     filters = filters or {}
     query = (filters.get("q") or "").strip()
     unit = (filters.get("unit") or "").strip()
+    owes = (filters.get("owes") or "").strip().lower()
     if "status" in filters:
         status = (filters.get("status") or "").strip()
     else:
         status = "Active"
-    from .family_list import child_balance_from_map, child_balance_maps
+    from .family_list import (
+        PENDING_REVIEW_STATUSES,
+        child_balance_from_map,
+        child_balance_maps,
+        child_is_approved_member,
+    )
+    from .owed_weeks import _unpaid_charges, week_label_from_charge
     from .unit_visibility import child_unit_slug_q, unit_label_for_child
 
-    children = PortalChild.objects.select_related("family", "family__unit", "unit").order_by("name")
+    children = (
+        PortalChild.objects.select_related("family", "family__unit", "unit")
+        .prefetch_related("family__enrollment_applications")
+        .order_by("name")
+    )
     if unit:
         children = children.filter(child_unit_slug_q(unit))
     if query:
@@ -681,30 +747,62 @@ def balance_report_rows(filters=None):
         )
     child_list = [child for child in children if not is_placeholder_unit(child.family.unit)]
     maps = child_balance_maps([child.family_id for child in child_list])
+    family_ids = list({child.family_id for child in child_list})
+    entries_by_family = {}
+    if family_ids:
+        for entry in PortalLedgerEntry.objects.filter(family_id__in=family_ids).order_by("date", "pk"):
+            entries_by_family.setdefault(entry.family_id, []).append(entry)
     rows = []
     statuses = set()
     outstanding = Decimal("0")
+    selected_unit_name = ""
     for child in child_list:
-        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
-        if balance <= 0:
-            continue
+        apps = list(child.family.enrollment_applications.all())
         row_status = _family_row_status(child.family)
         if not child.is_active:
             statuses.add("Inactive")
         statuses.add(row_status)
-        if status:
-            wanted = status.lower()
-            if wanted == "inactive":
-                if child.is_active:
-                    continue
-            elif row_status.lower() != wanted:
+        wanted = status.lower() if status else ""
+        if wanted == "inactive":
+            if child.is_active:
                 continue
-            elif wanted == "active" and not child.is_active:
+        elif wanted == "waitlist":
+            if row_status.lower() != "waitlist":
                 continue
+        elif wanted == "active":
+            if not child.is_active or row_status.lower() != "active":
+                continue
+            if not child_is_approved_member(child, apps):
+                continue
+        elif wanted:
+            if row_status.lower() != wanted:
+                continue
+        else:
+            if any(app.status in PENDING_REVIEW_STATUSES for app in apps) and not child_is_approved_member(child, apps):
+                continue
+        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        if owes == "yes" and balance <= 0:
+            continue
+        if owes == "no" and balance > 0:
+            continue
+        entries = entries_by_family.get(child.family_id, [])
+        named = [
+            entry
+            for entry in entries
+            if (entry.child_name or "").strip().lower() == (child.name or "").strip().lower()
+        ]
+        unpaid = _unpaid_charges(named)
+        for charge in unpaid:
+            charge["week"] = charge.get("week") or week_label_from_charge(charge.get("description"), charge.get("date"))
+        paid_total = _ledger_paid_for_child(named, child.name)
         unit_name, _slug = unit_label_for_child(child)
-        outstanding += balance
+        if unit and not selected_unit_name:
+            selected_unit_name = unit_name or child.family.unit.name
+        if balance > 0:
+            outstanding += balance
         rows.append(
             {
+                "row_num": 0,
                 "child": child.name,
                 "family": child.family.name,
                 "family_slug": child.family.slug,
@@ -712,9 +810,15 @@ def balance_report_rows(filters=None):
                 "unit": unit_name or child.family.unit.name,
                 "billing": (child.family.billing_type or "Private pay").strip() or "Private pay",
                 "balance": _money(balance),
+                "amount_owe": _money(balance),
+                "description": _account_balance_description(child, unpaid, paid_total, balance),
+                "paid": _money(paid_total) if paid_total > 0 else "",
+                "notes": _account_balance_notes(child),
             }
         )
-    rows.sort(key=lambda row: (-Decimal(row["balance"]), row["child"].casefold()))
+    rows.sort(key=lambda row: row["child"].casefold())
+    for index, row in enumerate(rows, start=1):
+        row["row_num"] = str(index)
     if status:
         statuses.add(status)
     statuses.add("Active")
@@ -723,8 +827,10 @@ def balance_report_rows(filters=None):
         "rows": rows,
         "outstanding": _money(outstanding),
         "statuses": sorted(statuses),
+        "selected_unit_name": selected_unit_name or ("All units" if not unit else ""),
+        "selected_status": status or "All",
+        "report_date": timezone.localdate(),
     }
-
 
 def inactive_children_report_rows(filters=None, *, unit=None):
     """Children marked inactive, with remaining tuition. Waitlist-only kids stay off."""
@@ -956,16 +1062,19 @@ ADMIN_DATA_REPORTS = {
         "filters": ("q", "unit", "entry_type", "start", "end"),
     },
     "balances": {
-        "title": "Outstanding balances",
-        "lead": "Children who still owe after charges minus tuition payments (Stripe card fees do not count as still owed). Largest remaining balance first. Use status to include waitlist, inactive, or withdrawn accounts.",
+        "title": "Account Balance",
+        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, paid, and notes. Active members stay on the list even at $0. Unapproved applications are left off. Use Unit and Active to match the School 18 printout. Stripe card fees do not count as still owed.",
         "columns": [
-            ("child", "Child"),
-            ("unit", "Unit"),
-            ("billing", "Payment type"),
-            ("balance", "Balance"),
+            ("row_num", "#"),
+            ("child", "Child's Name"),
+            ("amount_owe", "Amount Owe"),
+            ("description", "Description"),
+            ("paid", "Paid"),
+            ("notes", "Notes"),
         ],
-        "filename": "outstanding-balances.csv",
-        "filters": ("q", "unit", "status"),
+        "filename": "account-balance.csv",
+        "filters": ("q", "unit", "status", "owes"),
+        "print_header": True,
     },
     "inactive-children": {
         "title": "Inactive children",
@@ -1170,9 +1279,17 @@ def build_admin_report(slug, filters=None):
     elif slug == "balances":
         data = balance_report_rows(filters)
         rows = data["rows"]
-        extra["summary"] = f"{len(rows)} children · ${data['outstanding']} outstanding"
+        extra["summary"] = f"Total: ${data['outstanding']} · {len(rows)} children · {data.get('selected_status') or 'All'}"
         extra["statuses"] = data["statuses"]
         extra["outstanding"] = data["outstanding"]
+        extra["selected_unit_name"] = data.get("selected_unit_name") or ""
+        extra["selected_status"] = data.get("selected_status") or "All"
+        extra["report_date"] = data.get("report_date")
+        extra["print_title"] = "Balance Report"
+        extra["print_header"] = True
+        from .family_list import unit_balance_summary
+
+        extra["unit_balances"] = unit_balance_summary()
     elif slug == "inactive-children":
         data = inactive_children_report_rows(filters)
         rows = data["rows"]

@@ -526,6 +526,12 @@ ADMIN_DASHBOARD = {
     "open_applications": 7,
     "overdue_families": 4,
     "overdue_amount": "680.00",
+    "unit_balances": [
+        {"slug": "school-18", "unit": "School 18", "balance": "320.00", "overdue": "320.00", "family_count": 2},
+        {"slug": "school-26", "unit": "School 26", "balance": "210.00", "overdue": "210.00", "family_count": 1},
+        {"slug": "dale-ave", "unit": "Dale Ave", "balance": "90.00", "overdue": "90.00", "family_count": 1},
+        {"slug": "caldwell", "unit": "Caldwell University", "balance": "60.00", "overdue": "60.00", "family_count": 0},
+    ],
     "policy_completion_pct": 94,
     "staff_count": 12,
     "active_programs": 2,
@@ -688,8 +694,8 @@ ADMIN_REPORTS = [
         "report": "ledger",
     },
     {
-        "name": "Outstanding balances",
-        "description": "Children who still owe — sorted by amount due",
+        "name": "Account Balance",
+        "description": "Printable roster with child's name, amount owe, description, paid, and notes — filter by unit and Active",
         "format": "PDF / CSV",
         "slug": "balances",
         "report": "balances",
@@ -870,11 +876,19 @@ def prepare_billing_preview(billing, permissions):
     ledger = []
     for index, row in enumerate(billing.get("ledger", [])):
         is_manual = row.get("manual") or row.get("type") in ("charge", "credit", "membership")
+        is_offline_payment = bool(row.get("offline_payment")) or (
+            row.get("type") == "payment" and bool(row.get("manual")) and not row.get("fee")
+        )
         item = {
             **row,
             "id": row.get("id", index + 1),
-            "deletable": permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment",
+            "offline_payment": is_offline_payment,
+            "deletable": (
+                (permissions.get("can_delete_charge") and is_manual and row.get("type") != "payment")
+                or is_offline_payment
+            ),
             "editable": row.get("type") in ("charge", "payment", "membership"),
+            "payment_editable": is_offline_payment,
         }
         if row.get("type") == "payment" and not item.get("reference_display"):
             from .payment_refs import attach_ledger_reference
@@ -1754,7 +1768,7 @@ STAFF_REPORTS = [
     },
     {"name": "Application (blank)", "description": "Printable enrollment form", "format": "PDF", "slug": "application-blank"},
     {"name": "Application (filled)", "description": "From submitted application", "format": "PDF", "slug": "application-filled", "link_arg": "jordan-jacobs"},
-    {"name": "Outstanding balances", "description": "Families with balance due", "format": "PDF / Excel", "slug": "balances", "link_name": "portal_staff_page", "link_arg": "families"},
+    {"name": "Account Balance", "description": "Printable child's name, amount owe, description, paid, and notes", "format": "PDF / CSV", "slug": "balances"},
     {
         "name": "Inactive children",
         "description": "Who is inactive at this unit and any remaining balance",
