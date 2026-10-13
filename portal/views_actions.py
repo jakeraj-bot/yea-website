@@ -6,7 +6,7 @@ from django.utils.dateparse import parse_date, parse_time
 from django.views.decorators.http import require_POST
 
 from .parent_auth import parent_login_required_post
-from .staff_auth import admin_login_required_post, staff_login_required_post
+from .staff_auth import admin_login_required_post, staff_login_required_post, staff_or_admin_login_required_post
 
 from .attendance_service import portal_is_live, get_unit
 from .live_services import (
@@ -1008,15 +1008,75 @@ def admin_checkin_save(request):
 def admin_program_calendar_save(request):
     from .agency_weeks import save_program_calendar
 
+    month = (request.POST.get("month") or "").strip()
+    next_url = reverse("portal_admin_page", kwargs={"page": "program-calendar"})
+    if month:
+        next_url = f"{next_url}?month={month}"
     if not _admin_needs_live(request):
-        return redirect("portal_admin_page", page="program-calendar")
+        return redirect(next_url)
     try:
         save_program_calendar(request.POST)
         messages.success(request, "Program calendar saved.")
         _log_activity(request, "save", action_label="Saved program calendar", object_type="calendar", object_label="Program calendar")
     except Exception as exc:
         messages.error(request, str(exc))
-    return redirect("portal_admin_page", page="program-calendar")
+    return redirect(next_url)
+
+
+@admin_login_required_post
+@require_POST
+def admin_program_week_save(request):
+    from .agency_weeks import save_program_week_override
+
+    month = (request.POST.get("month") or "").strip()
+    next_url = reverse("portal_admin_page", kwargs={"page": "program-calendar"})
+    if month:
+        next_url = f"{next_url}?month={month}"
+    if not _admin_needs_live(request):
+        return redirect(next_url)
+    try:
+        week = save_program_week_override(request.POST)
+        messages.success(request, f"Saved CC WK {week.week_number}.")
+        _log_activity(
+            request,
+            "save",
+            action_label="Saved program week",
+            object_type="calendar",
+            object_label=f"CC WK {week.week_number}",
+        )
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return redirect(next_url)
+
+
+@staff_or_admin_login_required_post
+@require_POST
+def account_balance_mark_paid(request):
+    from .admin_reports import set_account_balance_paid
+    from .models import PortalChild
+    from .staff_auth import is_admin_portal_authenticated, staff_billing_forbidden
+
+    if not is_admin_portal_authenticated(request):
+        blocked = staff_billing_forbidden(request)
+        if blocked:
+            return blocked
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse(
+        "portal_admin_data_report", kwargs={"report_slug": "balances"}
+    )
+    if not _needs_live(request):
+        return redirect(next_url)
+    child_id = str(request.POST.get("child_id") or "").strip()
+    child = PortalChild.objects.select_related("family").filter(pk=child_id).first()
+    if not child:
+        messages.error(request, "Could not find that child on Account Balance.")
+        return redirect(next_url)
+    is_paid = str(request.POST.get("is_paid") or "").strip() in ("1", "on", "true", "yes")
+    who = ""
+    user = getattr(request, "user", None)
+    if user is not None and getattr(user, "is_authenticated", False):
+        who = (user.get_full_name() or user.get_username() or "").strip()
+    set_account_balance_paid(child, is_paid, updated_by=who)
+    return redirect(next_url)
 
 
 @admin_login_required_post

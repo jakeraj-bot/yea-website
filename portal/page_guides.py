@@ -465,7 +465,7 @@ GUIDES = {
             },
             {
                 "title": "Read description, paid, and notes",
-                "body": "Description is what they still owe for (weeks, membership, or Paid). Paid is tuition already received for that child. Notes is the billing plan. Child names open the family billing account.",
+                "body": "Description is what they still owe for (weeks, membership, or Paid). Paid is a checkbox — check it when staff collected that line. It stays checked when you print or come back. It does not delete ledger payments. Notes is the billing plan. Child names open the family billing account.",
             },
             {
                 "title": "Filter and print",
@@ -913,11 +913,15 @@ GUIDES = {
         "steps": [
             {
                 "title": "Set the program start",
-                "body": "Parents are billed from this date. Example: program starts 9/8/2026 — they are not charged for 9/1–9/4 even when 4Cs pays from 9/1.",
+                "body": "Parents are billed from this date. Example: program starts 9/8/2026 — that short week is CC WK 1 (9/8/2026–9/11/2026). They are not charged for 9/1–9/4 even when 4Cs pays from 9/1.",
+            },
+            {
+                "title": "Read and edit week numbers",
+                "body": "The month grid shows CC WK 1, CC WK 2, and so on. Use Week numbers to change a week’s number or dates if the first week is short. Charges pick up those labels automatically: CC WK 1 - weekly charge, CC WK 1 - weekly 4Cs Copay, or October monthly charge for Wk 4, 5, 6, 7, 8.",
             },
             {
                 "title": "Add days off and half days",
-                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. Half days are stored on this calendar and do not change the weekly copay amount.",
+                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. A week counts in the month of its Friday, so 9/28/2026–10/2/2026 is an October week. Half days are stored on this calendar and do not change the weekly copay amount.",
             },
             {
                 "title": "4Cs still follows the contract",

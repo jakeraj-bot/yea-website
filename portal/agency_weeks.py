@@ -143,6 +143,260 @@ def apply_program_calendar_to_profiles():
     return None
 
 
+def sync_program_weeks(calendar=None):
+    """Rebuild CC week rows from program_start, keeping staff overrides."""
+    from .models import PortalProgramWeek
+
+    calendar = calendar or get_program_calendar()
+    generated = billable_program_weeks(calendar=calendar)
+    existing = {week.week_start: week for week in calendar.weeks.all()}
+    keep_ids = []
+    used_starts = set()
+    for index, (week_start, week_end) in enumerate(generated, start=1):
+        row = existing.get(week_start)
+        if row is None:
+            row = PortalProgramWeek(
+                calendar=calendar,
+                week_start=week_start,
+                week_end=week_end,
+                week_number=index,
+            )
+        else:
+            if not row.span_overridden:
+                row.week_end = week_end
+            if not row.number_overridden:
+                row.week_number = index
+        row.save()
+        keep_ids.append(row.pk)
+        used_starts.add(row.week_start)
+    for row in calendar.weeks.filter(span_overridden=True):
+        if row.pk not in keep_ids:
+            keep_ids.append(row.pk)
+    calendar.weeks.exclude(pk__in=keep_ids).filter(
+        number_overridden=False, span_overridden=False
+    ).delete()
+    next_number = 1
+    for row in calendar.weeks.order_by("week_start", "pk"):
+        if row.number_overridden:
+            next_number = row.week_number + 1
+            continue
+        if row.week_number != next_number:
+            row.week_number = next_number
+            row.save(update_fields=["week_number"])
+        next_number += 1
+    return list(calendar.weeks.order_by("week_start", "pk"))
+
+
+def listed_program_weeks(calendar=None):
+    calendar = calendar or get_program_calendar()
+    if not calendar.weeks.exists():
+        return sync_program_weeks(calendar)
+    return list(calendar.weeks.order_by("week_start", "pk"))
+
+
+def save_program_week_override(data):
+    from .models import PortalProgramWeek
+
+    week_id = str(data.get("week_id") or "").strip()
+    week = PortalProgramWeek.objects.filter(pk=week_id).select_related("calendar").first()
+    if not week:
+        raise ValueError("Choose a program week to edit.")
+    number_raw = str(data.get("week_number") or "").strip()
+    try:
+        number = int(number_raw)
+    except (TypeError, ValueError):
+        raise ValueError("Enter a week number such as 1.")
+    if number < 1:
+        raise ValueError("Week numbers start at 1.")
+    start = parse_flexible_date(data.get("week_start"))
+    end = parse_flexible_date(data.get("week_end"))
+    if not start or not end:
+        raise ValueError("Enter the week start and end dates.")
+    if end < start:
+        raise ValueError("Week end cannot be before week start.")
+    if number != week.week_number:
+        week.week_number = number
+        week.number_overridden = True
+    if start != week.week_start or end != week.week_end:
+        clash = (
+            PortalProgramWeek.objects.filter(calendar=week.calendar, week_start=start)
+            .exclude(pk=week.pk)
+            .exists()
+        )
+        if clash:
+            raise ValueError("Another program week already starts on that date.")
+        week.week_start = start
+        week.week_end = end
+        week.span_overridden = True
+    week.save()
+    return week
+
+
+def cc_week_label(number):
+    if not number:
+        return ""
+    return f"CC WK {int(number)}"
+
+
+def program_week_for_date(on_date, calendar=None):
+    if not on_date:
+        return None
+    weeks = listed_program_weeks(calendar)
+    for week in weeks:
+        if week.week_start <= on_date <= week.week_end:
+            return week
+    monday = on_date - timedelta(days=on_date.weekday()) if on_date.weekday() < 5 else on_date
+    friday = monday + timedelta(days=4)
+    for week in weeks:
+        if week.week_start <= friday and week.week_end >= monday:
+            return week
+    return None
+
+
+def cc_week_number_for_span(week_start, week_end=None, calendar=None):
+    weeks = listed_program_weeks(calendar)
+    for week in weeks:
+        if week.week_start == week_start:
+            return week.week_number
+        if week_end and week.week_start <= week_start <= week.week_end:
+            return week.week_number
+        if week_end and week.week_start <= week_end <= week.week_end:
+            return week.week_number
+    generated = billable_program_weeks(calendar=calendar)
+    for index, (start, end) in enumerate(generated, start=1):
+        if start == week_start or (start <= week_start <= end):
+            return index
+    return None
+
+
+def cc_week_numbers_for_spans(spans, calendar=None):
+    numbers = []
+    for span in spans or []:
+        if hasattr(span, "week_start"):
+            week_start, week_end = span.week_start, span.week_end
+        else:
+            week_start, week_end = span[0], span[1]
+        number = cc_week_number_for_span(week_start, week_end, calendar=calendar)
+        if number and number not in numbers:
+            numbers.append(number)
+    return numbers
+
+
+def weekly_charge_name(number, kind="tuition", cadence="weekly"):
+    label = cc_week_label(number) or "CC WK"
+    key = cadence_key(cadence)
+    if kind == "4cs_copay":
+        if key == "biweekly":
+            return f"{label} - bi-weekly 4Cs Copay"
+        if key == "monthly":
+            return f"{label} - monthly 4Cs Copay"
+        return f"{label} - weekly 4Cs Copay"
+    if kind == "4cs_agency":
+        return f"{label} - weekly 4Cs agency"
+    if key == "biweekly":
+        return f"{label} - bi-weekly charge"
+    return f"{label} - weekly charge"
+
+
+def biweekly_charge_name(numbers, kind="tuition"):
+    cleaned = [int(n) for n in numbers or [] if n]
+    if not cleaned:
+        return ""
+    if len(cleaned) == 1:
+        return weekly_charge_name(cleaned[0], kind, cadence="biweekly")
+    first, last = cleaned[0], cleaned[-1]
+    if kind == "4cs_copay":
+        return f"CC WK {first}–{last} - bi-weekly 4Cs Copay"
+    if kind == "4cs_agency":
+        return f"CC WK {first}–{last} - bi-weekly 4Cs agency"
+    return f"CC WK {first}–{last} - bi-weekly charge"
+
+
+def monthly_charge_name(month_date, numbers):
+    month = month_date.strftime("%B") if hasattr(month_date, "strftime") else str(month_date)
+    cleaned = [str(int(n)) for n in numbers or [] if n]
+    if not cleaned:
+        return f"{month} monthly charge"
+    return f"{month} monthly charge for Wk {', '.join(cleaned)}"
+
+
+def automatic_charge_name(cadence, kind="tuition", week_numbers=None, month_date=None):
+    key = cadence_key(cadence)
+    numbers = [int(n) for n in week_numbers or [] if n]
+    if key == "monthly":
+        when = month_date or timezone.localdate()
+        return monthly_charge_name(when, numbers)
+    if key == "biweekly":
+        return biweekly_charge_name(numbers, kind=kind)
+    if numbers:
+        return weekly_charge_name(numbers[0], kind=kind, cadence=cadence)
+    return ""
+
+
+def numbered_weeks_for_month(year, month, calendar=None):
+    """Program weeks billed in this month (Friday ownership), with CC numbers.
+
+    Membership comes from live billable weeks so a newly saved day off is
+    dropped even if stored CC week rows have not been rebuilt yet. Numbers
+    still come from the calendar week list / overrides.
+    """
+    calendar = calendar or get_program_calendar()
+    groups = group_program_weeks_by_month(calendar=calendar)
+    spans = groups.get((year, month), [])
+    stored = list(calendar.weeks.order_by("week_start", "pk"))
+    rows = []
+    for week_start, week_end in spans:
+        match = None
+        for week in stored:
+            if week.week_start == week_start or (
+                week.week_start <= week_start <= week.week_end
+            ):
+                match = week
+                break
+        number = match.week_number if match else cc_week_number_for_span(
+            week_start, week_end, calendar=calendar
+        )
+        rows.append(
+            type(
+                "Week",
+                (),
+                {
+                    "week_start": week_start,
+                    "week_end": week_end,
+                    "week_number": number,
+                    "pk": getattr(match, "pk", None),
+                },
+            )()
+        )
+    return rows
+
+
+def monthly_charge_details(weekly_rate, charge_date, calendar=None):
+    """Amount, week count, and CC week numbers for the charge month."""
+    weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate)
+    weeks = numbered_weeks_for_month(charge_date.year, charge_date.month, calendar=calendar)
+    count = len(weeks)
+    numbers = [week.week_number for week in weeks if getattr(week, "week_number", None)]
+    amount = (weekly * Decimal(count)).quantize(MONEY)
+    return {
+        "amount": amount,
+        "week_count": count,
+        "week_numbers": numbers,
+        "weeks": weeks,
+        "charge_name": monthly_charge_name(charge_date, numbers),
+    }
+
+
+def monday_owned_week_count(year, month, calendar=None):
+    """Wrong October count: weeks whose Monday (or clipped start) is in the month.
+
+    9/28/2026–10/2/2026 starts in September, so a Monday-only count drops it
+    and October looks like 4 weeks instead of 5.
+    """
+    weeks = billable_program_weeks(calendar=calendar)
+    return len([start for start, _end in weeks if start.year == year and start.month == month])
+
+
 def parent_week_span(week_start, week_end, calendar=None):
     """Parent-billable dates inside a contract week, or None to skip.
 
@@ -293,7 +547,14 @@ def billable_week_count_for_month(year, month, calendar=None, weeks=None):
 
 
 def monthly_charge_for_date(weekly_rate, charge_date, calendar=None, weeks=None):
-    """Return (amount, week_count) for the month that contains charge_date."""
+    """Return (amount, week_count) for the month that contains charge_date.
+
+    Weeks are owned by the month of their Friday, so 9/28/2026–10/2/2026
+    counts in October. A Monday-only count would drop that week.
+    """
+    if weeks is None:
+        details = monthly_charge_details(weekly_rate, charge_date, calendar=calendar)
+        return details["amount"], details["week_count"]
     weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate)
     count = billable_week_count_for_month(
         charge_date.year, charge_date.month, calendar=calendar, weeks=weeks
@@ -363,12 +624,19 @@ def _week_row_labels(week_start, week_end, calendar=None, week=None):
         parent_label = format_week_label(span[0], span[1])
     else:
         parent_label = contract_label
+    number = cc_week_number_for_span(week_start, week_end, calendar=calendar)
+    cc_label = cc_week_label(number)
+    if cc_label:
+        contract_label = f"{cc_label} · {contract_label}"
+        parent_label = f"{cc_label} · {parent_label}" if parent_label else contract_label
     return {
         "label": contract_label,
         "parent_label": parent_label,
         "parent_start": span[0].isoformat() if span else "",
         "parent_end": span[1].isoformat() if span else "",
         "parent_billable": span is not None,
+        "week_number": number,
+        "cc_label": cc_label,
     }
 
 
@@ -391,6 +659,8 @@ def serialize_week(week):
         "parent_included": week.parent_included,
         "agency_included": week.agency_included,
         "parent_billable": labels["parent_billable"],
+        "week_number": labels["week_number"],
+        "cc_label": labels["cc_label"],
     }
 
 
@@ -414,6 +684,8 @@ def preview_weeks(start, end, weekly_agency=None, weekly_parent=None):
                 "parent_included": labels["parent_billable"],
                 "agency_included": True,
                 "parent_billable": labels["parent_billable"],
+                "week_number": labels["week_number"],
+                "cc_label": labels["cc_label"],
             }
         )
     return rows
@@ -460,12 +732,26 @@ def parent_charge_periods(profile, plan, start_from=None):
     for group in group_weeks_for_cadence(weeks, plan):
         start, end = _period_dates(group, calendar)
         month_label = ""
+        friday = None
         if monthly and group:
             friday = friday_of_program_week(group[0].week_start, group[0].week_end)
             month_label = friday.strftime("%B %Y")
-        label = format_week_label(start, end)
-        if month_label:
-            label = f"{month_label} · {len(group)} weeks · {label}"
+        numbers = cc_week_numbers_for_spans(group, calendar=calendar)
+        date_label = format_week_label(start, end)
+        if monthly:
+            label = monthly_charge_name(friday or start, numbers)
+            if date_label:
+                label = f"{label} ({date_label})"
+        elif cadence_key(plan) == "biweekly":
+            label = biweekly_charge_name(numbers, kind="4cs_copay")
+            if date_label:
+                label = f"{label} ({date_label})"
+        elif numbers:
+            label = weekly_charge_name(numbers[0], kind="4cs_copay", cadence=plan)
+            if date_label:
+                label = f"{label} ({date_label})"
+        else:
+            label = date_label
         periods.append(
             {
                 "start": start,
@@ -474,6 +760,7 @@ def parent_charge_periods(profile, plan, start_from=None):
                 "amount": period_parent_total(group),
                 "weeks": group,
                 "week_count": len(group),
+                "week_numbers": numbers,
                 "month_label": month_label,
                 "posted": all(week.parent_posted for week in group),
             }
@@ -486,12 +773,23 @@ def _period_from_remaining_weeks(remaining, calendar=None):
     for week in remaining:
         amount += week.parent_amount or ZERO
     start, end = _period_dates(remaining, calendar)
+    numbers = cc_week_numbers_for_spans(remaining, calendar=calendar)
+    date_label = format_week_label(start, end)
+    if len(remaining) > 1:
+        label = biweekly_charge_name(numbers, kind="4cs_copay") or date_label
+    elif numbers:
+        label = weekly_charge_name(numbers[0], kind="4cs_copay")
+    else:
+        label = date_label
+    if date_label and date_label not in label:
+        label = f"{label} ({date_label})"
     return {
         "start": start,
         "end": end,
-        "label": format_week_label(start, end),
+        "label": label,
         "amount": amount.quantize(MONEY),
         "weeks": remaining,
+        "week_numbers": numbers,
         "posted": False,
     }
 
@@ -500,8 +798,19 @@ def next_unposted_parent_period(profile, plan):
     calendar = get_program_calendar()
     for period in parent_charge_periods(profile, plan):
         remaining = [week for week in period["weeks"] if not week.parent_posted]
+        if remaining == period["weeks"]:
+            return period
         if remaining:
-            return _period_from_remaining_weeks(remaining, calendar)
+            rebuilt = _period_from_remaining_weeks(remaining, calendar)
+            if cadence_key(plan) == "monthly":
+                friday = friday_of_program_week(remaining[0].week_start, remaining[0].week_end)
+                numbers = cc_week_numbers_for_spans(remaining, calendar=calendar)
+                rebuilt["label"] = monthly_charge_name(friday, numbers)
+                rebuilt["week_numbers"] = numbers
+                date_label = format_week_label(rebuilt["start"], rebuilt["end"])
+                if date_label:
+                    rebuilt["label"] = f"{rebuilt['label']} ({date_label})"
+            return rebuilt
     return None
 
 
@@ -726,11 +1035,14 @@ def mark_agency_week_received(week, received=True):
     if received:
         amount = week.agency_amount or ZERO
         if amount > 0:
+            number = cc_week_number_for_span(week.week_start, week.week_end)
+            received_name = weekly_charge_name(number, kind="4cs_agency") if number else ""
+            received_label = received_name or format_week_label(week.week_start, week.week_end)
             PortalAgencyLedgerEntry.objects.create(
                 profile=profile,
                 date=timezone.localdate(),
                 entry_type="payment",
-                description=f"Received {format_week_label(week.week_start, week.week_end)}",
+                description=f"Received {received_label}",
                 amount=-amount,
                 is_manual=True,
             )

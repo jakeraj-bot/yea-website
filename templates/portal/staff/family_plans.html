@@ -101,6 +101,7 @@
               <tr>
                 <td>
                   {{ month.label }}
+                  {% if month.charge_name %}<p class="form-note">{{ month.charge_name }}</p>{% endif %}
                   {% if month.week_labels_display %}<p class="form-note">{{ month.week_labels_display }}</p>{% endif %}
                 </td>
                 <td>{{ month.week_count }}</td>

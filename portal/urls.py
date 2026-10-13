@@ -441,6 +441,21 @@ urlpatterns = [
         views_actions.admin_program_calendar_save,
         name="portal_admin_program_calendar_save",
     ),
+    path(
+        "admin/program-calendar/week/",
+        views_actions.admin_program_week_save,
+        name="portal_admin_program_week_save",
+    ),
+    path(
+        "admin/account-balance/paid/",
+        views_actions.account_balance_mark_paid,
+        name="portal_account_balance_paid",
+    ),
+    path(
+        "staff/account-balance/paid/",
+        views_actions.account_balance_mark_paid,
+        name="portal_staff_account_balance_paid",
+    ),
     path("admin/staff/edit/", views_actions.admin_staff_edit, name="portal_admin_staff_edit"),
     path("admin/staff/delete/", views_actions.admin_staff_delete, name="portal_admin_staff_delete"),
     path("admin/parent/delete/", views_actions.admin_parent_delete, name="portal_admin_parent_delete"),

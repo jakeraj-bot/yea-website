@@ -83,8 +83,7 @@ class MonthlyWeeksBillingTests(TestCase):
         charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
         self.assertEqual(charge.amount, Decimal("280.00"))
         self.assertEqual(charge.date, today)
-        self.assertIn("September 2026", charge.description)
-        self.assertIn("4 weeks", charge.description)
+        self.assertIn("September monthly charge for Wk 1, 2, 3, 4", charge.description)
         self.child.refresh_from_db()
         self.assertEqual(self.child.weekly_rate, Decimal("70.00"))
         self.assertEqual(self.child.next_charge_date, date(2026, 10, 9))
@@ -106,8 +105,7 @@ class MonthlyWeeksBillingTests(TestCase):
         charge = PortalLedgerEntry.objects.get(family=self.family, entry_type="charge")
         self.assertEqual(charge.amount, Decimal("350.00"))
         self.assertEqual(charge.date, today)
-        self.assertIn("October 2026", charge.description)
-        self.assertIn("5 weeks", charge.description)
+        self.assertIn("October monthly charge for Wk 5, 6, 7, 8, 9", charge.description)
 
     def test_scholarship_reduces_family_pays_on_each_month(self):
         rows = monthly_schedule_rows(
