@@ -25,6 +25,9 @@ STAFF_PAYMENT_METHOD_LABELS = {
     "money_order": "Money order",
 }
 
+# Charge, payment, membership, manual credit, and scholarship discount lines.
+EDITABLE_LEDGER_TYPES = ("charge", "payment", "membership", "credit", "discount")
+
 
 def agency_profile_for(child):
     if not child:
@@ -354,7 +357,7 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
                 "applied": f"{applied:.2f}",
                 "manual": entry.is_manual,
-                "editable": entry.entry_type in ("charge", "payment", "membership"),
+                "editable": entry.entry_type in EDITABLE_LEDGER_TYPES,
                 "offline_payment": offline_payment,
                 "payment_method": _offline_method_from_entry(entry) if offline_payment else "",
                 "reference_number": entry.reference_number or "",
@@ -931,8 +934,8 @@ def update_ledger_description(family, entry_id, description):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type not in ("charge", "payment", "membership"):
-        raise ValueError("Only charge, membership, and payment descriptions can be edited.")
+    if entry.entry_type not in EDITABLE_LEDGER_TYPES:
+        raise ValueError("This description cannot be edited.")
     label = (description or "").strip()
     if not label:
         raise ValueError("Enter a description.")
@@ -948,10 +951,11 @@ def update_ledger_amount(family, entry_id, amount, notify=True):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type not in ("charge", "membership"):
-        raise ValueError("Only charge and membership amounts can be edited.")
+    if entry.entry_type not in ("charge", "membership", "credit"):
+        raise ValueError("Only charge, membership, and credit amounts can be edited.")
     previous = entry.amount
-    new_amount = _parse_amount(amount, allow_zero=True)
+    parsed = _parse_amount(amount, allow_zero=True)
+    new_amount = -parsed if entry.entry_type == "credit" else parsed
     if new_amount == previous:
         return entry
     entry.amount = new_amount
@@ -959,10 +963,40 @@ def update_ledger_amount(family, entry_id, amount, notify=True):
     from .family_list import sync_family_balance_from_ledger
 
     sync_family_balance_from_ledger(family)
-    if notify:
+    if notify and entry.entry_type in ("charge", "membership"):
         from .email_templates import notify_balance_updated
 
         notify_balance_updated(family, entry, previous_amount=previous)
+    return entry
+
+
+@transaction.atomic
+def update_ledger_credit(family, entry_id, *, description=None, entry_date=None, amount=None):
+    """Edit a staff-posted credit’s description, date, and amount, then recalc."""
+    entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
+    if not entry:
+        raise ValueError("Ledger entry not found.")
+    if entry.entry_type != "credit":
+        raise ValueError("Only credits can be edited this way.")
+    fields = []
+    if description is not None:
+        update_ledger_description(family, entry_id, description)
+        entry.refresh_from_db()
+    if entry_date is not None:
+        entry.date = entry_date
+        fields.append("date")
+    if amount is not None and str(amount).strip() != "":
+        parsed = _parse_amount(amount)
+        new_amount = -parsed
+        if new_amount != entry.amount:
+            entry.amount = new_amount
+            fields.append("amount")
+    if fields:
+        entry.save(update_fields=fields)
+        if "amount" in fields:
+            from .family_list import sync_family_balance_from_ledger
+
+            sync_family_balance_from_ledger(family)
     return entry
 
 

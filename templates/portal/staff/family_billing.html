@@ -26,10 +26,10 @@
 <section class="page-content">
   <div class="container">
     {% include "portal/includes/family_account_tabs.html" %}
-    <div class="portal-balance-banner card card-accent orange">
+    <div class="portal-balance-banner card card-accent {% if billing.has_credit %}green{% else %}orange{% endif %}">
       <div>
-        <span class="portal-stat-label">Family balance</span>
-        <p class="portal-balance-total">${{ billing.running_balance }}</p>
+        <span class="portal-stat-label">{% if billing.has_credit %}Account credit{% else %}Family balance{% endif %}</span>
+        <p class="portal-balance-total{% if billing.has_credit %} is-credit{% endif %}">{% if billing.has_credit %}${{ billing.account_credit }} credit{% else %}${{ billing.running_balance }}{% endif %}</p>
         {% if billing.account_note %}<p class="portal-balance-sub">{{ billing.account_note }}</p>{% endif %}
       </div>
       <div class="portal-banner-actions">
@@ -279,6 +279,12 @@
                 <input id="ledger-mo-{{ row.id }}" name="money_order_number" type="text" class="portal-input" value="{{ row.reference_number }}" placeholder="Money order #" required>
                 {% endif %}
                 {% endif %}
+                {% if row.type == 'credit' %}
+                <label class="visually-hidden" for="ledger-date-{{ row.id }}">Credit date</label>
+                <input id="ledger-date-{{ row.id }}" name="date" type="date" class="portal-input portal-ledger-date" value="{{ row.date }}">
+                <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Credit amount</label>
+                <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount|cut:"-" }}" inputmode="decimal">
+                {% endif %}
                 {% if row.type == 'charge' or row.type == 'membership' %}
                 <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Amount</label>
                 <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount }}" inputmode="decimal">
@@ -299,10 +305,10 @@
             <td class="portal-cell-amount">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
             <td class="portal-row-actions">
               {% if row.editable and billing_live %}
-              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% else %}Edit amount or description{% endif %}">Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship description{% else %}Edit amount or description{% endif %}">Edit</button>
               {% endif %}
               {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this cash, check, or money order payment? The credit comes off the ledger and the family balance is recalculated.{% else %}Remove this ledger entry?{% endif %}">
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% else %}Remove this ledger entry?{% endif %}">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}

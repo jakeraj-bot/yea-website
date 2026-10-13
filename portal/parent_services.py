@@ -170,7 +170,7 @@ def _child_balances_from_ledger(family):
             serialize_child_primary_plan,
             scholarship_display_fields,
         )
-        from .family_list import child_balance_from_map
+        from .family_list import child_balance_from_map, credit_fields
 
         balances = child_balance_map(family)
 
@@ -179,9 +179,13 @@ def _child_balances_from_ledger(family):
             stored_plans = list(child.billing_plans.all())
             primary_plan = stored_plans[0] if stored_plans else None
             assignment = active_scholarship_for_plan(child, primary_plan)
+            child_total = child_balance_from_map(balances, child.name)
+            child_copy = credit_fields(child_total)
             row = {
                 "name": child.name,
-                "balance": f"{child_balance_from_map(balances, child.name):.2f}",
+                "balance": child_copy["running_balance"],
+                "has_credit": child_copy["has_credit"],
+                "account_credit": child_copy["account_credit"],
                 "plan": child.billing_plan or family.program_label or "Weekly",
                 "amount": f"{child.billing_amount:.2f}" if child.billing_amount is not None else "—",
                 "type": family.billing_type or "Private pay",

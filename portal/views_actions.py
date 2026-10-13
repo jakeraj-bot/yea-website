@@ -1491,6 +1491,7 @@ def staff_billing_action(request, family_slug):
         staff_payment_note,
         update_child_billing_plan,
         update_ledger_description,
+        update_ledger_credit,
         update_offline_payment,
         delete_child_billing_plan,
     )
@@ -1674,22 +1675,56 @@ def staff_billing_action(request, family_slug):
             return checkout_redirect
         elif action == "edit_description":
             from .billing_services import update_ledger_amount
+            from .models import PortalLedgerEntry
 
+            entry = PortalLedgerEntry.objects.filter(family=family, pk=request.POST.get("entry_id")).first()
             notify_update = request.POST.get("notify_balance", "on") == "on"
-            update_ledger_description(
-                family,
-                request.POST.get("entry_id"),
-                request.POST.get("description", ""),
-            )
-            new_amount = (request.POST.get("amount") or "").strip()
-            if new_amount:
-                update_ledger_amount(
+            if entry and entry.entry_type == "credit":
+                update_ledger_credit(
                     family,
                     request.POST.get("entry_id"),
-                    new_amount,
-                    notify=notify_update,
+                    description=request.POST.get("description", ""),
+                    entry_date=parse_date(request.POST.get("date") or "") or None,
+                    amount=request.POST.get("amount") or None,
                 )
-            messages.success(request, "Ledger entry updated.")
+                messages.success(request, "Credit updated.")
+                _log_activity(
+                    request,
+                    "payment",
+                    action_label="Edited a credit",
+                    object_type="credit",
+                    object_label=f"{family.name} ledger #{entry.pk}",
+                    details=request.POST.get("description", ""),
+                )
+            else:
+                update_ledger_description(
+                    family,
+                    request.POST.get("entry_id"),
+                    request.POST.get("description", ""),
+                )
+                new_amount = (request.POST.get("amount") or "").strip()
+                if new_amount:
+                    update_ledger_amount(
+                        family,
+                        request.POST.get("entry_id"),
+                        new_amount,
+                        notify=notify_update,
+                    )
+                kind = (entry.entry_type if entry else "") or "ledger"
+                if kind == "discount":
+                    messages.success(request, "Scholarship description updated.")
+                    action_label = "Edited a scholarship"
+                else:
+                    messages.success(request, "Ledger entry updated.")
+                    action_label = "Edited a ledger entry"
+                _log_activity(
+                    request,
+                    "charge" if kind in ("charge", "membership", "discount") else "payment",
+                    action_label=action_label,
+                    object_type=kind or "ledger",
+                    object_label=f"{family.name} ledger #{request.POST.get('entry_id')}",
+                    details=request.POST.get("description", ""),
+                )
         elif action == "send_balance_email":
             from .email_templates import send_updated_balance_email
 
@@ -1744,7 +1779,10 @@ def staff_billing_action(request, family_slug):
                 object_label=f"{family.name} ledger #{entry_id}",
                 delete_reason=reason,
             )
-            messages.success(request, "Ledger entry removed.")
+            if offline_payment:
+                messages.success(request, "Payment removed. The family balance was updated.")
+            else:
+                messages.success(request, "Ledger entry removed.")
         elif action == "refund":
             if area != "admin":
                 raise ValueError("Only portal admin can send refunds.")

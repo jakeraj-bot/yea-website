@@ -543,16 +543,20 @@ def family_meta_live(family_slug, unit=None, family_id=None):
             if unit and not application_belongs_to_unit(app, unit):
                 continue
             pending.append(child_name)
-    from .family_list import family_balance
+    from .family_list import credit_fields, family_balance
 
     household_children = enrolled + pending
+    total = family_balance(family)
+    copy = credit_fields(total)
     return {
         "id": family.pk,
         "slug": family.slug,
         "name": family_display_label(family),
         "primary_contact": family.primary_contact,
         "children": household_children,
-        "balance": format(family_balance(family), ".2f"),
+        "balance": copy["running_balance"],
+        "has_credit": copy["has_credit"],
+        "account_credit": copy["account_credit"],
         "program": family.program_label,
         "billing_type": family.billing_type,
         "status": "Suspended" if family.is_suspended else family.status,

@@ -970,6 +970,10 @@ nav.portal-nav-admin-groups {
   color: var(--text-heading);
 }
 
+.portal-balance-total.is-credit {
+  color: var(--yea-green);
+}
+
 .portal-child-balance-list {
   list-style: none;
   padding: 0;

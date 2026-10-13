@@ -677,7 +677,9 @@ def _ledger_paid_for_child(entries, child_name):
 
 
 def _account_balance_description(child, unpaid, paid_total, balance):
-    if balance <= 0:
+    if balance < 0:
+        return f"Credit ${abs(balance):.2f}"
+    if balance == 0:
         if paid_total > 0:
             return "Paid"
         return "Paid in full"
