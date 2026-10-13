@@ -37,7 +37,7 @@ GUIDES = {
             },
             {
                 "title": "Practice parent portal",
-                "body": "Open practice parent in the header opens a sandbox family. Do everything a parent can do, including Pay now. Test payments only — not a real family. This is not Parent view.",
+                "body": "Open practice parent in the header. Open a sandbox family and do everything a parent can do, including Pay now. Test payments only — not a real family. This is not Parent view.",
             },
             {
                 "title": "Open staff without a second account",
