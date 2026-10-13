@@ -13,7 +13,6 @@ from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import program_display_for_application
 
 from .member_report import _family_status, _match_apps_for_child
-from .models import PortalChild
 from .phone_format import format_us_phone
 
 CARE_ALL = "all"

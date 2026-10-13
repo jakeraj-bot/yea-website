@@ -9,7 +9,7 @@ from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import displayed_payment_plan
 
 from .member_admin import is_placeholder_unit
-from .models import PortalAgencyProfile, PortalChild, PortalUnit
+from .models import PortalAgencyProfile, PortalUnit
 from .unit_visibility import children_for_unit, unit_label_for_child
 
 PROGRAM_AFTER_CARE = "After-Care"
