@@ -52,7 +52,7 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
         )
 
     def _outstanding(self):
-        return build_admin_report("balances", {})
+        return build_admin_report("balances", {"owes": "yes"})
 
     def _row_by_child(self, report):
         return {row["child"]: row for row in report["rows"]}

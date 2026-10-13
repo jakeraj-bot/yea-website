@@ -1,0 +1,17 @@
+{% load static %}
+<tr class="portal-print-title-row">
+  <th colspan="{{ colspan }}" scope="colgroup">
+    <div class="portal-print-running-header">
+      <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo portal-print-running-logo">
+      <div>
+        <strong class="portal-print-running-title">{{ sheet_title|default:"Balance Report" }}</strong>
+        <p class="portal-medical-report-meta">
+          <strong>{{ selected_unit_name|default:"All units" }}</strong>
+          {% if selected_status %} · {{ selected_status }}{% endif %}
+          {% if report_date %} · {{ report_date }}{% endif %}
+          {% if sheet_subtitle %} · {{ sheet_subtitle }}{% endif %}
+        </p>
+      </div>
+    </div>
+  </th>
+</tr>

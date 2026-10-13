@@ -265,7 +265,7 @@ class AdminReportsAndScholarshipTests(TestCase):
 
         all_statuses = build_admin_report("balances", {"status": ""})
         all_names = {row["child"] for row in all_statuses["rows"]}
-        self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Ada Rivera", "Nia Waitowe", "Omar Left"})
+        self.assertEqual(all_names, {"Maya Jacobs", "Jordan Jacobs", "Ada Rivera", "Nia Waitowe", "Omar Left", "Sofia Martinez"})
         self.assertEqual(all_statuses["outstanding"], "175.00")
         self.assertIn("Waitlist", all_statuses["statuses"])
         self.assertIn("Withdrawn", all_statuses["statuses"])
@@ -322,7 +322,7 @@ class AdminReportsAndScholarshipTests(TestCase):
         page = self.client.get(url)
         self.assertEqual(page.status_code, 200)
         html = page.content.decode()
-        self.assertIn("Child's Name", html)
+        self.assertIn("Child&#x27;s Name", html)
         self.assertIn("Amount Owe", html)
         self.assertNotIn("<th>Family</th>", html)
         self.assertNotIn("<th>Status</th>", html)
@@ -333,7 +333,7 @@ class AdminReportsAndScholarshipTests(TestCase):
         self.assertIn(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}), html)
         self.assertContains(page, "How to print Account Balance")
         self.assertContains(page, "Status is a filter")
-        self.assertContains(page, "after payments")
+        self.assertContains(page, "live ledger")
         self.assertContains(page, "processing fee")
 
         waitlist_page = self.client.get(url, {"status": "Waitlist"})
