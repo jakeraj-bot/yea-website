@@ -177,7 +177,7 @@ class CareProgramFilterTests(TestCase):
         names = self._names(after)
         self.assertIn("Jordan Jacobs", names)
         self.assertIn("Sam Jacobs", names)
-        self.assertIn("Riley Jacobs", names)
+        self.assertNotIn("Riley Jacobs", names)
         self.assertNotIn("Maya Jacobs", names)
         self.assertNotIn("Quinn Jacobs", names)
         self.assertNotIn("Nia Lee", names)
@@ -194,7 +194,7 @@ class CareProgramFilterTests(TestCase):
     def test_weekly_sheet_all_includes_both(self):
         all_kids = weekly_attendance_report_data(self.unit, self.program, self.today)
         names = self._names(all_kids)
-        self.assertEqual(names, ["Jordan Jacobs", "Maya Jacobs", "Riley Jacobs", "Sam Jacobs"])
+        self.assertEqual(names, ["Jordan Jacobs", "Maya Jacobs", "Sam Jacobs"])
         self.assertEqual(all_kids["care_label"], "All")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
@@ -236,7 +236,7 @@ class CareProgramFilterTests(TestCase):
     def test_signout_sheet_same_care_filter(self):
         all_rows = signout_blank_context(self.today, live=True, unit=self.unit, program_obj=self.program)
         all_names = [row["child"] for row in all_rows["enrolled_rows"]]
-        self.assertEqual(all_names, ["Jordan Jacobs", "Maya Jacobs", "Riley Jacobs", "Sam Jacobs"])
+        self.assertEqual(all_names, ["Jordan Jacobs", "Maya Jacobs", "Sam Jacobs"])
 
         after = signout_blank_context(
             self.today, live=True, unit=self.unit, program_obj=self.program, care="after"

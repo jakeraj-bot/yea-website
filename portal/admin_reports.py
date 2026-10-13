@@ -49,9 +49,10 @@ def _child_school(child):
 
 
 def _active_children():
+    from .enrollment_counts import visible_member_children_qs
+
     return (
-        PortalChild.objects.filter(is_active=True)
-        .select_related("family", "family__unit", "unit")
+        visible_member_children_qs(active_only=True)
         .prefetch_related("scholarships__fund", "family__enrollment_applications", "billing_plans")
         .order_by("family__name", "name")
     )
@@ -725,20 +726,12 @@ def balance_report_rows(filters=None):
         status = (filters.get("status") or "").strip()
     else:
         status = "Active"
-    from .family_list import (
-        PENDING_REVIEW_STATUSES,
-        child_balance_from_map,
-        child_balance_maps,
-        child_is_approved_member,
-    )
+    from .enrollment_counts import visible_member_children_qs
+    from .family_list import child_balance_from_map, child_balance_maps
     from .owed_weeks import _unpaid_charges, week_label_from_charge
     from .unit_visibility import child_unit_slug_q, unit_label_for_child
 
-    children = (
-        PortalChild.objects.select_related("family", "family__unit", "unit")
-        .prefetch_related("family__enrollment_applications")
-        .order_by("name")
-    )
+    children = visible_member_children_qs(active_only=False).order_by("name")
     if unit:
         children = children.filter(child_unit_slug_q(unit))
     if query:
@@ -757,7 +750,6 @@ def balance_report_rows(filters=None):
     outstanding = Decimal("0")
     selected_unit_name = ""
     for child in child_list:
-        apps = list(child.family.enrollment_applications.all())
         row_status = _family_row_status(child.family)
         if not child.is_active:
             statuses.add("Inactive")
@@ -772,13 +764,8 @@ def balance_report_rows(filters=None):
         elif wanted == "active":
             if not child.is_active or row_status.lower() != "active":
                 continue
-            if not child_is_approved_member(child, apps):
-                continue
         elif wanted:
             if row_status.lower() != wanted:
-                continue
-        else:
-            if any(app.status in PENDING_REVIEW_STATUSES for app in apps) and not child_is_approved_member(child, apps):
                 continue
         balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
         if owes == "yes" and balance <= 0:
@@ -834,7 +821,7 @@ def balance_report_rows(filters=None):
 
 def inactive_children_report_rows(filters=None, *, unit=None):
     """Children marked inactive, with remaining tuition. Waitlist-only kids stay off."""
-    from .family_list import child_balance_from_map, child_balance_maps, child_is_waitlist_only
+    from .family_list import child_balance_from_map, child_balance_maps, child_is_unapproved_only
     from .unit_visibility import child_unit_q, child_unit_slug_q, unit_label_for_child
 
     filters = filters or {}
@@ -861,7 +848,7 @@ def inactive_children_report_rows(filters=None, *, unit=None):
         if is_placeholder_unit(child.family.unit):
             continue
         apps = list(child.family.enrollment_applications.all())
-        if child_is_waitlist_only(child, apps):
+        if child_is_unapproved_only(child, apps):
             continue
         child_list.append(child)
     maps = child_balance_maps([child.family_id for child in child_list])
@@ -950,9 +937,11 @@ def scheduled_charge_rows(filters=None):
     unit = (filters.get("unit") or "").strip()
     from .billing_services import plan_repeat_label
 
+    from .enrollment_counts import visible_member_children_qs
+
     children = (
-        PortalChild.objects.select_related("family", "family__unit", "unit")
-        .filter(is_active=True, auto_charge=True)
+        visible_member_children_qs(active_only=True)
+        .filter(auto_charge=True)
         .order_by("next_charge_date", "family__name", "name")
     )
     if unit:

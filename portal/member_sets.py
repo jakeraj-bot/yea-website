@@ -235,9 +235,9 @@ def scoped_children_qs(area, staff_unit, unit_slug=""):
     if slug:
         unit = PortalUnit.objects.filter(slug=slug, is_active=True).first()
         return children_for_unit(unit, active_only=True)
-    return PortalChild.objects.filter(is_active=True).select_related(
-        "family", "family__unit", "unit"
-    )
+    from .enrollment_counts import visible_member_children_qs
+
+    return visible_member_children_qs(active_only=True)
 
 
 def _grade_sort_key(grade):

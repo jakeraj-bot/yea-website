@@ -359,7 +359,7 @@ def notify_urgent_team_message(thread, body, author, is_admin=False):
     if thread.priority != "urgent":
         return
     from django.conf import settings
-    from django.core.mail import send_mail
+    from core.email_service import send_site_email
 
     if is_admin:
         return
@@ -371,12 +371,12 @@ def notify_urgent_team_message(thread, body, author, is_admin=False):
         f"{body.strip()}\n\n"
         f"Open the admin portal → Team messages to reply."
     )
-    send_mail(
+    send_site_email(
         subject,
         message,
-        settings.DEFAULT_FROM_EMAIL,
         [settings.PORTAL_ALERT_EMAIL],
         fail_silently=True,
+        copy_to_portal=False,
     )
 
 

@@ -242,6 +242,9 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         dashboard = get_admin_dashboard_live()
         self.assertEqual(dashboard["overdue_families"], 0)
         self.assertEqual(dashboard["overdue_amount"], "0.00")
+        unit_rows = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertEqual(unit_rows["school-18"]["overdue"], "0.00")
+        self.assertEqual(unit_rows["school-18"]["family_count"], 0)
         report = build_admin_report("balances", {})
         names = [row["child"] for row in report["rows"]]
         self.assertNotIn("Ada Pending", names)
