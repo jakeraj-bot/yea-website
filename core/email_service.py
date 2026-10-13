@@ -13,8 +13,10 @@ ORG_FROM_NAME = "Youth Education Academy"
 
 def email_is_configured():
     backend = (settings.EMAIL_BACKEND or "").lower()
-    if "console" in backend or "locmem" in backend:
+    if "console" in backend:
         return False
+    if "locmem" in backend:
+        return True
     if "smtp" in backend:
         return bool(settings.EMAIL_HOST and settings.EMAIL_HOST_USER and settings.EMAIL_HOST_PASSWORD)
     return True
