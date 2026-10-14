@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from .family_list import (
+    _child_name_key,
     child_balance_from_map,
     child_balance_maps,
     household_ledger_totals,
@@ -20,7 +21,9 @@ from .unit_visibility import children_for_unit, unit_label_for_child
 
 MONEY = Decimal("0.01")
 DEFAULT_LATE_FEE = Decimal("15.00")
-CREDIT_TYPES = ("payment", "credit", "discount", "refund")
+DEBIT_TYPES = ("charge", "membership")
+CREDIT_TYPES = ("payment", "credit", "discount")
+REFUND_TYPES = ("refund",)
 WEEK_IN_PARENS = re.compile(r"\(([^)]+)\)")
 WEEK_OF = re.compile(r"week of\s+([^.,;]+)", re.I)
 CC_WEEK = re.compile(r"CC WK\s+(\d+(?:\s*[–-]\s*\d+)?)", re.I)
@@ -149,7 +152,7 @@ def _unpaid_charges(entries):
     for entry in entries:
         kind = entry.entry_type
         amount = _money(entry.amount)
-        if kind == "charge" and amount > 0:
+        if kind in DEBIT_TYPES and amount > 0:
             charges.append(
                 {
                     "id": entry.pk,
@@ -159,10 +162,10 @@ def _unpaid_charges(entries):
                     "remaining": amount,
                 }
             )
-        elif kind in CREDIT_TYPES and amount < 0:
+        elif kind in CREDIT_TYPES:
             credit += abs(amount)
-        elif kind in CREDIT_TYPES and amount > 0:
-            credit += amount
+        elif kind in REFUND_TYPES:
+            credit -= abs(amount)
     for charge in charges:
         if credit <= 0:
             break
@@ -170,6 +173,56 @@ def _unpaid_charges(entries):
         charge["remaining"] -= applied
         credit -= applied
     return [row for row in charges if row["remaining"] > 0]
+
+
+def unpaid_charges_by_child(entries):
+    """Remaining charge/membership lines per child after payments, credits, and discounts.
+
+    Family-wide (blank child) payments are applied oldest-first across those lines.
+    Stripe fees are not credits. Agency 4Cs receipts live on the agency ledger.
+    """
+    from collections import defaultdict
+
+    from .family_list import _child_name_key
+
+    grouped = defaultdict(list)
+    unlabeled_credit = Decimal("0")
+    for entry in entries:
+        name = (entry.child_name or "").strip()
+        amount = _money(entry.amount)
+        if not name:
+            if entry.entry_type in CREDIT_TYPES:
+                unlabeled_credit += abs(amount)
+            elif entry.entry_type in REFUND_TYPES:
+                unlabeled_credit -= abs(amount)
+            continue
+        grouped[_child_name_key(name)].append(entry)
+    result = {key: _unpaid_charges(child_entries) for key, child_entries in grouped.items()}
+    if unlabeled_credit > 0:
+        _apply_unlabeled_credits(result, unlabeled_credit)
+    return result
+
+
+def unpaid_charges_for_child(entries, child_name):
+    from .family_list import _child_name_key
+
+    return unpaid_charges_by_child(entries).get(_child_name_key(child_name), [])
+
+
+def remaining_charge_descriptions(unpaid):
+    """Ledger wording for open charge lines, compact and de-duplicated."""
+    parts = []
+    seen = set()
+    for charge in unpaid:
+        desc = (charge.get("description") or "").strip()
+        if not desc:
+            continue
+        key = desc.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        parts.append(desc)
+    return " · ".join(parts)
 
 
 def _apply_unlabeled_credits(child_unpaid, unlabeled_credits):
@@ -244,6 +297,7 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
     rows = []
     programs = set()
     outstanding = Decimal("0")
+    unpaid_by_family = {}
     for child, child_program in visible:
         family = child.family
         family_map = maps.get(family.pk, {})
@@ -252,8 +306,9 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
             continue
         family_total = family_totals.get(family.pk, Decimal("0"))
         entries = family_entries.get(family.pk, [])
-        named = [row for row in entries if (row.child_name or "").strip().lower() == child.name.strip().lower()]
-        unpaid = _unpaid_charges(named)
+        if family.pk not in unpaid_by_family:
+            unpaid_by_family[family.pk] = unpaid_charges_by_child(entries)
+        unpaid = unpaid_by_family[family.pk].get(_child_name_key(child.name), [])
         weeks = []
         seen_weeks = set()
         for charge in unpaid:
@@ -281,44 +336,6 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
                 "child_balance_amount": _money(child_total),
             }
         )
-
-    # Apply unlabeled household payments so weeks match the family total.
-    by_family = {}
-    for row in rows:
-        by_family.setdefault(row["family_id"], []).append(row)
-    for family_id, family_rows in by_family.items():
-        entries = family_entries.get(family_id, [])
-        unlabeled_credit = sum(
-            (
-                abs(_money(row.amount))
-                for row in entries
-                if not (row.child_name or "").strip() and row.entry_type in CREDIT_TYPES and _money(row.amount) < 0
-            ),
-            Decimal("0"),
-        )
-        if unlabeled_credit <= 0:
-            continue
-        unpaid_map = {}
-        for row in family_rows:
-            child_name = row["child"]
-            named = [
-                entry
-                for entry in entries
-                if (entry.child_name or "").strip().lower() == child_name.strip().lower()
-            ]
-            unpaid_map[child_name] = _unpaid_charges(named)
-        _apply_unlabeled_credits(unpaid_map, unlabeled_credit)
-        for row in family_rows:
-            charges = unpaid_map.get(row["child"], [])
-            weeks = []
-            seen = set()
-            for charge in charges:
-                label = charge["week"] or format_school_week(charge["date"])
-                if label not in seen:
-                    seen.add(label)
-                    weeks.append(label)
-            row["weeks"] = weeks
-            row["weeks_display"] = ", ".join(weeks) if weeks else "Balance (no week on charges)"
 
     units = []
     if admin:

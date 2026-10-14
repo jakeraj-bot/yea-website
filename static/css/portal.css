@@ -6328,3 +6328,111 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   color: #1f5c45;
 }
 
+.portal-billing-ledger-wrap {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.portal-billing-ledger {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.portal-billing-ledger th,
+.portal-billing-ledger td {
+  padding: 0.28rem 0.32rem;
+  font-size: 0.78rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.portal-billing-ledger thead th {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.portal-billing-ledger .portal-ledger-col-date {
+  width: 6.4rem;
+}
+
+.portal-billing-ledger .portal-ledger-col-child {
+  width: 7rem;
+}
+
+.portal-billing-ledger .portal-ledger-col-type {
+  width: 5.6rem;
+}
+
+.portal-billing-ledger .portal-ledger-col-amount,
+.portal-billing-ledger .portal-ledger-col-fee,
+.portal-billing-ledger .portal-ledger-col-running {
+  width: 5.8rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.portal-billing-ledger .portal-ledger-desc-cell {
+  min-width: 0;
+}
+
+.portal-billing-ledger .portal-ledger-description {
+  display: block;
+}
+
+.portal-billing-ledger .portal-ledger-ref {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.portal-billing-ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+.portal-billing-ledger-actions .portal-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.portal-billing-ledger-actions .btn {
+  margin: 0;
+}
+
+.portal-billing-ledger .portal-check-label {
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
+.portal-billing-ledger .portal-ledger-edit-form .portal-input,
+.portal-billing-ledger .portal-ledger-edit-form .portal-ledger-date {
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 8rem;
+}
+
+.portal-ledger-row.is-editing .portal-billing-ledger-actions,
+.portal-ledger-row.is-editing .portal-ledger-ref {
+  display: none;
+}
+
+@media print {
+  .portal-billing-ledger-wrap {
+    overflow: visible;
+  }
+
+  .portal-billing-ledger-actions {
+    display: none;
+  }
+}
+
