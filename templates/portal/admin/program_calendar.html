@@ -3,7 +3,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Program calendar</h1>
-    <p class="lead">When YEA is open for parents, plus CC week numbers used on charges. This is separate from 4Cs contract dates.</p>
+    <p class="lead">When YEA is open for parents, plus CC week numbers and how many weeks each month bills. This is separate from 4Cs contract dates.</p>
   </div>
 </section>
 <section class="page-content">
@@ -12,12 +12,18 @@
       <p><strong>Two calendars.</strong> 4Cs still pays from each child’s contract start (for example 9/1/2026) on the agency form. Parents are billed from the program start date below. Example: program starts 9/8/2026 — that short week is <strong>CC WK 1</strong> (9/8/2026–9/11/2026). A bi-weekly parent copay covers 9/8/2026–9/18/2026, not 9/1–9/11. 4Cs still includes the week of 9/1.</p>
     </div>
 
+    <nav class="portal-program-tabs" aria-label="Program calendar sections">
+      <a class="btn btn-sm {% if calendar.tab != 'months' %}btn-primary{% else %}btn-secondary{% endif %}" href="{% url 'portal_admin_page' page='program-calendar' %}?month={{ calendar.month_value }}&tab=weeks" id="program-weeks-tab">Weeks</a>
+      <a class="btn btn-sm {% if calendar.tab == 'months' %}btn-primary{% else %}btn-secondary{% endif %}" href="{% url 'portal_admin_page' page='program-calendar' %}?month={{ calendar.month_value }}&tab=months" id="program-months-tab">Months</a>
+    </nav>
+
     <section class="card portal-collapse-skip" style="margin-top:1.25rem;">
       <h2>Program dates</h2>
-      <p class="form-note">One date per line for days off and half days. Use 9/8/2026 or 2026-09-08. Half days are stored here; they do not change the weekly copay amount. Saving rebuilds CC week numbers from the start date. Overridden week numbers or date spans are kept.</p>
+      <p class="form-note">One date per line for days off and half days. Use 9/8/2026 or 2026-09-08. Half days are stored here; they do not change the weekly copay amount. Saving rebuilds CC week numbers and the month map from the start date. The Thursday of each week owns that month. Overridden week numbers, date spans, and month week lists are kept.</p>
       <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_calendar_save' %}{% else %}#{% endif %}" class="portal-form-grid">
         {% if portal_live %}{% csrf_token %}{% endif %}
         <input type="hidden" name="month" value="{{ calendar.month_value }}">
+        <input type="hidden" name="tab" value="{{ calendar.tab }}">
         <div class="form-group">
           <label for="program-start">Program start date</label>
           <input id="program-start" type="date" name="program_start" class="portal-input" value="{{ calendar.program_start }}">
@@ -36,9 +42,69 @@
       </form>
     </section>
 
+    {% if calendar.tab == 'months' %}
+    <section class="card portal-collapse-skip portal-program-month-card" style="margin-top:1.25rem;" id="program-month-config">
+      <h2>Months</h2>
+      <p class="form-note">The Thursday of each CC week owns the month. Example: week 9/28/2026–10/2/2026 has Thursday <strong>10/1/2026</strong>, so it is October, not September. Not every month is 5 weeks — October 2026 is 5 (Thu 10/1, 10/8, 10/15, 10/22, 10/29) and November 2026 is 4 (Thu 11/5, 11/12, 11/19, 11/26). Saving the program start date fills this list. Override the week count or the CC WK numbers if you disagree. Monthly charges use this list: <strong>October monthly charge for Wk 4, 5, 6, 7, 8</strong>.</p>
+      {% for month in calendar.months %}
+      <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_month_save' %}{% else %}#{% endif %}" class="portal-program-month-edit" id="month-form-{{ month.month_key }}">
+        {% if portal_live %}{% csrf_token %}{% endif %}
+        <input type="hidden" name="month_key" value="{{ month.month_key }}">
+        <input type="hidden" name="view_month" value="{{ calendar.month_value }}">
+      </form>
+      {% endfor %}
+      <div class="portal-table-wrap">
+        <table class="portal-table" id="program-month-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Thursday weeks</th>
+              <th>Bill these CC WK numbers</th>
+              <th>Week count</th>
+              <th>Charge name</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for month in calendar.months %}
+            <tr id="program-month-{{ month.month_key }}" {% if month.overridden %}class="is-overridden"{% endif %}>
+              <td>
+                <strong>{{ month.label }}</strong>
+                {% if month.overridden %}<span class="form-note">Overridden</span>{% else %}<span class="form-note">Thursday default</span>{% endif %}
+              </td>
+              <td>
+                <span class="form-note">{{ month.default_labels }} · {{ month.default_week_count }} weeks</span>
+                {% if month.thursdays_display %}<span class="form-note">Thu {{ month.thursdays_display }}</span>{% endif %}
+              </td>
+              <td>
+                <label class="portal-sr-only" for="month-weeks-{{ month.month_key }}">Week numbers for {{ month.label }}</label>
+                <input id="month-weeks-{{ month.month_key }}" form="month-form-{{ month.month_key }}" name="week_numbers" type="text" class="portal-input portal-program-month-weeks" value="{{ month.week_numbers_display }}" placeholder="4, 5, 6, 7, 8">
+              </td>
+              <td>
+                <label class="portal-sr-only" for="month-count-{{ month.month_key }}">Week count for {{ month.label }}</label>
+                <input id="month-count-{{ month.month_key }}" form="month-form-{{ month.month_key }}" name="week_count" type="number" min="0" max="8" class="portal-input portal-program-month-count" value="{{ month.week_count }}">
+              </td>
+              <td>
+                <span id="month-charge-{{ month.month_key }}">{{ month.charge_name }}</span>
+              </td>
+              <td>
+                <button type="submit" form="month-form-{{ month.month_key }}" class="btn btn-secondary btn-sm" name="save" value="1"{% if not portal_live %} disabled{% endif %}>Save {{ month.label }}</button>
+                {% if month.overridden %}
+                <button type="submit" form="month-form-{{ month.month_key }}" class="btn btn-secondary btn-sm" name="reset" value="1"{% if not portal_live %} disabled{% endif %}>Use Thursday weeks</button>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="form-note">Save a program start date to build the month map.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% else %}
     <section class="card portal-collapse-skip portal-program-week-card" style="margin-top:1.25rem;">
       <h2>CC week numbers</h2>
-      <p class="form-note">Charges use these labels automatically: <strong>CC WK 1 - weekly charge</strong>, <strong>CC WK 1 - weekly 4Cs Copay</strong>, and <strong>October monthly charge for Wk 4, 5, 6, 7, 8</strong>. A week counts in the month of its Friday (9/28/2026–10/2/2026 is October).</p>
+      <p class="form-note">Charges use these labels automatically: <strong>CC WK 1 - weekly charge</strong>, <strong>CC WK 1 - weekly 4Cs Copay</strong>, and <strong>October monthly charge for Wk 4, 5, 6, 7, 8</strong>. A week counts in the month of its Thursday (9/28/2026–10/2/2026 is October because Thursday is 10/1/2026). Open the Months tab to see or override how many weeks each month bills.</p>
       <nav class="portal-program-week-nav" aria-label="Calendar month">
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='program-calendar' %}?month={{ calendar.prev_month }}">Previous</a>
         <h3 class="portal-program-week-month">{{ calendar.month_label }}</h3>
@@ -125,6 +191,7 @@
         </table>
       </div>
     </section>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

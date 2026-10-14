@@ -10,6 +10,7 @@ from portal.admin_config import save_scholarship_fund
 from portal.agency_weeks import (
     billable_week_count_for_month,
     friday_of_program_week,
+    thursday_of_program_week,
     get_program_calendar,
     group_program_weeks_by_month,
     monthly_charge_for_date,
@@ -144,6 +145,7 @@ class MonthlyWeeksBillingTests(TestCase):
 
     def test_week_of_sep_28_to_oct_2_is_october_week_1(self):
         span = (date(2026, 9, 28), date(2026, 10, 2))
+        self.assertEqual(thursday_of_program_week(*span), date(2026, 10, 1))
         self.assertEqual(friday_of_program_week(*span), date(2026, 10, 2))
         groups = group_program_weeks_by_month()
         september = groups.get((2026, 9), [])
@@ -167,7 +169,7 @@ class MonthlyWeeksBillingTests(TestCase):
         self.assertContains(page, "October 2026")
         self.assertContains(page, "5 × $70.00 = $350.00")
         self.assertContains(page, "4 × $70.00 = $280.00")
-        self.assertContains(page, "month of its Friday")
+        self.assertContains(page, "month of its Thursday")
         self.assertContains(page, "9/28/26–10/2/26")
         self.assertContains(page, "first week of October")
 

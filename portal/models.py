@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 
 from django.db import models
 
@@ -963,6 +963,35 @@ class PortalProgramWeek(models.Model):
 
     def __str__(self):
         return f"CC WK {self.week_number} · {self.week_start.isoformat()}–{self.week_end.isoformat()}"
+
+
+class PortalProgramMonth(models.Model):
+    """Which CC weeks a month bills, defaulted from that week's Thursday.
+
+    Saving a program start date fills these from the Thursday rule.
+    Staff can override the week list or count when a month should not
+    follow the automatic 4- or 5-week map.
+    """
+
+    calendar = models.ForeignKey(
+        PortalProgramCalendar,
+        on_delete=models.CASCADE,
+        related_name="months",
+    )
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()
+    week_numbers = models.JSONField(default=list, blank=True)
+    overridden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["year", "month", "pk"]
+        unique_together = [("calendar", "year", "month")]
+        verbose_name = "Program month"
+        verbose_name_plural = "Program months"
+
+    def __str__(self):
+        label = date(self.year, self.month, 1).strftime("%B %Y")
+        return f"{label} · Wk {', '.join(str(n) for n in (self.week_numbers or []))}"
 
 
 class PortalAccountBalancePaidMark(models.Model):

@@ -857,7 +857,7 @@ GUIDES = {
             },
             {
                 "title": "Enter a weekly rate on monthly plans",
-                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Friday. Example: 9/28/2026–10/2/2026 is the first week of October, not September. Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 4 weeks × $70 = $280; October, 5 × $70 = $350. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
+                "body": "On Monthly, type the weekly rate — not a flat monthly. A program week counts in the month of its Thursday. Example: 9/28/2026–10/2/2026 has Thursday 10/1/2026, so it is the first week of October, not September. Not every month is 5 weeks. Settings → Program calendar → Months shows which CC weeks each month bills, and you can override that list. Weeks with no program days (Settings → Program calendar days off) are not billed. The plan lists each month: for example September 2026, 4 weeks × $70 = $280; October, 5 × $70 = $350. The ledger posts that month’s amount on the first charge date you set, then on the same day each later month. Family-pays after scholarship is shown on each month.",
             },
             {
                 "title": "Add a scholarship on a regular plan",
@@ -940,8 +940,12 @@ GUIDES = {
                 "body": "The month grid shows CC WK 1, CC WK 2, and so on. Use Week numbers to change a week’s number or dates if the first week is short. Charges pick up those labels automatically: CC WK 1 - weekly charge, CC WK 1 - weekly 4Cs Copay, or October monthly charge for Wk 4, 5, 6, 7, 8.",
             },
             {
+                "title": "Configure months",
+                "body": "Open the Months tab to see which CC weeks fall in each month. The Thursday of the week owns the month. After you set the program start to 9/8/2026, October defaults to 5 weeks and November to 4. Change the week count or the CC WK numbers if you disagree, then save. Monthly preview and new charges use that list.",
+            },
+            {
                 "title": "Add days off and half days",
-                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. A week counts in the month of its Friday, so 9/28/2026–10/2/2026 is an October week. Half days are stored on this calendar and do not change the weekly copay amount.",
+                "body": "Full closures skip parent weeks that have no remaining school days. Monthly plans use the same rule: a week with no program days is not billed. A week counts in the month of its Thursday, so 9/28/2026–10/2/2026 is an October week because Thursday is 10/1/2026. Open the Months tab to see how many weeks each month bills (October 2026 is 5, November 2026 is 4) and override the list if needed. Half days are stored on this calendar and do not change the weekly copay amount.",
             },
             {
                 "title": "4Cs still follows the contract",
