@@ -677,38 +677,15 @@ def _ledger_paid_for_child(entries, child_name):
     return paid
 
 
-def _account_balance_description(child, unpaid, paid_total, balance):
+def _account_balance_description(unpaid, balance):
+    """Open ledger charge wording from the billing profile, or credit if overpaid."""
+    from .owed_weeks import remaining_charge_descriptions
+
     if balance < 0:
         return f"Credit ${abs(balance):.2f}"
     if balance == 0:
-        if paid_total > 0:
-            return "Paid"
-        return "Paid in full"
-    weeks = []
-    seen_weeks = set()
-    has_membership = False
-    other = []
-    for charge in unpaid:
-        desc = (charge.get("description") or "").strip()
-        lower = desc.lower()
-        if "membership" in lower:
-            has_membership = True
-        week = (charge.get("week") or "").strip()
-        if week and week not in seen_weeks:
-            seen_weeks.add(week)
-            weeks.append(week)
-        elif desc and "membership" not in lower and desc not in other:
-            other.append(desc)
-    parts = []
-    if weeks:
-        parts.append("Owe for " + ", ".join(weeks))
-    elif other:
-        parts.append("Owe for " + "; ".join(other[:3]))
-    else:
-        parts.append("Owe for account balance")
-    if has_membership:
-        parts[0] = f"{parts[0]} & Membership Fee"
-    return parts[0]
+        return ""
+    return remaining_charge_descriptions(unpaid)
 
 
 def _account_balance_notes(child):
@@ -755,8 +732,8 @@ def balance_report_rows(filters=None):
     else:
         status = "Active"
     from .enrollment_counts import visible_member_children_qs
-    from .family_list import child_balance_from_map, child_balance_maps
-    from .owed_weeks import _unpaid_charges, week_label_from_charge
+    from .family_list import _child_name_key, child_balance_from_map, child_balance_maps
+    from .owed_weeks import unpaid_charges_by_child
     from .unit_visibility import child_unit_slug_q, unit_label_for_child
 
     children = visible_member_children_qs(active_only=False).order_by("name")
@@ -771,9 +748,14 @@ def balance_report_rows(filters=None):
     maps = child_balance_maps([child.family_id for child in child_list])
     family_ids = list({child.family_id for child in child_list})
     entries_by_family = {}
+    unpaid_by_family = {}
     if family_ids:
-        for entry in PortalLedgerEntry.objects.filter(family_id__in=family_ids).order_by("date", "pk"):
+        for entry in PortalLedgerEntry.objects.filter(family_id__in=family_ids).order_by("date", "created_at", "pk"):
             entries_by_family.setdefault(entry.family_id, []).append(entry)
+        unpaid_by_family = {
+            family_id: unpaid_charges_by_child(entries)
+            for family_id, entries in entries_by_family.items()
+        }
     rows = []
     statuses = set()
     outstanding = Decimal("0")
@@ -804,15 +786,8 @@ def balance_report_rows(filters=None):
         if owes == "credit" and balance >= 0:
             continue
         entries = entries_by_family.get(child.family_id, [])
-        named = [
-            entry
-            for entry in entries
-            if (entry.child_name or "").strip().lower() == (child.name or "").strip().lower()
-        ]
-        unpaid = _unpaid_charges(named)
-        for charge in unpaid:
-            charge["week"] = charge.get("week") or week_label_from_charge(charge.get("description"), charge.get("date"))
-        paid_total = _ledger_paid_for_child(named, child.name)
+        unpaid = unpaid_by_family.get(child.family_id, {}).get(_child_name_key(child.name), [])
+        paid_total = _ledger_paid_for_child(entries, child.name)
         unit_name, _slug = unit_label_for_child(child)
         if unit and not selected_unit_name:
             selected_unit_name = unit_name or child.family.unit.name
@@ -829,7 +804,7 @@ def balance_report_rows(filters=None):
                 "billing": (child.family.billing_type or "Private pay").strip() or "Private pay",
                 "balance": _money(balance),
                 "amount_owe": _money(balance),
-                "description": _account_balance_description(child, unpaid, paid_total, balance),
+                "description": _account_balance_description(unpaid, balance),
                 "paid_amount": _money(paid_total) if paid_total > 0 else "",
                 "paid_checked": bool(paid_marks.get(child.pk)),
                 "paid": "Yes" if paid_marks.get(child.pk) else "",
@@ -1086,7 +1061,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Account Balance",
-        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, a Paid checkbox, and notes. Check Paid when staff collected that line — it does not delete ledger payments. Choose Unit (School 18 / School 26 / All), Members (Active / Inactive / All), and Balance (With balance / Without balance / Credit / All). Active including $0 is the default roster; With balance is outstanding only. Unapproved applications are left off. Stripe card fees do not count as still owed.",
+        "lead": "Printed Account Balance roster: child's name, amount owe, unpaid ledger descriptions from that member's billing profile, a Paid checkbox, and notes. Amount Owe is the live billing running balance (charges − payments − credits; Stripe fees do not inflate). Description lists the open weekly/monthly/4Cs copay (and membership) lines still on that ledger. Check Paid when staff collected that line — it does not delete ledger payments. Choose Unit (School 18 / School 26 / All), Members (Active / Inactive / All), and Balance (With balance / Without balance / Credit / All). Active including $0 is the default roster; With balance is outstanding only. Unapproved applications are left off.",
         "columns": [
             ("row_num", "#"),
             ("child", "Child's Name"),

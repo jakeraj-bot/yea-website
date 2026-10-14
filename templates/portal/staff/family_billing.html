@@ -236,17 +236,25 @@
     {% endif %}
 
     <h2>Ledger</h2>
-    <div class="portal-table-wrap">
-      <table class="portal-table">
+    <div class="portal-table-wrap portal-billing-ledger-wrap">
+      <table class="portal-table portal-billing-ledger">
         <thead>
-          <tr><th>Date</th><th>Child</th><th>Type</th><th>Description</th><th>Check # / Money order #</th><th>Amount</th><th>Processing fee</th><th></th></tr>
+          <tr>
+            <th class="portal-ledger-col-date">Date</th>
+            <th class="portal-ledger-col-child">Child</th>
+            <th class="portal-ledger-col-type">Type</th>
+            <th class="portal-ledger-col-desc">Description</th>
+            <th class="portal-ledger-col-amount">Amount</th>
+            <th class="portal-ledger-col-fee">Fee</th>
+            <th class="portal-ledger-col-running">Running balance</th>
+          </tr>
         </thead>
         <tbody>
           {% for row in billing.ledger %}
           <tr class="portal-ledger-row">
-            <td>{{ row.date }}</td>
-            <td>{{ row.child }}</td>
-            <td>
+            <td class="portal-ledger-col-date">{{ row.date }}</td>
+            <td class="portal-ledger-col-child">{{ row.child }}</td>
+            <td class="portal-ledger-col-type">
               {% if row.type == 'discount' %}
               <span class="portal-ledger-type portal-ledger-type-discount">Discount</span>
               {% elif row.type == 'credit' %}
@@ -257,8 +265,32 @@
               {{ row.type|title }}
               {% endif %}
             </td>
-            <td>
+            <td class="portal-ledger-desc-cell">
               <span class="portal-ledger-description">{{ row.description }}</span>
+              {% if row.reference_display %}<span class="portal-ledger-ref">{{ row.reference_display }}</span>{% endif %}
+              <div class="portal-billing-ledger-actions">
+              {% if row.editable and billing_live %}
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship description{% else %}Edit amount or description{% endif %}">Edit</button>
+              {% endif %}
+              {% if row.deletable and billing_live %}
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% else %}Remove this ledger entry?{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="portal_area" value="{{ portal_area }}">
+                {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="entry_id" value="{{ row.id }}">
+                {% if row.type == 'charge' %}
+                <label class="portal-check-label">
+                  <input type="checkbox" name="notify_balance" checked>
+                  Email updated balance
+                </label>
+                {% endif %}
+                <button type="submit" class="btn btn-secondary btn-sm" title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
+              </form>
+              {% elif row.deletable %}
+              <button type="button" class="btn btn-secondary btn-sm" disabled title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
+              {% endif %}
+              </div>
               {% if row.editable and billing_live %}
               <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-ledger-edit-form" hidden>
                 {% csrf_token %}
@@ -298,37 +330,11 @@
               </form>
               {% endif %}
             </td>
-            <td>{% if row.reference_display %}<span class="portal-payment-ref">{{ row.reference_display }}</span>{% else %}—{% endif %}</td>
-            <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %} portal-cell-amount">
+            <td class="{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}portal-amount-credit{% else %}portal-amount-debit{% endif %} portal-cell-amount portal-ledger-col-amount">
               <span class="portal-money">{% if row.type == 'payment' or row.type == 'discount' or row.type == 'credit' %}{% if row.amount|slice:":1" != "-" %}-{% endif %}{% endif %}${{ row.amount|cut:"-" }}</span>
             </td>
-            <td class="portal-cell-amount">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
-            <td class="portal-row-actions">
-              {% if row.editable and billing_live %}
-              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship description{% else %}Edit amount or description{% endif %}">Edit</button>
-              {% endif %}
-              {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% else %}Remove this ledger entry?{% endif %}">
-                {% csrf_token %}
-                <input type="hidden" name="portal_area" value="{{ portal_area }}">
-                {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="entry_id" value="{{ row.id }}">
-                {% if row.type == 'charge' %}
-                <label class="portal-check-label">
-                  <input type="checkbox" name="notify_balance" checked>
-                  Email updated balance
-                </label>
-                {% endif %}
-                <button type="submit" class="btn btn-secondary btn-sm" title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
-              </form>
-              {% elif row.deletable %}
-              <button type="button" class="btn btn-secondary btn-sm" disabled title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
-              {% endif %}
-              {% if not row.editable and not row.deletable %}
-              <span class="form-note">—</span>
-              {% endif %}
-            </td>
+            <td class="portal-cell-amount portal-ledger-col-fee">{% if row.fee %}${{ row.fee }}{% else %}—{% endif %}</td>
+            <td class="portal-cell-amount portal-ledger-col-running{% if row.running_has_credit %} portal-amount-credit{% endif %}">{% if row.running_balance %}{% if row.running_has_credit %}-${{ row.running_balance|cut:"-" }}{% else %}${{ row.running_balance }}{% endif %}{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

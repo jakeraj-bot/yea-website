@@ -349,6 +349,26 @@ def _parse_amount(value, allow_zero=False):
     return amount.quantize(Decimal("0.01"))
 
 
+def attach_ledger_running_balances(ledger):
+    """Running tuition total after each displayed row (newest first).
+
+    Same math as the billing banner: charges minus payments/credits/discounts.
+    Stripe processing fees stay in the Fee column and do not move the total.
+    """
+    if not ledger:
+        return ledger
+    running = Decimal("0")
+    for row in reversed(ledger):
+        try:
+            delta = Decimal(str(row.get("signed_amount") or "0"))
+        except (InvalidOperation, TypeError):
+            delta = Decimal("0")
+        running += delta
+        row["running_balance"] = f"{running:.2f}"
+        row["running_has_credit"] = running < 0
+    return ledger
+
+
 def prepare_billing_for_staff(family, permissions, unit=None):
     billing = get_billing_live(family)
     entries = list(PortalLedgerEntry.objects.filter(family=family).order_by("-date", "-created_at"))
@@ -384,6 +404,7 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                 "amount": amount,
                 "fee": f"{fee:.2f}" if entry.entry_type == "payment" and fee else "",
                 "applied": f"{applied:.2f}",
+                "signed_amount": f"{(entry.amount or Decimal('0')):.2f}",
                 "manual": entry.is_manual,
                 "editable": entry.entry_type in EDITABLE_LEDGER_TYPES,
                 "offline_payment": offline_payment,
@@ -409,6 +430,7 @@ def prepare_billing_for_staff(family, permissions, unit=None):
         from .unit_visibility import filter_billing_dict_for_unit
 
         billing = filter_billing_dict_for_unit(billing, family, unit)
+    attach_ledger_running_balances(billing.get("ledger") or [])
     return prepare_billing_preview(billing, permissions)
 
 
