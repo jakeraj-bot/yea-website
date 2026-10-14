@@ -98,8 +98,29 @@ def child_has_saved_plan(child):
     )
 
 
-def ledger_charge_description(child, cadence, kind="tuition", period_label=None, description=""):
+def ledger_charge_description(
+    child,
+    cadence,
+    kind="tuition",
+    period_label=None,
+    description="",
+    week_numbers=None,
+    month_date=None,
+):
+    from .agency_weeks import automatic_charge_name
+
     note = (description or "").strip()
+    auto = automatic_charge_name(cadence, kind=kind, week_numbers=week_numbers, month_date=month_date)
+    if auto:
+        if period_label and auto in period_label:
+            base = period_label
+        elif period_label and period_label not in auto:
+            base = f"{auto} ({period_label})" if "(" not in auto else auto
+        else:
+            base = auto
+        if note and note.lower() not in base.lower():
+            return f"{base} — {note}"
+        return base
     if kind == "4cs_copay":
         base = f"{cadence or 'Copay'} — {child.name}"
         if period_label:
@@ -134,23 +155,34 @@ def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=
         MONEY,
     )
 
+    from .agency_weeks import cc_week_numbers_for_spans, monthly_charge_name, numbered_weeks_for_month
+
     weekly = weekly_rate if isinstance(weekly_rate, Decimal) else parse_money(weekly_rate or 0)
     start, end = program_year_range(calendar, on_date=on_date)
     weeks = billable_program_weeks(start, end, calendar)
     rows = []
     for (year, month), month_weeks in sorted(group_program_weeks_by_month(weeks).items()):
-        count = len(month_weeks)
+        numbered = numbered_weeks_for_month(year, month, calendar=calendar)
+        count = len(numbered) if numbered else len(month_weeks)
+        numbers = [week.week_number for week in numbered if getattr(week, "week_number", None)]
+        if not numbers:
+            numbers = cc_week_numbers_for_spans(month_weeks, calendar=calendar)
         gross = (weekly * Decimal(count)).quantize(MONEY)
         family_pays, discount = parent_copay_after_scholarship(scholarship, gross)
         week_labels = [format_week_label(week_start, week_end) for week_start, week_end in month_weeks]
+        month_date = date(year, month, 1)
+        charge_name = monthly_charge_name(month_date, numbers)
+        cc_display = ", ".join(f"CC WK {n}" for n in numbers)
         rows.append(
             {
                 "year": year,
                 "month": month,
-                "label": date(year, month, 1).strftime("%B %Y"),
+                "label": month_date.strftime("%B %Y"),
                 "week_count": count,
+                "week_numbers": numbers,
                 "week_labels": week_labels,
-                "week_labels_display": ", ".join(week_labels),
+                "week_labels_display": " · ".join(part for part in (cc_display, ", ".join(week_labels)) if part),
+                "charge_name": charge_name,
                 "amount": f"{gross:.2f}",
                 "amount_value": gross,
                 "family_pays": f"{family_pays:.2f}",
@@ -1679,6 +1711,7 @@ def _post_4cs_copay_period(locked, today, plan=None):
         return False
     amount = period["amount"]
     if amount > 0:
+        numbers = period.get("week_numbers") or []
         post_charge(
             locked.family,
             locked.name,
@@ -1691,6 +1724,8 @@ def _post_4cs_copay_period(locked, today, plan=None):
                 "4cs_copay",
                 period["label"],
                 plan_description_for(locked, plan),
+                week_numbers=numbers,
+                month_date=charge_date if cadence_key(target.billing_plan) == "monthly" else None,
             ),
             is_manual=False,
         )
@@ -1707,7 +1742,12 @@ def _post_4cs_copay_period(locked, today, plan=None):
 
 def _post_regular_plan_charge(child, target, today):
     """Post one regular (non-4Cs) period for a child or extra plan. Returns True if posted."""
-    from .agency_weeks import cadence_key, monthly_charge_for_date, weekly_rate_for_plan
+    from .agency_weeks import (
+        cadence_key,
+        monthly_charge_details,
+        program_week_for_date,
+        weekly_rate_for_plan,
+    )
 
     charge_date = target.next_charge_date
     if not charge_date:
@@ -1725,6 +1765,7 @@ def _post_regular_plan_charge(child, target, today):
     scholarship = active_scholarship_for_plan(child, plan_row, charge_date)
     monthly = cadence_key(target.billing_plan) == "monthly"
     period_label = None
+    week_numbers = None
     if monthly:
         weekly = weekly_rate_for_plan(target)
         if not weekly:
@@ -1735,8 +1776,11 @@ def _post_regular_plan_charge(child, target, today):
                 month_day=target.charge_month_day,
             )
             return False
-        amount, week_count = monthly_charge_for_date(weekly, charge_date)
-        period_label = f"{charge_date.strftime('%B %Y')} · {week_count} weeks"
+        details = monthly_charge_details(weekly, charge_date)
+        amount = details["amount"]
+        week_count = details["week_count"]
+        week_numbers = details["week_numbers"]
+        period_label = None
         if week_count == 0:
             target.last_auto_charge_date = charge_date
             target.next_charge_date = next_plan_charge_date(
@@ -1753,7 +1797,13 @@ def _post_regular_plan_charge(child, target, today):
             amount,
             charge_date,
             ledger_charge_description(
-                child, target.billing_plan, "tuition", period_label=period_label, description=note
+                child,
+                target.billing_plan,
+                "tuition",
+                period_label=period_label,
+                description=note,
+                week_numbers=week_numbers,
+                month_date=charge_date,
             ),
             is_manual=False,
         )
@@ -1772,13 +1822,22 @@ def _post_regular_plan_charge(child, target, today):
                 month_day=target.charge_month_day,
             )
             return False
+        week = program_week_for_date(charge_date)
+        week_numbers = [week.week_number] if week else None
         post_charge(
             child.family,
             child.name,
             "tuition",
             amount,
             charge_date,
-            ledger_charge_description(child, target.billing_plan, "tuition", description=note),
+            ledger_charge_description(
+                child,
+                target.billing_plan,
+                "tuition",
+                description=note,
+                week_numbers=week_numbers,
+                month_date=charge_date,
+            ),
             is_manual=False,
         )
         _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)

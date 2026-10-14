@@ -41,6 +41,22 @@
           {% else %}
           <a class="portal-no-print" href="{% url 'portal_admin_family_billing' family_slug=row.family_slug %}{% if row.family_id %}?id={{ row.family_id }}{% endif %}">{{ row.family }}</a><span class="portal-print-only">{{ row.family }}</span>
           {% endif %}
+          {% elif cell.key == "paid" and report.print_header %}
+          <span class="portal-paid-print{% if row.paid_checked %} is-checked{% endif %}" aria-hidden="true"></span>
+          {% if row.child_id and portal_live %}
+          <form method="post" action="{% if portal_area == 'staff' %}{% url 'portal_staff_account_balance_paid' %}{% else %}{% url 'portal_account_balance_paid' %}{% endif %}" class="portal-paid-form portal-no-print">
+            {% csrf_token %}
+            <input type="hidden" name="child_id" value="{{ row.child_id }}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="is_paid" value="{% if row.paid_checked %}0{% else %}1{% endif %}">
+            <button type="submit" class="portal-paid-toggle" aria-pressed="{% if row.paid_checked %}true{% else %}false{% endif %}">
+              <span class="portal-paid-box{% if row.paid_checked %} is-checked{% endif %}"></span>
+              <span class="portal-sr-only">{% if row.paid_checked %}Paid, uncheck{% else %}Mark paid{% endif %}</span>
+            </button>
+          </form>
+          {% else %}
+          <span class="portal-paid-box portal-no-print{% if row.paid_checked %} is-checked{% endif %}"></span>
+          {% endif %}
           {% else %}
           {{ cell.value }}
           {% endif %}

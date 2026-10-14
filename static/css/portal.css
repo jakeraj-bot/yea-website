@@ -6187,3 +6187,121 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   }
 }
 
+.portal-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.portal-program-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.portal-program-week-month {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.portal-program-week-grid th,
+.portal-program-week-grid td {
+  vertical-align: top;
+  min-width: 3.5rem;
+}
+
+.portal-program-week-cc {
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.portal-program-week-grid td.is-outside {
+  color: #888;
+}
+
+.portal-program-week-grid td.is-off {
+  background: #f4efe6;
+}
+
+.portal-program-week-grid td.is-half {
+  background: #eef6f2;
+}
+
+.portal-program-week-num {
+  display: block;
+  font-weight: 600;
+}
+
+.portal-program-week-tag {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1f5c45;
+}
+
+.portal-program-week-edit {
+  display: none;
+}
+
+.portal-paid-form {
+  margin: 0;
+}
+
+.portal-paid-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.portal-paid-box,
+.portal-paid-print {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1.5px solid #222;
+  border-radius: 2px;
+  vertical-align: middle;
+  position: relative;
+}
+
+.portal-paid-box.is-checked::after,
+.portal-paid-print.is-checked::after {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.15rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.portal-paid-print {
+  display: none;
+}
+
+@media print {
+  .portal-paid-form,
+  .portal-paid-toggle,
+  .portal-paid-box {
+    display: none !important;
+  }
+
+  .portal-paid-print {
+    display: inline-block;
+  }
+}
+

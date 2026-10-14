@@ -300,7 +300,9 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         jordan = next(row for row in report["rows"] if row["child"] == "Jordan Jacobs")
         self.assertEqual(jordan["amount_owe"], "30.00")
         self.assertIn("Owe", jordan["description"])
-        self.assertEqual(jordan["paid"], "5.00")
+        self.assertEqual(jordan["paid"], "")
+        self.assertFalse(jordan["paid_checked"])
+        self.assertEqual(jordan["paid_amount"], "5.00")
         self.assertIn("Weekly", jordan["notes"])
         self.assertNotIn("status", jordan)
 

@@ -718,6 +718,32 @@ def _account_balance_notes(child):
     return " · ".join(bits)
 
 
+def _account_balance_paid_map(child_ids):
+    from .models import PortalAccountBalancePaidMark
+
+    if not child_ids:
+        return {}
+    return {
+        mark.child_id: mark.is_paid
+        for mark in PortalAccountBalancePaidMark.objects.filter(child_id__in=child_ids)
+    }
+
+
+def set_account_balance_paid(child, is_paid, updated_by=""):
+    """Staff roster check-off. Does not add or delete ledger payments."""
+    from .models import PortalAccountBalancePaidMark
+
+    mark, _created = PortalAccountBalancePaidMark.objects.get_or_create(
+        child=child,
+        defaults={"family": child.family, "is_paid": bool(is_paid), "updated_by": updated_by or ""},
+    )
+    mark.family = child.family
+    mark.is_paid = bool(is_paid)
+    mark.updated_by = updated_by or mark.updated_by
+    mark.save()
+    return mark
+
+
 def balance_report_rows(filters=None):
     """Account Balance report: one row per approved child, matching the printed PDF."""
     filters = filters or {}
@@ -741,6 +767,7 @@ def balance_report_rows(filters=None):
             Q(name__icontains=query) | Q(family__name__icontains=query) | Q(family__primary_contact__icontains=query)
         )
     child_list = [child for child in children if not is_placeholder_unit(child.family.unit)]
+    paid_marks = _account_balance_paid_map([child.pk for child in child_list])
     maps = child_balance_maps([child.family_id for child in child_list])
     family_ids = list({child.family_id for child in child_list})
     entries_by_family = {}
@@ -803,7 +830,10 @@ def balance_report_rows(filters=None):
                 "balance": _money(balance),
                 "amount_owe": _money(balance),
                 "description": _account_balance_description(child, unpaid, paid_total, balance),
-                "paid": _money(paid_total) if paid_total > 0 else "",
+                "paid_amount": _money(paid_total) if paid_total > 0 else "",
+                "paid_checked": bool(paid_marks.get(child.pk)),
+                "paid": "Yes" if paid_marks.get(child.pk) else "",
+                "child_id": child.pk,
                 "notes": _account_balance_notes(child),
             }
         )
@@ -1056,7 +1086,7 @@ ADMIN_DATA_REPORTS = {
     },
     "balances": {
         "title": "Account Balance",
-        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, paid, and notes. Choose Unit (School 18 / School 26 / All), Members (Active / Inactive / All), and Balance (With balance / Without balance / Credit / All). Active including $0 is the default roster; With balance is outstanding only. Unapproved applications are left off. Stripe card fees do not count as still owed.",
+        "lead": "Printed Account Balance roster: child's name, amount owe, what they owe for, a Paid checkbox, and notes. Check Paid when staff collected that line — it does not delete ledger payments. Choose Unit (School 18 / School 26 / All), Members (Active / Inactive / All), and Balance (With balance / Without balance / Credit / All). Active including $0 is the default roster; With balance is outstanding only. Unapproved applications are left off. Stripe card fees do not count as still owed.",
         "columns": [
             ("row_num", "#"),
             ("child", "Child's Name"),

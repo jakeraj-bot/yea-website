@@ -918,7 +918,8 @@ class PortalProgramCalendar(models.Model):
     """Organization program calendar. One row is used.
 
     4Cs contracts still start on each child's authorization dates. Parent
-    copay weeks follow program_start and skip full days off.
+    copay weeks follow program_start and skip full days off. CC week
+    numbers (CC WK 1, CC WK 2, …) are stored on PortalProgramWeek rows.
     """
 
     program_start = models.DateField(null=True, blank=True)
@@ -934,6 +935,64 @@ class PortalProgramCalendar(models.Model):
         if self.program_start:
             return f"Program calendar · starts {self.program_start.isoformat()}"
         return "Program calendar"
+
+
+class PortalProgramWeek(models.Model):
+    """One numbered program week (CC WK 1, CC WK 2, …) on the calendar.
+
+    Generated from program_start. Staff can override the week number or
+    the date span (for a short first week) without changing later weeks.
+    """
+
+    calendar = models.ForeignKey(
+        PortalProgramCalendar,
+        on_delete=models.CASCADE,
+        related_name="weeks",
+    )
+    week_start = models.DateField()
+    week_end = models.DateField()
+    week_number = models.PositiveSmallIntegerField()
+    number_overridden = models.BooleanField(default=False)
+    span_overridden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["week_start", "pk"]
+        unique_together = [("calendar", "week_start")]
+        verbose_name = "Program week"
+        verbose_name_plural = "Program weeks"
+
+    def __str__(self):
+        return f"CC WK {self.week_number} · {self.week_start.isoformat()}–{self.week_end.isoformat()}"
+
+
+class PortalAccountBalancePaidMark(models.Model):
+    """Staff check-off on the Account Balance roster.
+
+    This is a working-roster mark that they collected / the line is
+    handled. It does not add or delete ledger payments.
+    """
+
+    child = models.OneToOneField(
+        PortalChild,
+        on_delete=models.CASCADE,
+        related_name="account_balance_paid_mark",
+    )
+    family = models.ForeignKey(
+        PortalFamily,
+        on_delete=models.CASCADE,
+        related_name="account_balance_paid_marks",
+    )
+    is_paid = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        verbose_name = "Account balance paid mark"
+        verbose_name_plural = "Account balance paid marks"
+
+    def __str__(self):
+        state = "paid" if self.is_paid else "unpaid"
+        return f"{self.child.name} · {state}"
 
 
 class PortalDropOffSettings(models.Model):

@@ -23,6 +23,8 @@ DEFAULT_LATE_FEE = Decimal("15.00")
 CREDIT_TYPES = ("payment", "credit", "discount", "refund")
 WEEK_IN_PARENS = re.compile(r"\(([^)]+)\)")
 WEEK_OF = re.compile(r"week of\s+([^.,;]+)", re.I)
+CC_WEEK = re.compile(r"CC WK\s+(\d+(?:\s*[–-]\s*\d+)?)", re.I)
+MONTHLY_WEEKS = re.compile(r"monthly charge for (Wk\s+[\d,\s]+)", re.I)
 DATE_RANGE = re.compile(
     r"(\d{1,2}/\d{1,2}(?:/\d{2,4})?)\s*[–\-to]+\s*(\d{1,2}/\d{1,2}(?:/\d{2,4})?)",
     re.I,
@@ -78,6 +80,12 @@ def week_label_from_charge(description, charge_date=None):
     """Pull a week from a charge description, else the school week of the charge date."""
     text = (description or "").strip()
     if text:
+        cc_week = CC_WEEK.search(text)
+        if cc_week:
+            return f"CC WK {cc_week.group(1).replace(' ', '')}"
+        monthly_weeks = MONTHLY_WEEKS.search(text)
+        if monthly_weeks:
+            return monthly_weeks.group(1).strip()
         for match in WEEK_IN_PARENS.finditer(text):
             inner = match.group(1).strip()
             if DATE_RANGE.search(inner) or WEEK_OF.search(inner) or "week" in inner.lower():

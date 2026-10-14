@@ -4885,7 +4885,7 @@ def admin_page(request, page):
     if page == "program-calendar":
         from .agency_weeks import program_calendar_form
 
-        context["calendar"] = program_calendar_form()
+        context["calendar"] = program_calendar_form(month=request.GET.get("month"))
     if page == "member-billing":
         unit_slug = request.GET.get("unit", "")
         charge_mode = request.GET.get("mode", "weekly_tuition")
