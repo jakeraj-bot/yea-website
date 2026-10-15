@@ -4,7 +4,7 @@
     <div class="portal-print-running-header">
       <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo portal-print-running-logo">
       <div>
-        <strong class="portal-print-running-title">{{ sheet_title|default:"Balance Report" }}</strong>
+        <strong class="portal-print-running-title">{{ sheet_title|default:"Account Balance" }}</strong>
         <p class="portal-medical-report-meta">
           <strong>{{ selected_unit_name|default:"All units" }}</strong>
           {% if selected_status %} · {{ selected_status }}{% endif %}

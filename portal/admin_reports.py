@@ -1283,7 +1283,7 @@ def build_admin_report(slug, filters=None):
         extra["selected_unit_name"] = data.get("selected_unit_name") or ""
         extra["selected_status"] = data.get("selected_status") or "All"
         extra["report_date"] = data.get("report_date")
-        extra["print_title"] = "Balance Report"
+        extra["print_title"] = "Account Balance"
         extra["print_header"] = True
         extra["status_choices"] = [
             ("Active", "Active"),

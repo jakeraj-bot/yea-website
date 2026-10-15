@@ -3260,6 +3260,19 @@ nav.portal-nav-admin-groups {
     }
   }
 
+  @page account-balance-print {
+    size: landscape;
+    margin: 0.45in 0.4in 0.7in 0.4in;
+    @bottom-left {
+      content: "Printed";
+      font-size: 9pt;
+    }
+    @bottom-right {
+      content: "Page " counter(page);
+      font-size: 9pt;
+    }
+  }
+
   .portal-no-print,
   .portal-preview-banner,
   .portal-header,
@@ -6180,7 +6193,7 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 
 @media print {
   .portal-account-balance-sheet {
-    page: report-print;
+    page: account-balance-print;
   }
 
   .portal-account-balance-print-table {

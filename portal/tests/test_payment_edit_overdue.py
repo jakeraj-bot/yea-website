@@ -312,11 +312,13 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Account Balance")
         self.assertContains(page, "Amount Owe")
-        self.assertContains(page, "Balance Report")
+        self.assertNotContains(page, "Balance Report")
         self.assertContains(page, "yea-logo.png")
         self.assertContains(page, "Jordan Jacobs")
         self.assertContains(page, "Balances by unit")
         self.assertContains(page, "portal-print-title-row")
+        self.assertEqual(page.content.decode().count("portal-print-title-row"), 1)
+        self.assertEqual(page.content.decode().count("portal-medical-report-header"), 1)
         csv_response = self.client.get(
             reverse("portal_admin_data_report", kwargs={"report_slug": "balances"}),
             {"format": "csv"},
