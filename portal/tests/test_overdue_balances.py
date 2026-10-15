@@ -15,11 +15,14 @@ from portal.family_list import (
     live_family_child_rows,
     overdue_active_children_summary,
     prefetch_family_table_queryset,
+    unit_balance_summary,
 )
+from portal.member_admin import set_child_active
 from portal.models import PortalChild, PortalFamily, PortalPayment, PortalUnit
 from portal.owed_weeks import families_with_balance, owed_weeks_report
 from portal.parent_services import record_successful_payment
 from portal.staff_services import build_dashboard_live
+from portal.tests.test_care_program_filters import _make_app
 from portal.tests.test_family_units import _make_application
 
 
@@ -286,3 +289,186 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
         self.assertEqual(total, Decimal("40.00"))
         self.assertEqual(owing[self.family.pk], Decimal("40.00"))
         self.assertNotIn(pending_family.pk, owing)
+
+
+class InactiveChildFortyDollarOverdueExclusionTests(TestCase):
+    """Overview overdue must drop the inactive child's leftover, keep the sibling."""
+
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="overdue-inactive",
+            name="Overdueinactive",
+            billing_type="Private pay",
+            status="Active",
+            balance=Decimal("0.00"),
+        )
+        self.active = PortalChild.objects.create(
+            family=self.family,
+            name="Ada Active",
+            school="School 18",
+            is_active=True,
+        )
+        self.inactive = PortalChild.objects.create(
+            family=self.family,
+            name="Ivy Inactive",
+            school="School 18",
+            is_active=True,
+        )
+        self._named_app(self.active, status="approved")
+        self._named_app(self.inactive, status="approved")
+
+    def _named_app(self, child, *, status="approved", program="after_school"):
+        app = _make_app(self.family, child, program=program, status=status)
+        return app
+
+    def _charge(self, child, amount, description):
+        return post_charge(
+            self.family,
+            child.name,
+            "tuition",
+            amount,
+            date(2026, 9, 8),
+            f"{description} — {child.name} (9/8/26–9/12/26)",
+            notify=False,
+        )
+
+    def _snapshot(self):
+        dashboard = get_admin_dashboard_live()
+        count, total, owing = overdue_active_children_summary([self.family.pk])
+        units = {row["slug"]: row for row in unit_balance_summary()}
+        return dashboard, count, total, owing, units
+
+    def test_inactive_child_forty_dollar_balance_excluded_from_overdue_active_sibling_twenty_five_still_counts(self):
+        self._charge(self.active, "25.00", "Weekly tuition")
+        self._charge(self.inactive, "40.00", "Weekly tuition")
+        self.family.balance = Decimal("999.00")
+        self.family.save(update_fields=["balance"])
+        PortalPayment.objects.create(
+            family=self.family,
+            amount=Decimal("40.00"),
+            fee_amount=Decimal("1.46"),
+            total_charged=Decimal("41.46"),
+            payment_kind="balance",
+            dropin_child=self.inactive.name,
+            status=PortalPayment.STATUS_PENDING,
+            stripe_session_id="cs_inactive_unfinished",
+        )
+
+        before_dash, before_count, before_total, before_owing, before_units = self._snapshot()
+        self.assertEqual(child_balance(self.active), Decimal("25.00"))
+        self.assertEqual(child_balance(self.inactive), Decimal("40.00"))
+        self.assertEqual(family_balance(self.family), Decimal("65.00"))
+        self.assertEqual(before_dash["overdue_families"], 1)
+        self.assertEqual(before_dash["overdue_amount"], "65.00")
+        self.assertEqual(before_count, 1)
+        self.assertEqual(before_total, Decimal("65.00"))
+        self.assertEqual(before_owing[self.family.pk], Decimal("65.00"))
+        self.assertEqual(before_units["school-18"]["overdue"], "65.00")
+        self.assertEqual(before_units["school-18"]["family_count"], 1)
+        self.assertNotEqual(before_dash["overdue_amount"], f"{self.family.balance:.2f}")
+
+        set_child_active(self.inactive, False)
+        self.inactive.refresh_from_db()
+        self.assertFalse(self.inactive.is_active)
+        self.family.balance = Decimal("999.00")
+        self.family.save(update_fields=["balance"])
+
+        after_dash, after_count, after_total, after_owing, after_units = self._snapshot()
+        self.assertEqual(child_balance(self.inactive), Decimal("40.00"))
+        self.assertEqual(family_balance(self.family), Decimal("65.00"))
+        self.assertEqual(after_dash["overdue_families"], 1)
+        self.assertEqual(after_dash["overdue_amount"], "25.00")
+        self.assertEqual(after_count, 1)
+        self.assertEqual(after_total, Decimal("25.00"))
+        self.assertEqual(after_owing[self.family.pk], Decimal("25.00"))
+        self.assertEqual(after_units["school-18"]["overdue"], "25.00")
+        self.assertEqual(after_units["school-18"]["family_count"], 1)
+        self.assertEqual(after_units["school-18"]["overdue"], after_dash["overdue_amount"])
+        self.assertNotEqual(after_dash["overdue_amount"], "65.00")
+        self.assertNotEqual(after_dash["overdue_amount"], "40.00")
+        self.assertNotEqual(after_dash["overdue_amount"], f"{self.family.balance:.2f}")
+        self.assertNotEqual(after_dash["overdue_amount"], f"{family_balance(self.family):.2f}")
+
+        default_balance = build_admin_report("balances", {})
+        default_names = [row["child"] for row in default_balance["rows"]]
+        self.assertIn("Ada Active", default_names)
+        self.assertNotIn("Ivy Inactive", default_names)
+        self.assertEqual(default_balance["outstanding"], "25.00")
+        outstanding = build_admin_report("balances", {"owes": "yes"})
+        self.assertEqual([row["child"] for row in outstanding["rows"]], ["Ada Active"])
+        self.assertEqual(outstanding["outstanding"], "25.00")
+
+        inactive_report = build_admin_report("inactive-children", {})
+        self.assertIn("Ivy Inactive", [row["child"] for row in inactive_report["rows"]])
+        self.assertEqual(
+            next(row for row in inactive_report["rows"] if row["child"] == "Ivy Inactive")["balance"],
+            "40.00",
+        )
+        inactive_tab = live_family_child_rows(
+            prefetch_family_table_queryset(PortalFamily.objects.filter(pk=self.family.pk)),
+            inactive=True,
+        )
+        self.assertEqual([row["child_name"] for row in inactive_tab], ["Ivy Inactive"])
+
+        member_rows = get_member_families_live()
+        family_row = next(row for row in member_rows if row["slug"] == "overdue-inactive")
+        self.assertEqual(family_row["balance"], "25.00")
+        self.assertEqual(family_row["children"], ["Ada Active"])
+
+        owing_helpers = families_with_balance()
+        self.assertEqual(len(owing_helpers), 1)
+        self.assertEqual(owing_helpers[0]["family"].pk, self.family.pk)
+        self.assertEqual(owing_helpers[0]["balance"], Decimal("25.00"))
+
+        owed = owed_weeks_report({}, admin=True)
+        self.assertEqual([row["child"] for row in owed["rows"]], ["Ada Active"])
+        self.assertEqual(owed["outstanding"], "25.00")
+
+        staff_dash = build_dashboard_live(self.unit, None)
+        texts = [alert["text"] for alert in staff_dash["alerts"]]
+        self.assertTrue(any("1 family with balance due" in text for text in texts))
+        self.assertTrue(any("Overdueinactive — $25.00 balance due" in text for text in texts))
+        self.assertFalse(any("$65.00" in text for text in texts))
+        self.assertEqual(balances_report_rows(self.unit)[0]["balance"], "25.00")
+
+        alerts = get_admin_alerts_live()
+        overdue_alerts = [row for row in alerts if "overdue" in row["text"].lower()]
+        self.assertEqual(len(overdue_alerts), 1)
+        self.assertIn("$25.00", overdue_alerts[0]["text"])
+        self.assertNotIn("$65.00", overdue_alerts[0]["text"])
+
+    def test_per_application_inactive_before_care_does_not_drop_after_care_overdue(self):
+        before_app = self._named_app(self.active, program="before_care", status="approved")
+        self._charge(self.active, "25.00", "After care")
+        post_charge(
+            self.family,
+            self.active.name,
+            "tuition",
+            "15.00",
+            date(2026, 9, 8),
+            f"Before care — {self.active.name} (9/8/26–9/12/26)",
+            notify=False,
+        )
+        before_app.is_active = False
+        before_app.save(update_fields=["is_active"])
+        self.active.refresh_from_db()
+        self.assertTrue(self.active.is_active)
+
+        dashboard = get_admin_dashboard_live()
+        self.assertEqual(dashboard["overdue_amount"], "40.00")
+        count, total, owing = overdue_active_children_summary([self.family.pk])
+        self.assertEqual(total, Decimal("40.00"))
+        self.assertEqual(owing[self.family.pk], Decimal("40.00"))
+
+    def test_credit_is_not_overdue_after_sibling_is_made_inactive(self):
+        post_credit(self.family, self.active.name, "12.00", date(2026, 9, 9), "Scholarship")
+        self._charge(self.inactive, "40.00", "Weekly tuition")
+        set_child_active(self.inactive, False)
+        dashboard = get_admin_dashboard_live()
+        self.assertEqual(dashboard["overdue_families"], 0)
+        self.assertEqual(dashboard["overdue_amount"], "0.00")
+        units = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertEqual(units["school-18"]["overdue"], "0.00")
+        self.assertTrue(units["school-18"]["has_credit"])

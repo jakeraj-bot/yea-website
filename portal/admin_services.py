@@ -209,19 +209,24 @@ def get_staff_users_live():
 
 
 def get_member_families_live():
-    from .family_list import child_balance_from_map, child_balance_maps
+    from .family_list import child_balance_from_map, child_balance_maps, child_is_approved_member
     from .unit_visibility import unit_label_for_child
 
     families = list(
         PortalFamily.objects.exclude(slug="practice")
         .select_related("unit")
-        .prefetch_related("children", "children__unit")
+        .prefetch_related("children", "children__unit", "enrollment_applications")
         .order_by("unit__name", "name")
     )
     maps = child_balance_maps([family.pk for family in families])
     rows = []
     for family in families:
-        active_children = [child for child in family.children.all() if child.is_active]
+        apps = list(family.enrollment_applications.all())
+        active_children = [
+            child
+            for child in family.children.all()
+            if child.is_active and child_is_approved_member(child, apps)
+        ]
         if not active_children:
             continue
         child_names = [child.name for child in active_children]
