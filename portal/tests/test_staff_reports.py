@@ -110,6 +110,7 @@ class StaffReportsTests(TestCase):
             reverse("portal_staff_attendance_blank_daily"),
             reverse("portal_staff_attendance_blank_weekly"),
             reverse("portal_staff_signout_blank"),
+            reverse("portal_staff_application_blank"),
             reverse("portal_staff_before_care_report"),
             reverse("portal_staff_medical_report"),
             reverse("portal_staff_school_bus_report"),
@@ -388,6 +389,9 @@ class StaffEmergencyContactReportTests(TestCase):
         self.assertContains(hub, reverse("portal_staff_weekly_attendance_report"))
         self.assertContains(hub, "4Cs expected amounts")
         self.assertContains(hub, reverse("portal_staff_four_cs_payout_report"))
+        self.assertContains(hub, "Application (blank)")
+        self.assertContains(hub, reverse("portal_staff_application_blank"))
+        self.assertNotContains(hub, reverse("apply"))
         self.assertNotContains(hub, "Attendance by grade")
 
 

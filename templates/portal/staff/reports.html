@@ -40,7 +40,7 @@
         {% elif report.slug == 'roster' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_program_roster' program_slug='after-school-2026-27' %}">View roster</a>
         {% elif report.slug == 'application-blank' %}
-        <a class="btn btn-primary btn-sm" href="{% url 'apply' %}">Open enrollment form</a>
+        <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_application_blank' %}">Preview &amp; print</a>
         {% elif report.slug == 'application-filled' %}
         <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_application_print' app_slug=report.link_arg %}">Preview &amp; print</a>
         {% elif report.slug == 'owed-weeks' %}

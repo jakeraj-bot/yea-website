@@ -26,6 +26,9 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("@page report-print", print_css)
         self.assertIn("page: report-print", print_css)
         self.assertIn("page: attendance-print", print_css)
+        self.assertIn("@page application-blank-print", print_css)
+        self.assertIn("page: application-blank-print", print_css)
+        self.assertIn("size: portrait", print_css)
         self.assertIn('content: "Page " counter(page)', print_css)
         self.assertIn('content: "Printed"', print_css)
         self.assertIn("display: table-header-group", print_css)
@@ -144,6 +147,7 @@ class ReportPrintHeaderPageTests(TestCase):
             (reverse("portal_staff_pickup_report"), False),
             (reverse("portal_staff_weekly_attendance_report"), True),
             (reverse("portal_staff_signout_blank"), False),
+            (reverse("portal_staff_application_blank"), False),
             (reverse("portal_staff_four_cs_payout_report"), False),
         ]
         for url, attendance in pages:
@@ -158,6 +162,7 @@ class ReportPrintHeaderPageTests(TestCase):
             reverse("portal_admin_emergency_contact_report"),
             reverse("portal_admin_financial_report"),
             reverse("portal_admin_four_cs_payout_report"),
+            reverse("portal_admin_application_blank"),
             reverse("portal_admin_data_report", kwargs={"report_slug": "payments"}),
         ]
         for url in printable:

@@ -1,0 +1,211 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block portal_content %}
+<section class="page-hero portal-hero portal-hero-compact portal-no-print">
+  <div class="container">
+    <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Application (blank)</p>
+    <h1>Application (blank)</h1>
+    <p class="lead">Printable full enrollment form — families fill it by hand. Staff enter it later. This is not the online apply page.</p>
+  </div>
+</section>
+<section class="page-content">
+  <div class="container">
+    <div class="portal-toolbar portal-no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-secondary" href="{{ hub_url }}">Back to reports</a>
+    </div>
+
+    <div class="portal-medical-report-sheet card portal-application-blank-sheet">
+      <header class="portal-medical-report-header">
+        <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
+        <div>
+          <h2>Youth Education Academy — Enrollment application</h2>
+          <p class="portal-medical-report-meta">
+            Blank paper form{% if staff_unit %} · {{ staff_unit }}{% endif %} · {{ generated_date }}
+          </p>
+        </div>
+      </header>
+
+      <p class="portal-application-blank-note">Fill every section in ink. Return this packet to the front desk. Staff will enter it — do not submit this form online.</p>
+
+      <section class="portal-application-blank-section">
+        <h3>Program &amp; location</h3>
+        {% include "portal/includes/blank_choice_field.html" with label="Which program(s) are you applying for?" choices=program_choices full=True %}
+        {% include "portal/includes/blank_choice_field.html" with label="Which location?" choices=location_choices full=True %}
+        <div class="portal-blank-field portal-blank-field--full">
+          <span class="portal-blank-field-label">Transportation</span>
+          <div class="portal-blank-choices">
+            <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> Dale Ave area bus to School 18</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Family information</h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_write_field.html" with label="Family name" %}
+          {% include "portal/includes/blank_write_field.html" with label="Primary email" %}
+          {% include "portal/includes/blank_write_field.html" with label="Home address" full=True %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Primary parent/guardian</h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_write_field.html" with label="First name" %}
+          {% include "portal/includes/blank_write_field.html" with label="Last name" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Gender" choices=gender_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Primary language" choices=language_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="If other language, specify" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Relationship to child" choices=relationship_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="If other relationship, specify" %}
+          {% include "portal/includes/blank_write_field.html" with label="Phone #" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Phone type" choices=phone_type_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Text message subscription" choices=yes_no_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Email subscription" choices=yes_no_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="Email address" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Authorized to pick up?" choices=yes_no_choices %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Secondary parent/guardian <span class="optional-mark">optional</span></h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_write_field.html" with label="First name" %}
+          {% include "portal/includes/blank_write_field.html" with label="Last name" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Gender" choices=gender_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Primary language" choices=language_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="If other language, specify" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Relationship to child" choices=relationship_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="If other relationship, specify" %}
+          {% include "portal/includes/blank_write_field.html" with label="Phone #" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Phone type" choices=phone_type_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Text message subscription" choices=yes_no_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Email subscription" choices=yes_no_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="Email address" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Authorized to pick up?" choices=yes_no_choices %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Student information</h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_write_field.html" with label="Student first name" %}
+          {% include "portal/includes/blank_write_field.html" with label="Student last name" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Gender" choices=gender_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="Date of birth" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Primary language" choices=language_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="If other language, specify" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Ethnicity" choices=ethnicity_choices full=True %}
+          {% include "portal/includes/blank_choice_field.html" with label="Race" choices=race_choices full=True %}
+          {% include "portal/includes/blank_write_field.html" with label="If other race, specify" %}
+          {% include "portal/includes/blank_choice_field.html" with label="Grade" choices=grade_choices full=True %}
+          {% include "portal/includes/blank_write_field.html" with label="School" %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Medical information</h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_write_field.html" with label="Doctor's name" %}
+          {% include "portal/includes/blank_write_field.html" with label="Doctor's phone #" %}
+          {% include "portal/includes/blank_write_field.html" with label="Insurance provider" %}
+          {% include "portal/includes/blank_write_field.html" with label="Policy/Group #" %}
+          {% include "portal/includes/blank_write_field.html" with label="Member ID #" %}
+          <div class="portal-blank-field">
+            <span class="portal-blank-field-label">Insurance</span>
+            <div class="portal-blank-choices">
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> No insurance</span>
+            </div>
+          </div>
+          {% include "portal/includes/blank_write_field.html" with label="Allergies" full=True tall=True %}
+          <div class="portal-blank-field portal-blank-field--full">
+            <span class="portal-blank-field-label">Allergy notes</span>
+            <div class="portal-blank-choices">
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> No known allergies</span>
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> Child requires an Allergy Action Plan</span>
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> Child requires an Asthma Action Plan</span>
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> Child requires an EpiPen Plan</span>
+            </div>
+          </div>
+          {% include "portal/includes/blank_choice_field.html" with label="Disability?" choices=yes_no_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Special needs?" choices=yes_no_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Medication?" choices=yes_no_choices %}
+          {% include "portal/includes/blank_choice_field.html" with label="Medical condition?" choices=yes_no_choices %}
+          {% include "portal/includes/blank_write_field.html" with label="Please explain any medical condition" full=True tall=True %}
+          {% include "portal/includes/blank_choice_field.html" with label="Health statement (check one only)" choices=health_statement_choices full=True %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Billing &amp; payment plan</h3>
+        <div class="portal-blank-grid">
+          {% include "portal/includes/blank_choice_field.html" with label="Do you agree to the $20 membership fee for the 2026–2027 school year?" choices=yes_no_choices full=True %}
+          {% include "portal/includes/blank_choice_field.html" with label="Payment method" choices=payment_method_choices full=True %}
+          {% include "portal/includes/blank_write_field.html" with label="If other payment method, specify" %}
+          <div class="portal-blank-field portal-blank-field--full">
+            <span class="portal-blank-field-label">Late fees</span>
+            <div class="portal-blank-choices">
+              <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> I understand late fees: $15 for missed payment deadlines; $15 for every 15 minutes late for pickup (program closes at 6:00pm).</span>
+            </div>
+          </div>
+          {% include "portal/includes/blank_choice_field.html" with label="Preferred payment plan" choices=payment_plan_choices full=True %}
+          {% include "portal/includes/blank_write_field.html" with label="Payment plan signature (full legal name)" %}
+          {% include "portal/includes/blank_write_field.html" with label="Date" %}
+          {% include "portal/includes/blank_write_field.html" with label="4Cs signature (if 4Cs)" %}
+          {% include "portal/includes/blank_write_field.html" with label="4Cs date" %}
+        </div>
+      </section>
+
+      <section class="portal-application-blank-section">
+        <h3>Emergency contacts</h3>
+        <p class="form-note">List two contacts if you can. A third contact is optional. Check authorized pickup when that person may take the child home.</p>
+        {% for slot in emergency_contact_slots %}
+        <fieldset class="portal-application-blank-contact">
+          <legend>Emergency contact {{ slot }}{% if slot == 3 %} <span class="optional-mark">optional</span>{% endif %}</legend>
+          <div class="portal-blank-grid">
+            {% include "portal/includes/blank_write_field.html" with label="First name" %}
+            {% include "portal/includes/blank_write_field.html" with label="Last name" %}
+            {% include "portal/includes/blank_write_field.html" with label="Phone #" %}
+            {% include "portal/includes/blank_write_field.html" with label="Relationship to child" %}
+            <div class="portal-blank-field">
+              <span class="portal-blank-field-label">Authorized to pick up</span>
+              <div class="portal-blank-choices">
+                <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> Yes</span>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+        {% endfor %}
+      </section>
+
+      <section class="portal-application-blank-section portal-application-blank-policies">
+        <h3>Policies &amp; signatures</h3>
+        <p class="form-note">Read each policy. Sign and date under the acknowledgment. Extra lines are for policy-specific answers.</p>
+        {% for policy in policies %}
+        <article class="portal-application-blank-policy">
+          <h4>{{ policy.title }}</h4>
+          {% for paragraph in policy.paragraphs %}
+          <p>{{ paragraph }}</p>
+          {% endfor %}
+          {% if policy.acknowledgment %}
+          <p class="portal-policy-ack"><strong>Acknowledgment:</strong> {{ policy.acknowledgment }}</p>
+          {% endif %}
+          {% for extra in policy.fields %}
+            {% if extra.type == "choice" %}
+              {% include "portal/includes/blank_choice_field.html" with label=extra.label choices=extra.choices full=True %}
+            {% else %}
+              {% include "portal/includes/blank_write_field.html" with label=extra.label full=True tall=True %}
+            {% endif %}
+          {% endfor %}
+          <div class="portal-blank-grid">
+            {% include "portal/includes/blank_write_field.html" with label="Signature (full legal name)" %}
+            {% include "portal/includes/blank_write_field.html" with label="Date signed" %}
+          </div>
+        </article>
+        {% endfor %}
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
