@@ -64,6 +64,7 @@
         <table class="portal-child-calendar" aria-label="Attendance calendar for {{ attendance_child.name }}">
           <thead>
             <tr>
+              <th>Week</th>
               {% for weekday in attendance_calendar.weekdays %}
               <th>{{ weekday }}</th>
               {% endfor %}
@@ -72,7 +73,8 @@
           <tbody>
             {% for week in attendance_calendar.weeks %}
             <tr>
-              {% for day in week %}
+              <th class="portal-program-week-cc">{% if week.cc_label %}{{ week.cc_label }}{% else %}—{% endif %}</th>
+              {% for day in week.days %}
               {% if day.in_month %}
               <td class="portal-child-calendar-day is-{{ day.mark }}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-selected{% endif %}">
                 <a href="?{{ attendance_calendar.month_query }}{% if attendance_calendar.month_query %}&amp;{% endif %}day={{ day.iso }}" class="portal-child-calendar-link">

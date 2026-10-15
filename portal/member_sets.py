@@ -522,7 +522,9 @@ def month_calendar_rows(month_start, activities):
                 }
             )
         weeks.append(days)
-    return weeks
+    from .agency_weeks import wrap_calendar_weeks
+
+    return wrap_calendar_weeks(weeks)
 
 
 def activity_month_context(month_start, activities):

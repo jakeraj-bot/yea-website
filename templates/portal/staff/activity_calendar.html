@@ -101,6 +101,7 @@
         <table class="portal-child-calendar portal-activity-calendar" aria-label="Activity calendar">
           <thead>
             <tr>
+              <th>Week</th>
               {% for weekday in calendar.weekdays %}
               <th>{{ weekday }}</th>
               {% endfor %}
@@ -109,7 +110,8 @@
           <tbody>
             {% for week in calendar.weeks %}
             <tr>
-              {% for day in week %}
+              <th class="portal-program-week-cc">{% if week.cc_label %}{{ week.cc_label }}{% else %}—{% endif %}</th>
+              {% for day in week.days %}
               <td class="portal-child-calendar-day{% if not day.in_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.activities %} has-activities{% endif %}">
                 <span class="portal-child-calendar-num">{{ day.day }}</span>
                 {% if day.in_month %}

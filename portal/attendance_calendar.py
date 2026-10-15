@@ -212,10 +212,14 @@ def child_attendance_month(child, month_start, *, selected_day=None):
             )
         weeks.append(days)
 
+    from .agency_weeks import wrap_calendar_weeks
+
+    weeks = wrap_calendar_weeks(weeks)
+
     selected = None
     if selected_day:
         for week in weeks:
-            for day in week:
+            for day in week["days"]:
                 if day["iso"] == selected_day.isoformat() and day["in_month"]:
                     selected = day
                     break
