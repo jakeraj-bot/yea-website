@@ -1,4 +1,5 @@
 import calendar
+import re
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -106,21 +107,20 @@ def ledger_charge_description(
     description="",
     week_numbers=None,
     month_date=None,
+    week_spans=None,
 ):
+    """Automatic charge wording. Plan custom descriptions are ignored at post time."""
     from .agency_weeks import automatic_charge_name
 
-    note = (description or "").strip()
-    auto = automatic_charge_name(cadence, kind=kind, week_numbers=week_numbers, month_date=month_date)
+    auto = automatic_charge_name(
+        cadence,
+        kind=kind,
+        week_numbers=week_numbers,
+        month_date=month_date,
+        week_spans=week_spans,
+    )
     if auto:
-        if period_label and auto in period_label:
-            base = period_label
-        elif period_label and period_label not in auto:
-            base = f"{auto} ({period_label})" if "(" not in auto else auto
-        else:
-            base = auto
-        if note and note.lower() not in base.lower():
-            return f"{base} — {note}"
-        return base
+        return auto
     if kind == "4cs_copay":
         base = f"{cadence or 'Copay'} — {child.name}"
         if period_label:
@@ -129,8 +129,6 @@ def ledger_charge_description(
         base = f"{cadence or 'Plan'} tuition — {child.name}"
         if period_label:
             base = f"{base} ({period_label})"
-    if note:
-        return f"{note} — {base}"
     return base
 
 
@@ -139,6 +137,156 @@ def plan_description_for(child, plan=None):
         return (plan.description or "").strip()
     primary = primary_billing_plan(child)
     return (primary.description or "").strip() if primary else ""
+
+
+AUTO_CHARGE_REWRITE_DATE = date(2026, 10, 15)
+_SKIP_REWRITE = re.compile(
+    r"membership|late fee|late pickup|drop[- ]?in|refund",
+    re.I,
+)
+_AUTO_HINT = re.compile(
+    r"cc wk|monthly charge|weekly charge|bi-weekly|biweekly|copay|4cs",
+    re.I,
+)
+_CC_WK_PAIR = re.compile(r"CC WK\s+(\d+)\s*[–&-]+\s*(\d+)", re.I)
+_CC_WK = re.compile(r"CC WK\s+(\d+)", re.I)
+_WK_LIST = re.compile(r"for Wk\s+([\d,\s]+)|for CC WK\s+([\d,\s]+)", re.I)
+
+
+def looks_like_auto_plan_charge(description):
+    text = description or ""
+    if _SKIP_REWRITE.search(text):
+        return False
+    return bool(_AUTO_HINT.search(text))
+
+
+def _kind_from_description(text):
+    lower = (text or "").lower()
+    if "agency" in lower:
+        return "4cs_agency"
+    if "4cs" in lower or "copay" in lower:
+        return "4cs_copay"
+    return "tuition"
+
+
+def _cadence_from_description(text, fallback="Weekly"):
+    lower = (text or "").lower()
+    if "monthly" in lower:
+        return "Monthly"
+    if "bi-weekly" in lower or "biweekly" in lower or "bi weekly" in lower:
+        return "Bi-weekly"
+    if "weekly" in lower:
+        return "Weekly"
+    return fallback
+
+
+def _numbers_from_description(text):
+    listed = _WK_LIST.search(text or "")
+    if listed:
+        blob = listed.group(1) or listed.group(2) or ""
+        return [int(n) for n in re.findall(r"\d+", blob)]
+    pair = _CC_WK_PAIR.search(text or "")
+    if pair:
+        return [int(pair.group(1)), int(pair.group(2))]
+    return [int(n) for n in _CC_WK.findall(text or "")]
+
+
+def _spans_for_numbers(numbers, calendar=None):
+    from .agency_weeks import listed_program_weeks
+
+    by_number = {}
+    for week in listed_program_weeks(calendar):
+        by_number.setdefault(week.week_number, week)
+    ordered = []
+    spans = []
+    for number in numbers or []:
+        week = by_number.get(int(number))
+        if not week:
+            continue
+        ordered.append(week.week_number)
+        spans.append((week.week_start, week.week_end))
+    return ordered, spans
+
+
+def _biweekly_numbers(numbers, calendar=None):
+    from .agency_weeks import listed_program_weeks
+
+    if len(numbers) >= 2:
+        return numbers[:2]
+    if not numbers:
+        return numbers
+    weeks = listed_program_weeks(calendar)
+    current = None
+    for week in weeks:
+        if week.week_number == numbers[0]:
+            current = week
+            break
+    if not current:
+        return [numbers[0], numbers[0] + 1]
+    found = []
+    taking = False
+    for week in weeks:
+        if week.week_start == current.week_start:
+            taking = True
+        if taking:
+            found.append(week.week_number)
+        if len(found) >= 2:
+            break
+    return found or numbers
+
+
+def rebuilt_auto_charge_description(entry):
+    from .agency_weeks import automatic_charge_name, cadence_key, program_weeks_covering_charge
+
+    text = entry.description or ""
+    kind = _kind_from_description(text)
+    cadence = _cadence_from_description(text)
+    if entry.child_name:
+        child = (
+            PortalChild.objects.filter(family=entry.family, name=entry.child_name)
+            .select_related("family")
+            .first()
+        )
+        if child:
+            family_type = (child.family.billing_type or "").strip().lower()
+            if kind == "tuition" and family_type.startswith("4"):
+                kind = "4cs_copay"
+            if child.billing_plan and cadence_key(child.billing_plan) == cadence_key(cadence):
+                cadence = child.billing_plan
+    numbers = _numbers_from_description(text)
+    if cadence_key(cadence) == "biweekly":
+        numbers = _biweekly_numbers(numbers)
+    if numbers:
+        numbers, spans = _spans_for_numbers(numbers)
+    else:
+        weeks = program_weeks_covering_charge(entry.date, cadence)
+        numbers = [week.week_number for week in weeks if getattr(week, "week_number", None)]
+        spans = [(week.week_start, week.week_end) for week in weeks]
+    return automatic_charge_name(
+        cadence,
+        kind=kind,
+        week_numbers=numbers,
+        month_date=entry.date if cadence_key(cadence) == "monthly" else None,
+        week_spans=spans,
+    )
+
+
+def rewrite_auto_charge_descriptions(on_date=None):
+    """Update descriptions only for auto plan charges posted on on_date."""
+    on_date = on_date or AUTO_CHARGE_REWRITE_DATE
+    updated = []
+    qs = PortalLedgerEntry.objects.filter(date=on_date, entry_type="charge", is_manual=False)
+    for entry in qs:
+        if not looks_like_auto_plan_charge(entry.description):
+            continue
+        new_desc = rebuilt_auto_charge_description(entry)
+        if new_desc and new_desc != entry.description:
+            entry.description = new_desc[:255]
+            entry.save(update_fields=["description"])
+            updated.append(entry)
+    return updated
+
+
 
 
 def monthly_schedule_rows(weekly_rate, scholarship=None, calendar=None, on_date=None):
@@ -746,9 +894,6 @@ def _post_plan_scholarship_discount(child, scholarship, charge_date, charge_amou
     if discount <= 0:
         return
     description = f"{scholarship.fund.name} scholarship"
-    label = (note or "").strip()
-    if label:
-        description = f"{label} — {description}"
     post_discount(child.family, child.name, discount, charge_date, description)
 
 
@@ -1730,6 +1875,7 @@ def _post_4cs_copay_period(locked, today, plan=None):
     amount = period["amount"]
     if amount > 0:
         numbers = period.get("week_numbers") or []
+        spans = period.get("week_spans") or []
         post_charge(
             locked.family,
             locked.name,
@@ -1741,15 +1887,14 @@ def _post_4cs_copay_period(locked, today, plan=None):
                 target.billing_plan,
                 "4cs_copay",
                 period["label"],
-                plan_description_for(locked, plan),
                 week_numbers=numbers,
                 month_date=charge_date if cadence_key(target.billing_plan) == "monthly" else None,
+                week_spans=spans,
             ),
             is_manual=False,
         )
         scholarship = active_scholarship_for_plan(locked, plan, charge_date)
-        note = plan_description_for(locked, plan)
-        _post_plan_scholarship_discount(locked, scholarship, charge_date, amount, note)
+        _post_plan_scholarship_discount(locked, scholarship, charge_date, amount)
     mark_parent_period_posted(period["weeks"], charge_date)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = _next_4cs_charge_date(
@@ -1763,7 +1908,7 @@ def _post_regular_plan_charge(child, target, today):
     from .agency_weeks import (
         cadence_key,
         monthly_charge_details,
-        program_week_for_date,
+        program_weeks_covering_charge,
         weekly_rate_for_plan,
     )
 
@@ -1779,11 +1924,11 @@ def _post_regular_plan_charge(child, target, today):
         )
         return False
     plan_row = target if isinstance(target, PortalChildBillingPlan) else None
-    note = plan_description_for(child, plan_row)
     scholarship = active_scholarship_for_plan(child, plan_row, charge_date)
     monthly = cadence_key(target.billing_plan) == "monthly"
     period_label = None
     week_numbers = None
+    week_spans = None
     if monthly:
         weekly = weekly_rate_for_plan(target)
         if not weekly:
@@ -1798,6 +1943,9 @@ def _post_regular_plan_charge(child, target, today):
         amount = details["amount"]
         week_count = details["week_count"]
         week_numbers = details["week_numbers"]
+        week_spans = [
+            (week.week_start, week.week_end) for week in details.get("weeks") or []
+        ]
         period_label = None
         if week_count == 0:
             target.last_auto_charge_date = charge_date
@@ -1819,13 +1967,13 @@ def _post_regular_plan_charge(child, target, today):
                 target.billing_plan,
                 "tuition",
                 period_label=period_label,
-                description=note,
                 week_numbers=week_numbers,
                 month_date=charge_date,
+                week_spans=week_spans,
             ),
             is_manual=False,
         )
-        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount)
     else:
         amount = target.billing_amount
         if scholarship and scholarship.full_rate and (
@@ -1840,8 +1988,9 @@ def _post_regular_plan_charge(child, target, today):
                 month_day=target.charge_month_day,
             )
             return False
-        week = program_week_for_date(charge_date)
-        week_numbers = [week.week_number] if week else None
+        weeks = program_weeks_covering_charge(charge_date, target.billing_plan)
+        week_numbers = [week.week_number for week in weeks if getattr(week, "week_number", None)]
+        week_spans = [(week.week_start, week.week_end) for week in weeks]
         post_charge(
             child.family,
             child.name,
@@ -1852,13 +2001,13 @@ def _post_regular_plan_charge(child, target, today):
                 child,
                 target.billing_plan,
                 "tuition",
-                description=note,
                 week_numbers=week_numbers,
                 month_date=charge_date,
+                week_spans=week_spans,
             ),
             is_manual=False,
         )
-        _post_plan_scholarship_discount(child, scholarship, charge_date, amount, note)
+        _post_plan_scholarship_discount(child, scholarship, charge_date, amount)
     target.last_auto_charge_date = charge_date
     target.next_charge_date = next_plan_charge_date(
         charge_date,

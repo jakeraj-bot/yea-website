@@ -937,7 +937,7 @@ GUIDES = {
             },
             {
                 "title": "Read and edit week numbers",
-                "body": "The month grid shows CC WK 1, CC WK 2, and so on. Use Week numbers to change a week’s number or dates if the first week is short. Charges pick up those labels automatically: CC WK 1 - weekly charge, CC WK 1 - weekly 4Cs Copay, or October monthly charge for Wk 4, 5, 6, 7, 8.",
+                "body": "The month grid shows CC WK 1, CC WK 2, and so on. Use Week numbers to change a week’s number or dates if the first week is short. The Week column shows CC WK 1, CC WK 2, and so on — not under each day. Attendance and activity calendars use the same week numbers. Charges pick up those labels automatically: CC WK 5 - Weekly Charge - for (10/5/2026 - 10/9/2026), CC WK 5 - 4Cs Copay Weekly Charge - for (10/5/2026 - 10/9/2026), or October - Monthly Charge - for CC WK 4, 5, 6, 7, 8.",
             },
             {
                 "title": "Configure months",

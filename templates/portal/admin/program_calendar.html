@@ -45,7 +45,7 @@
     {% if calendar.tab == 'months' %}
     <section class="card portal-collapse-skip portal-program-month-card" style="margin-top:1.25rem;" id="program-month-config">
       <h2>Months</h2>
-      <p class="form-note">The Thursday of each CC week owns the month. Example: week 9/28/2026–10/2/2026 has Thursday <strong>10/1/2026</strong>, so it is October, not September. Not every month is 5 weeks — October 2026 is 5 (Thu 10/1, 10/8, 10/15, 10/22, 10/29) and November 2026 is 4 (Thu 11/5, 11/12, 11/19, 11/26). Saving the program start date fills this list. Override the week count or the CC WK numbers if you disagree. Monthly charges use this list: <strong>October monthly charge for Wk 4, 5, 6, 7, 8</strong>.</p>
+      <p class="form-note">The Thursday of each CC week owns the month. Example: week 9/28/2026–10/2/2026 has Thursday <strong>10/1/2026</strong>, so it is October, not September. Not every month is 5 weeks — October 2026 is 5 (Thu 10/1, 10/8, 10/15, 10/22, 10/29) and November 2026 is 4 (Thu 11/5, 11/12, 11/19, 11/26). Saving the program start date fills this list. Override the week count or the CC WK numbers if you disagree. Monthly charges use this list: <strong>October - Monthly Charge - for CC WK 4, 5, 6, 7, 8</strong>.</p>
       {% for month in calendar.months %}
       <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_month_save' %}{% else %}#{% endif %}" class="portal-program-month-edit" id="month-form-{{ month.month_key }}">
         {% if portal_live %}{% csrf_token %}{% endif %}
@@ -104,7 +104,7 @@
     {% else %}
     <section class="card portal-collapse-skip portal-program-week-card" style="margin-top:1.25rem;">
       <h2>CC week numbers</h2>
-      <p class="form-note">Charges use these labels automatically: <strong>CC WK 1 - weekly charge</strong>, <strong>CC WK 1 - weekly 4Cs Copay</strong>, and <strong>October monthly charge for Wk 4, 5, 6, 7, 8</strong>. A week counts in the month of its Thursday (9/28/2026–10/2/2026 is October because Thursday is 10/1/2026). Open the Months tab to see or override how many weeks each month bills.</p>
+      <p class="form-note">Charges use these labels automatically: <strong>CC WK 1 - Weekly Charge - for (9/8/2026 - 9/11/2026)</strong>, <strong>CC WK 1 - 4Cs Copay Weekly Charge - for (9/8/2026 - 9/11/2026)</strong>, and <strong>October - Monthly Charge - for CC WK 4, 5, 6, 7, 8</strong>. Week numbers sit in the Week column, not under each day. A week counts in the month of its Thursday (9/28/2026–10/2/2026 is October because Thursday is 10/1/2026). Open the Months tab to see or override how many weeks each month bills.</p>
       <nav class="portal-program-week-nav" aria-label="Calendar month">
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_page' page='program-calendar' %}?month={{ calendar.prev_month }}">Previous</a>
         <h3 class="portal-program-week-month">{{ calendar.month_label }}</h3>
@@ -127,7 +127,6 @@
               {% for day in row.days %}
               <td class="{% if not day.in_month %}is-outside{% endif %}{% if day.off %} is-off{% endif %}{% if day.half %} is-half{% endif %}">
                 <span class="portal-program-week-num">{{ day.day_num }}</span>
-                {% if day.cc_label and day.in_month %}<span class="portal-program-week-tag">{{ day.cc_label }}</span>{% endif %}
                 {% if day.off and day.in_month %}<span class="form-note">Off</span>{% endif %}
                 {% if day.half and day.in_month %}<span class="form-note">Half</span>{% endif %}
               </td>

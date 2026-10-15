@@ -139,6 +139,7 @@
           <div class="form-group portal-form-full">
             <label for="fourcs-desc-{{ child.child_id }}">Description</label>
             <input id="fourcs-desc-{{ child.child_id }}" name="plan_description" type="text" class="portal-input" value="{{ child.description|default:'' }}" placeholder="After care">
+            <p class="form-note">Staff label only. Copay charges use automatic names such as CC WK 5 &amp; 6 - 4Cs Copay Bi-Weekly Charge. This text is not copied onto the ledger.</p>
           </div>
           <div class="form-group portal-form-full">
             <label for="fourcs-plan-{{ child.child_id }}">How often the parent pays</label>
@@ -314,7 +315,7 @@
         <div class="form-group portal-form-full">
           <label for="plan-description">Description</label>
           <input id="plan-description" name="plan_description" type="text" class="portal-input" maxlength="120" placeholder="Before care">
-          <p class="form-note">Shows on the ledger charge. Example: Before care or After care.</p>
+          <p class="form-note">Staff label for this plan only (Before care / After care). Posted charges use automatic names such as CC WK 5 - Weekly Charge - for (10/5/2026 - 10/9/2026). This text is not copied onto the ledger.</p>
         </div>
         <div class="form-group portal-form-full">
           <label for="plan-type">Billing type</label>

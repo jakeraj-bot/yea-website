@@ -122,8 +122,9 @@ class AccountBalanceMatchesBillingTests(TestCase):
             self.assertIn(description, row["description"])
         self.assertNotIn("Owe for account balance", row["description"])
         self.assertNotIn("Credit $", row["description"])
-        self.assertTrue(any("After care" in item for item in charges))
-        self.assertTrue(any("Before care" in item for item in charges))
+        self.assertTrue(all("Weekly Charge" in item or "CC WK" in item for item in charges))
+        self.assertFalse(any("After care" in item for item in charges))
+        self.assertFalse(any("Before care" in item for item in charges))
 
     def test_overpay_credit_matches_billing_and_description(self):
         post_charge(
