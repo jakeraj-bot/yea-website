@@ -24,5 +24,17 @@
     font-size: 9pt;
   }
 }
+@page application-blank-print {
+  size: portrait;
+  margin: 0.45in 0.5in 0.7in 0.5in;
+  @bottom-left {
+    content: "Printed {% now 'M j, Y, g:i A' %}";
+    font-size: 9pt;
+  }
+  @bottom-right {
+    content: "Page " counter(page);
+    font-size: 9pt;
+  }
+}
 </style>
 <script src="{% static 'js/portal-report-print.js' %}?v=4"></script>

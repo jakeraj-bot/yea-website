@@ -42,6 +42,32 @@ class ApplicationBlankReportTests(TestCase):
         session[PORTAL_AUTH_SESSION_KEY] = area
         session.save()
 
+    def _assert_one_print_heading(self, html):
+        self.assertEqual(html.count("portal-medical-report-header"), 1)
+        self.assertEqual(html.count("portal-print-title-row"), 1)
+        self.assertEqual(html.count("portal-print-running-header"), 1)
+        self.assertNotIn("portal-report-print-running-bar", html)
+        self.assertIn("portal-medical-report-header portal-no-print", html)
+        self.assertIn("portal-application-blank-print-table", html)
+
+        sheet_header = html.split("portal-medical-report-header", 1)[1].split("</header>", 1)[0]
+        self.assertNotIn("portal-print-title-row", sheet_header)
+        self.assertNotIn("portal-print-running-header", sheet_header)
+        self.assertNotIn("portal-print-header", sheet_header.replace("portal-print-header-spacer", ""))
+
+        table = html.split("portal-application-blank-print-table", 1)[1]
+        thead = table.split("<thead>", 1)[1].split("</thead>", 1)[0]
+        self.assertIn("portal-print-title-row", thead)
+        self.assertIn("portal-print-running-header", thead)
+        self.assertIn("yea-logo.png", thead)
+        self.assertIn("Application", thead)
+        self.assertNotIn("portal-medical-report-header", thead)
+        self.assertNotIn("portal-print-header", thead.replace("portal-print-header-spacer", ""))
+        self.assertLess(
+            html.index("portal-medical-report-header"),
+            html.index("portal-print-title-row"),
+        )
+
     def _assert_blank_packet(self, response):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.get("Location"))
@@ -57,6 +83,7 @@ class ApplicationBlankReportTests(TestCase):
         self.assertContains(response, "portal-no-print")
         self.assertContains(response, "yea-logo.png")
         self.assertContains(response, "portal-application-blank-sheet")
+        self._assert_one_print_heading(response.content.decode())
         self.assertNotContains(response, "Submit application")
         self.assertNotContains(response, reverse("apply"))
         self.assertNotContains(response, "Jordan Jacobs")

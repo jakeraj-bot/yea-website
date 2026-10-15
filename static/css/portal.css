@@ -3249,7 +3249,7 @@ nav.portal-nav-admin-groups {
 
   @page application-blank-print {
     size: portrait;
-    margin: 1.1in 0.5in 0.7in 0.5in;
+    margin: 0.45in 0.5in 0.7in 0.5in;
     @bottom-left {
       content: "Printed";
       font-size: 9pt;
@@ -3331,6 +3331,28 @@ nav.portal-nav-admin-groups {
 
   .portal-medical-report-sheet.portal-application-blank-sheet {
     page: application-blank-print;
+  }
+
+  .portal-application-blank-print-table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .portal-application-blank-print-table > thead {
+    display: table-header-group !important;
+  }
+
+  .portal-application-blank-print-table > tbody {
+    display: table-row-group !important;
+  }
+
+  .portal-application-blank-print-table .portal-print-title-row {
+    display: table-row !important;
+  }
+
+  .portal-application-blank-print-table .portal-print-running-header {
+    display: flex;
   }
 
   .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header,
@@ -6578,5 +6600,9 @@ html.portal-nav-collapsed .portal-sidebar-footer {
 @media print {
   .portal-application-blank-note {
     background: transparent;
+  }
+
+  .portal-application-blank-sheet > .portal-medical-report-header {
+    display: none !important;
   }
 }
