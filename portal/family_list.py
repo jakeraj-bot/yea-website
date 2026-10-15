@@ -281,6 +281,16 @@ def _map_key_for_name(family_map, child_name):
     return name
 
 
+LEDGER_DEBIT_TYPES = ("charge", "membership")
+LEDGER_CREDIT_TYPES = ("payment", "credit", "discount")
+LEDGER_REFUND_TYPES = ("refund",)
+MONEY = Decimal("0.01")
+
+
+def _money_amount(value):
+    return _as_decimal(value).quantize(MONEY)
+
+
 def _split_amount(amount, count):
     """Split cents across ``count`` people; the last share gets any leftover penny."""
     if count <= 0 or amount == 0:
@@ -291,12 +301,156 @@ def _split_amount(amount, count):
     return parts
 
 
-def allocate_unlabeled_to_children(family_map, child_names):
-    """Update child balances only: apply family-level payments to kids who still owe.
+def _entry_fifo_sort_key(entry):
+    return (
+        getattr(entry, "date", None),
+        getattr(entry, "created_at", None),
+        getattr(entry, "pk", 0) or 0,
+    )
 
-    Charge rows keep their child names. A payment with an empty child column is
-    tuition only (Stripe fees stay in ``fee_amount``). Family balance is computed
-    separately from the full household ledger.
+
+def _apply_credit_fifo(charges, credit):
+    remaining = _money_amount(credit)
+    if remaining <= 0:
+        return remaining
+    for charge in charges:
+        if remaining <= 0:
+            break
+        if charge["remaining"] <= 0:
+            continue
+        applied = min(charge["remaining"], remaining)
+        charge["remaining"] -= applied
+        remaining -= applied
+    return remaining
+
+
+def fifo_allocate_family_entries(entries, child_names=None):
+    """Apply payments to the oldest unpaid charges first (date, then id).
+
+    Child-named payments, credits, and discounts cover that child's charges
+    first. A blank-child household payment then covers remaining family charges
+    in the same date/id order — it does not split leftover membership 50/50
+    across siblings. Stripe ``fee_amount`` is ignored.
+
+    Returns ``{"balances": {display_name: Decimal}, "unpaid": {folded_name: [charge]}}``.
+    """
+    display_by_key = {}
+
+    def register_name(raw):
+        name = _normalize_child_name(raw)
+        if not name:
+            return ""
+        key = _child_name_key(name)
+        display_by_key.setdefault(key, name)
+        return key
+
+    for name in child_names or []:
+        register_name(name)
+
+    charges = []
+    named_credits = defaultdict(lambda: Decimal("0"))
+    unlabeled_credit = Decimal("0")
+    for entry in sorted(entries or [], key=_entry_fifo_sort_key):
+        kind = getattr(entry, "entry_type", "") or ""
+        amount = _money_amount(getattr(entry, "amount", 0))
+        key = register_name(getattr(entry, "child_name", "") or "")
+        if kind in LEDGER_DEBIT_TYPES and amount > 0:
+            charges.append(
+                {
+                    "id": getattr(entry, "pk", None),
+                    "date": getattr(entry, "date", None),
+                    "description": getattr(entry, "description", "") or "",
+                    "remaining": amount,
+                    "child_key": key,
+                    "child_name": display_by_key.get(key, ""),
+                }
+            )
+        elif kind in LEDGER_CREDIT_TYPES:
+            credit = abs(amount)
+            if key:
+                named_credits[key] += credit
+            else:
+                unlabeled_credit += credit
+        elif kind in LEDGER_REFUND_TYPES:
+            refund = abs(amount)
+            if key:
+                named_credits[key] -= refund
+            else:
+                unlabeled_credit -= refund
+
+    leftover_named = {}
+    for key, credit in named_credits.items():
+        if credit > 0:
+            leftover_named[key] = _apply_credit_fifo(
+                [charge for charge in charges if charge["child_key"] == key],
+                credit,
+            )
+        else:
+            leftover_named[key] = credit
+
+    leftover_unlabeled = unlabeled_credit
+    if leftover_unlabeled > 0:
+        leftover_unlabeled = _apply_credit_fifo(
+            [charge for charge in charges if charge["remaining"] > 0],
+            leftover_unlabeled,
+        )
+
+    unpaid = defaultdict(list)
+    balances = defaultdict(lambda: Decimal("0"))
+    unlabeled_remaining = Decimal("0")
+    for charge in charges:
+        remaining = charge["remaining"]
+        if remaining <= 0:
+            continue
+        if charge["child_key"]:
+            unpaid[charge["child_key"]].append(
+                {
+                    "id": charge["id"],
+                    "date": charge["date"],
+                    "description": charge["description"],
+                    "remaining": remaining,
+                }
+            )
+            balances[charge["child_name"]] += remaining
+        else:
+            unlabeled_remaining += remaining
+
+    for key, leftover in leftover_named.items():
+        name = display_by_key.get(key, key)
+        balances[name] -= leftover
+
+    split_names = []
+    seen = set()
+    for name in child_names or []:
+        key = register_name(name)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        display = display_by_key[key]
+        split_names.append(display)
+        balances.setdefault(display, Decimal("0"))
+    if not split_names:
+        split_names = [display_by_key[key] for key in display_by_key]
+        for display in split_names:
+            balances.setdefault(display, Decimal("0"))
+
+    unlabeled_net = unlabeled_remaining - leftover_unlabeled
+    if unlabeled_net and split_names:
+        for name, share in zip(split_names, _split_amount(unlabeled_net, len(split_names))):
+            balances[name] += share
+    elif unlabeled_net:
+        balances[""] += unlabeled_net
+
+    return {"balances": balances, "unpaid": unpaid}
+
+
+def allocate_unlabeled_to_children(family_map, child_names):
+    """Fallback when only net totals exist (no charge dates).
+
+    Live balances use ``fifo_allocate_family_entries`` so household payments
+    cover the oldest unpaid charge first. This helper still pays owing children
+    in name order until the unlabeled payment is used up — never a proportional
+    50/50 leftover membership split. Stripe fees stay in ``fee_amount``.
     """
     if family_map is None:
         return family_map
@@ -325,21 +479,13 @@ def allocate_unlabeled_to_children(family_map, child_names):
     if unlabeled < 0:
         remaining = -unlabeled
         owing = [key for key in keys if family_map[key] > 0]
-        total_owing = sum((family_map[key] for key in owing), Decimal("0"))
         if owing and remaining > 0:
-            if remaining >= total_owing:
-                for key in owing:
-                    remaining -= family_map[key]
-                    family_map[key] = Decimal("0")
-            else:
-                applied = Decimal("0")
-                for index, key in enumerate(owing):
-                    share = remaining - applied if index == len(owing) - 1 else (family_map[key] * remaining / total_owing).quantize(
-                        Decimal("0.01"), rounding=ROUND_DOWN
-                    )
-                    family_map[key] -= share
-                    applied += share
-                remaining = Decimal("0")
+            for key in owing:
+                if remaining <= 0:
+                    break
+                applied = min(family_map[key], remaining)
+                family_map[key] -= applied
+                remaining -= applied
         if remaining > 0:
             for key, share in zip(keys, _split_amount(-remaining, len(keys))):
                 family_map[key] += share
@@ -430,40 +576,38 @@ def sync_family_balance_from_ledger(family):
 
 
 def child_balance_maps(family_ids):
-    """One aggregated ledger query → {family_id: {child_name: Decimal}}.
+    """One ledger query → {family_id: {child_name: Decimal}} after FIFO.
 
-    Amounts are the ledger ``amount`` (tuition / applied). Stripe processing
-    fees live in ``fee_amount`` and are left out of the balance. Rows with no
-    child name are then shared across the household's children.
+    Amounts are remaining unpaid charges minus leftover credits (tuition /
+    applied). Stripe processing fees live in ``fee_amount`` and are left out.
+    Blank-child household payments cover the oldest unpaid family charges
+    first (date, then id), not a split of leftover membership.
     """
-    from django.db.models import Sum
-
     from .models import PortalChild, PortalLedgerEntry
 
     maps = defaultdict(lambda: defaultdict(lambda: Decimal("0")))
     ids = [pk for pk in family_ids if pk]
     if not ids:
         return maps
-    for row in (
-        PortalLedgerEntry.objects.filter(family_id__in=ids)
-        .values("family_id", "child_name")
-        .annotate(total=Sum("amount"))
-    ):
-        name = _normalize_child_name(row["child_name"])
-        family_map = maps[row["family_id"]]
-        key = name
-        folded = _child_name_key(name)
-        for existing in family_map:
-            if _child_name_key(existing) == folded:
-                key = existing
-                break
-        family_map[key] += row["total"] or Decimal("0")
 
     child_names_by_family = defaultdict(list)
     for family_id, name in PortalChild.objects.filter(family_id__in=ids).values_list("family_id", "name"):
         child_names_by_family[family_id].append(name)
-    for family_id, family_map in maps.items():
-        allocate_unlabeled_to_children(family_map, child_names_by_family.get(family_id, []))
+
+    entries_by_family = defaultdict(list)
+    for entry in PortalLedgerEntry.objects.filter(family_id__in=ids).order_by(
+        "family_id", "date", "created_at", "pk"
+    ):
+        entries_by_family[entry.family_id].append(entry)
+
+    for family_id in set(list(entries_by_family) + list(child_names_by_family)):
+        state = fifo_allocate_family_entries(
+            entries_by_family.get(family_id, []),
+            child_names_by_family.get(family_id, []),
+        )
+        family_map = maps[family_id]
+        for name, amount in state["balances"].items():
+            family_map[name] = amount
     return maps
 
 

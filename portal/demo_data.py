@@ -668,6 +668,12 @@ ADMIN_REPORTS = [
         "slug": "attendance-blank-weekly",
     },
     {
+        "name": "Application (blank)",
+        "description": "Printable full enrollment form for paper — families fill it by hand, then staff enter it. Not the online apply page.",
+        "format": "PDF",
+        "slug": "application-blank",
+    },
+    {
         "name": "Organization enrollment summary",
         "description": "Headcount by unit, program, and payment type (private pay, 4Cs, scholarship)",
         "format": "PDF / Excel",
@@ -1765,7 +1771,12 @@ STAFF_REPORTS = [
         "format": "PDF",
         "slug": "member-policies",
     },
-    {"name": "Application (blank)", "description": "Printable enrollment form", "format": "PDF", "slug": "application-blank"},
+    {
+        "name": "Application (blank)",
+        "description": "Printable full enrollment form for paper — families fill it by hand, then staff enter it. Not the online apply page.",
+        "format": "PDF",
+        "slug": "application-blank",
+    },
     {"name": "Application (filled)", "description": "From submitted application", "format": "PDF", "slug": "application-filled", "link_arg": "jordan-jacobs"},
     {"name": "Account Balance", "description": "Printable child's name, amount owe, description, paid, and notes", "format": "PDF / CSV", "slug": "balances"},
     {

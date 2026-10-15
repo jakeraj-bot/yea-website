@@ -98,7 +98,7 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
         self.assertEqual(family_balance(self.family), Decimal("0.00"))
         self.assertEqual(child_balance(self.jordan), Decimal("0.00"))
 
-    def test_family_level_payment_reduces_each_child_overdue_row(self):
+    def test_family_level_payment_covers_oldest_child_charge_first(self):
         self._charge("Jordan Jacobs", "35.00")
         self._charge("Maya Jacobs", "45.00")
         before = self._outstanding()
@@ -115,8 +115,9 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
         self.assertEqual(set(by_child), {"Jordan Jacobs", "Maya Jacobs"})
         remaining = Decimal(by_child["Jordan Jacobs"]["balance"]) + Decimal(by_child["Maya Jacobs"]["balance"])
         self.assertEqual(remaining, Decimal("60.00"))
-        self.assertLess(Decimal(by_child["Jordan Jacobs"]["balance"]), Decimal("35.00"))
-        self.assertLess(Decimal(by_child["Maya Jacobs"]["balance"]), Decimal("45.00"))
+        # Same-day charges: FIFO by id pays Jordan (posted first) before Maya.
+        self.assertEqual(by_child["Jordan Jacobs"]["balance"], "15.00")
+        self.assertEqual(by_child["Maya Jacobs"]["balance"], "45.00")
         self.assertNotEqual(by_child["Jordan Jacobs"]["balance"], "60.00")
         self.assertNotEqual(by_child["Maya Jacobs"]["balance"], "60.00")
 

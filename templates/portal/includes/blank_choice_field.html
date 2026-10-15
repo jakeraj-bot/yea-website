@@ -1,0 +1,8 @@
+<div class="portal-blank-field{% if full %} portal-blank-field--full{% endif %}">
+  <span class="portal-blank-field-label">{{ label }}</span>
+  <div class="portal-blank-choices">
+    {% for _value, choice_label in choices %}
+    <span class="portal-blank-choice"><span class="portal-blank-box" aria-hidden="true"></span> {{ choice_label }}</span>
+    {% endfor %}
+  </div>
+</div>

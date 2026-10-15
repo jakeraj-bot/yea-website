@@ -437,7 +437,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Pick the right sheet",
-                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Weekly attendance is the Mon–Fri sheet — check After-care, Before-care, or All, then one or more grades to keep those kids on the same page. Before care is the roster of who is approved for before-care. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
+                "body": "Live Attendance is for checking children in on screen. Blank daily/weekly sheets are for paper if the system is down. Application (blank) is the full enrollment packet for families to fill by hand — not the online apply page. Weekly attendance is the Mon–Fri sheet — check After-care, Before-care, or All, then one or more grades to keep those kids on the same page. Before care is the roster of who is approved for before-care. Medical report is allergies and action plans. School bus is grouped by school. Member information is the enrollment roster — school, grade, program, billing, and 4Cs. Emergency contact list is who to call, with an authorized-pickup column.",
             },
             {
                 "title": "Set filters, then print",
@@ -616,6 +616,24 @@ GUIDES = {
             {
                 "title": "Print",
                 "body": "Use Print / Save PDF. The header, day’s total, page number, and print date/time appear on every printed page.",
+            },
+        ],
+    },
+    "application-blank": {
+        "title": "How to print a blank application",
+        "intro": "This is the full enrollment packet with empty lines. Families fill it on paper. Staff type it in later. It is not the online apply page and does not sign anyone in.",
+        "steps": [
+            {
+                "title": "Print the packet",
+                "body": "Use Print / Save PDF. Every program, family, child, medical, billing, contact, and policy section is on this page with handwriting lines.",
+            },
+            {
+                "title": "Give it to the family",
+                "body": "They mark programs and location, fill parent and child details, and sign each policy. There is no Submit online button on the printed page.",
+            },
+            {
+                "title": "Enter it in the portal",
+                "body": "When the paper comes back, use Create application on Applications to type the same answers. That is how the child gets on the review queue.",
             },
         ],
     },

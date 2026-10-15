@@ -2773,6 +2773,24 @@ def staff_signout_blank(request):
     )
 
 
+@staff_login_required
+@require_GET
+def staff_application_blank(request):
+    from .application_blank import blank_application_page_context
+
+    extras = blank_application_page_context(admin=False)
+    return render(
+        request,
+        "portal/staff/application_blank.html",
+        _staff_context(
+            "Application (blank)",
+            request=request,
+            staff_page_slug="reports",
+            **extras,
+        ),
+    )
+
+
 def _before_care_filters(request):
     return {
         "q": request.GET.get("q", "").strip(),
@@ -5376,6 +5394,27 @@ def admin_attendance_blank_daily(request):
 def admin_attendance_blank_weekly(request):
     return _admin_attendance_sheet(
         request, "weekly-blank", "Weekly attendance — blank sheet", "portal/staff/attendance_blank_weekly.html"
+    )
+
+
+@require_GET
+@admin_login_required
+def admin_application_blank(request):
+    from .application_blank import blank_application_page_context
+
+    extras = blank_application_page_context(admin=True)
+    return render(
+        request,
+        "portal/staff/application_blank.html",
+        _finalize_admin_context(
+            request,
+            _portal_context(
+                "admin",
+                "Application (blank)",
+                admin_page_slug="reports",
+                **extras,
+            ),
+        ),
     )
 
 

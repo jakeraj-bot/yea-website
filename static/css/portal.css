@@ -3247,6 +3247,19 @@ nav.portal-nav-admin-groups {
     }
   }
 
+  @page application-blank-print {
+    size: portrait;
+    margin: 1.1in 0.5in 0.7in 0.5in;
+    @bottom-left {
+      content: "Printed";
+      font-size: 9pt;
+    }
+    @bottom-right {
+      content: "Page " counter(page);
+      font-size: 9pt;
+    }
+  }
+
   .portal-no-print,
   .portal-preview-banner,
   .portal-header,
@@ -3301,6 +3314,10 @@ nav.portal-nav-admin-groups {
 
   .portal-medical-report-sheet.portal-attendance-print-sheet {
     page: attendance-print;
+  }
+
+  .portal-medical-report-sheet.portal-application-blank-sheet {
+    page: application-blank-print;
   }
 
   .portal-medical-report-sheet:has(.portal-print-title-row) > .portal-medical-report-header,
@@ -6445,4 +6462,108 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   text-align: center;
   font-size: 0.72rem;
   white-space: nowrap;
+}
+
+/* Blank printable enrollment application */
+.portal-application-blank-sheet {
+  font-size: 0.92rem;
+}
+
+.portal-application-blank-note {
+  margin: 0 0 1.1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-soft, #e8e8e8);
+  background: #fafafa;
+}
+
+.portal-application-blank-section {
+  margin: 0 0 1.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.portal-application-blank-section h3 {
+  margin: 0 0 0.65rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #4589cd;
+  font-size: 1.05rem;
+}
+
+.portal-application-blank-section h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.98rem;
+}
+
+.portal-blank-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 1rem;
+}
+
+.portal-blank-field {
+  min-width: 0;
+}
+
+.portal-blank-field--full {
+  grid-column: 1 / -1;
+}
+
+.portal-blank-field-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 0.15rem;
+}
+
+.portal-blank-line--tall {
+  min-height: 3.1rem;
+}
+
+.portal-blank-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+}
+
+.portal-blank-choice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  line-height: 1.3;
+}
+
+.portal-blank-box {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-top: 0.15rem;
+  border: 1px solid #333;
+  flex: 0 0 auto;
+}
+
+.portal-application-blank-contact {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem 0.75rem;
+  border: 1px solid var(--border-soft, #ddd);
+}
+
+.portal-application-blank-contact legend {
+  font-weight: 700;
+  padding: 0 0.35rem;
+}
+
+.portal-application-blank-policy {
+  margin: 0.85rem 0 1.1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #ddd;
+}
+
+.portal-application-blank-policy p {
+  margin: 0 0 0.55rem;
+}
+
+@media print {
+  .portal-application-blank-note {
+    background: transparent;
+  }
 }

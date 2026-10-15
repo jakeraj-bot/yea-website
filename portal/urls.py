@@ -249,6 +249,11 @@ urlpatterns = [
         name="portal_staff_signout_blank",
     ),
     path(
+        "staff/reports/application-blank/",
+        views.staff_application_blank,
+        name="portal_staff_application_blank",
+    ),
+    path(
         "staff/reports/before-care/",
         views.staff_before_care_report,
         name="portal_staff_before_care_report",
@@ -860,6 +865,11 @@ urlpatterns = [
         "admin/reports/print/attendance-blank-weekly/",
         views.admin_attendance_blank_weekly,
         name="portal_admin_attendance_blank_weekly",
+    ),
+    path(
+        "admin/reports/print/application-blank/",
+        views.admin_application_blank,
+        name="portal_admin_application_blank",
     ),
     path(
         "admin/reports/print/attendance-by-grade/",

@@ -34,6 +34,7 @@ class PageGuideCatalogTests(TestCase):
             "weekly-attendance-blank",
             "daily-attendance",
             "daily-attendance-blank",
+            "application-blank",
             "signout-blank",
             "before-care",
             "admin-attendance",
