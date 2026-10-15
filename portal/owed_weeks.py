@@ -13,6 +13,7 @@ from .family_list import (
     _child_name_key,
     child_balance_from_map,
     child_balance_maps,
+    fifo_allocate_family_entries,
     household_ledger_totals,
 )
 from .member_admin import is_placeholder_unit
@@ -21,9 +22,6 @@ from .unit_visibility import children_for_unit, unit_label_for_child
 
 MONEY = Decimal("0.01")
 DEFAULT_LATE_FEE = Decimal("15.00")
-DEBIT_TYPES = ("charge", "membership")
-CREDIT_TYPES = ("payment", "credit", "discount")
-REFUND_TYPES = ("refund",)
 WEEK_IN_PARENS = re.compile(r"\(([^)]+)\)")
 WEEK_OF = re.compile(r"week of\s+([^.,;]+)", re.I)
 CC_WEEK = re.compile(r"CC WK\s+(\d+(?:\s*[–-]\s*\d+)?)", re.I)
@@ -146,60 +144,27 @@ def _entries_oldest_first(family):
     )
 
 
-def _unpaid_charges(entries):
-    charges = []
-    credit = Decimal("0")
-    for entry in entries:
-        kind = entry.entry_type
-        amount = _money(entry.amount)
-        if kind in DEBIT_TYPES and amount > 0:
-            charges.append(
-                {
-                    "id": entry.pk,
-                    "date": entry.date,
-                    "description": entry.description,
-                    "week": week_label_from_charge(entry.description, entry.date),
-                    "remaining": amount,
-                }
-            )
-        elif kind in CREDIT_TYPES:
-            credit += abs(amount)
-        elif kind in REFUND_TYPES:
-            credit -= abs(amount)
-    for charge in charges:
-        if credit <= 0:
-            break
-        applied = min(charge["remaining"], credit)
-        charge["remaining"] -= applied
-        credit -= applied
-    return [row for row in charges if row["remaining"] > 0]
-
-
 def unpaid_charges_by_child(entries):
     """Remaining charge/membership lines per child after payments, credits, and discounts.
 
-    Family-wide (blank child) payments are applied oldest-first across those lines.
-    Stripe fees are not credits. Agency 4Cs receipts live on the agency ledger.
+    Same FIFO as Account Balance / billing child totals: named credits cover
+    that child's oldest charges, then blank-child household payments cover
+    remaining family charges by date, then id. Stripe fees are not credits.
+    Agency 4Cs receipts live on the agency ledger.
     """
-    from collections import defaultdict
-
-    from .family_list import _child_name_key
-
-    grouped = defaultdict(list)
-    unlabeled_credit = Decimal("0")
-    for entry in entries:
-        name = (entry.child_name or "").strip()
-        amount = _money(entry.amount)
-        if not name:
-            if entry.entry_type in CREDIT_TYPES:
-                unlabeled_credit += abs(amount)
-            elif entry.entry_type in REFUND_TYPES:
-                unlabeled_credit -= abs(amount)
-            continue
-        grouped[_child_name_key(name)].append(entry)
-    result = {key: _unpaid_charges(child_entries) for key, child_entries in grouped.items()}
-    if unlabeled_credit > 0:
-        _apply_unlabeled_credits(result, unlabeled_credit)
+    state = fifo_allocate_family_entries(entries)
+    result = {}
+    for key, charges in state["unpaid"].items():
+        result[key] = [
+            {
+                "id": charge["id"],
+                "date": charge["date"],
+                "description": charge["description"],
+                "week": week_label_from_charge(charge["description"], charge["date"]),
+                "remaining": charge["remaining"],
+            }
+            for charge in charges
+        ]
     return result
 
 
@@ -223,25 +188,6 @@ def remaining_charge_descriptions(unpaid):
         seen.add(key)
         parts.append(desc)
     return " · ".join(parts)
-
-
-def _apply_unlabeled_credits(child_unpaid, unlabeled_credits):
-    remaining = unlabeled_credits
-    if remaining <= 0:
-        return
-    oldest = []
-    for name, charges in child_unpaid.items():
-        for charge in charges:
-            oldest.append((charge["date"], charge["id"], name, charge))
-    oldest.sort()
-    for _date, _pk, _name, charge in oldest:
-        if remaining <= 0:
-            break
-        applied = min(charge["remaining"], remaining)
-        charge["remaining"] -= applied
-        remaining -= applied
-    for name in list(child_unpaid):
-        child_unpaid[name] = [row for row in child_unpaid[name] if row["remaining"] > 0]
 
 
 def _name_match(child_name, family_name, query):
