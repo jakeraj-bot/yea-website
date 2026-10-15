@@ -16,7 +16,7 @@
     </div>
 
     <div class="portal-medical-report-sheet card portal-application-blank-sheet">
-      <header class="portal-medical-report-header">
+      <header class="portal-medical-report-header portal-no-print">
         <img src="{% static 'images/yea-logo.png' %}" alt="" class="portal-medical-report-logo">
         <div>
           <h2>Youth Education Academy — Enrollment application</h2>
@@ -25,6 +25,14 @@
           </p>
         </div>
       </header>
+
+      <table class="portal-report-print-frame portal-application-blank-print-table" role="presentation">
+        <thead>
+          {% include "portal/staff/includes/application_blank_print_header.html" with colspan=1 sheet_title="Application" %}
+        </thead>
+        <tbody>
+          <tr>
+            <td class="portal-report-print-body">
 
       <p class="portal-application-blank-note">Fill every section in ink. Return this packet to the front desk. Staff will enter it — do not submit this form online.</p>
 
@@ -205,6 +213,11 @@
         </article>
         {% endfor %}
       </section>
+
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
