@@ -354,19 +354,25 @@ def owed_weeks_report(filters=None, *, unit=None, admin=False):
 
 
 def families_with_balance(*, unit=None):
-    """Active families whose household ledger is over $0."""
-    families = PortalFamily.objects.select_related("unit").prefetch_related("children").filter(status="Active")
-    if unit:
-        family_ids = set(children_for_unit(unit, active_only=True).values_list("family_id", flat=True))
-        families = families.filter(pk__in=family_ids)
-    families = [family for family in families if not is_placeholder_unit(family.unit)]
-    totals = household_ledger_totals([family.pk for family in families])
+    """Active families whose active, approved children still owe.
+
+    Inactive leftover balances and a stale household ledger total do not count.
+    """
+    from .family_list import overdue_active_children_summary
+
+    _count, _total, owing = overdue_active_children_summary(unit=unit)
+    if not owing:
+        return []
+    families = {
+        family.pk: family
+        for family in PortalFamily.objects.select_related("unit").filter(pk__in=owing.keys())
+    }
     rows = []
-    for family in families:
-        total = totals.get(family.pk, Decimal("0"))
-        if total <= 0:
+    for family_id, amount in owing.items():
+        family = families.get(family_id)
+        if not family or is_placeholder_unit(family.unit):
             continue
-        rows.append({"family": family, "balance": _money(total)})
+        rows.append({"family": family, "balance": _money(amount)})
     return rows
 
 

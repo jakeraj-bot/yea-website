@@ -152,16 +152,29 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
     Uses the live ledger (charges minus payments/credits). Stripe fees and a
     stale ``PortalFamily.balance`` cache do not inflate these numbers.
     Inactive children who still owe are left off Overview cards and default
-    reports. Unapproved applications are excluded. Review inactive children on
-    the Inactive tab, Inactive report, or status All.
+    reports even when an approved leftover application is still on file.
+    Unapproved applications are excluded. Review inactive children on the
+    Inactive tab, Inactive report, or status All.
     """
     from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
 
-    qs = visible_member_children_qs(unit=unit, active_only=True)
+    qs = visible_member_children_qs(unit=unit, active_only=True).prefetch_related(
+        "family__enrollment_applications"
+    )
     if unit is None and family_ids is not None:
         qs = qs.filter(family_id__in=list(family_ids))
-    children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
+    children = []
+    apps_by_family = {}
+    for child in qs:
+        if not child.is_active or is_placeholder_unit(child.family.unit):
+            continue
+        family_id = child.family_id
+        if family_id not in apps_by_family:
+            apps_by_family[family_id] = list(child.family.enrollment_applications.all())
+        if not child_is_approved_member(child, apps_by_family[family_id]):
+            continue
+        children.append(child)
     maps = child_balance_maps([child.family_id for child in children])
     family_owing = {}
     for child in children:
@@ -190,8 +203,22 @@ def unit_balance_summary(*, include_inactive=False):
         .exclude(slug__in=("main-location", "main_location"))
         .order_by("name")
     )
-    qs = visible_member_children_qs(active_only=not include_inactive)
-    children = [child for child in qs if not is_placeholder_unit(child.family.unit)]
+    qs = visible_member_children_qs(active_only=not include_inactive).prefetch_related(
+        "family__enrollment_applications"
+    )
+    children = []
+    apps_by_family = {}
+    for child in qs:
+        if is_placeholder_unit(child.family.unit):
+            continue
+        if not include_inactive and not child.is_active:
+            continue
+        family_id = child.family_id
+        if family_id not in apps_by_family:
+            apps_by_family[family_id] = list(child.family.enrollment_applications.all())
+        if child.is_active and not child_is_approved_member(child, apps_by_family[family_id]):
+            continue
+        children.append(child)
     maps = child_balance_maps([child.family_id for child in children])
     buckets = {
         unit.slug: {
