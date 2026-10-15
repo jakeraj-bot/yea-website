@@ -4524,7 +4524,7 @@ def staff_account_balance_report(request):
             ],
             "layout": spec.get("layout") or "table",
             "print_header": True,
-            "print_title": "Balance Report",
+            "print_title": "Account Balance",
             "selected_unit_name": "",
             "selected_status": filters.get("status") or "Active",
             "unit_balances": [],

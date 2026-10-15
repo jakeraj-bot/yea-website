@@ -77,8 +77,8 @@
       if (sheet.classList.contains("portal-attendance-print-sheet")) continue;
       var header = sheet.querySelector(".portal-medical-report-header");
       if (!header) continue;
-      pinRunningHeader(header);
       if (sheet.querySelector(".portal-print-title-row")) continue;
+      pinRunningHeader(header);
 
       var tables = sheet.querySelectorAll("table");
       var injected = 0;
@@ -101,7 +101,7 @@
     if (!style) return;
     var stamp = new Date().toLocaleString();
     style.textContent = style.textContent.replace(
-      /content: "Printed [^"]*";/,
+      /content: "Printed [^"]*";/g,
       'content: "Printed ' + stamp.replace(/"/g, "") + '";'
     );
   }

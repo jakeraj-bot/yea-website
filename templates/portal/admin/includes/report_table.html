@@ -1,7 +1,7 @@
 <div class="portal-table-hscroll" data-table-hscroll hidden>
   <div class="portal-table-hscroll-inner"></div>
 </div>
-<div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}">
+<div class="portal-table-wrap{% if freeze_first %} portal-table-wrap--report{% endif %}{% if report.print_header %} portal-attendance-print-wrap{% endif %}">
   <table class="portal-table{% if freeze_first %} portal-table--freeze-first{% endif %}{% if report.print_header %} portal-account-balance-print-table portal-attendance-print-table{% endif %}">
     {% if report.print_header %}
     <colgroup>

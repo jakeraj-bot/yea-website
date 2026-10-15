@@ -28,6 +28,8 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("page: attendance-print", print_css)
         self.assertIn("@page application-blank-print", print_css)
         self.assertIn("page: application-blank-print", print_css)
+        self.assertIn("@page account-balance-print", print_css)
+        self.assertIn("page: account-balance-print", print_css)
         self.assertIn("size: portrait", print_css)
         self.assertIn('content: "Page " counter(page)', print_css)
         self.assertIn('content: "Printed"', print_css)
@@ -56,10 +58,12 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         attendance_thead = print_css.split(".portal-attendance-print-table thead {", 1)[1].split("}", 1)[0]
         self.assertIn("table-header-group", attendance_thead)
         self.assertNotIn("display: block", attendance_thead)
+        self.assertEqual(css.count("{"), css.count("}"))
 
     def test_shared_print_template_and_script_are_wired(self):
         chrome = REPORT_PRINT_CHROME.read_text()
         self.assertIn("@page report-print", chrome)
+        self.assertIn("@page account-balance-print", chrome)
         self.assertIn("counter(page)", chrome)
         self.assertIn("Printed", chrome)
         self.assertIn("portal-report-print.js", chrome)
@@ -75,6 +79,12 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("portal-print-header-spacer", js)
         self.assertIn("insertBefore", js)
         self.assertIn("beforeprint", js)
+        wrap = js.split("function wrapReportSheetsForPrint()", 1)[1]
+        self.assertLess(
+            wrap.index('querySelector(".portal-print-title-row")'),
+            wrap.index("pinRunningHeader("),
+            "do not pin a page running bar on sheets that already have a thead print header",
+        )
 
         attendance = ATTENDANCE_PRINT_HEADER.read_text()
         self.assertIn("portal-print-title-row", attendance)
@@ -174,3 +184,37 @@ class ReportPrintHeaderPageTests(TestCase):
         self.assertContains(hub, "report-print-page-style")
         self.assertContains(hub, "portal-report-print.js")
         self.assertNotContains(hub, "portal-medical-report-header")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_account_balance_print_header_is_one_compact_thead_row(self):
+        self._login(self.admin, "admin")
+        page = self.client.get(reverse("portal_admin_data_report", kwargs={"report_slug": "balances"}))
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertEqual(html.count("portal-medical-report-header"), 1)
+        self.assertEqual(html.count("portal-print-title-row"), 1)
+        self.assertEqual(html.count("portal-print-running-header"), 1)
+        self.assertNotIn("portal-report-print-running-bar", html)
+        self.assertNotIn("Balance Report", html)
+        self.assertIn("Account Balance", html)
+        self.assertIn("portal-account-balance-sheet", html)
+        self.assertIn("portal-attendance-print-wrap", html)
+        table = html.split("portal-account-balance-print-table", 1)[1]
+        thead = table.split("<thead>", 1)[1].split("</thead>", 1)[0]
+        self.assertIn("portal-print-title-row", thead)
+        self.assertIn("portal-print-running-header", thead)
+        self.assertIn("yea-logo.png", thead)
+        self.assertIn("Account Balance", thead)
+        self.assertNotIn("portal-medical-report-header", thead)
+        self.assertNotIn("portal-print-header", thead.replace("portal-print-header-spacer", ""))
+        sheet_header = html.split("portal-medical-report-header", 1)[1].split("</header>", 1)[0]
+        self.assertNotIn("portal-print-title-row", sheet_header)
+        self.assertNotIn("portal-print-running-header", sheet_header)
+        self._login(self.staff, "staff")
+        staff_page = self.client.get(reverse("portal_staff_account_balance_report"))
+        self.assertEqual(staff_page.status_code, 200)
+        staff_html = staff_page.content.decode()
+        self.assertEqual(staff_html.count("portal-print-title-row"), 1)
+        self.assertEqual(staff_html.count("portal-medical-report-header"), 1)
+        self.assertIn("Account Balance", staff_html)
+        self.assertNotIn("Balance Report", staff_html)
