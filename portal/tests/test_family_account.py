@@ -579,8 +579,8 @@ class BillingPlanChargeTests(TestCase):
         self.assertContains(plans_page, "After care")
         self.assertContains(plans_page, "Add another plan")
         billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
-        self.assertContains(billing, "Before care")
-        self.assertContains(billing, "After care")
+        self.assertContains(billing, "Weekly Charge")
+        self.assertContains(billing, "CC WK")
 
 
 class RegularPlanScholarshipTests(TestCase):

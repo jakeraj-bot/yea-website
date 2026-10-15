@@ -294,7 +294,7 @@ class WeeklyFourCsThursdayPostTests(TestCase):
             .last()
         )
         self.assertEqual(second.date, date(2026, 9, 17))
-        self.assertIn("9/21/26", second.description)
+        self.assertIn("9/21/2026", second.description)
 
     def test_saving_weekly_plan_without_post_today_waits_until_thursday(self):
         monday = date(2026, 9, 7)
