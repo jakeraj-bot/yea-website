@@ -3,6 +3,7 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.html import escape
 
 from enrollment.policies_data import POLICIES
 from portal.models import PortalStaffAccount, PortalUnit
@@ -61,7 +62,7 @@ class ApplicationBlankReportTests(TestCase):
         self.assertNotContains(response, "Jordan Jacobs")
         self.assertNotContains(response, 'id="apply-policies"')
         for policy in POLICIES:
-            self.assertContains(response, policy["title"])
+            self.assertContains(response, escape(policy["title"]))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_blank_application_is_printable_packet_not_apply(self):
@@ -110,6 +111,10 @@ class ApplicationBlankReportTests(TestCase):
     def test_public_apply_flow_still_opens(self):
         apply_page = self.client.get(reverse("apply"))
         self.assertEqual(apply_page.status_code, 200)
-        self.assertContains(apply_page, "Apply")
-        family_step = self.client.get(reverse("enrollment_apply", kwargs={"step": "family"}))
+        self.assertContains(apply_page, "Apply for enrollment")
+        family_step = self.client.get(
+            reverse("enrollment_apply", kwargs={"step": "family"}),
+            {"new": "1"},
+        )
         self.assertEqual(family_step.status_code, 200)
+        self.assertContains(family_step, "Family")
