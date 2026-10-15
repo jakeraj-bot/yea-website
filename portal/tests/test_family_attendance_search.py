@@ -110,7 +110,7 @@ class ChildAttendanceCalendarTests(TestCase):
         calendar = child_attendance_month(self.child_a, date(2026, 9, 1))
         self.assertEqual(calendar["month_value"], "2026-09")
         self.assertIn("September", calendar["month_label"])
-        by_iso = {day["iso"]: day for week in calendar["weeks"] for day in week if day["in_month"]}
+        by_iso = {day["iso"]: day for week in calendar["weeks"] for day in week["days"] if day["in_month"]}
         self.assertEqual(by_iso["2026-09-08"]["mark"], "present")
         self.assertEqual(by_iso["2026-09-09"]["mark"], "absent")
         self.assertEqual(by_iso["2026-09-10"]["mark"], "unmarked")

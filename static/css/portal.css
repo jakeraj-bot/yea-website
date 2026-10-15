@@ -6453,6 +6453,17 @@ html.portal-nav-collapsed .portal-sidebar-footer {
   }
 }
 
+.portal-child-calendar .portal-program-week-cc,
+.portal-activity-calendar .portal-program-week-cc {
+  width: 4.6rem;
+  min-width: 4.2rem;
+  padding: 0.35rem 0.3rem;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 /* Blank printable enrollment application */
 .portal-application-blank-sheet {
   font-size: 0.92rem;
@@ -6556,4 +6567,3 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     background: transparent;
   }
 }
-

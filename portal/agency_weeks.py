@@ -581,7 +581,7 @@ def program_month_rows(calendar=None):
                 "week_numbers_display": ", ".join(str(n) for n in numbers),
                 "week_count": len(numbers),
                 "overridden": bool(row and row.overridden),
-                "charge_name": monthly_charge_name(month_date, numbers),
+                "charge_name": monthly_charge_name(month_date, numbers, kind="tuition"),
                 "thursdays": thursdays,
                 "thursdays_display": ", ".join(thursdays),
                 "week_labels": labels,
@@ -641,55 +641,149 @@ def cc_week_numbers_for_spans(spans, calendar=None):
     return numbers
 
 
-def weekly_charge_name(number, kind="tuition", cadence="weekly"):
-    label = cc_week_label(number) or "CC WK"
-    key = cadence_key(cadence)
-    if kind == "4cs_copay":
-        if key == "biweekly":
-            return f"{label} - bi-weekly 4Cs Copay"
-        if key == "monthly":
-            return f"{label} - monthly 4Cs Copay"
-        return f"{label} - weekly 4Cs Copay"
-    if kind == "4cs_agency":
-        return f"{label} - weekly 4Cs agency"
-    if key == "biweekly":
-        return f"{label} - bi-weekly charge"
-    return f"{label} - weekly charge"
-
-
-def biweekly_charge_name(numbers, kind="tuition"):
-    cleaned = [int(n) for n in numbers or [] if n]
-    if not cleaned:
+def format_mdy(day):
+    """M/D/YYYY, matching Jakera's charge-description examples."""
+    if not day:
         return ""
-    if len(cleaned) == 1:
-        return weekly_charge_name(cleaned[0], kind, cadence="biweekly")
-    first, last = cleaned[0], cleaned[-1]
+    return f"{day.month}/{day.day}/{day.year}"
+
+
+def format_span_paren(week_start, week_end):
+    if not week_start or not week_end:
+        return ""
+    return f"({format_mdy(week_start)} - {format_mdy(week_end)})"
+
+
+def charge_kind_phrase(cadence, kind="tuition"):
+    """Exact posted-charge wording. Plan custom descriptions are never used."""
+    key = cadence_key(cadence)
+    if key == "monthly":
+        cycle = "Monthly Charge"
+    elif key == "biweekly":
+        cycle = "Bi-Weekly Charge"
+    else:
+        cycle = "Weekly Charge"
     if kind == "4cs_copay":
-        return f"CC WK {first}–{last} - bi-weekly 4Cs Copay"
+        return f"4Cs Copay {cycle}"
     if kind == "4cs_agency":
-        return f"CC WK {first}–{last} - bi-weekly 4Cs agency"
-    return f"CC WK {first}–{last} - bi-weekly charge"
+        return f"4Cs Agency {cycle}"
+    return cycle
 
 
-def monthly_charge_name(month_date, numbers):
+def weekly_charge_name(number, kind="tuition", cadence="weekly", week_start=None, week_end=None):
+    label = cc_week_label(number) or "CC WK"
+    phrase = charge_kind_phrase(cadence, kind)
+    span = format_span_paren(week_start, week_end)
+    if span:
+        return f"{label} - {phrase} - for {span}"
+    return f"{label} - {phrase}"
+
+
+def biweekly_charge_name(numbers, kind="tuition", spans=None):
+    cleaned = [int(n) for n in numbers or [] if n]
+    spans = [span for span in (spans or []) if span and span[0] and span[1]]
+    if not cleaned and not spans:
+        return ""
+    if len(cleaned) == 1 and len(spans) < 2:
+        start = spans[0][0] if spans else None
+        end = spans[0][1] if spans else None
+        return weekly_charge_name(cleaned[0], kind, cadence="biweekly", week_start=start, week_end=end)
+    if len(cleaned) >= 2:
+        head = f"CC WK {cleaned[0]} & {cleaned[1]}"
+    elif cleaned:
+        head = cc_week_label(cleaned[0])
+    else:
+        head = "CC WK"
+    phrase = charge_kind_phrase("biweekly", kind)
+    if len(spans) >= 2:
+        return (
+            f"{head} - {phrase} - for {format_span_paren(*spans[0])} and {format_span_paren(*spans[1])}"
+        )
+    if len(spans) == 1:
+        return f"{head} - {phrase} - for {format_span_paren(*spans[0])}"
+    return f"{head} - {phrase}"
+
+
+def monthly_charge_name(month_date, numbers, kind="tuition"):
     month = month_date.strftime("%B") if hasattr(month_date, "strftime") else str(month_date)
     cleaned = [str(int(n)) for n in numbers or [] if n]
+    phrase = charge_kind_phrase("monthly", kind)
     if not cleaned:
-        return f"{month} monthly charge"
-    return f"{month} monthly charge for Wk {', '.join(cleaned)}"
+        return f"{month} - {phrase}"
+    return f"{month} - {phrase} - for CC WK {', '.join(cleaned)}"
 
 
-def automatic_charge_name(cadence, kind="tuition", week_numbers=None, month_date=None):
+def automatic_charge_name(cadence, kind="tuition", week_numbers=None, month_date=None, week_spans=None):
     key = cadence_key(cadence)
     numbers = [int(n) for n in week_numbers or [] if n]
+    spans = list(week_spans or [])
     if key == "monthly":
         when = month_date or timezone.localdate()
-        return monthly_charge_name(when, numbers)
+        return monthly_charge_name(when, numbers, kind=kind)
     if key == "biweekly":
-        return biweekly_charge_name(numbers, kind=kind)
+        return biweekly_charge_name(numbers, kind=kind, spans=spans)
     if numbers:
-        return weekly_charge_name(numbers[0], kind=kind, cadence=cadence)
+        start = spans[0][0] if spans else None
+        end = spans[0][1] if spans else None
+        return weekly_charge_name(
+            numbers[0], kind=kind, cadence=cadence, week_start=start, week_end=end
+        )
     return ""
+
+
+def program_weeks_covering_charge(charge_date, cadence="weekly", calendar=None):
+    """Program weeks a private-pay auto charge covers (one, two, or the month)."""
+    if not charge_date:
+        return []
+    key = cadence_key(cadence)
+    if key == "monthly":
+        return numbered_weeks_for_month(charge_date.year, charge_date.month, calendar=calendar)
+    current = program_week_for_date(charge_date, calendar)
+    if not current:
+        return []
+    if key != "biweekly":
+        return [current]
+    found = []
+    taking = False
+    for week in listed_program_weeks(calendar):
+        if week.week_start == current.week_start:
+            taking = True
+        if taking:
+            found.append(week)
+        if len(found) >= 2:
+            break
+    return found or [current]
+
+
+def period_week_spans(weeks, calendar=None):
+    spans = []
+    for week in weeks or []:
+        span = parent_span_for_week(week, calendar)
+        if span:
+            spans.append(span)
+        else:
+            spans.append((week.week_start, week.week_end))
+    return spans
+
+
+def cc_week_label_for_dates(dates):
+    """Side-column CC WK label for a Sunday-Saturday (or any) calendar row."""
+    for day in dates or []:
+        if not day or getattr(day, "weekday", lambda: 0)() >= 5:
+            continue
+        week = program_week_for_date(day)
+        if week:
+            return cc_week_label(week.week_number)
+    return ""
+
+
+def wrap_calendar_weeks(week_rows):
+    """Turn list[list[day_dict]] into list[{cc_label, days}] for a Week side column."""
+    wrapped = []
+    for days in week_rows or []:
+        dates = [day.get("date") for day in days]
+        wrapped.append({"cc_label": cc_week_label_for_dates(dates), "days": days})
+    return wrapped
 
 
 def numbered_weeks_for_month(year, month, calendar=None):
@@ -733,7 +827,7 @@ def monthly_charge_details(weekly_rate, charge_date, calendar=None):
         "week_count": count,
         "week_numbers": numbers,
         "weeks": weeks,
-        "charge_name": monthly_charge_name(charge_date, numbers),
+        "charge_name": monthly_charge_name(charge_date, numbers, kind="tuition"),
     }
 
 
@@ -1102,71 +1196,53 @@ def parent_charge_periods(profile, plan, start_from=None):
     """
     weeks, calendar = _parent_weeks_for_periods(profile, start_from=start_from)
     periods = []
-    monthly = cadence_key(plan) == "monthly"
     for group in group_weeks_for_cadence(weeks, plan):
-        start, end = _period_dates(group, calendar)
-        month_label = ""
-        month_date = start
-        if monthly and group:
-            year, month = month_key_for_span(group[0].week_start, group[0].week_end, calendar)
-            month_date = date(year, month, 1)
-            month_label = month_date.strftime("%B %Y")
-        numbers = cc_week_numbers_for_spans(group, calendar=calendar)
-        date_label = format_week_label(start, end)
-        if monthly:
-            label = monthly_charge_name(month_date, numbers)
-            if date_label:
-                label = f"{label} ({date_label})"
-        elif cadence_key(plan) == "biweekly":
-            label = biweekly_charge_name(numbers, kind="4cs_copay")
-            if date_label:
-                label = f"{label} ({date_label})"
-        elif numbers:
-            label = weekly_charge_name(numbers[0], kind="4cs_copay", cadence=plan)
-            if date_label:
-                label = f"{label} ({date_label})"
-        else:
-            label = date_label
         periods.append(
-            {
-                "start": start,
-                "end": end,
-                "label": label,
-                "amount": period_parent_total(group),
-                "weeks": group,
-                "week_count": len(group),
-                "week_numbers": numbers,
-                "month_label": month_label,
-                "posted": all(week.parent_posted for week in group),
-            }
+            _parent_period_dict(
+                group, plan, calendar, posted=all(week.parent_posted for week in group)
+            )
         )
     return periods
 
 
-def _period_from_remaining_weeks(remaining, calendar=None):
-    amount = ZERO
-    for week in remaining:
-        amount += week.parent_amount or ZERO
-    start, end = _period_dates(remaining, calendar)
-    numbers = cc_week_numbers_for_spans(remaining, calendar=calendar)
-    date_label = format_week_label(start, end)
-    if len(remaining) > 1:
-        label = biweekly_charge_name(numbers, kind="4cs_copay") or date_label
-    elif numbers:
-        label = weekly_charge_name(numbers[0], kind="4cs_copay")
-    else:
-        label = date_label
-    if date_label and date_label not in label:
-        label = f"{label} ({date_label})"
+def _parent_period_dict(group, plan, calendar=None, posted=False):
+    start, end = _period_dates(group, calendar)
+    numbers = cc_week_numbers_for_spans(group, calendar=calendar)
+    spans = period_week_spans(group, calendar)
+    month_label = ""
+    month_date = None
+    if cadence_key(plan) == "monthly" and group:
+        year, month = month_key_for_span(group[0].week_start, group[0].week_end, calendar)
+        month_date = date(year, month, 1)
+        month_label = month_date.strftime("%B %Y")
+    label = automatic_charge_name(
+        plan,
+        kind="4cs_copay",
+        week_numbers=numbers,
+        month_date=month_date,
+        week_spans=spans,
+    ) or format_week_label(start, end)
     return {
         "start": start,
         "end": end,
         "label": label,
-        "amount": amount.quantize(MONEY),
-        "weeks": remaining,
+        "amount": period_parent_total(group),
+        "weeks": group,
+        "week_count": len(group),
         "week_numbers": numbers,
-        "posted": False,
+        "week_spans": spans,
+        "month_label": month_label,
+        "posted": posted,
     }
+
+
+def _period_from_remaining_weeks(remaining, calendar=None, cadence="weekly"):
+    rebuilt = _parent_period_dict(remaining, cadence, calendar, posted=False)
+    amount = ZERO
+    for week in remaining:
+        amount += week.parent_amount or ZERO
+    rebuilt["amount"] = amount.quantize(MONEY)
+    return rebuilt
 
 
 def next_unposted_parent_period(profile, plan):
@@ -1176,18 +1252,7 @@ def next_unposted_parent_period(profile, plan):
         if remaining == period["weeks"]:
             return period
         if remaining:
-            rebuilt = _period_from_remaining_weeks(remaining, calendar)
-            if cadence_key(plan) == "monthly":
-                year, month = month_key_for_span(
-                    remaining[0].week_start, remaining[0].week_end, calendar
-                )
-                numbers = cc_week_numbers_for_spans(remaining, calendar=calendar)
-                rebuilt["label"] = monthly_charge_name(date(year, month, 1), numbers)
-                rebuilt["week_numbers"] = numbers
-                date_label = format_week_label(rebuilt["start"], rebuilt["end"])
-                if date_label:
-                    rebuilt["label"] = f"{rebuilt['label']} ({date_label})"
-            return rebuilt
+            return _period_from_remaining_weeks(remaining, calendar, cadence=plan)
     return None
 
 
@@ -1233,7 +1298,7 @@ def parent_period_for_biweekly_from_date(profile, plan, start_from):
         weeks.append(week)
     if not weeks:
         return None
-    return _period_from_remaining_weeks(weeks[:2], calendar)
+    return _period_from_remaining_weeks(weeks[:2], calendar, cadence=plan)
 
 
 def next_biweekly_charge_date(current):
@@ -1256,7 +1321,7 @@ def parent_period_for_weekly_thursday_post(profile, plan, post_date):
             continue
         week_monday = remaining[0].week_start - timedelta(days=remaining[0].week_start.weekday())
         if week_monday >= target_monday:
-            return _period_from_remaining_weeks(remaining, calendar)
+            return _period_from_remaining_weeks(remaining, calendar, cadence=plan)
     return None
 
 
@@ -1413,7 +1478,16 @@ def mark_agency_week_received(week, received=True):
         amount = week.agency_amount or ZERO
         if amount > 0:
             number = cc_week_number_for_span(week.week_start, week.week_end)
-            received_name = weekly_charge_name(number, kind="4cs_agency") if number else ""
+            received_name = (
+                weekly_charge_name(
+                    number,
+                    kind="4cs_agency",
+                    week_start=week.week_start,
+                    week_end=week.week_end,
+                )
+                if number
+                else ""
+            )
             received_label = received_name or format_week_label(week.week_start, week.week_end)
             PortalAgencyLedgerEntry.objects.create(
                 profile=profile,
