@@ -15,6 +15,9 @@ REPORT_PRINT_JS = REPO_ROOT / "static" / "js" / "portal-report-print.js"
 REPORT_PRINT_CHROME = REPO_ROOT / "templates" / "portal" / "includes" / "report_print_chrome.html"
 BASE_TEMPLATE = REPO_ROOT / "templates" / "portal" / "base.html"
 ATTENDANCE_PRINT_HEADER = REPO_ROOT / "templates" / "portal" / "staff" / "includes" / "attendance_sheet_print_header.html"
+APPLICATION_BLANK_PRINT_HEADER = (
+    REPO_ROOT / "templates" / "portal" / "staff" / "includes" / "application_blank_print_header.html"
+)
 
 
 class ReportPrintHeaderSourceTests(SimpleTestCase):
@@ -28,6 +31,8 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("page: attendance-print", print_css)
         self.assertIn("@page application-blank-print", print_css)
         self.assertIn("page: application-blank-print", print_css)
+        self.assertIn(".portal-application-blank-print-table", print_css)
+        self.assertEqual(css.count("{"), css.count("}"))
         self.assertIn("size: portrait", print_css)
         self.assertIn('content: "Page " counter(page)', print_css)
         self.assertIn('content: "Printed"', print_css)
@@ -60,6 +65,7 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
     def test_shared_print_template_and_script_are_wired(self):
         chrome = REPORT_PRINT_CHROME.read_text()
         self.assertIn("@page report-print", chrome)
+        self.assertIn("@page application-blank-print", chrome)
         self.assertIn("counter(page)", chrome)
         self.assertIn("Printed", chrome)
         self.assertIn("portal-report-print.js", chrome)
@@ -75,10 +81,22 @@ class ReportPrintHeaderSourceTests(SimpleTestCase):
         self.assertIn("portal-print-header-spacer", js)
         self.assertIn("insertBefore", js)
         self.assertIn("beforeprint", js)
+        wrap = js.split("function wrapReportSheetsForPrint()", 1)[1]
+        self.assertLess(
+            wrap.index('querySelector(".portal-print-title-row")'),
+            wrap.index("pinRunningHeader("),
+            "do not pin a page running bar on sheets that already have a thead print header",
+        )
 
         attendance = ATTENDANCE_PRINT_HEADER.read_text()
         self.assertIn("portal-print-title-row", attendance)
         self.assertIn("yea-logo.png", attendance)
+
+        blank = APPLICATION_BLANK_PRINT_HEADER.read_text()
+        self.assertIn("portal-print-title-row", blank)
+        self.assertIn("yea-logo.png", blank)
+        self.assertIn("Application", blank)
+        self.assertNotIn("portal-medical-report-header", blank)
 
 
 class ReportPrintHeaderPageTests(TestCase):
@@ -147,7 +165,6 @@ class ReportPrintHeaderPageTests(TestCase):
             (reverse("portal_staff_pickup_report"), False),
             (reverse("portal_staff_weekly_attendance_report"), True),
             (reverse("portal_staff_signout_blank"), False),
-            (reverse("portal_staff_application_blank"), False),
             (reverse("portal_staff_four_cs_payout_report"), False),
         ]
         for url, attendance in pages:
@@ -162,7 +179,6 @@ class ReportPrintHeaderPageTests(TestCase):
             reverse("portal_admin_emergency_contact_report"),
             reverse("portal_admin_financial_report"),
             reverse("portal_admin_four_cs_payout_report"),
-            reverse("portal_admin_application_blank"),
             reverse("portal_admin_data_report", kwargs={"report_slug": "payments"}),
         ]
         for url in printable:
@@ -174,3 +190,33 @@ class ReportPrintHeaderPageTests(TestCase):
         self.assertContains(hub, "report-print-page-style")
         self.assertContains(hub, "portal-report-print.js")
         self.assertNotContains(hub, "portal-medical-report-header")
+
+    def _assert_application_blank_one_print_header(self, html):
+        self.assertEqual(html.count("portal-medical-report-header"), 1)
+        self.assertEqual(html.count("portal-print-title-row"), 1)
+        self.assertEqual(html.count("portal-print-running-header"), 1)
+        self.assertNotIn("portal-report-print-running-bar", html)
+        self.assertIn("portal-medical-report-header portal-no-print", html)
+        sheet_header = html.split("portal-medical-report-header", 1)[1].split("</header>", 1)[0]
+        self.assertNotIn("portal-print-title-row", sheet_header)
+        self.assertNotIn("portal-print-running-header", sheet_header)
+        table = html.split("portal-application-blank-print-table", 1)[1]
+        thead = table.split("<thead>", 1)[1].split("</thead>", 1)[0]
+        self.assertIn("portal-print-title-row", thead)
+        self.assertIn("yea-logo.png", thead)
+        self.assertIn("Application", thead)
+        self.assertNotIn("portal-medical-report-header", thead)
+        self.assertNotIn("portal-print-header", thead.replace("portal-print-header-spacer", ""))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_application_blank_print_header_is_one_thead_row(self):
+        cases = [
+            ("staff", self.staff, reverse("portal_staff_application_blank")),
+            ("admin", self.admin, reverse("portal_admin_application_blank")),
+        ]
+        for area, user, url in cases:
+            with self.subTest(area=area, url=url):
+                self._login(user, area)
+                page = self.client.get(url)
+                self.assertEqual(page.status_code, 200)
+                self._assert_application_blank_one_print_header(page.content.decode())
