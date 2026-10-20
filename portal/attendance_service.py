@@ -2,6 +2,11 @@ from datetime import date, datetime, time
 
 from django.utils.dateparse import parse_date, parse_time
 
+from .care_program import (
+    attendance_care_values,
+    filter_children_by_care,
+    persist_attendance_care,
+)
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram, PortalUnit
 from .unit_visibility import (
     child_belongs_to_unit,
@@ -93,14 +98,22 @@ def child_can_check_out(record_data):
     return record_data["has_check_in"] and not record_data["has_check_out"]
 
 
-def build_roster(unit, program, attendance_date):
+def build_roster(unit, program, attendance_date, care="all"):
     if not unit or not program:
         return []
 
-    children = children_for_unit(unit, active_only=True).order_by("name")
+    children = filter_children_by_care(
+        list(children_for_unit(unit, active_only=True).order_by("name")),
+        care,
+    )
     records = {
         record.child_id: record
-        for record in AttendanceRecord.objects.filter(program=program, date=attendance_date, child__in=children)
+        for record in AttendanceRecord.objects.filter(
+            program=program,
+            date=attendance_date,
+            child__in=children,
+            care__in=attendance_care_values(care),
+        )
     }
 
     roster = []
@@ -160,22 +173,57 @@ def build_session_context(unit, program, attendance_date, roster):
     }
 
 
-def get_or_create_record(child, program, attendance_date):
+def get_or_create_record(child, program, attendance_date, care="after"):
+    session = persist_attendance_care(care)
+    record = (
+        AttendanceRecord.objects.filter(
+            child=child,
+            program=program,
+            date=attendance_date,
+            care__in=attendance_care_values(session),
+        )
+        .order_by("-care")
+        .first()
+    )
+    if record:
+        return record
     record, _ = AttendanceRecord.objects.get_or_create(
         child=child,
         program=program,
         date=attendance_date,
+        care=session,
         defaults={"status": AttendanceRecord.STATUS_EXPECTED},
     )
     return record
 
 
-def check_in_child(child_id, program, attendance_date, check_in_time, method="Staff", note=""):
+def set_session_present(child, program, attendance_date, care, present, method="Staff"):
+    """Mark or clear one session (before-care or after-care) without touching the other."""
+    if present:
+        record = get_or_create_record(child, program, attendance_date, care=care)
+        record.status = AttendanceRecord.STATUS_PRESENT
+        record.care = persist_attendance_care(care)
+        if not record.check_in_time:
+            record.check_in_time = datetime.now().time().replace(second=0, microsecond=0)
+        record.method = record.method or method or "Staff"
+        record.save()
+        return record
+    AttendanceRecord.objects.filter(
+        child=child,
+        program=program,
+        date=attendance_date,
+        care__in=attendance_care_values(care),
+    ).delete()
+    return None
+
+
+def check_in_child(child_id, program, attendance_date, check_in_time, method="Staff", note="", care="after"):
     child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
     if program and not child_belongs_to_unit(child, program.unit):
         raise ValueError("This child is not enrolled at this program site.")
-    record = get_or_create_record(child, program, attendance_date)
+    record = get_or_create_record(child, program, attendance_date, care=care)
     record.status = AttendanceRecord.STATUS_PRESENT
+    record.care = persist_attendance_care(care)
     record.check_in_time = check_in_time
     record.check_out_time = None
     record.method = method or "Staff"
@@ -185,11 +233,11 @@ def check_in_child(child_id, program, attendance_date, check_in_time, method="St
     return record
 
 
-def check_out_child(child_id, program, attendance_date, check_out_time):
+def check_out_child(child_id, program, attendance_date, check_out_time, care="after"):
     child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
     if program and not child_belongs_to_unit(child, program.unit):
         raise ValueError("This child is not enrolled at this program site.")
-    record = get_or_create_record(child, program, attendance_date)
+    record = get_or_create_record(child, program, attendance_date, care=care)
     if not record.check_in_time:
         raise ValueError("Child must be checked in before check out.")
     record.check_out_time = check_out_time
@@ -197,12 +245,13 @@ def check_out_child(child_id, program, attendance_date, check_out_time):
     return record
 
 
-def mark_absent(child_id, program, attendance_date, note=""):
+def mark_absent(child_id, program, attendance_date, note="", care="after"):
     child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
     if program and not child_belongs_to_unit(child, program.unit):
         raise ValueError("This child is not enrolled at this program site.")
-    record = get_or_create_record(child, program, attendance_date)
+    record = get_or_create_record(child, program, attendance_date, care=care)
     record.status = AttendanceRecord.STATUS_ABSENT
+    record.care = persist_attendance_care(care)
     record.check_in_time = None
     record.check_out_time = None
     record.method = ""
@@ -212,12 +261,13 @@ def mark_absent(child_id, program, attendance_date, note=""):
     return record
 
 
-def undo_absent(child_id, program, attendance_date):
+def undo_absent(child_id, program, attendance_date, care="after"):
     child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
     if program and not child_belongs_to_unit(child, program.unit):
         raise ValueError("This child is not enrolled at this program site.")
-    record = get_or_create_record(child, program, attendance_date)
+    record = get_or_create_record(child, program, attendance_date, care=care)
     record.status = AttendanceRecord.STATUS_EXPECTED
+    record.care = persist_attendance_care(care)
     record.check_in_time = None
     record.check_out_time = None
     record.method = ""
@@ -246,6 +296,9 @@ def attendance_redirect(request, attendance_date, extra_query=""):
     unit = (request.POST.get("unit") or request.GET.get("unit") or "").strip()
     if unit:
         query = f"{query}&unit={unit}"
+    care = (request.POST.get("care") or request.GET.get("care") or "").strip()
+    if care:
+        query = f"{query}&care={care}"
     if extra_query:
         query = f"{query}&{extra_query}"
     return redirect(f"{url}?{query}")

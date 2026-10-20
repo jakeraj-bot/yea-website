@@ -117,6 +117,7 @@ class Command(BaseCommand):
                 child=child,
                 program=program,
                 date=seed_date,
+                care="",
                 defaults={
                     "status": roster_row.get("status", AttendanceRecord.STATUS_EXPECTED),
                     "check_in_time": check_in,

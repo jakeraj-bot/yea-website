@@ -66,8 +66,8 @@ class PortalChildBillingPlanAdmin(admin.ModelAdmin):
 
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(admin.ModelAdmin):
-    list_display = ("child", "date", "status", "check_in_time", "check_out_time", "method")
-    list_filter = ("date", "status", "program")
+    list_display = ("child", "date", "care", "status", "check_in_time", "check_out_time", "method")
+    list_filter = ("date", "care", "status", "program")
 
 
 @admin.register(PortalFeeRule)

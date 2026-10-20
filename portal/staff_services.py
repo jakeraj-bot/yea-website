@@ -726,10 +726,13 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
     present_lookup = {}
     status_lookup = {}
     if roster_children and record_programs:
+        from .care_program import attendance_care_values
+
         records = AttendanceRecord.objects.filter(
             program_id__in=[item.pk for item in record_programs if item],
             date__in=weekdays,
             child_id__in=[child.pk for child in roster_children],
+            care__in=attendance_care_values(scope.get("care")),
         )
         for record in records:
             key = (record.child_id, record.date)
@@ -757,7 +760,12 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
         option_statuses.add(status_label)
         row = {
             **_sheet_child_identity(child, chosen_program, record_programs),
+            "child_id": child.pk,
             "days": day_marks,
+            "day_marks": [
+                {"present": present, "iso": day.isoformat()}
+                for present, day in zip(day_marks, weekdays)
+            ],
             "weekday_labels": [column["label"] for column in week_days],
             "total": sum(1 for present in day_marks if present),
             "status": status_label,
@@ -796,6 +804,7 @@ def weekly_attendance_report_data(unit, program, anchor_date=None, filters=None,
 def daily_attendance_report_data(unit, program, sheet_date=None, filters=None, *, admin=False, allowed_units=None):
     """One-day attendance roster with the same unit / grade / name filters as weekly."""
     from .attendance_service import record_for_row
+    from .care_program import attendance_care_values, attendance_session_label
     from .report_sheets import _format_long
 
     filters = dict(filters or {})
@@ -813,6 +822,7 @@ def daily_attendance_report_data(unit, program, sheet_date=None, filters=None, *
             program_id__in=[item.pk for item in record_programs if item],
             date=day,
             child_id__in=[child.pk for child in roster_children],
+            care__in=attendance_care_values(scope.get("care")),
         )
         for record in records:
             existing = records_by_child.get(record.child_id)
@@ -833,7 +843,9 @@ def daily_attendance_report_data(unit, program, sheet_date=None, filters=None, *
         option_statuses.add(status_label)
         row = {
             **_sheet_child_identity(child, chosen_program, record_programs),
+            "child_id": child.pk,
             "status": status_label,
+            "session_label": attendance_session_label(scope.get("care")),
             "check_in": row_data["check_in"],
             "check_out": row_data["check_out"],
             "method": row_data["method"],

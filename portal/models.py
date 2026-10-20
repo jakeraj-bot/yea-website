@@ -141,10 +141,18 @@ class AttendanceRecord(models.Model):
         (STATUS_PRESENT, "Present"),
         (STATUS_ABSENT, "Absent"),
     ]
+    CARE_AFTER = "after"
+    CARE_BEFORE = "before"
+    CARE_CHOICES = [
+        ("", "After-care"),
+        (CARE_AFTER, "After-care"),
+        (CARE_BEFORE, "Before-care"),
+    ]
 
     child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="attendance_records")
     program = models.ForeignKey(PortalProgram, on_delete=models.CASCADE, related_name="attendance_records")
     date = models.DateField()
+    care = models.CharField(max_length=16, blank=True, default="", choices=CARE_CHOICES, db_index=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_EXPECTED)
     check_in_time = models.TimeField(null=True, blank=True)
     check_out_time = models.TimeField(null=True, blank=True)
@@ -154,7 +162,7 @@ class AttendanceRecord(models.Model):
 
     class Meta:
         ordering = ["child__name"]
-        unique_together = [("child", "program", "date")]
+        unique_together = [("child", "program", "date", "care")]
 
     def __str__(self):
         return f"{self.child.name} · {self.date} · {self.status}"

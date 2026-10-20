@@ -364,6 +364,11 @@ urlpatterns = [
         name="portal_staff_attendance_undo_absent",
     ),
     path(
+        "staff/attendance/mark/",
+        views.staff_attendance_mark,
+        name="portal_staff_attendance_mark",
+    ),
+    path(
         "staff/attendance/bulk-check-in/",
         views.staff_attendance_bulk_checkin,
         name="portal_staff_attendance_bulk_checkin",

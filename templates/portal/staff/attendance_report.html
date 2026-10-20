@@ -57,6 +57,7 @@
               <td>
                 <strong>{{ row.child }}</strong>
                 {% if row.grade %}<span class="portal-blank-sheet-meta">{{ row.grade }}</span>{% endif %}
+                {% if row.present and row.session_label %}<span class="portal-blank-sheet-meta">{{ row.session_label }}</span>{% endif %}
               </td>
               <td>{% if row.check_in %}{{ row.check_in }}{% else %}<span class="portal-blank-line" aria-hidden="true">&nbsp;</span>{% endif %}</td>
               <td>{% if row.check_out %}{{ row.check_out }}{% else %}<span class="portal-blank-line" aria-hidden="true">&nbsp;</span>{% endif %}</td>

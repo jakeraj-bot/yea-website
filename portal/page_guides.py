@@ -555,7 +555,7 @@ GUIDES = {
             },
             {
                 "title": "Read the grid like the blank sheet",
-                "body": "Grade sits under the child’s name. Unit is in the page header, not a column. A check means present; if they were not there, the cell is a blank line so you can write on a printout.",
+                "body": "Grade sits under the child’s name. Unit is in the page header, not a column. One check per day. On Before-care, a check is morning attendance. On After-care, a check is afternoon. All still saves and shows after-care so afternoon staff are not surprised. If they were not there, the cell is a blank line so you can write on a printout.",
             },
             {
                 "title": "Narrow further if you need to",
@@ -797,19 +797,19 @@ GUIDES = {
     },
     "family-attendance": {
         "title": "How to read this child’s attendance",
-        "intro": "This month calendar is for one child on this family account. It shows saved present, absent, and not-marked days.",
+        "intro": "This month calendar is for one child on this family account. It shows saved morning and afternoon marks.",
         "steps": [
             {
                 "title": "Switch children",
                 "body": "If this account has two children, use the names under the Attendance tab to switch calendars. You stay on the family account. Inactive children with saved attendance stay on the list and are labeled Inactive.",
             },
             {
-                "title": "Read the colors",
-                "body": "Green is present. Red is absent. Gray is not marked. Days stay not marked unless staff already saved attendance.",
+                "title": "Read B and A",
+                "body": "B is before-care (morning). A is after-care (afternoon). Each fills on its own, so a child in both programs can have B without A the same day. Green is present. Red is absent. Gray is not marked.",
             },
             {
                 "title": "Open a day",
-                "body": "Click a date to see the same check-in, check-out, method, and note that Review attendance has when a record exists.",
+                "body": "Click a date to see the session (before-care or after-care) plus the same check-in, check-out, method, and note that Review attendance has when a record exists.",
             },
             {
                 "title": "Change month",
