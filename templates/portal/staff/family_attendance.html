@@ -54,11 +54,12 @@
         <h2 class="portal-child-calendar-month">{{ attendance_calendar.month_label }}</h2>
         <a class="btn btn-secondary btn-sm" href="?{{ attendance_calendar.next_query }}">Next month</a>
       </div>
-      <p class="form-note">{{ attendance_child.name }} · Days with no saved record stay <strong>Not marked</strong>.</p>
+      <p class="form-note">{{ attendance_child.name }} · <strong>B</strong> is before-care (morning). <strong>A</strong> is after-care (afternoon). Days with no saved record stay <strong>Not marked</strong>.</p>
       <div class="portal-child-calendar-legend" aria-label="Attendance key">
         <span class="portal-child-calendar-key is-present">Present</span>
         <span class="portal-child-calendar-key is-absent">Absent</span>
         <span class="portal-child-calendar-key is-unmarked">Not marked</span>
+        <span class="portal-child-calendar-key is-session">B morning · A afternoon</span>
       </div>
       <div class="portal-table-wrap">
         <table class="portal-child-calendar" aria-label="Attendance calendar for {{ attendance_child.name }}">
@@ -79,7 +80,14 @@
               <td class="portal-child-calendar-day is-{{ day.mark }}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-selected{% endif %}">
                 <a href="?{{ attendance_calendar.month_query }}{% if attendance_calendar.month_query %}&amp;{% endif %}day={{ day.iso }}" class="portal-child-calendar-link">
                   <span class="portal-child-calendar-num">{{ day.day }}</span>
+                  {% if day.sessions %}
+                  <span class="portal-child-calendar-sessions" aria-label="{{ day.mark_label }}">
+                    <span class="portal-child-calendar-session is-{{ day.sessions.before.mark }}" title="Before-care">B</span>
+                    <span class="portal-child-calendar-session is-{{ day.sessions.after.mark }}" title="After-care">A</span>
+                  </span>
+                  {% else %}
                   <span class="portal-child-calendar-mark">{{ day.mark_label }}</span>
+                  {% endif %}
                 </a>
               </td>
               {% else %}
@@ -99,6 +107,8 @@
       {% if attendance_calendar.selected.has_record %}
         {% for record in attendance_calendar.selected.records %}
         <dl class="portal-dl">
+          <dt>Session</dt>
+          <dd>{{ record.session_label }} ({{ record.session_short }})</dd>
           <dt>Status</dt>
           <dd><span class="portal-attendance-status portal-attendance-{{ record.status }}">{{ record.status_label }}</span></dd>
           <dt>Check in</dt>

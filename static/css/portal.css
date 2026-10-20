@@ -1382,6 +1382,17 @@ nav.portal-nav-admin-groups {
   text-align: center;
 }
 
+.portal-attendance-mark-form {
+  margin: 0;
+  display: block;
+}
+
+.portal-attendance-mark-label {
+  display: block;
+  cursor: pointer;
+  width: 100%;
+}
+
 .portal-report-missing-row td {
   background: #fff8e8;
 }
@@ -4665,6 +4676,44 @@ nav.portal-nav-admin-groups {
 .portal-child-calendar-mark {
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.portal-child-calendar-sessions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.portal-child-calendar-session {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  padding: 0.05rem 0.28rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.portal-child-calendar-session.is-present {
+  background: #c8e6c9;
+  color: #1b5e20;
+}
+
+.portal-child-calendar-session.is-absent {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+
+.portal-child-calendar-session.is-unmarked {
+  background: #eceff1;
+  color: #78909c;
+}
+
+.portal-child-calendar-key.is-session {
+  background: #e3f2fd;
+  color: #1565c0;
 }
 
 .portal-child-calendar-detail {

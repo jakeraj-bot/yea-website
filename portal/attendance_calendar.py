@@ -8,6 +8,12 @@ from django.utils.dateparse import parse_date
 from django.utils.formats import date_format
 
 from .attendance_service import format_time_display
+from .care_program import (
+    CARE_AFTER,
+    CARE_BEFORE,
+    attendance_session_label,
+    record_attendance_session,
+)
 from .models import AttendanceRecord
 from .unit_visibility import child_belongs_to_unit
 
@@ -160,15 +166,41 @@ def _mark_for_records(records):
 
 
 def _record_detail(record):
+    session = record_attendance_session(record)
     return {
         "status": record.status,
         "status_label": dict(AttendanceRecord.STATUS_CHOICES).get(record.status, record.status),
+        "session": session,
+        "session_label": attendance_session_label(session),
+        "session_short": "B" if session == CARE_BEFORE else "A",
         "check_in": format_time_display(record.check_in_time),
         "check_out": format_time_display(record.check_out_time),
         "method": record.method or "",
         "note": record.note or "",
         "program": record.program.name if record.program_id else "",
         "has_record": True,
+    }
+
+
+def _day_sessions(records):
+    """Independent morning / afternoon marks. Legacy rows (no care) are after-care."""
+    before_records = [record for record in records if record_attendance_session(record) == CARE_BEFORE]
+    after_records = [record for record in records if record_attendance_session(record) == CARE_AFTER]
+    return {
+        "before": {
+            "key": CARE_BEFORE,
+            "short": "B",
+            "label": "Before-care",
+            "mark": _mark_for_records(before_records),
+            "present": _mark_for_records(before_records) == MARK_PRESENT,
+        },
+        "after": {
+            "key": CARE_AFTER,
+            "short": "A",
+            "label": "After-care",
+            "mark": _mark_for_records(after_records),
+            "present": _mark_for_records(after_records) == MARK_PRESENT,
+        },
     }
 
 
@@ -196,6 +228,7 @@ def child_attendance_month(child, month_start, *, selected_day=None):
         for day in week:
             day_records = by_date.get(day, []) if day.month == month_start.month else []
             mark = _mark_for_records(day_records) if day.month == month_start.month else ""
+            sessions = _day_sessions(day_records) if day.month == month_start.month else None
             days.append(
                 {
                     "date": day,
@@ -206,6 +239,7 @@ def child_attendance_month(child, month_start, *, selected_day=None):
                     "is_selected": bool(selected_day and day == selected_day),
                     "mark": mark,
                     "mark_label": MARK_LABELS.get(mark, ""),
+                    "sessions": sessions,
                     "has_record": bool(day_records),
                     "records": [_record_detail(record) for record in day_records],
                 }

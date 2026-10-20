@@ -31,6 +31,16 @@ CARE_LABELS = {
     CARE_BEFORE: "Before-care",
 }
 
+CARE_SESSION_LABELS = {
+    CARE_AFTER: "After-care",
+    CARE_BEFORE: "Before-care",
+}
+
+CARE_SESSION_SHORT = {
+    CARE_AFTER: "A",
+    CARE_BEFORE: "B",
+}
+
 APPROVED_CARE_STATUSES = frozenset({"approved", "enrolled"})
 
 PROGRAM_ACTION_LABELS = {
@@ -52,6 +62,44 @@ def normalize_care_filter(value):
 
 def care_filter_label(value):
     return CARE_LABELS.get(normalize_care_filter(value), "All")
+
+
+def attendance_session_for_filter(care):
+    """All and After-care map to afternoon. Before-care maps to morning."""
+    if normalize_care_filter(care) == CARE_BEFORE:
+        return CARE_BEFORE
+    return CARE_AFTER
+
+
+def persist_attendance_care(care):
+    """Value stored on new attendance rows for this filter."""
+    return attendance_session_for_filter(care)
+
+
+def attendance_care_values(care):
+    """Database values that count as this session. Blank legacy rows are after-care."""
+    if attendance_session_for_filter(care) == CARE_BEFORE:
+        return [CARE_BEFORE]
+    return [CARE_AFTER, ""]
+
+
+def record_attendance_session(record):
+    if getattr(record, "care", "") == CARE_BEFORE:
+        return CARE_BEFORE
+    return CARE_AFTER
+
+
+def attendance_session_label(care):
+    return CARE_SESSION_LABELS.get(attendance_session_for_filter(care), "After-care")
+
+
+def attendance_session_short(care):
+    return CARE_SESSION_SHORT.get(attendance_session_for_filter(care), "A")
+
+
+def child_can_save_attendance_session(child, apps, care):
+    """Only active approved membership for that session can be marked."""
+    return child_matches_care_filter(child, apps, attendance_session_for_filter(care))
 
 
 def apps_by_family_for_children(children):

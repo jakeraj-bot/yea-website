@@ -201,9 +201,13 @@ def merge_children(keep_child, drop_child):
         keep_child, drop_child = drop_child, keep_child
 
     for record in list(drop_child.attendance_records.all()):
-        if AttendanceRecord.objects.filter(
+        keep_qs = AttendanceRecord.objects.filter(
             child=keep_child, program=record.program, date=record.date
-        ).exists():
+        )
+        from .care_program import attendance_care_values, record_attendance_session
+
+        keep_qs = keep_qs.filter(care__in=attendance_care_values(record_attendance_session(record)))
+        if keep_qs.exists():
             record.delete()
         else:
             record.child = keep_child

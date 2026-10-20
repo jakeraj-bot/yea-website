@@ -1088,15 +1088,19 @@ def _parent_context(request, page_title, page_slug="", **extra):
 
 
 def _staff_attendance_context(request):
+    from .care_program import CARE_FILTER_CHOICES, normalize_care_filter
+
     unit = _staff_unit(request)
     program = get_active_program(unit)
     attendance_date = get_attendance_date(request)
-    roster = build_roster(unit, program, attendance_date)
+    care = normalize_care_filter(request.GET.get("care", ""))
+    roster = build_roster(unit, program, attendance_date, care=care)
     extras = _attendance_page_links(
         reverse("portal_staff_page", kwargs={"page": "attendance"}),
         attendance_date,
         unit_slug="",
         show_unit_filter=False,
+        care=care,
     )
     return {
         "attendance": build_session_context(unit, program, attendance_date, roster),
@@ -1111,14 +1115,21 @@ def _staff_attendance_context(request):
         "show_bulk_checkout_panel": request.GET.get("checkout") == "1" and request.GET.get("bulk") == "1",
         "attendance_heading": "Attendance",
         "show_attendance_medical_link": True,
+        "attendance_care": "" if care == "all" else care,
+        "attendance_care_choices": list(CARE_FILTER_CHOICES),
         **extras,
     }
 
 
-def _attendance_page_links(page_url, attendance_date, *, unit_slug="", show_unit_filter=False, units=None):
+def _attendance_page_links(page_url, attendance_date, *, unit_slug="", show_unit_filter=False, units=None, care=""):
+    from .care_program import normalize_care_filter
+
     query = f"date={attendance_date.isoformat()}"
     if unit_slug:
         query = f"{query}&unit={unit_slug}"
+    care = normalize_care_filter(care)
+    if care and care != "all":
+        query = f"{query}&care={care}"
     return {
         "attendance_page_url": page_url,
         "attendance_qs": query,
@@ -1126,25 +1137,28 @@ def _attendance_page_links(page_url, attendance_date, *, unit_slug="", show_unit
         "show_attendance_unit_filter": show_unit_filter,
         "show_attendance_unit_column": show_unit_filter and not unit_slug,
         "attendance_units": units or [],
+        "attendance_care": "" if care == "all" else care,
     }
 
 
 def _admin_attendance_context(request):
+    from .care_program import CARE_FILTER_CHOICES, normalize_care_filter
     from .member_admin import program_units
 
     attendance_date = get_attendance_date(request)
+    care = normalize_care_filter(request.GET.get("care", ""))
     units = list(program_units())
     unit_slug = (request.GET.get("unit") or "").strip()
     unit = next((item for item in units if item.slug == unit_slug), None) if unit_slug else None
     if unit:
         program = get_active_program(unit)
-        roster = build_roster(unit, program, attendance_date)
+        roster = build_roster(unit, program, attendance_date, care=care)
         attendance = build_session_context(unit, program, attendance_date, roster)
     else:
         roster = []
         for item in units:
             program = get_active_program(item)
-            roster.extend(build_roster(item, program, attendance_date))
+            roster.extend(build_roster(item, program, attendance_date, care=care))
         roster.sort(key=lambda row: (row.get("child") or "").lower())
         attendance = build_session_context(None, None, attendance_date, roster)
         attendance["unit"] = "All units"
@@ -1155,6 +1169,7 @@ def _admin_attendance_context(request):
         unit_slug=unit.slug if unit else "",
         show_unit_filter=True,
         units=[(item.slug, item.name) for item in units],
+        care=care,
     )
     return {
         "attendance": attendance,
@@ -1170,6 +1185,8 @@ def _admin_attendance_context(request):
         "attendance_heading": "Review attendance",
         "show_attendance_medical_link": False,
         "page_guide_key": "admin-attendance",
+        "attendance_care": "" if care == "all" else care,
+        "attendance_care_choices": list(CARE_FILTER_CHOICES),
         **extras,
     }
 
@@ -2529,6 +2546,9 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
             "program_name": weekly.get("program_name") or "",
             "unit_name": weekly.get("unit_name") or weekly.get("selected_unit_name") or "",
             "care_label": weekly.get("care_label") or "",
+            "sheet_care": filters.get("care") or "",
+            "can_mark_attendance": (not blank) and (live or (admin and _portal_data_live())),
+            "attendance_mark_url": reverse("portal_staff_attendance_mark"),
             "show_parent_contact": show_parent_contact,
             "show_parent_contact_filter": True,
             "report_filters": filters,
@@ -2589,6 +2609,8 @@ def _attendance_sheet_page_extras(request, *, kind, admin=False):
         "count_label": count_label,
         "program_name": daily.get("program_name") or "",
         "unit_name": daily.get("unit_name") or daily.get("selected_unit_name") or "",
+        "care_label": daily.get("care_label") or "",
+        "sheet_care": filters.get("care") or "",
         "report_filters": filters,
         "page_guide_key": "daily-attendance-blank" if blank else "daily-attendance",
         "attendance": {
@@ -2615,7 +2637,14 @@ def staff_attendance_report(request):
     )
 
 
-def _weekly_attendance_csv(weekly_rows, week_days, filename):
+def _sheet_present_label(care_label):
+    label = (care_label or "").strip()
+    if label == "Before-care":
+        return "Before-care"
+    return "After-care"
+
+
+def _weekly_attendance_csv(weekly_rows, week_days, filename, present_label="Present"):
     import csv
 
     from django.http import HttpResponse
@@ -2647,7 +2676,7 @@ def _weekly_attendance_csv(weekly_rows, week_days, filename):
             values.extend(
                 [row.get("parent_name") or "", row.get("parent_phone") or "", row.get("parent_email") or ""]
             )
-        values.extend(["Present" if present else "" for present in row.get("days") or []])
+        values.extend([present_label if present else "" for present in row.get("days") or []])
         values.append(row.get("total", 0))
         writer.writerow(values)
     return response
@@ -2659,7 +2688,10 @@ def staff_weekly_attendance_report(request):
     extras = _attendance_sheet_page_extras(request, kind="weekly", admin=False)
     if request.GET.get("format") == "csv":
         return _weekly_attendance_csv(
-            extras.get("weekly_rows") or [], extras.get("week_days") or [], "weekly-attendance.csv"
+            extras.get("weekly_rows") or [],
+            extras.get("week_days") or [],
+            "weekly-attendance.csv",
+            present_label=_sheet_present_label(extras.get("care_label")),
         )
     return render(
         request,
@@ -5315,7 +5347,10 @@ def _admin_attendance_sheet(request, kind, title, template):
     extras = _attendance_sheet_page_extras(request, kind=kind, admin=True)
     if kind == "weekly" and request.GET.get("format") == "csv":
         return _weekly_attendance_csv(
-            extras.get("weekly_rows") or [], extras.get("week_days") or [], "weekly-attendance.csv"
+            extras.get("weekly_rows") or [],
+            extras.get("week_days") or [],
+            "weekly-attendance.csv",
+            present_label=_sheet_present_label(extras.get("care_label")),
         )
     return render(
         request,
@@ -5932,8 +5967,11 @@ def staff_attendance_checkin(request):
     method = request.POST.get("method", "Staff")
     note = request.POST.get("note", "")
     check_in_time = parse_time_input(request.POST.get("check_in_time"))
+    from .care_program import normalize_care_filter
+
+    care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
     try:
-        record = check_in_child(child_id, program, attendance_date, check_in_time, method, note)
+        record = check_in_child(child_id, program, attendance_date, check_in_time, method, note, care=care)
         from .attendance_service import format_time_display as _format_time_display
 
         messages.success(
@@ -5966,8 +6004,11 @@ def staff_attendance_checkout(request):
     if redirect_response:
         return redirect_response
     check_out_time = parse_time_input(request.POST.get("check_out_time"))
+    from .care_program import normalize_care_filter
+
+    care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
     try:
-        record = check_out_child(child_id, program, attendance_date, check_out_time)
+        record = check_out_child(child_id, program, attendance_date, check_out_time, care=care)
         messages.success(request, f"Checked out {record.child.name}.")
         from .activity_log import log_activity
 
@@ -5995,8 +6036,11 @@ def staff_attendance_absent(request):
     if redirect_response:
         return redirect_response
     note = request.POST.get("note", "")
+    from .care_program import normalize_care_filter
+
+    care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
     try:
-        record = mark_absent(child_id, program, attendance_date, note)
+        record = mark_absent(child_id, program, attendance_date, note, care=care)
         messages.success(request, f"Marked {record.child.name} absent.")
         from .activity_log import log_activity
 
@@ -6023,12 +6067,79 @@ def staff_attendance_undo_absent(request):
     )
     if redirect_response:
         return redirect_response
+    from .care_program import normalize_care_filter
+
+    care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
     try:
-        record = undo_absent(child_id, program, attendance_date)
+        record = undo_absent(child_id, program, attendance_date, care=care)
         messages.success(request, f"{record.child.name} marked as expected again.")
     except Exception as exc:
         messages.error(request, str(exc))
     return attendance_redirect(request, attendance_date)
+
+
+def _attendance_next_or_redirect(request, attendance_date):
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url.startswith("/") and not next_url.startswith("//"):
+        from django.shortcuts import redirect
+
+        return redirect(next_url)
+    return attendance_redirect(request, attendance_date)
+
+
+@require_POST
+@staff_or_admin_login_required_post
+def staff_attendance_mark(request):
+    """Save one weekly/daily sheet check as before-care or after-care for that filter."""
+    from .attendance_service import set_session_present
+    from .care_program import (
+        apps_by_family_for_children,
+        attendance_session_label,
+        child_can_save_attendance_session,
+        normalize_care_filter,
+    )
+    from .member_report import _match_apps_for_child
+    from .models import PortalChild
+
+    attendance_date = get_attendance_date(request)
+    child_id = request.POST.get("child_id")
+    care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
+    present = (request.POST.get("present") or "").strip().lower() in {"1", "true", "yes", "on"}
+    _unit, program, redirect_response = _attendance_program_or_redirect(
+        request, attendance_date, child_id=child_id
+    )
+    if redirect_response:
+        next_url = (request.POST.get("next") or "").strip()
+        if next_url.startswith("/") and not next_url.startswith("//"):
+            from django.shortcuts import redirect
+
+            return redirect(next_url)
+        return redirect_response
+    try:
+        child = PortalChild.objects.select_related("family", "unit").get(pk=child_id, is_active=True)
+        apps = _match_apps_for_child(child, apps_by_family_for_children([child]).get(child.family_id, []))
+        if not child_can_save_attendance_session(child, apps, care):
+            messages.error(request, f"{child.name} is not on {attendance_session_label(care)}.")
+            return _attendance_next_or_redirect(request, attendance_date)
+        record = set_session_present(child, program, attendance_date, care, present)
+        session_label = attendance_session_label(care)
+        if present and record:
+            messages.success(request, f"Marked {record.child.name} present for {session_label}.")
+        else:
+            messages.success(request, f"Cleared {child.name} for {session_label}.")
+        from .activity_log import log_activity
+
+        log_activity(
+            request,
+            action="attendance",
+            action_label=f"Marked {'present' if present else 'not present'} ({session_label})",
+            object_type="child",
+            object_label=child.name,
+            details=str(attendance_date),
+        )
+    except Exception as exc:
+        messages.error(request, str(exc))
+    return _attendance_next_or_redirect(request, attendance_date)
 
 
 @require_POST
@@ -6046,8 +6157,13 @@ def staff_attendance_bulk_checkin(request):
         if not program:
             continue
         time_value = request.POST.get(f"check_in_time_{child_id}") or request.POST.get("program_time")
+        from .care_program import normalize_care_filter
+
+        care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
         try:
-            check_in_child(child_id, program, attendance_date, parse_time_input(time_value), method)
+            check_in_child(
+                child_id, program, attendance_date, parse_time_input(time_value), method, care=care
+            )
             count += 1
         except Exception:
             continue
@@ -6069,8 +6185,11 @@ def staff_attendance_bulk_checkout(request):
         if not program:
             continue
         time_value = request.POST.get(f"check_out_time_{child_id}") or request.POST.get("program_time")
+        from .care_program import normalize_care_filter
+
+        care = normalize_care_filter(request.POST.get("care") or request.GET.get("care"))
         try:
-            check_out_child(child_id, program, attendance_date, parse_time_input(time_value))
+            check_out_child(child_id, program, attendance_date, parse_time_input(time_value), care=care)
             count += 1
         except Exception:
             continue
