@@ -179,6 +179,7 @@ def _record_detail(record):
         "note": record.note or "",
         "program": record.program.name if record.program_id else "",
         "has_record": True,
+        "care": session,
     }
 
 

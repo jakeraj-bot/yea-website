@@ -116,6 +116,7 @@ class PortalBillingDefaultRuleAdmin(admin.ModelAdmin):
         "can_edit_family_plans",
         "can_approve_applications",
         "can_approve_waitlist",
+        "can_delete_attendance",
     )
 
 

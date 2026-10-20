@@ -404,6 +404,7 @@ def admin_billing_permissions(request):
                 charge_perms,
                 _perm_yes(request.POST, f"approve_apps_{sid}"),
                 _perm_yes(request.POST, f"approve_waitlist_{sid}"),
+                can_delete_attendance=_perm_yes(request.POST, f"delete_attendance_{sid}"),
             )
             updated += 1
         messages.success(request, f"Billing permissions saved for {updated} staff member(s).")
@@ -485,6 +486,7 @@ def admin_staff_invite(request):
             all_units_access=request.POST.get("all_units_access") == "on" or role == "Portal admin",
             password=password or None,
             can_see_billing=request.POST.get("can_see_billing") == "on",
+            can_delete_attendance=request.POST.get("can_delete_attendance") == "on",
         )
         portal_type = "admin" if role == "Portal admin" else "staff"
         emailed = False

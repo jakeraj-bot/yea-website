@@ -369,6 +369,9 @@
               {% elif row.is_complete %}
               <span class="form-note">Complete</span>
               {% endif %}
+              {% if can_delete_attendance and row.status != 'expected' %}
+              {% include "portal/includes/attendance_delete_form.html" with child_id=row.id day=attendance.date_value care=attendance_care button_label="Delete mark" delete_message="Delete this attendance mark?" %}
+              {% endif %}
               {% else %}
               {% if row.status == 'expected' or row.status == 'absent' or row.status == 'present' %}
               <button type="button" class="btn btn-primary btn-sm btn-check-in">Check in</button>

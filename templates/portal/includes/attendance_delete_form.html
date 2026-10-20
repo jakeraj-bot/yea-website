@@ -1,0 +1,10 @@
+{% if can_delete_attendance %}
+<form method="post" action="{% url 'portal_staff_attendance_delete' %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{{ delete_message }}">
+  {% csrf_token %}
+  <input type="hidden" name="child_id" value="{{ child_id }}">
+  <input type="hidden" name="date" value="{{ day }}">
+  <input type="hidden" name="care" value="{{ care }}">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <button type="submit" class="btn btn-secondary btn-sm">{{ button_label }}</button>
+</form>
+{% endif %}
