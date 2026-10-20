@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 
 from django.contrib import messages
@@ -5,7 +6,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .parent_auth import parent_login_required_post
 from .staff_auth import admin_login_required_post, staff_login_required_post, staff_or_admin_login_required_post
@@ -1222,7 +1223,7 @@ def admin_profile_change_action(request):
     return redirect("portal_admin_page", page="dashboard")
 
 
-@require_POST
+@require_http_methods(["GET", "POST"])
 @parent_login_required_post
 def parent_payment_checkout(request):
     from decimal import Decimal, InvalidOperation
@@ -1239,6 +1240,9 @@ def parent_payment_checkout(request):
         create_dropin_checkout_session,
         stripe_configured,
     )
+
+    if request.method != "POST":
+        return redirect("portal_parent_payment")
 
     def _pay_redirect(url_name, **params):
         query = urlencode({key: value for key, value in params.items() if value not in (None, "")})
@@ -1334,9 +1338,9 @@ def parent_payment_checkout(request):
             amount = payment.amount
     try:
         if is_dropin:
-            session = create_dropin_checkout_session(request, payment)
+            session = create_dropin_checkout_session(request, payment, account=account)
         else:
-            session = create_balance_checkout_session(request, payment)
+            session = create_balance_checkout_session(request, payment, account=account)
         if not getattr(session, "url", None):
             raise ValueError("Stripe did not return a checkout page.")
     except Exception as exc:
@@ -1357,6 +1361,10 @@ def parent_payment_checkout(request):
             )
             return redirect("portal_parent_payment_success")
         payment.delete()
+        logging.getLogger(__name__).warning(
+            "parent checkout failed family=%s",
+            getattr(account.family, "slug", "") or account.family_id,
+        )
         messages.error(request, checkout_error_message(exc))
         return _pay_redirect(
             "portal_parent_payment_preview",

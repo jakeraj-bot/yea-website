@@ -308,3 +308,156 @@ class ParentPayNowStripeTests(TestCase):
         payment = self.client.get(reverse("portal_parent_payment"))
         self.assertContains(payment, "Pay ahead")
         self.assertContains(payment, "$25.00 credit")
+
+    def _make_owing_parent(self, *, slug, family_name, child_name, username, email=""):
+        User = get_user_model()
+        family = PortalFamily.objects.create(unit=self.unit, slug=slug, name=family_name)
+        PortalChild.objects.create(family=family, name=child_name, school="School 18", is_active=True)
+        user = User.objects.create_user(username=f"parent:{username}", password="ParentPass123", email=email)
+        account = PortalParentAccount.objects.create(user=user, family=family)
+        post_charge(
+            family,
+            child_name,
+            "tuition",
+            "40.00",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        return family, user, account
+
+    def _mock_stripe(self, member_stripe, *, customer_id="cus_live", session_id="cs_live"):
+        stripe = MagicMock()
+        stripe.Customer.create.return_value = MagicMock(id=customer_id)
+        stripe.checkout.Session.create.return_value = MagicMock(
+            id=session_id,
+            url=f"https://checkout.stripe.com/c/pay/{session_id}",
+        )
+        member_stripe.return_value = stripe
+        return stripe
+
+    @override_settings(
+        PORTAL_PREVIEW_MODE=False,
+        MEMBER_STRIPE_SECRET_KEY="sk_test_123",
+        MEMBER_STRIPE_PUBLIC_KEY="pk_test_123",
+    )
+    @patch("portal.stripe_services.member_stripe")
+    def test_any_owing_parent_starts_checkout_without_email_or_customer(self, member_stripe):
+        family, user, account = self._make_owing_parent(
+            slug="joseph",
+            family_name="Joseph",
+            child_name="Jace Joseph",
+            username="joseph",
+            email="",
+        )
+        self.assertEqual(account.stripe_customer_id, "")
+        self.client.force_login(user)
+        session = self.client.session
+        session[PORTAL_AUTH_SESSION_KEY] = "parent"
+        session.save()
+        stripe = self._mock_stripe(member_stripe, customer_id="cus_joseph", session_id="cs_joseph")
+
+        response = self.client.post(reverse("portal_parent_payment_checkout"), {"amount": "40.00"})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response["Location"], "https://checkout.stripe.com/c/pay/cs_joseph")
+        create_kwargs = stripe.Customer.create.call_args.kwargs
+        self.assertNotIn("email", create_kwargs)
+        self.assertEqual(create_kwargs["metadata"]["family_slug"], "joseph")
+        account.refresh_from_db()
+        self.assertEqual(account.stripe_customer_id, "cus_joseph")
+        payment = PortalPayment.objects.get(family=family)
+        self.assertEqual(payment.stripe_session_id, "cs_joseph")
+        session_kwargs = stripe.checkout.Session.create.call_args.kwargs
+        self.assertEqual(session_kwargs["metadata"]["family_slug"], "joseph")
+        self.assertNotIn("customer_email", session_kwargs)
+
+    @override_settings(
+        PORTAL_PREVIEW_MODE=False,
+        MEMBER_STRIPE_SECRET_KEY="sk_test_123",
+        MEMBER_STRIPE_PUBLIC_KEY="pk_test_123",
+    )
+    @patch("portal.stripe_services.member_stripe")
+    def test_blank_family_slug_still_starts_checkout(self, member_stripe):
+        self.family.slug = ""
+        self.family.save(update_fields=["slug"])
+        self._login_parent()
+        stripe = self._mock_stripe(member_stripe, customer_id="cus_slug", session_id="cs_slug")
+
+        response = self.client.post(reverse("portal_parent_payment_checkout"), {"amount": "25.00"})
+        self.assertEqual(response.status_code, 303)
+        metadata = stripe.checkout.Session.create.call_args.kwargs["metadata"]
+        self.assertEqual(metadata["family_slug"], f"family-{self.family.pk}")
+        self.assertIsInstance(metadata["family_slug"], str)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_get_checkout_redirects_to_payment_page(self):
+        self._login_parent()
+        response = self.client.get(reverse("portal_parent_payment_checkout"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("portal_parent_payment"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False, SITE_URL="https://yeanj.org")
+    def test_login_next_from_checkout_opens_payment_page(self):
+        signed_in = self.client.post(
+            reverse("portal_parent_login"),
+            {
+                "username": "rivera",
+                "password": "ParentPass123",
+                "next": "/portal/parent/payment/checkout/",
+            },
+        )
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(signed_in.url, reverse("portal_parent_payment"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False, SITE_URL="https://yeanj.org")
+    def test_www_pay_now_link_still_opens_payment_after_login(self):
+        signed_in = self.client.post(
+            reverse("portal_parent_login"),
+            {
+                "username": "rivera",
+                "password": "ParentPass123",
+                "next": "https://www.yeanj.org/portal/parent/payment/",
+            },
+        )
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(signed_in.url, reverse("portal_parent_payment"))
+
+    @override_settings(
+        PORTAL_PREVIEW_MODE=False,
+        MEMBER_STRIPE_SECRET_KEY="sk_test_123",
+        MEMBER_STRIPE_PUBLIC_KEY="pk_test_123",
+    )
+    @patch("portal.stripe_services.member_stripe")
+    def test_timeout_error_tells_parent_to_retry(self, member_stripe):
+        self._login_parent()
+        stripe = MagicMock()
+        stripe.Customer.create.return_value = MagicMock(id="cus_live")
+        stripe.checkout.Session.create.side_effect = Exception("Request timed out")
+        member_stripe.return_value = stripe
+
+        response = self.client.post(reverse("portal_parent_payment_checkout"), {"amount": "25.00"})
+        self.assertEqual(response.status_code, 302)
+        follow = self.client.get(response.url)
+        self.assertContains(follow, "took too long to start")
+        self.assertFalse(PortalPayment.objects.filter(family=self.family).exists())
+
+    @override_settings(
+        PORTAL_PREVIEW_MODE=False,
+        MEMBER_STRIPE_SECRET_KEY="sk_test_123",
+        MEMBER_STRIPE_PUBLIC_KEY="pk_test_123",
+    )
+    @patch("portal.stripe_services.member_stripe")
+    def test_transient_connection_error_retries_once(self, member_stripe):
+        self._login_parent()
+        stripe = MagicMock()
+        stripe.Customer.create.return_value = MagicMock(id="cus_retry")
+        stripe.checkout.Session.create.side_effect = [
+            Exception("Connection reset"),
+            MagicMock(id="cs_retry", url="https://checkout.stripe.com/c/pay/cs_retry"),
+        ]
+        member_stripe.return_value = stripe
+
+        response = self.client.post(reverse("portal_parent_payment_checkout"), {"amount": "25.00"})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response["Location"], "https://checkout.stripe.com/c/pay/cs_retry")
+        self.assertEqual(stripe.checkout.Session.create.call_count, 2)
