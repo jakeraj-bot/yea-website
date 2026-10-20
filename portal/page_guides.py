@@ -1256,6 +1256,10 @@ GUIDES = {
                 "body": "Copies of mail to parents (staff-composed and system) go to this address so you can see what was sent. Leave it blank to use the same address as Portal sending email.",
             },
             {
+                "title": "Automatic charge emails",
+                "body": "Send automatic email when a charge is posted is off until you check it. Weekly plans, 4Cs copay, bulk Post today, and staff charges will not email parents while it is off. Email parent, Send updated balance, receipts, and Friday late-fee reminders still send.",
+            },
+            {
                 "title": "Staff-composed replies",
                 "body": "Email parent and Email parents still let the parent reply to the staff person who sent it. Check extra staff as CC on those screens when you want your assistant or business partner on the thread.",
             },

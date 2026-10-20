@@ -25,6 +25,7 @@ from portal.models import (
     PortalStaffAccount,
     PortalUnit,
 )
+from portal.payment_emails import set_charge_posted_emails_enabled
 from portal.owed_weeks import owed_weeks_report, post_late_fees, week_label_from_charge
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 
@@ -45,6 +46,7 @@ class ChargeInvoiceEmailTests(TestCase):
             email="parent@example.com",
         )
         PortalParentAccount.objects.create(user=user, family=self.family)
+        set_charge_posted_emails_enabled(True)
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_invoice_includes_balance_description_child_and_week(self, send_email):

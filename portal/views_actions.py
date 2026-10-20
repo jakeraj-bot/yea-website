@@ -451,7 +451,10 @@ def admin_email_settings_save(request):
     setting = PortalOrgSetting.load()
     setting.portal_sending_email = sending
     setting.portal_bcc_email = bcc
-    setting.save(update_fields=["portal_sending_email", "portal_bcc_email"])
+    setting.send_charge_posted_emails = request.POST.get("send_charge_posted_emails") == "on"
+    setting.save(
+        update_fields=["portal_sending_email", "portal_bcc_email", "send_charge_posted_emails"]
+    )
     messages.success(
         request,
         "Portal email settings saved. Automated mail will use that From address, and copies of parent emails go to the BCC inbox.",

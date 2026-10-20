@@ -200,6 +200,7 @@ class PortalOrgSettingAdmin(admin.ModelAdmin):
         "practice_parent_enabled",
         "portal_sending_email",
         "portal_bcc_email",
+        "send_charge_posted_emails",
     )
 
 

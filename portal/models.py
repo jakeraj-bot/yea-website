@@ -1464,6 +1464,15 @@ class PortalOrgSetting(models.Model):
         blank=True,
         help_text="Always BCC this address on mail to parents. Leave blank to use the portal sending email.",
     )
+    send_charge_posted_emails = models.BooleanField(
+        default=False,
+        help_text=(
+            "When on, parents get an automatic email every time a charge is posted "
+            "(weekly plans, 4Cs copay, bulk Post today, and staff charges). Off until "
+            "those emails show trustworthy amounts. Staff Email parent and Send updated "
+            "balance still work."
+        ),
+    )
 
     class Meta:
         verbose_name = "Portal organization setting"

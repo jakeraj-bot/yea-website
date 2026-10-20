@@ -264,9 +264,11 @@ class PageGuideCatalogTests(TestCase):
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Portal sending email", titles)
         self.assertIn("Always BCC", titles)
+        self.assertIn("Automatic charge emails", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("password reset", bodies.lower())
         self.assertIn("assistant", bodies.lower())
+        self.assertIn("off until you check it", bodies.lower())
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")

@@ -494,8 +494,10 @@ def _charge_email_context(family, entry=None, *, previous_amount=None, active_me
 
 def notify_charge_posted(family, entry):
     from .member_admin import parent_email_for_family
-    from .payment_emails import should_send_automatic_payment_email
+    from .payment_emails import charge_posted_emails_enabled, should_send_automatic_payment_email
 
+    if not charge_posted_emails_enabled():
+        return 0
     template = get_email_template(PortalEmailTemplate.KEY_CHARGE_NOTICE)
     if not template.is_enabled:
         return 0

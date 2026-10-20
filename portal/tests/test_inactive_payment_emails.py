@@ -23,6 +23,7 @@ from portal.models import (
     PortalParentAccount,
     PortalUnit,
 )
+from portal.payment_emails import set_charge_posted_emails_enabled
 from portal.tests.test_care_program_filters import _make_app
 from portal.tests.test_family_units import _make_application
 
@@ -48,6 +49,7 @@ class InactivePaymentEmailTests(TestCase):
         self.maya = PortalChild.objects.create(family=self.family, name="Maya Jacobs", is_active=True)
         self.jordan = PortalChild.objects.create(family=self.family, name="Jordan Jacobs", is_active=True)
         _parent_account(self.family, "pat@example.com")
+        set_charge_posted_emails_enabled(True)
 
     def _charge(self, child, amount, description, notify=True):
         return post_charge(
@@ -207,6 +209,7 @@ class PerApplicationInactivePaymentEmailTests(TestCase):
         self.after_app = _make_app(self.family, self.child, program="after_school", status="approved")
         self.before_app = _make_app(self.family, self.child, program="before_care", status="approved")
         _parent_account(self.family, "cole@example.com")
+        set_charge_posted_emails_enabled(True)
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_inactive_before_care_charge_does_not_email(self, send_email):
@@ -250,6 +253,7 @@ class InactivePaymentEmailOutboxTests(TestCase):
         self.inactive = PortalChild.objects.create(family=self.family, name="Ivy Outbox", is_active=False)
         self.active = PortalChild.objects.create(family=self.family, name="Ada Outbox", is_active=True)
         _parent_account(self.family, "outbox@example.com")
+        set_charge_posted_emails_enabled(True)
 
     def test_outbox_counts_skip_inactive_keep_active(self):
         mail.outbox.clear()
