@@ -973,7 +973,7 @@ GUIDES = {
     },
     "staff": {
         "title": "How to create staff logins",
-        "intro": "Only organization admins create portal logins. Program director and Front desk staff both sign in at the staff portal.",
+        "intro": "How creating an account works: choose a role, enter their name and email, set a password (or leave it blank so the portal generates one), then pick every unit they can open. Only organization admins create portal logins. Program director and Front desk staff both sign in at the staff portal.",
         "steps": [
             {
                 "title": "Create a Program director",
@@ -986,6 +986,24 @@ GUIDES = {
             {
                 "title": "Turn Program director billing on",
                 "body": "Open Billing permissions. Use Program Director can see billing for every Program director, or edit one person and check Program Director can see billing (this person).",
+            },
+            {
+                "title": "Do not create a second staff account for an admin",
+                "body": "Staff sign in at /portal/staff/login/. Admin logins sign in at /portal/admin/login/. An admin uses that same login to open Staff portal. Do not create a second staff account for a partner who is already an admin — they click Staff portal in the header. After you create an account they get an email with username, password, and the sign-in link.",
+            },
+        ],
+    },
+    "collections": {
+        "title": "How to use collections",
+        "intro": "Keep old balances here, then link them to a family when they sign up again.",
+        "steps": [
+            {
+                "title": "Add a prior balance",
+                "body": "Enter the member or family name and the amount still owed from before they had a portal account.",
+            },
+            {
+                "title": "Current balances live on reports",
+                "body": "For current balances and unpaid weeks, open Who still owes — by week. That report is also where you pick children for a $15 late fee. The Friday late-payment email lives on Email parents.",
             },
         ],
     },
@@ -1332,6 +1350,33 @@ GUIDES = {
 }
 
 
+def guide_from_report(report):
+    """Turn a data-report lead into Help so the page itself stays a table."""
+    if not report:
+        return None
+    lead = (report.get("lead") or "").strip()
+    title = (report.get("title") or "this report").strip()
+    if not lead:
+        return None
+    steps = [
+        {
+            "title": "Filter if you need to",
+            "body": "Use the filters at the top, then Apply.",
+        },
+        {
+            "title": "Print or download",
+            "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet.",
+        },
+    ]
+    return {
+        "key": report.get("slug") or "data-report",
+        "title": f"How to use {title}",
+        "intro": lead,
+        "steps": steps,
+        "step_count": len(steps),
+    }
+
+
 def guide_for(key):
     if not key:
         return None
@@ -1352,6 +1397,8 @@ def guide_for(key):
 
 def page_guide_from_context(context):
     key = context.get("page_guide_key")
+    if key == "data-report":
+        return guide_from_report(context.get("report"))
     if not key:
         if context.get("portal_area") == "parent":
             slug = context.get("parent_page_slug")

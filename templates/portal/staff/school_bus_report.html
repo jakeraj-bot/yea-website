@@ -6,7 +6,7 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / School bus roster</p>
     <h1>School bus roster</h1>
-    <p class="lead">{{ report_meta.unit }} · grouped by school attending · {{ total_children }} children across {{ selected_schools|length }}{% if all_schools and selected_schools|length != all_schools|length %} of {{ all_schools|length }}{% endif %} schools</p>
+    <p class="lead">{{ report_meta.unit }} · {{ total_children }} children · {{ selected_schools|length }}{% if all_schools and selected_schools|length != all_schools|length %} of {{ all_schools|length }}{% endif %} schools</p>
   </div>
 </section>
 <section class="page-content portal-school-bus-report">
@@ -18,7 +18,6 @@
     {% if all_schools %}
     <form method="get" class="card portal-school-bus-picker portal-collapse-skip portal-no-print" id="school-bus-print-picker">
       <h2>Schools to print</h2>
-      <p class="form-note">Check the schools for this bus run, then print. Unchecked schools stay off the PDF.</p>
       <div class="portal-checkbox-grid">
         {% for school in all_schools %}
         <label class="portal-check-label">

@@ -3,13 +3,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Activity calendar</h1>
-    <p class="lead">
-      {% if ops_area == "admin" %}
-        Schedule activities for any unit, then open a day to add who attended and upload that day’s lesson plan.
-      {% else %}
-        {{ staff_unit }} — schedule activities, then add the children who attended.
-      {% endif %}
-    </p>
+    {% if ops_area != "admin" %}<p class="lead">{{ staff_unit }}</p>{% endif %}
   </div>
 </section>
 <section class="page-content">

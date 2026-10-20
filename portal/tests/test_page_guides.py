@@ -3,7 +3,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from portal.models import PortalFamily, PortalStaffAccount, PortalUnit
-from portal.page_guides import GUIDES, guide_for, page_guide_from_context
+from portal.page_guides import GUIDES, guide_for, guide_from_report, page_guide_from_context
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY, application_permissions_for_staff, billing_permissions_for_staff
 
 
@@ -44,6 +44,7 @@ class PageGuideCatalogTests(TestCase):
             "activity-calendar",
             "groups",
             "staff",
+            "collections",
             "outside-programs",
             "member-billing",
         ):
@@ -170,6 +171,25 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("inactive", bodies.lower())
         self.assertIn("unit", bodies.lower())
         self.assertIn("with balance", bodies.lower())
+
+    def test_staff_guide_says_not_to_create_second_account(self):
+        guide = guide_for("staff")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Do not create a second staff account for an admin", titles)
+        self.assertIn("How creating an account works", guide["intro"])
+        self.assertIn("Do not create a second staff account", " ".join(step["body"] for step in guide["steps"]))
+
+    def test_data_report_guide_uses_report_lead(self):
+        guide = guide_from_report(
+            {
+                "slug": "payments",
+                "title": "Payments received",
+                "lead": "Payments that were received — who paid, which child, how much, and on what day.",
+            }
+        )
+        self.assertEqual(guide["key"], "payments")
+        self.assertIn("who paid", guide["intro"])
+        self.assertGreaterEqual(guide["step_count"], 2)
 
     def test_admin_dashboard_guide_holds_moved_howto_cards(self):
         guide = guide_for("admin-dashboard")

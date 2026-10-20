@@ -32,32 +32,39 @@ class ParentPaymentWalkthroughTests(TestCase):
     def _dashboard(self):
         return self.client.get(reverse("portal_parent_page", kwargs={"page": "dashboard"}))
 
+    def _help(self):
+        return self.client.get(reverse("portal_parent_page", kwargs={"page": "help"}))
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
-    def test_dashboard_shows_pay_video_in_english_and_spanish(self):
+    def test_dashboard_shows_pay_now_without_howto_video(self):
         self._login_parent()
         page = self._dashboard()
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "How to pay")
-        self.assertContains(page, "Cómo pagar")
-        self.assertContains(page, "yea_parent_lang")
-        self.assertContains(page, "parent-pay-howto.mp4")
         self.assertContains(page, "Pay now")
-        self.assertContains(page, "Pay with Stripe")
-        self.assertContains(page, "Pagar con Stripe")
         self.assertContains(page, reverse("portal_parent_page", kwargs={"page": "help"}))
+        self.assertContains(page, "yea_parent_lang")
+        self.assertNotContains(page, "parent-pay-howto.mp4")
+        self.assertNotContains(page, 'id="parent-pay-howto"')
         self.assertNotContains(page, "How to use this page")
         self.assertNotContains(page, "How to start the day")
         self.assertNotContains(page, "Mail a check")
         self.assertNotContains(page, "portal-pay-howto-steps")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
-    def test_payment_walkthrough_is_a_compact_video_card(self):
+    def test_help_holds_pay_video_in_english_and_spanish(self):
         self._login_parent()
-        page = self._dashboard()
+        page = self._help()
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "How to pay")
+        self.assertContains(page, "Cómo pagar")
+        self.assertContains(page, "parent-pay-howto.mp4")
+        self.assertContains(page, "Pay with Stripe")
+        self.assertContains(page, "Pagar con Stripe")
         self.assertContains(page, 'id="parent-pay-howto"')
         self.assertContains(page, "portal-pay-howto-video")
         self.assertContains(page, "portal-pay-howto-caption")
-        self.assertContains(page, reverse("portal_parent_page", kwargs={"page": "help"}))
+        self.assertNotContains(page, "How to use this page")
+        self.assertNotContains(page, "portal-pay-howto-steps")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_dashboard_header_shows_family_balance_and_pay_now(self):

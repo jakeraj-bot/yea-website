@@ -6,13 +6,12 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% if portal_area == 'staff' %}{% url 'portal_staff_page' page='reports' %}{% else %}{% url 'portal_admin_page' page='reports' %}{% endif %}">{% if portal_area == 'staff' %}Reports{% else %}Organization reports{% endif %}</a> / {{ report.title }}</p>
     <h1>{{ report.title }}</h1>
-    <p class="lead">{{ report.lead }}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
     {% if report.slug == "balances" %}
-    {% include "portal/admin/includes/account_balance_filters.html" with filter_help="Choose a unit (School 18 / School 26 / All), then Members (Active / Inactive / All) and Balance (With balance / Without balance / Credit / All). Active including $0 is the usual roster. Switch Balance to With balance for outstanding only. Credits stay on All." %}
+    {% include "portal/admin/includes/account_balance_filters.html" %}
     {% else %}
     <form method="get" class="portal-toolbar portal-form-inline portal-no-print">
       {% if "q" in report.filters %}
@@ -204,7 +203,6 @@
       {% if report.slug == "balances" and report.unit_balances %}
       <section class="portal-unit-balance-block portal-no-print">
         <h3>Balances by unit</h3>
-        <p class="form-note">Child remaining tuition on that child’s unit. Highest overdue first. A family with children at two sites is counted on each child’s unit, not twice on every unit.</p>
         <div class="portal-table-wrap">
           <table class="portal-table portal-unit-balance-table" id="unit-balance-table">
             <thead>
@@ -236,16 +234,13 @@
         <span>Unfinished checkouts (not paid) ${{ report.waiting_for_card_total }}</span>
         {% endif %}
       </div>
-      <p class="form-note">Waiting to receive is Stripe charges that already succeeded but have not been paid out to the bank yet. A checkout that was started but never finished is not a payment and stays off this list unless you turn on Show unfinished card checkouts.</p>
       <section class="portal-payout-section" id="not-yet-paid-out">
         <h3 class="portal-medical-report-section">Not paid out yet</h3>
-        <p class="form-note">Stripe charges that succeeded. This is the money still waiting to hit the bank.</p>
         {% include "portal/admin/includes/report_table.html" with rows=report.pending_rows freeze_first="1" empty_message="No succeeded Stripe charges are waiting for a bank payout." %}
       </section>
       {% if report.show_unfinished_checkouts %}
       <section class="portal-payout-section" id="waiting-for-card">
         <h3 class="portal-medical-report-section">Unfinished card checkouts</h3>
-        <p class="form-note">The parent started a Stripe checkout but the card has not been charged. These are not payments and are not included in Waiting to receive or payout totals.</p>
         {% include "portal/admin/includes/report_table.html" with rows=report.waiting_for_card_rows freeze_first="1" empty_message="No unfinished Stripe card checkouts." %}
       </section>
       {% endif %}
@@ -267,7 +262,6 @@
       {% elif report.remaining_rows %}
       <section class="portal-payout-section" id="remaining-payments">
         <h3 class="portal-medical-report-section">Remaining payments</h3>
-        <p class="form-note">These payments already have a bank payout, or are on the way to the bank.</p>
         {% include "portal/admin/includes/report_table.html" with rows=report.remaining_rows freeze_first="1" empty_message="No remaining payments." %}
       </section>
       {% else %}

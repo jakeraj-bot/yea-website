@@ -15,7 +15,7 @@
     </p>
     </div>
     <h1>{% if attendance_child %}{{ attendance_child.name }} — Attendance{% else %}{{ account_heading_name|default:profile.family_name }} — Attendance{% endif %}</h1>
-    <p class="lead">{% if show_attendance_child_switcher %}Use the names under Attendance to switch calendars. {% endif %}Month calendar for this child only. Present, absent, and not marked come from saved attendance.</p>
+
     </div>
     {% include "portal/includes/family_account_pager.html" %}
     </div>
@@ -27,7 +27,6 @@
 
     {% if show_attendance_child_switcher %}
     <nav class="portal-attendance-child-switcher" aria-label="Switch child attendance">
-      <p class="form-note">This household has more than one child. Use a name to open that child’s calendar.</p>
       <div class="portal-family-tabs portal-family-tabs-scroll portal-attendance-child-tabs" role="tablist">
         {% for item in attendance_children %}
         <a
@@ -54,7 +53,7 @@
         <h2 class="portal-child-calendar-month">{{ attendance_calendar.month_label }}</h2>
         <a class="btn btn-secondary btn-sm" href="?{{ attendance_calendar.next_query }}">Next month</a>
       </div>
-      <p class="form-note">{{ attendance_child.name }} · <strong>B</strong> is before-care (morning). <strong>A</strong> is after-care (afternoon). Days with no saved record stay <strong>Not marked</strong>.</p>
+      <p class="form-note">{{ attendance_child.name }}</p>
       <div class="portal-child-calendar-legend" aria-label="Attendance key">
         <span class="portal-child-calendar-key is-present">Present</span>
         <span class="portal-child-calendar-key is-absent">Absent</span>

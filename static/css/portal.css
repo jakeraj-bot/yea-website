@@ -856,6 +856,12 @@ nav.portal-nav-admin-groups {
   margin-bottom: 0.35rem;
 }
 
+.portal-hero-compact h1:last-child,
+.portal-hero-compact .portal-family-hero-copy > h1:last-child,
+.portal-hero-compact .portal-dash-hero-copy > h1:last-child {
+  margin-bottom: 0;
+}
+
 .portal-family-hero-top {
   display: flex;
   flex-wrap: wrap;

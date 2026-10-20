@@ -3,15 +3,11 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Organization reports</h1>
-    <p class="lead">Cross-unit financial, enrollment, and compliance reports.</p>
+
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    <div class="portal-callout card">
-      <p>Unit staff generate daily operational reports from their <a href="{% url 'portal_staff_page' page='reports' %}">Reports &amp; PDFs</a> page. Admin reports here span all locations.</p>
-    </div>
-
     <div class="portal-reports-grid">
       {% for report in reports %}
       <article class="card portal-report-card">

@@ -4,7 +4,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Families</h1>
-    <p class="lead">{% if families_tab == 'inactive' %}Inactive children at {{ staff_unit }} — accounts stay on file so they can come back, and parents can still pay or download tax statements.{% else %}{{ staff_unit }} — {{ family_count }} families · {{ families|length }} children listed · click through to profile{% if can_see_billing %} or billing{% endif %}.{% endif %}</p>
+    <p class="lead">{% if families_tab == 'inactive' %}Inactive · {{ staff_unit }}{% else %}{{ staff_unit }} · {{ family_count }} families · {{ families|length }} children{% endif %}</p>
   </div>
 </section>
 <section class="page-content">

@@ -3,7 +3,6 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Overview</h1>
-    <p class="lead portal-hero-date">Enrollment, billing, and staff at a glance.</p>
   </div>
 </section>
 <section class="page-content">
@@ -128,7 +127,6 @@
     {% if portal_live and dashboard.pending_4cs %}
     <div class="portal-alerts card">
       <h2>Approved 4Cs children waiting for authorization</h2>
-      <p class="form-note">These children are enrolled on 4Cs. Use <strong>Add agency</strong> to attach the contract, agency rates, and parent copay weeks.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>
@@ -153,7 +151,6 @@
     {% if dashboard.unit_balances %}
     <section class="card portal-profile-full portal-unit-balance-card">
       <h2>Balances by unit</h2>
-      <p class="form-note">Live ledger (charges − payments − credits). Highest overdue first so you know which site to work down. A child’s remaining balance counts on that child’s unit — a family with kids at two sites is not counted twice on every unit. Unapproved applications and unfinished Stripe checkouts are not included.</p>
       <div class="portal-table-wrap">
         <table class="portal-table portal-unit-balance-table" id="overview-unit-balances">
           <thead>
@@ -229,7 +226,6 @@
         <h2>4Cs subsidy</h2>
         <p><strong>{{ dashboard.approved_4cs_count|default:dashboard.agency_children }}</strong> approved 4Cs children</p>
         <p><strong>{{ dashboard.agency_children }}</strong> with authorization on file · <strong>{{ dashboard.pending_4cs_count|default:0 }}</strong> waiting for 4Cs info</p>
-        <p class="form-note">Approved 4Cs members appear here and stay on the 4Cs page until you add their authorization and copay.</p>
         <p><a href="{% url 'portal_admin_page' page='agencies' %}">Add 4Cs information →</a></p>
       </section>
     </div>
