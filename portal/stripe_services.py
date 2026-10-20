@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.conf import settings
@@ -6,9 +7,20 @@ from core.stripe_config import member_stripe, member_stripe_configured
 
 from .processing_fees import checkout_line_items
 
+logger = logging.getLogger(__name__)
+
 
 def stripe_configured():
     return member_stripe_configured()
+
+
+def family_checkout_slug(family):
+    """Stripe metadata must be a string. Fall back to family id when slug is blank."""
+    slug = (getattr(family, "slug", None) or "").strip()
+    if slug:
+        return slug
+    pk = getattr(family, "pk", None)
+    return f"family-{pk}" if pk else ""
 
 
 def _checkout_success_url(request):
@@ -44,6 +56,12 @@ def parent_checkout_email(account=None, family=None):
 def checkout_error_message(exc):
     raw = str(exc or "").strip()
     lowered = raw.lower()
+    name = type(exc).__name__.lower() if exc is not None else ""
+    if any(word in lowered for word in ("timeout", "timed out", "connection")) or "connection" in name:
+        return (
+            "Card checkout took too long to start. Wait a few seconds and try Pay with Stripe again. "
+            "If it still fails, contact YEA at 609-357-8608."
+        )
     if "email" in lowered:
         return (
             "We could not start card checkout because this account has no valid email. "
@@ -64,6 +82,7 @@ def checkout_error_message(exc):
 def get_or_create_customer(account):
     stripe = _stripe()
     email = parent_checkout_email(account)
+    family = getattr(account, "family", None)
     if account.stripe_customer_id:
         try:
             customer = stripe.Customer.retrieve(account.stripe_customer_id)
@@ -79,8 +98,13 @@ def get_or_create_customer(account):
             account.stripe_customer_id = ""
             account.save(update_fields=["stripe_customer_id"])
     create_kwargs = {
-        "name": account.family.name,
-        "metadata": {"family_slug": account.family.slug, "portal": "parent"},
+        "name": ((getattr(family, "name", None) or "").strip() or "YEA family"),
+        "metadata": _string_metadata(
+            {
+                "family_slug": family_checkout_slug(family),
+                "portal": "parent",
+            }
+        ),
     }
     if email:
         create_kwargs["email"] = email
@@ -104,11 +128,51 @@ def checkout_customer_kwargs(family, account=None):
         try:
             return {"customer": get_or_create_customer(account).id}
         except Exception:
-            pass
+            logger.warning(
+                "stripe customer unavailable family=%s",
+                family_checkout_slug(family) or getattr(family, "pk", ""),
+            )
     email = parent_checkout_email(account, family)
     if email:
         return {"customer_email": email}
     return {}
+
+
+def _string_metadata(metadata):
+    """Stripe rejects None metadata values. Never include card numbers or secrets."""
+    clean = {}
+    for key, value in (metadata or {}).items():
+        if value in (None, ""):
+            continue
+        clean[str(key)] = str(value)
+    return clean
+
+
+def _is_transient_stripe_error(exc):
+    name = type(exc).__name__.lower()
+    text = str(exc or "").lower()
+    return (
+        "timeout" in text
+        or "timed out" in text
+        or "connection" in text
+        or "apiconnection" in name
+        or name.endswith("connectionerror")
+    )
+
+
+def _create_checkout_session(stripe, **kwargs):
+    kwargs["metadata"] = _string_metadata(kwargs.get("metadata"))
+    last_exc = None
+    for attempt in range(2):
+        try:
+            return stripe.checkout.Session.create(**kwargs)
+        except Exception as exc:
+            last_exc = exc
+            if attempt == 0 and _is_transient_stripe_error(exc):
+                logger.warning("stripe checkout retry after transient error")
+                continue
+            raise
+    raise last_exc
 
 
 def list_saved_payment_methods(customer_id):
@@ -134,31 +198,32 @@ def list_saved_payment_methods(customer_id):
     return cards
 
 
-def create_balance_checkout_session(request, payment):
+def create_balance_checkout_session(request, payment, account=None):
     stripe = _stripe()
     line_items = checkout_line_items(
         payment,
         f"YEA family balance — {payment.family.name}",
         f"Program balance payment (${payment.amount})",
     )
-    session = stripe.checkout.Session.create(
+    session = _create_checkout_session(
+        stripe,
         mode="payment",
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/"),
         metadata={
             "portal_payment_id": str(payment.pk),
-            "family_slug": payment.family.slug,
+            "family_slug": family_checkout_slug(payment.family),
             "payment_kind": payment.payment_kind,
         },
-        **checkout_customer_kwargs(payment.family),
+        **checkout_customer_kwargs(payment.family, account),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
     return session
 
 
-def create_dropin_checkout_session(request, payment):
+def create_dropin_checkout_session(request, payment, account=None):
     stripe = _stripe()
     description = f"{payment.dropin_child} · {payment.dropin_program} · {payment.dropin_location}"
     if payment.dropin_date:
@@ -168,17 +233,18 @@ def create_dropin_checkout_session(request, payment):
         f"Drop-in — {payment.dropin_program}",
         description,
     )
-    session = stripe.checkout.Session.create(
+    session = _create_checkout_session(
+        stripe,
         mode="payment",
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/payment/?source=dropin"),
         metadata={
             "portal_payment_id": str(payment.pk),
-            "family_slug": payment.family.slug,
+            "family_slug": family_checkout_slug(payment.family),
             "payment_kind": "dropin",
         },
-        **checkout_customer_kwargs(payment.family),
+        **checkout_customer_kwargs(payment.family, account),
     )
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
@@ -193,14 +259,15 @@ def create_field_trip_checkout_session(request, payment, signup):
         f"Field trip — {trip.title}",
         f"{signup.child.name} · {trip.location} · {trip.trip_date.isoformat()}",
     )
-    session = stripe.checkout.Session.create(
+    session = _create_checkout_session(
+        stripe,
         mode="payment",
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/field-trips/"),
         metadata={
             "portal_payment_id": str(payment.pk),
-            "family_slug": payment.family.slug,
+            "family_slug": family_checkout_slug(payment.family),
             "payment_kind": "field_trip",
             "field_trip_signup_id": str(signup.pk),
         },
@@ -219,14 +286,15 @@ def create_drop_off_checkout_session(request, payment, booking):
         f"Drop-off — {booking.slot_label}",
         f"{booking.child.name} · {when} · {booking.start_time.strftime('%-I:%M %p').lstrip('0')}",
     )
-    session = stripe.checkout.Session.create(
+    session = _create_checkout_session(
+        stripe,
         mode="payment",
         line_items=line_items,
         success_url=_checkout_success_url(request),
         cancel_url=request.build_absolute_uri("/portal/parent/drop-off/"),
         metadata={
             "portal_payment_id": str(payment.pk),
-            "family_slug": payment.family.slug,
+            "family_slug": family_checkout_slug(payment.family),
             "payment_kind": "drop_off",
             "drop_off_booking_id": str(booking.pk),
         },
@@ -252,7 +320,7 @@ def create_staff_balance_checkout_session(request, payment, *, success_url, canc
         "cancel_url": cancel_url,
         "metadata": {
             "portal_payment_id": str(payment.pk),
-            "family_slug": payment.family.slug,
+            "family_slug": family_checkout_slug(payment.family),
             "payment_kind": payment.payment_kind,
             "initiated_by": "staff",
             "staff_note": (note or "")[:200],
@@ -260,7 +328,7 @@ def create_staff_balance_checkout_session(request, payment, *, success_url, canc
         },
     }
     create_kwargs.update(checkout_customer_kwargs(payment.family, _family_parent_account(payment.family)))
-    session = stripe.checkout.Session.create(**create_kwargs)
+    session = _create_checkout_session(stripe, **create_kwargs)
     payment.stripe_session_id = session.id
     payment.save(update_fields=["stripe_session_id"])
     return session
@@ -269,13 +337,14 @@ def create_staff_balance_checkout_session(request, payment, *, success_url, canc
 def create_setup_checkout_session(request, account):
     stripe = _stripe()
     customer = get_or_create_customer(account)
-    session = stripe.checkout.Session.create(
+    session = _create_checkout_session(
+        stripe,
         mode="setup",
         customer=customer.id,
         payment_method_types=["card"],
         success_url=request.build_absolute_uri("/portal/parent/account/?card_saved=1"),
         cancel_url=request.build_absolute_uri("/portal/parent/account/"),
-        metadata={"family_slug": account.family.slug, "portal": "parent_setup"},
+        metadata={"family_slug": family_checkout_slug(account.family), "portal": "parent_setup"},
     )
     return session
 
