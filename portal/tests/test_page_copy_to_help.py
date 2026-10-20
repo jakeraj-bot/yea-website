@@ -132,10 +132,12 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         self._login(self.admin_user, "admin")
         permissions = self.client.get(reverse("portal_admin_page", kwargs={"page": "billing-permissions"}))
         self.assertEqual(permissions.status_code, 200)
-        self.assertNotContains(
-            permissions,
-            "Yes/No per staff member — billing, application approval, and attendance delete.",
+        html = permissions.content.decode()
+        self.assertNotIn(
+            '<p class="lead">Yes/No per staff member — billing, application approval, and attendance delete.</p>',
+            html,
         )
         self.assertContains(permissions, "How to use this page")
         self.assertContains(permissions, "Turn on approval when needed")
+        self.assertContains(permissions, "Yes/No per staff member")
         self.assertContains(permissions, "Organization admin can always delete attendance")
