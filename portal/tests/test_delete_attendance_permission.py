@@ -225,12 +225,14 @@ class DeleteAttendancePermissionTests(TestCase):
         before, after = self._add_sessions()
         self._login(self.parent_user, "parent")
         response = self._delete(care="after")
-        self.assertIn(response.status_code, {302, 403})
+        self.assertEqual(response.status_code, 403)
         self.assertTrue(AttendanceRecord.objects.filter(pk=after.pk).exists())
         self.assertTrue(AttendanceRecord.objects.filter(pk=before.pk).exists())
         self.assertFalse(
             PortalActivityEvent.objects.filter(
-                action=PortalActivityEvent.ACTION_DELETE, actor=self.parent_user
+                action=PortalActivityEvent.ACTION_DELETE,
+                actor=self.parent_user,
+                object_type="attendance",
             ).exists()
         )
 

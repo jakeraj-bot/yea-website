@@ -6148,7 +6148,25 @@ def staff_attendance_mark(request):
     return _attendance_next_or_redirect(request, attendance_date)
 
 
+def _block_parent_attendance_delete(view_func):
+    from functools import wraps
+
+    from django.http import HttpResponseForbidden
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        from .parent_auth import get_parent_account
+        from .staff_auth import get_staff_account
+
+        if get_parent_account(request.user) and not get_staff_account(request.user):
+            return HttpResponseForbidden("Parents cannot delete attendance.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
 @require_POST
+@_block_parent_attendance_delete
 @staff_or_admin_login_required_post
 def staff_attendance_delete(request):
     """Remove a saved attendance mark. Portal admin always; others need the flag."""
