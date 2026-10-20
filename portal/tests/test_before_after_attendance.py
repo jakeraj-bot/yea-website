@@ -304,6 +304,13 @@ class BeforeAfterAttendanceTests(TestCase):
             status=AttendanceRecord.STATUS_PRESENT,
             care=AttendanceRecord.CARE_BEFORE,
         )
+        AttendanceRecord.objects.create(
+            child=self.after_only,
+            program=self.program,
+            date=self.today,
+            status=AttendanceRecord.STATUS_PRESENT,
+            care=AttendanceRecord.CARE_AFTER,
+        )
         before_csv = self.client.get(
             reverse("portal_staff_weekly_attendance_report"),
             {"date": self.today.isoformat(), "care": "before", "format": "csv"},
@@ -311,11 +318,15 @@ class BeforeAfterAttendanceTests(TestCase):
         body = before_csv.content.decode()
         self.assertIn("Before-care", body)
         self.assertIn("Sam Jacobs", body)
+        sam_before = next(line for line in body.splitlines() if line.startswith("Sam Jacobs,"))
+        self.assertIn("Before-care", sam_before)
         after_csv = self.client.get(
             reverse("portal_staff_weekly_attendance_report"),
             {"date": self.today.isoformat(), "care": "after", "format": "csv"},
         )
         after_body = after_csv.content.decode()
         self.assertIn("After-care", after_body)
-        sam_line = next(line for line in after_body.splitlines() if line.startswith("Sam Jacobs,"))
-        self.assertNotIn("Before-care", sam_line)
+        sam_after = next(line for line in after_body.splitlines() if line.startswith("Sam Jacobs,"))
+        self.assertNotIn("Before-care", sam_after)
+        jordan_after = next(line for line in after_body.splitlines() if line.startswith("Jordan Jacobs,"))
+        self.assertIn("After-care", jordan_after)
