@@ -236,6 +236,15 @@ def can_edit_enrollment_application(account, portal_area="staff"):
     return False
 
 
+def can_switch_member_unit(account, portal_area="staff"):
+    """Move a child to another program site on the same family account.
+
+    Same people who can edit enrollment: portal admin and program director.
+    Front desk only if they can already edit enrollment.
+    """
+    return can_edit_enrollment_application(account, portal_area)
+
+
 def application_permissions_for_staff(account=None, portal_area="staff"):
     can_edit = can_edit_enrollment_application(account, portal_area)
     if portal_area == "admin" or (account and (account.role == "Portal admin" or account.all_units_access)):

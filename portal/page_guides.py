@@ -764,6 +764,10 @@ GUIDES = {
                 "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
+                "title": "Move a child to another school",
+                "body": "On Program status, change Program site, confirm, and save. That updates this child’s unit — not a second child or a new application. Ledger and attendance history stay on this child. New attendance and reports use the new school. If they are the only child on the account, the family follows. If a sibling stays at the old school, the household stays visible at both sites. Portal admin and program director can do this. Front desk can only if they can already edit enrollment.",
+            },
+            {
                 "title": "Make one application inactive",
                 "body": "If a child has before-care and after-care, you can turn off one program without making the whole child inactive. On Program status, each application has Make this before-care application inactive or Make this after-care application inactive. That child leaves attendance and the before-care roster for that program only. Restore this application if they come back to that program. You can also do this from the application page or the Applications tab.",
             },
