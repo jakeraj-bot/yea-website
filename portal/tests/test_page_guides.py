@@ -242,7 +242,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("before-care", profile_bodies.lower())
         self.assertIn("Program site", profile_bodies)
         self.assertIn("not a second child", profile_bodies)
-        self.assertIn("stop attending altogether", profile_bodies)
+        self.assertIn("stops attending altogether", profile_bodies)
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())

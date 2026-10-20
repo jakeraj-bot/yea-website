@@ -125,7 +125,7 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         bodies = " ".join(step["body"] for step in profile["steps"])
         self.assertIn("Make a child inactive or active", titles)
         self.assertIn("Move a child to another school", titles)
-        self.assertIn("stop attending altogether", bodies)
+        self.assertIn("stops attending altogether", bodies)
         self.assertIn("Program site", bodies)
         self.assertIn("another school", bodies)
 
