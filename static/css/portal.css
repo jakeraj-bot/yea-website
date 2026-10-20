@@ -4697,18 +4697,19 @@ nav.portal-nav-admin-groups {
 }
 
 .portal-child-calendar-session.is-present {
-  background: #c8e6c9;
-  color: #1b5e20;
+  background: #1b5e20;
+  color: #fff;
 }
 
 .portal-child-calendar-session.is-absent {
-  background: #ffcdd2;
-  color: #b71c1c;
+  background: #b71c1c;
+  color: #fff;
 }
 
 .portal-child-calendar-session.is-unmarked {
-  background: #eceff1;
-  color: #78909c;
+  background: transparent;
+  border: 1px dashed #b0bec5;
+  color: #90a4ae;
 }
 
 .portal-child-calendar-key.is-session {
