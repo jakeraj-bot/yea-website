@@ -12,6 +12,7 @@
       <h2>How outgoing mail works</h2>
       <ul>
         <li><strong>Portal sending email</strong> is the From address for password resets, invoices, late-fee notices, charge emails, reminders, and other automatic mail. Create a new mailbox (not your personal inbox) and type it here when you have it.</li>
+        <li><strong>Send automatic email when a charge is posted</strong> is off until you turn it on. Weekly plan posts, 4Cs copay, bulk Post today, and staff charges will not email parents while it is off.</li>
         <li>When a staff person uses <strong>Email parent</strong> or <strong>Email parents</strong>, the parent still replies to that staff person. The message is sent through the portal address so it delivers reliably, and Reply-To is the staff login email (assistant sends → parent replies go to the assistant).</li>
         <li><strong>Always BCC</strong> puts a copy of every parent email in the portal mailbox so you can see what went out without filling your personal inbox. Leave BCC blank to use the same address as Portal sending email.</li>
         <li>On the compose screens, check extra staff (assistant, business partner) or type an address to <strong>CC</strong> them. Parents can see who was included.</li>
@@ -29,6 +30,13 @@
         <label for="portal-bcc-email">Always BCC this address on mail to parents</label>
         <input id="portal-bcc-email" name="portal_bcc_email" type="email" class="portal-input" value="{{ email_settings.portal_bcc_email }}" placeholder="{{ portal_bcc_email_default }}"{% if not portal_live %} disabled{% endif %}>
         <p class="form-note">Copies of staff-composed and system emails to parents go here. Leave blank to use the portal sending email.</p>
+      </div>
+      <div class="form-group portal-form-full">
+        <label class="portal-check-label" for="send-charge-posted-emails">
+          <input id="send-charge-posted-emails" name="send_charge_posted_emails" type="checkbox"{% if email_settings.send_charge_posted_emails %} checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+          Send automatic email when a charge is posted
+        </label>
+        <p class="form-note">Off until you turn it on. When this is checked, parents get an email for weekly/Thursday plan charges, 4Cs copay posts, bulk Post today, and staff-posted charges. Leave it unchecked while charge amounts in those emails are wrong. <strong>Email parent</strong>, Billing-tab <strong>Send updated balance</strong>, payment receipts, password reset, approval, and Friday late-fee reminders still send.</p>
       </div>
       <div class="portal-form-actions portal-form-full">
         <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save email settings</button>
