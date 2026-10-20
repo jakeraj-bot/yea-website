@@ -7,7 +7,6 @@
 <section class="page-hero">
   <div class="container">
     <h1>Member portals</h1>
-    <p class="lead">One login area for families and YEA staff — billing, applications, attendance, and more.</p>
   </div>
 </section>
 
@@ -16,12 +15,6 @@
     <div class="card-grid card-grid-3 portals-role-cards">
       <article class="card card-accent">
         <h2>Parent portal</h2>
-        <p>View your family profile, application status, signed policies, running balance, receipts, drop-in bookings, and account settings.</p>
-        <ul class="portals-feature-list">
-          <li>Billing &amp; pay balance</li>
-          <li>Policy library (per child)</li>
-          <li>Drop-in care</li>
-        </ul>
         <a class="btn btn-primary" href="{% url 'portal_parent_login' %}">Sign in to parent portal</a>
         <a class="btn btn-secondary" href="{% url 'portal_parent_signup' %}">Create parent account</a>
         {% if show_dev_hints %}
@@ -31,12 +24,6 @@
 
       <article class="card card-accent orange">
         <h2>Staff portal</h2>
-        <p>Daily tools for your unit — attendance check-in, applications, family profiles, member policies, 4Cs agency billing, and printable reports.</p>
-        <ul class="portals-feature-list">
-          <li>Attendance roster</li>
-          <li>Family billing &amp; 4Cs</li>
-          <li>Medical &amp; policy reports</li>
-        </ul>
         {% if can_open_staff_portal %}
         <a class="btn btn-primary" href="{% url 'portal_area_switch' area='staff' %}">Open staff portal</a>
         {% elif portal_live %}
@@ -48,12 +35,6 @@
 
       <article class="card card-accent blue">
         <h2>Portal admin</h2>
-        <p>Organization-wide settings — all units, programs, staff access, member billing, scholarships, agencies, fees, and cross-unit reports.</p>
-        <ul class="portals-feature-list">
-          <li>Units &amp; programs</li>
-          <li>Member billing (all units)</li>
-          <li>Scholarships &amp; 4Cs agencies</li>
-        </ul>
         {% if can_open_admin_portal %}
         <a class="btn btn-primary" href="{% url 'portal_area_switch' area='admin' %}">Open portal admin</a>
         {% else %}

@@ -50,12 +50,15 @@ class ParentPortalCompactI18nTests(TestCase):
         self.assertNotContains(page, "+ Before care")
         self.assertNotContains(page, "Billing and portal questions — Jakera Jacobs")
         self.assertNotContains(page, "Sample receipt preview")
-        self.assertContains(page, "How to pay")
-        self.assertContains(page, "parent-pay-howto.mp4")
-        self.assertContains(page, "Cómo pagar")
+        self.assertNotContains(page, "parent-pay-howto.mp4")
+        self.assertNotContains(page, "How to pay")
         self.assertContains(page, reverse("portal_parent_page", kwargs={"page": "help"}))
         self.assertNotContains(page, "How to pay your balance")
         self.assertNotContains(page, "portal-pay-howto-steps")
+        help_page = self.client.get(reverse("portal_parent_page", kwargs={"page": "help"}))
+        self.assertContains(help_page, "How to pay")
+        self.assertContains(help_page, "parent-pay-howto.mp4")
+        self.assertContains(help_page, "Cómo pagar")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_billing_has_pay_now_at_top(self):
@@ -90,6 +93,10 @@ class ParentPortalCompactI18nTests(TestCase):
         self.assertContains(page, "Already applied for after-school?")
         self.assertContains(page, "+ Before care")
         self.assertContains(page, "Contact us")
+        self.assertContains(page, "Receipts")
+        self.assertContains(page, "Account settings")
+        self.assertContains(page, "Drop-off")
+        self.assertContains(page, "parent-pay-howto.mp4")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_language_cookie_switches_parent_portal(self):

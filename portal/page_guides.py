@@ -761,7 +761,7 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
                 "title": "Move a child to another school",
@@ -981,7 +981,7 @@ GUIDES = {
     },
     "staff": {
         "title": "How to create staff logins",
-        "intro": "Only organization admins create portal logins. Program director and Front desk staff both sign in at the staff portal.",
+        "intro": "How creating an account works: choose a role, enter their name and email, set a password (or leave it blank so the portal generates one), then pick every unit they can open. Only organization admins create portal logins. Program director and Front desk staff both sign in at the staff portal.",
         "steps": [
             {
                 "title": "Create a Program director",
@@ -998,6 +998,38 @@ GUIDES = {
             {
                 "title": "Let someone delete attendance",
                 "body": "Organization admin can always delete a mistaken attendance mark. To let someone else do that, edit their staff account and check Delete attendance, or turn it on under Billing permissions. They confirm and give a reason, which is saved on the activity log.",
+            },
+            {
+                "title": "Do not create a second staff account for an admin",
+                "body": "Staff sign in at /portal/staff/login/. Admin logins sign in at /portal/admin/login/. An admin uses that same login to open Staff portal. Do not create a second staff account for a partner who is already an admin — they click Staff portal in the header. After you create an account they get an email with username, password, and the sign-in link.",
+            },
+        ],
+    },
+    "billing-permissions": {
+        "title": "How to set staff permissions",
+        "intro": "Yes/No per staff member — billing, application approval, and attendance delete.",
+        "steps": [
+            {
+                "title": "Turn on approval when needed",
+                "body": "Waitlist and application approval stay admin-only until you turn them on here.",
+            },
+            {
+                "title": "Let someone delete attendance",
+                "body": "Organization admin can always delete attendance. Turn Delete attendance on for other staff who should be able to remove a mistaken mark. They confirm and give a reason, which is saved on the activity log.",
+            },
+        ],
+    },
+    "collections": {
+        "title": "How to use collections",
+        "intro": "Keep old balances here, then link them to a family when they sign up again.",
+        "steps": [
+            {
+                "title": "Add a prior balance",
+                "body": "Enter the member or family name and the amount still owed from before they had a portal account.",
+            },
+            {
+                "title": "Current balances live on reports",
+                "body": "For current balances and unpaid weeks, open Who still owes — by week. That report is also where you pick children for a $15 late fee. The Friday late-payment email lives on Email parents.",
             },
         ],
     },
@@ -1348,6 +1380,33 @@ GUIDES = {
 }
 
 
+def guide_from_report(report):
+    """Turn a data-report lead into Help so the page itself stays a table."""
+    if not report:
+        return None
+    lead = (report.get("lead") or "").strip()
+    title = (report.get("title") or "this report").strip()
+    if not lead:
+        return None
+    steps = [
+        {
+            "title": "Filter if you need to",
+            "body": "Use the filters at the top, then Apply.",
+        },
+        {
+            "title": "Print or download",
+            "body": "Use Print / Save PDF for paper, or Download CSV for a spreadsheet.",
+        },
+    ]
+    return {
+        "key": report.get("slug") or "data-report",
+        "title": f"How to use {title}",
+        "intro": lead,
+        "steps": steps,
+        "step_count": len(steps),
+    }
+
+
 def guide_for(key):
     if not key:
         return None
@@ -1368,6 +1427,8 @@ def guide_for(key):
 
 def page_guide_from_context(context):
     key = context.get("page_guide_key")
+    if key == "data-report":
+        return guide_from_report(context.get("report"))
     if not key:
         if context.get("portal_area") == "parent":
             slug = context.get("parent_page_slug")

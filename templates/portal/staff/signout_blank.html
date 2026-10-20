@@ -5,7 +5,7 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{% url 'portal_staff_page' page='reports' %}">Reports</a> / Blank sign-out sheet</p>
     <h1>Sign-out sheet — blank</h1>
-    <p class="lead">Parent signature &amp; pickup time for {{ sheet_date_display }}{% if care_label %} · {{ care_label }}{% endif %}</p>
+    <p class="lead">{{ sheet_date_display }}{% if care_label %} · {{ care_label }}{% endif %}</p>
   </div>
 </section>
 <section class="page-content portal-blank-report">

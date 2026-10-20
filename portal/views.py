@@ -3307,7 +3307,7 @@ def admin_data_report(request, report_slug):
                     if report_slug == "balances"
                     else "inactive-children"
                     if report_slug == "inactive-children"
-                    else None
+                    else "data-report"
                 ),
                 report=report,
                 filters=filters,

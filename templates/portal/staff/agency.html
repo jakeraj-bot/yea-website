@@ -3,15 +3,11 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>4Cs / Agency — {{ agency.unit }}</h1>
-    <p class="lead">{{ agency.agency_name }} · enroll 4Cs children, record copays, and post agency remittance in one check for multiple kids.</p>
+    <p class="lead">{{ agency.agency_name }}</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    <div class="portal-callout card">
-      <p><strong>Two separate accounts per 4Cs family:</strong> the <em>regular family billing</em> account covers membership and parent copays. The <em>4Cs agency billing</em> account tracks what the agency owes and pays (weekly agency rate + remittance). Agency payments never mix with private-pay tuition.</p>
-    </div>
-
     {% if agency.pending_4cs %}
     <div class="portal-alerts card">
       <h2>Approved 4Cs children waiting for authorization</h2>

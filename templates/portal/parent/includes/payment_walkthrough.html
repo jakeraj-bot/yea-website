@@ -6,7 +6,9 @@
   </video>
   <p class="form-note portal-pay-howto-caption" data-lang-panel="en"{% if parent_lang == 'es' %} hidden{% endif %}>{% pt "pay_video_caption_en" %}</p>
   <p class="form-note portal-pay-howto-caption" data-lang-panel="es"{% if parent_lang != 'es' %} hidden{% endif %}>{% pt "pay_video_caption_es" %}</p>
+  {% if parent_page_slug != 'help' %}
   <p class="form-note" style="margin:0.45rem 0 0">
     <a class="btn btn-secondary btn-sm" href="{% if admin_preview_sample %}{% url 'portal_admin_parent_preview_sample_page' page='help' %}{% elif admin_support_preview and admin_preview_family_slug %}{% url 'portal_admin_parent_preview_page' family_slug=admin_preview_family_slug page='help' %}{% if admin_preview_family_id %}?id={{ admin_preview_family_id }}{% endif %}{% else %}{% url 'portal_parent_page' page='help' %}{{ parent_pay_query }}{% endif %}">{% pt "open_help" %}</a>
   </p>
+  {% endif %}
 </div>

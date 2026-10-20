@@ -3,19 +3,14 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Agencies (4Cs)</h1>
-    <p class="lead">Manage subsidy agencies organization-wide — rates, contracts, and remittance rules.</p>
+
   </div>
 </section>
 <section class="page-content">
   <div class="container">
-    <div class="portal-callout card">
-      <p><strong>Agency vs family billing:</strong> Each 4Cs child has two accounts — their regular family account (membership + parent copay) and a separate <em>4Cs agency billing</em> account. Configure agency contracts here; child-level rates and copays can use variable weekly/daily/monthly tiers like EZChildTracking.</p>
-    </div>
-
     {% if pending_4cs %}
     <div class="portal-alerts card">
       <h2>Approved 4Cs children waiting for authorization</h2>
-      <p class="form-note">These children are enrolled on 4Cs. Use <strong>Add agency</strong> to attach the contract, agency rates, and parent copay weeks.</p>
       <div class="portal-table-wrap">
         <table class="portal-table">
           <thead><tr><th>Child</th><th>Family</th><th>Unit</th><th></th></tr></thead>

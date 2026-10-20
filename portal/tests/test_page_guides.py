@@ -3,7 +3,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from portal.models import PortalFamily, PortalStaffAccount, PortalUnit
-from portal.page_guides import GUIDES, guide_for, page_guide_from_context
+from portal.page_guides import GUIDES, guide_for, guide_from_report, page_guide_from_context
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY, application_permissions_for_staff, billing_permissions_for_staff
 
 
@@ -44,6 +44,7 @@ class PageGuideCatalogTests(TestCase):
             "activity-calendar",
             "groups",
             "staff",
+            "collections",
             "outside-programs",
             "member-billing",
         ):
@@ -171,6 +172,37 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("unit", bodies.lower())
         self.assertIn("with balance", bodies.lower())
 
+    def test_staff_guide_says_not_to_create_second_account(self):
+        guide = guide_for("staff")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Do not create a second staff account for an admin", titles)
+        self.assertIn("Let someone delete attendance", titles)
+        self.assertIn("How creating an account works", guide["intro"])
+        self.assertIn("Do not create a second staff account", " ".join(step["body"] for step in guide["steps"]))
+
+    def test_billing_permissions_guide_holds_page_lead(self):
+        guide = guide_for("billing-permissions")
+        self.assertIsNotNone(guide)
+        self.assertIn("Yes/No per staff member", guide["intro"])
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Turn on approval when needed", titles)
+        self.assertIn("Let someone delete attendance", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("admin-only", bodies)
+        self.assertIn("Delete attendance", bodies)
+
+    def test_data_report_guide_uses_report_lead(self):
+        guide = guide_from_report(
+            {
+                "slug": "payments",
+                "title": "Payments received",
+                "lead": "Payments that were received — who paid, which child, how much, and on what day.",
+            }
+        )
+        self.assertEqual(guide["key"], "payments")
+        self.assertIn("who paid", guide["intro"])
+        self.assertGreaterEqual(guide["step_count"], 2)
+
     def test_admin_dashboard_guide_holds_moved_howto_cards(self):
         guide = guide_for("admin-dashboard")
         self.assertIsNotNone(guide)
@@ -203,12 +235,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Make one application inactive", titles)
         self.assertIn("Move a child to another school", titles)
         self.assertIn("Fold profile sections", titles)
-        self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("does not copy", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("before-care", " ".join(step["body"] for step in profile["steps"]).lower())
-        self.assertIn("Program site", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("not a second child", " ".join(step["body"] for step in profile["steps"]))
+        profile_bodies = " ".join(step["body"] for step in profile["steps"])
+        self.assertIn("Program status", profile_bodies)
+        self.assertIn("Make inactive", profile_bodies)
+        self.assertIn("does not copy", profile_bodies)
+        self.assertIn("before-care", profile_bodies.lower())
+        self.assertIn("Program site", profile_bodies)
+        self.assertIn("not a second child", profile_bodies)
+        self.assertIn("stops attending altogether", profile_bodies)
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())

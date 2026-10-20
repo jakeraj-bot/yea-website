@@ -17,7 +17,7 @@
     </p>
     </div>
     <h1>{% if portal_area == 'admin' %}Family account{% else %}Family billing{% endif %} — {{ account_heading_name|default:billing.family_name }}</h1>
-    <p class="lead">Charges &amp; payments · {{ billing_permissions.role_label }}</p>
+    <p class="lead">{{ billing_permissions.role_label }}</p>
     </div>
     {% include "portal/includes/family_account_pager.html" %}
     </div>

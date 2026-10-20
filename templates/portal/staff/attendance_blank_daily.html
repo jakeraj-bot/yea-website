@@ -6,12 +6,12 @@
   <div class="container">
     <p class="portal-breadcrumb"><a href="{{ hub_url }}">{{ hub_label }}</a> / Blank daily attendance</p>
     <h1>Daily attendance — blank sheet</h1>
-    <p class="lead">Manual sign-in for {{ sheet_date_display }}</p>
+    <p class="lead">{{ sheet_date_display }}</p>
   </div>
 </section>
 <section class="page-content portal-blank-report">
   <div class="container">
-    {% include "portal/staff/includes/attendance_sheet_filters.html" with filter_help="Pick a unit, then After-care, Before-care, or All. Check grades if you only need some classrooms. Names match the filled daily sheet for those filters." %}
+    {% include "portal/staff/includes/attendance_sheet_filters.html" %}
 
     <div class="portal-medical-report-sheet card portal-blank-sheet portal-attendance-print-sheet">
       <header class="portal-medical-report-header portal-no-print">
@@ -27,10 +27,6 @@
           </p>
         </div>
       </header>
-
-      <div class="portal-blank-sheet-fields portal-no-print">
-        <p class="form-note">Names are pulled from the filtered enrollment roster. Extra blank rows at the bottom are for walk-ins.</p>
-      </div>
 
       <div class="portal-table-wrap portal-attendance-print-wrap">
         <table class="portal-table portal-blank-sheet-table portal-attendance-print-table" data-print-row-chunk="16">
