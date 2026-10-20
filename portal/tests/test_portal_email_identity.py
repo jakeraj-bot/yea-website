@@ -16,6 +16,7 @@ from core.email_service import (
     staff_reply_to_email,
 )
 from portal.email_templates import notify_charge_posted
+from portal.payment_emails import set_charge_posted_emails_enabled
 from portal.forms import PortalPasswordResetForm
 from portal.member_admin import (
     parse_compose_cc,
@@ -266,6 +267,11 @@ class EmailSettingsViewTests(TestCase):
         self.assertContains(page, "Always BCC this address on mail to parents")
         self.assertContains(page, "How outgoing mail works")
         self.assertContains(page, "Settings")
+        self.assertContains(page, "Send automatic email when a charge is posted")
+        self.assertContains(page, "Off until you turn it on")
+        checkbox = '<input id="send-charge-posted-emails" name="send_charge_posted_emails" type="checkbox"'
+        self.assertContains(page, checkbox)
+        self.assertNotContains(page, checkbox + " checked")
         response = self.client.post(
             reverse("portal_admin_email_settings_save"),
             {
@@ -277,9 +283,23 @@ class EmailSettingsViewTests(TestCase):
         setting = PortalOrgSetting.load()
         self.assertEqual(setting.portal_sending_email, "portal@yeanj.org")
         self.assertEqual(setting.portal_bcc_email, "copies@yeanj.org")
+        self.assertFalse(setting.send_charge_posted_emails)
         saved = self.client.get(reverse("portal_admin_page", kwargs={"page": "email-settings"}))
         self.assertContains(saved, "portal@yeanj.org")
         self.assertContains(saved, "copies@yeanj.org")
+        self.assertNotContains(saved, checkbox + " checked")
+        turned_on = self.client.post(
+            reverse("portal_admin_email_settings_save"),
+            {
+                "portal_sending_email": "portal@yeanj.org",
+                "portal_bcc_email": "copies@yeanj.org",
+                "send_charge_posted_emails": "on",
+            },
+        )
+        self.assertEqual(turned_on.status_code, 302)
+        self.assertTrue(PortalOrgSetting.load().send_charge_posted_emails)
+        enabled_page = self.client.get(reverse("portal_admin_page", kwargs={"page": "email-settings"}))
+        self.assertContains(enabled_page, checkbox + " checked")
 
 
 class SystemAndResetEmailIdentityTests(TestCase):
@@ -312,6 +332,7 @@ class SystemAndResetEmailIdentityTests(TestCase):
             description="Weekly tuition",
             amount=Decimal("110.00"),
         )
+        set_charge_posted_emails_enabled(True)
         notify_charge_posted(self.family, entry)
         self.assertEqual(len(mail.outbox), 1)
         sent = mail.outbox[0]

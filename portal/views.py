@@ -435,6 +435,10 @@ def _staff_family_context(family_slug, page_title, family_tab, request=None, uni
             _family_neighbor_nav(request, "staff", family_slug, family_tab, extra.get("family_id"))
         )
     _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
+    if family_tab == "profile":
+        from .member_admin import program_units
+
+        extra.setdefault("program_units", program_units())
     if family_tab == "profile" and request is not None:
         from .member_admin import consume_parent_password_reset_flash
 
@@ -507,8 +511,9 @@ def _family_hub_context(request, area, family_slug, page_title, family_tab, **ex
     )
     _attach_member_info(extra, family_slug, unit=unit, family_id=extra.get("family_id"))
     if family_tab == "profile":
-        from .member_admin import consume_parent_password_reset_flash
+        from .member_admin import consume_parent_password_reset_flash, program_units
 
+        extra.setdefault("program_units", program_units())
         extra.setdefault(
             "parent_password_reset",
             consume_parent_password_reset_flash(request, family_slug),
@@ -810,9 +815,11 @@ def _portal_context(area, page_title, **extra):
         context.setdefault("can_approve_waitlist", True)
         context.setdefault("can_edit_applications", True)
         context.setdefault("can_see_billing", True)
+        context.setdefault("can_delete_attendance", True)
         context.setdefault("can_manage_outside_programs", True)
     if area == "staff":
         context.setdefault("can_see_billing", True)
+        context.setdefault("can_delete_attendance", False)
     if "portal_back_fallback" not in context:
         pay_query = context.get("parent_pay_query", "")
         context["portal_back_fallback"] = _portal_back_fallback(area, pay_query)
@@ -852,6 +859,7 @@ def _staff_context(page_title, request=None, **extra):
         ctx["staff_units"] = list(staff_accessible_units(request.user)) if request.user.is_authenticated else []
         ctx["staff_unit_slug"] = unit.slug if unit else ""
         from .staff_auth import (
+            can_delete_attendance,
             can_manage_outside_programs,
             is_front_desk,
             is_program_director,
@@ -860,6 +868,9 @@ def _staff_context(page_title, request=None, **extra):
         )
 
         ctx["can_see_billing"] = staff_can_see_billing(account)
+        ctx["can_delete_attendance"] = can_delete_attendance(
+            account, portal_area="staff", user=request.user
+        )
         ctx["is_program_director"] = is_program_director(account)
         ctx["is_front_desk"] = is_front_desk(account)
         ctx["can_manage_outside_programs"] = can_manage_outside_programs(account)
@@ -6139,6 +6150,108 @@ def staff_attendance_mark(request):
         )
     except Exception as exc:
         messages.error(request, str(exc))
+    return _attendance_next_or_redirect(request, attendance_date)
+
+
+def _block_parent_attendance_delete(view_func):
+    from functools import wraps
+
+    from django.http import HttpResponseForbidden
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        from .parent_auth import get_parent_account
+        from .staff_auth import get_staff_account
+
+        if get_parent_account(request.user) and not get_staff_account(request.user):
+            return HttpResponseForbidden("Parents cannot delete attendance.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+@require_POST
+@_block_parent_attendance_delete
+@staff_or_admin_login_required_post
+def staff_attendance_delete(request):
+    """Remove a saved attendance mark. Portal admin always; others need the flag."""
+    from django.http import HttpResponseForbidden
+
+    from .activity_log import log_activity, require_delete_reason
+    from .attendance_service import delete_attendance_records, portal_is_live
+    from .care_program import attendance_session_label, normalize_care_filter
+    from .models import PortalActivityEvent, PortalChild
+    from .parent_auth import get_parent_account
+    from .staff_auth import (
+        can_delete_attendance,
+        get_staff_account,
+        is_admin_portal_authenticated,
+    )
+    from .unit_visibility import child_belongs_to_unit
+
+    if get_parent_account(request.user) and not get_staff_account(request.user):
+        return HttpResponseForbidden("Parents cannot delete attendance.")
+
+    account = get_staff_account(request.user)
+    area = "admin" if is_admin_portal_authenticated(request) else "staff"
+    if not can_delete_attendance(account, portal_area=area, user=request.user):
+        return HttpResponseForbidden("You do not have permission to delete attendance.")
+
+    attendance_date = get_attendance_date(request)
+    if not portal_is_live():
+        messages.error(request, "Attendance cannot be deleted in preview mode.")
+        return _attendance_next_or_redirect(request, attendance_date)
+
+    try:
+        reason = require_delete_reason(request)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return _attendance_next_or_redirect(request, attendance_date)
+
+    child_id = request.POST.get("child_id")
+    raw_care = (request.POST.get("care") or "").strip().lower()
+    if raw_care in {"both", "all"}:
+        care = "both"
+        session_label = "before-care and after-care"
+    else:
+        care = normalize_care_filter(raw_care)
+        session_label = attendance_session_label(care)
+
+    child = (
+        PortalChild.objects.select_related("family", "unit", "family__unit").filter(pk=child_id).first()
+    )
+    if not child:
+        messages.error(request, "Child not found.")
+        return _attendance_next_or_redirect(request, attendance_date)
+
+    if area == "staff":
+        unit = _staff_unit(request)
+        if unit and not child_belongs_to_unit(child, unit):
+            return HttpResponseForbidden("You can only delete attendance for children at your unit.")
+
+    deleted = delete_attendance_records(child, attendance_date, care)
+    if not deleted:
+        messages.info(
+            request,
+            f"No attendance record to delete for {child.name} on {attendance_date.isoformat()}.",
+        )
+        return _attendance_next_or_redirect(request, attendance_date)
+
+    messages.success(
+        request,
+        f"Deleted {session_label} attendance for {child.name} on {attendance_date.isoformat()}.",
+    )
+    child_unit = getattr(child, "unit", None) or getattr(child.family, "unit", None)
+    log_activity(
+        request,
+        action=PortalActivityEvent.ACTION_DELETE,
+        action_label="Deleted attendance",
+        object_type="attendance",
+        object_label=child.name,
+        details=f"{attendance_date.isoformat()} · {session_label}",
+        delete_reason=reason,
+        unit=child_unit,
+    )
     return _attendance_next_or_redirect(request, attendance_date)
 
 

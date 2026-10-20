@@ -76,7 +76,7 @@
     {% if charge_email_template %}
     <div class="portal-panel card" style="margin-top: 1.5rem;">
       <h2>Charge notice email</h2>
-      <p class="form-note">Parents get this automatically when a charge is posted. It lists what they owe for (plan / charge, child, week) and the current ledger balance. Placeholders: <code>{family_name}</code> <code>{owe_for}</code> <code>{child_name}</code> <code>{week}</code> <code>{description}</code> <code>{amount}</code> <code>{date}</code> <code>{child_balance}</code> <code>{family_balance}</code> <code>{balance}</code> <code>{portal_url}</code>.</p>
+      <p class="form-note">This is the wording for the automatic charge email. Sending is controlled in Settings → Email → Send automatic email when a charge is posted (off until you turn it on). Placeholders: <code>{family_name}</code> <code>{owe_for}</code> <code>{child_name}</code> <code>{week}</code> <code>{description}</code> <code>{amount}</code> <code>{date}</code> <code>{child_balance}</code> <code>{family_balance}</code> <code>{balance}</code> <code>{portal_url}</code>.</p>
       <form method="post" action="{% url 'portal_admin_email_template_save' %}" class="portal-form-grid">
         {% csrf_token %}
         <input type="hidden" name="template_key" value="{{ charge_email_template.key }}">
@@ -90,7 +90,7 @@
           <textarea name="body" class="portal-input portal-textarea" rows="10" required>{{ charge_email_template.body }}</textarea>
         </div>
         <div class="form-group portal-form-full">
-          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if charge_email_template.is_enabled %}checked{% endif %}> Send this email when a charge is posted</label>
+          <label class="portal-check-label"><input type="checkbox" name="is_enabled" {% if charge_email_template.is_enabled %}checked{% endif %}> Keep this charge-notice template available</label>
         </div>
         <div class="portal-form-actions portal-form-full">
           <button type="submit" class="btn btn-primary">Save charge email</button>

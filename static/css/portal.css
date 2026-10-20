@@ -1466,6 +1466,23 @@ nav.portal-nav-admin-groups {
   background: #fafafa;
 }
 
+.portal-child-unit-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.portal-child-unit-label {
+  display: block;
+  min-width: 0;
+}
+
+.portal-child-unit-form .portal-select {
+  min-width: 8.5rem;
+  max-width: 14rem;
+}
+
 .portal-parent-contact {
   display: block;
   margin-top: 0.2rem;

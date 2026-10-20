@@ -22,6 +22,7 @@
     <span class="portal-status portal-status-inactive">Inactive</span>
     {% include "portal/includes/child_inactive_form.html" with child_id=child.child_id child_name=child.name make_active=1 button_class="btn btn-primary" %}
     {% endif %}
+    {% include "portal/includes/child_unit_form.html" with child_id=child.child_id child_name=child.name unit_slug=child.unit_slug unit_name=child.unit_name %}
   </div>
   {% endif %}
 

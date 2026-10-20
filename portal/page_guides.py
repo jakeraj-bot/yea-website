@@ -761,7 +761,11 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending. Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+            },
+            {
+                "title": "Move a child to another school",
+                "body": "On Program status, change Program site, confirm, and save. That updates this child’s unit — not a second child or a new application. Ledger and attendance history stay on this child. New attendance and reports use the new school. If they are the only child on the account, the family follows. If a sibling stays at the old school, the household stays visible at both sites. Portal admin and program director can do this. Front desk can only if they can already edit enrollment.",
             },
             {
                 "title": "Make one application inactive",
@@ -810,6 +814,10 @@ GUIDES = {
             {
                 "title": "Open a day",
                 "body": "Click a date to see the session (before-care or after-care) plus the same check-in, check-out, method, and note that Review attendance has when a record exists.",
+            },
+            {
+                "title": "Delete a mistaken mark",
+                "body": "Organization admin can delete a saved mark from the day details. Confirm and enter a short reason — that reason is saved on the activity log. If before-care and after-care both exist that day, delete B, A, or both. Regular staff and front desk do not see Delete unless you grant Delete attendance on their staff account (Staff access or Billing permissions).",
             },
             {
                 "title": "Change month",
@@ -988,8 +996,26 @@ GUIDES = {
                 "body": "Open Billing permissions. Use Program Director can see billing for every Program director, or edit one person and check Program Director can see billing (this person).",
             },
             {
+                "title": "Let someone delete attendance",
+                "body": "Organization admin can always delete a mistaken attendance mark. To let someone else do that, edit their staff account and check Delete attendance, or turn it on under Billing permissions. They confirm and give a reason, which is saved on the activity log.",
+            },
+            {
                 "title": "Do not create a second staff account for an admin",
                 "body": "Staff sign in at /portal/staff/login/. Admin logins sign in at /portal/admin/login/. An admin uses that same login to open Staff portal. Do not create a second staff account for a partner who is already an admin — they click Staff portal in the header. After you create an account they get an email with username, password, and the sign-in link.",
+            },
+        ],
+    },
+    "billing-permissions": {
+        "title": "How to set staff permissions",
+        "intro": "Yes/No per staff member — billing, application approval, and attendance delete.",
+        "steps": [
+            {
+                "title": "Turn on approval when needed",
+                "body": "Waitlist and application approval stay admin-only until you turn them on here.",
+            },
+            {
+                "title": "Let someone delete attendance",
+                "body": "Organization admin can always delete attendance. Turn Delete attendance on for other staff who should be able to remove a mistaken mark. They confirm and give a reason, which is saved on the activity log.",
             },
         ],
     },
@@ -1272,6 +1298,10 @@ GUIDES = {
             {
                 "title": "Always BCC",
                 "body": "Copies of mail to parents (staff-composed and system) go to this address so you can see what was sent. Leave it blank to use the same address as Portal sending email.",
+            },
+            {
+                "title": "Automatic charge emails",
+                "body": "Send automatic email when a charge is posted is off until you check it. Weekly plans, 4Cs copay, bulk Post today, and staff charges will not email parents while it is off. Email parent, Send updated balance, receipts, and Friday late-fee reminders still send.",
             },
             {
                 "title": "Staff-composed replies",

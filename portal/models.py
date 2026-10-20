@@ -351,6 +351,7 @@ class PortalBillingDefaultRule(models.Model):
     can_edit_family_plans = models.BooleanField(default=False)
     can_approve_applications = models.BooleanField(default=False)
     can_approve_waitlist = models.BooleanField(default=False)
+    can_delete_attendance = models.BooleanField(default=False)
     is_custom = models.BooleanField(default=False)
 
     class Meta:
@@ -377,6 +378,10 @@ class PortalStaffAccount(models.Model):
     can_edit_family_plans = models.BooleanField(default=False)
     can_approve_applications = models.BooleanField(default=False)
     can_approve_waitlist = models.BooleanField(default=False)
+    can_delete_attendance = models.BooleanField(
+        default=False,
+        help_text="Allow this person to delete a mistaken attendance mark. Portal admin can always delete attendance.",
+    )
     can_see_billing = models.BooleanField(
         default=False,
         help_text="When this person is a Program director, allow billing even if the org toggle is off.",
@@ -1463,6 +1468,15 @@ class PortalOrgSetting(models.Model):
     portal_bcc_email = models.EmailField(
         blank=True,
         help_text="Always BCC this address on mail to parents. Leave blank to use the portal sending email.",
+    )
+    send_charge_posted_emails = models.BooleanField(
+        default=False,
+        help_text=(
+            "When on, parents get an automatic email every time a charge is posted "
+            "(weekly plans, 4Cs copay, bulk Post today, and staff charges). Off until "
+            "those emails show trustworthy amounts. Staff Email parent and Send updated "
+            "balance still work."
+        ),
     )
 
     class Meta:

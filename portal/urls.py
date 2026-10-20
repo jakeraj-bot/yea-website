@@ -369,6 +369,11 @@ urlpatterns = [
         name="portal_staff_attendance_mark",
     ),
     path(
+        "staff/attendance/delete/",
+        views.staff_attendance_delete,
+        name="portal_staff_attendance_delete",
+    ),
+    path(
         "staff/attendance/bulk-check-in/",
         views.staff_attendance_bulk_checkin,
         name="portal_staff_attendance_bulk_checkin",
@@ -572,6 +577,11 @@ urlpatterns = [
         "staff/family/<slug:family_slug>/child-status/",
         views_actions.family_child_status,
         name="portal_staff_family_child_status",
+    ),
+    path(
+        "staff/family/<slug:family_slug>/child-unit/",
+        views_actions.family_child_unit,
+        name="portal_staff_family_child_unit",
     ),
     path(
         "staff/family/<slug:family_slug>/parent-password/",
@@ -800,6 +810,11 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/child-status/",
         views_actions.family_child_status,
         name="portal_admin_family_child_status",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/child-unit/",
+        views_actions.family_child_unit,
+        name="portal_admin_family_child_unit",
     ),
     path(
         "admin/family/<slug:family_slug>/parent-password/",

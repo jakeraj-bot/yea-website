@@ -21,6 +21,7 @@ from portal.models import (
     PortalStaffAccount,
     PortalUnit,
 )
+from portal.payment_emails import set_charge_posted_emails_enabled
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
 
 
@@ -82,6 +83,7 @@ class ChargeNoticeEmailTests(TestCase):
             email="parent@example.com",
         )
         PortalParentAccount.objects.create(user=user, family=self.family)
+        set_charge_posted_emails_enabled(True)
 
     @patch("portal.email_templates.send_site_email", return_value=1)
     def test_posting_charge_emails_parent_with_amount_and_description(self, send_email):

@@ -107,3 +107,35 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         self.assertContains(help_page, "Tap Pay now")
         self.assertContains(help_page, "Account settings is for login")
         self.assertContains(help_page, "Pick a day and time we have a spot")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_program_status_drops_howto_and_keeps_program_site(self):
+        from pathlib import Path
+
+        template = Path("templates/portal/includes/child_program_status.html").read_text()
+        self.assertNotIn("Make a child inactive when they stop attending altogether", template)
+        self.assertNotIn('<p class="form-note">Make a child inactive', template)
+        self.assertIn("Program site", template)
+        self.assertIn("child_unit_form.html", template)
+        self.assertNotIn("<<<<<<<", template)
+        self.assertNotIn(">>>>>>>", template)
+
+        profile = guide_for("family-profile")
+        titles = [step["title"] for step in profile["steps"]]
+        bodies = " ".join(step["body"] for step in profile["steps"])
+        self.assertIn("Make a child inactive or active", titles)
+        self.assertIn("Move a child to another school", titles)
+        self.assertIn("stop attending altogether", bodies)
+        self.assertIn("Program site", bodies)
+        self.assertIn("another school", bodies)
+
+        self._login(self.admin_user, "admin")
+        permissions = self.client.get(reverse("portal_admin_page", kwargs={"page": "billing-permissions"}))
+        self.assertEqual(permissions.status_code, 200)
+        self.assertNotContains(
+            permissions,
+            "Yes/No per staff member — billing, application approval, and attendance delete.",
+        )
+        self.assertContains(permissions, "How to use this page")
+        self.assertContains(permissions, "Turn on approval when needed")
+        self.assertContains(permissions, "Organization admin can always delete attendance")

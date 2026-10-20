@@ -384,6 +384,33 @@ def parent_logout(request):
     return redirect("portal_home")
 
 
+def _strip_site_prefix(next_url):
+    """Accept yeanj.org and www.yeanj.org even when SITE_URL is only one host."""
+    site = str(getattr(settings, "SITE_URL", None) or "").rstrip("/")
+    prefixes = []
+    if site:
+        prefixes.append(site)
+        if "://www." in site:
+            prefixes.append(site.replace("://www.", "://", 1))
+        elif "://" in site:
+            scheme, rest = site.split("://", 1)
+            prefixes.append(f"{scheme}://www.{rest}")
+    for prefix in prefixes:
+        if next_url.startswith(prefix):
+            return next_url[len(prefix) :] or "/"
+    return next_url
+
+
+def _rewrite_post_only_parent_next(path):
+    """POST-only actions 405 after login. Send the parent to the GET page instead."""
+    normalized = (path or "").split("?", 1)[0].rstrip("/") + "/"
+    if normalized == "/portal/parent/payment/checkout/":
+        return "/portal/parent/payment/"
+    if normalized in {"/portal/parent/card/setup/", "/portal/parent/profile-photo/"}:
+        return "/portal/parent/account/"
+    return None
+
+
 def _safe_parent_next(next_url):
     """Keep email Pay now links on the payment page after login.
 
@@ -393,12 +420,11 @@ def _safe_parent_next(next_url):
     next_url = (next_url or "").strip()
     if not next_url:
         return None
-    site = str(getattr(settings, "SITE_URL", None) or "").rstrip("/")
-    if site and next_url.startswith(site):
-        next_url = next_url[len(site) :] or "/"
-    if next_url.startswith("/portal/") or next_url.startswith("/apply/"):
-        return next_url
-    return None
+    next_url = _strip_site_prefix(next_url)
+    if not (next_url.startswith("/portal/") or next_url.startswith("/apply/")):
+        return None
+    rewritten = _rewrite_post_only_parent_next(next_url)
+    return rewritten or next_url
 
 
 def _login_redirect(request):

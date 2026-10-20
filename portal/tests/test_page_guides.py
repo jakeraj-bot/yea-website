@@ -176,8 +176,20 @@ class PageGuideCatalogTests(TestCase):
         guide = guide_for("staff")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Do not create a second staff account for an admin", titles)
+        self.assertIn("Let someone delete attendance", titles)
         self.assertIn("How creating an account works", guide["intro"])
         self.assertIn("Do not create a second staff account", " ".join(step["body"] for step in guide["steps"]))
+
+    def test_billing_permissions_guide_holds_page_lead(self):
+        guide = guide_for("billing-permissions")
+        self.assertIsNotNone(guide)
+        self.assertIn("Yes/No per staff member", guide["intro"])
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Turn on approval when needed", titles)
+        self.assertIn("Let someone delete attendance", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("admin-only", bodies)
+        self.assertIn("Delete attendance", bodies)
 
     def test_data_report_guide_uses_report_lead(self):
         guide = guide_from_report(
@@ -221,11 +233,16 @@ class PageGuideCatalogTests(TestCase):
         titles = [step["title"] for step in profile["steps"]]
         self.assertIn("Make a child inactive or active", titles)
         self.assertIn("Make one application inactive", titles)
+        self.assertIn("Move a child to another school", titles)
         self.assertIn("Fold profile sections", titles)
-        self.assertIn("Program status", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("Make inactive", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("does not copy", " ".join(step["body"] for step in profile["steps"]))
-        self.assertIn("before-care", " ".join(step["body"] for step in profile["steps"]).lower())
+        profile_bodies = " ".join(step["body"] for step in profile["steps"])
+        self.assertIn("Program status", profile_bodies)
+        self.assertIn("Make inactive", profile_bodies)
+        self.assertIn("does not copy", profile_bodies)
+        self.assertIn("before-care", profile_bodies.lower())
+        self.assertIn("Program site", profile_bodies)
+        self.assertIn("not a second child", profile_bodies)
+        self.assertIn("stop attending altogether", profile_bodies)
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())
@@ -284,9 +301,11 @@ class PageGuideCatalogTests(TestCase):
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Portal sending email", titles)
         self.assertIn("Always BCC", titles)
+        self.assertIn("Automatic charge emails", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("password reset", bodies.lower())
         self.assertIn("assistant", bodies.lower())
+        self.assertIn("off until you check it", bodies.lower())
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")

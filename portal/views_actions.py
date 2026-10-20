@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 
 from django.contrib import messages
@@ -5,7 +6,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .parent_auth import parent_login_required_post
 from .staff_auth import admin_login_required_post, staff_login_required_post, staff_or_admin_login_required_post
@@ -403,6 +404,7 @@ def admin_billing_permissions(request):
                 charge_perms,
                 _perm_yes(request.POST, f"approve_apps_{sid}"),
                 _perm_yes(request.POST, f"approve_waitlist_{sid}"),
+                can_delete_attendance=_perm_yes(request.POST, f"delete_attendance_{sid}"),
             )
             updated += 1
         messages.success(request, f"Billing permissions saved for {updated} staff member(s).")
@@ -451,7 +453,10 @@ def admin_email_settings_save(request):
     setting = PortalOrgSetting.load()
     setting.portal_sending_email = sending
     setting.portal_bcc_email = bcc
-    setting.save(update_fields=["portal_sending_email", "portal_bcc_email"])
+    setting.send_charge_posted_emails = request.POST.get("send_charge_posted_emails") == "on"
+    setting.save(
+        update_fields=["portal_sending_email", "portal_bcc_email", "send_charge_posted_emails"]
+    )
     messages.success(
         request,
         "Portal email settings saved. Automated mail will use that From address, and copies of parent emails go to the BCC inbox.",
@@ -481,6 +486,7 @@ def admin_staff_invite(request):
             all_units_access=request.POST.get("all_units_access") == "on" or role == "Portal admin",
             password=password or None,
             can_see_billing=request.POST.get("can_see_billing") == "on",
+            can_delete_attendance=request.POST.get("can_delete_attendance") == "on",
         )
         portal_type = "admin" if role == "Portal admin" else "staff"
         emailed = False
@@ -1222,7 +1228,7 @@ def admin_profile_change_action(request):
     return redirect("portal_admin_page", page="dashboard")
 
 
-@require_POST
+@require_http_methods(["GET", "POST"])
 @parent_login_required_post
 def parent_payment_checkout(request):
     from decimal import Decimal, InvalidOperation
@@ -1239,6 +1245,9 @@ def parent_payment_checkout(request):
         create_dropin_checkout_session,
         stripe_configured,
     )
+
+    if request.method != "POST":
+        return redirect("portal_parent_payment")
 
     def _pay_redirect(url_name, **params):
         query = urlencode({key: value for key, value in params.items() if value not in (None, "")})
@@ -1334,9 +1343,9 @@ def parent_payment_checkout(request):
             amount = payment.amount
     try:
         if is_dropin:
-            session = create_dropin_checkout_session(request, payment)
+            session = create_dropin_checkout_session(request, payment, account=account)
         else:
-            session = create_balance_checkout_session(request, payment)
+            session = create_balance_checkout_session(request, payment, account=account)
         if not getattr(session, "url", None):
             raise ValueError("Stripe did not return a checkout page.")
     except Exception as exc:
@@ -1357,6 +1366,10 @@ def parent_payment_checkout(request):
             )
             return redirect("portal_parent_payment_success")
         payment.delete()
+        logging.getLogger(__name__).warning(
+            "parent checkout failed family=%s",
+            getattr(account.family, "slug", "") or account.family_id,
+        )
         messages.error(request, checkout_error_message(exc))
         return _pay_redirect(
             "portal_parent_payment_preview",
@@ -2376,6 +2389,107 @@ def family_child_status(request, family_slug):
         object_label=child.name,
         details=family.name,
     )
+    return redirect(_portal_next_url(request, default_next))
+
+
+@require_POST
+def family_child_unit(request, family_slug):
+    from django.conf import settings
+
+    from .member_admin import is_placeholder_unit, resolve_family, switch_child_unit
+    from .models import PortalChild, PortalUnit
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import (
+        can_switch_member_unit,
+        get_staff_account,
+        is_admin_portal_authenticated,
+        is_staff_portal_authenticated,
+        resolve_staff_unit,
+    )
+    from .unit_visibility import child_belongs_to_unit, family_visible_to_unit
+
+    staff_ok = is_staff_portal_authenticated(request)
+    admin_ok = is_admin_portal_authenticated(request)
+    if not portal_preview_mode() and not staff_ok and not admin_ok:
+        login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+        return redirect(f"{login_url}?next={request.get_full_path()}")
+
+    if admin_ok and not staff_ok:
+        fallback = reverse("portal_admin_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_admin_page", kwargs={"page": "families"})
+        unit = None
+        portal_area = "admin"
+    else:
+        fallback = reverse("portal_staff_family_detail", kwargs={"family_slug": family_slug})
+        families_page = reverse("portal_staff_page", kwargs={"page": "families"})
+        unit = resolve_staff_unit(request)
+        portal_area = "staff"
+        if not unit and get_staff_account(request.user) and not admin_ok:
+            messages.error(request, "Portal unit not configured.")
+            return redirect(fallback)
+
+    if not can_switch_member_unit(get_staff_account(request.user), portal_area):
+        messages.error(request, "You cannot change this child's program site.")
+        return redirect(_portal_next_url(request, fallback))
+
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+
+    family = resolve_family(
+        family_slug=family_slug,
+        family_id=_family_id_param(request),
+        unit=unit,
+    )
+    if not family:
+        messages.error(request, "Family not found.")
+        return redirect("portal_staff_page" if staff_ok and not admin_ok else "portal_admin_page", page="families")
+
+    child = PortalChild.objects.filter(pk=request.POST.get("child_id"), family=family).first()
+    if not child or not child_belongs_to_unit(child, unit):
+        messages.error(request, "Child not found.")
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    new_unit = PortalUnit.objects.filter(slug=(request.POST.get("unit_slug") or "").strip(), is_active=True).first()
+    if not new_unit or is_placeholder_unit(new_unit):
+        messages.error(request, "Choose a program site.")
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    try:
+        result = switch_child_unit(child, new_unit)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, _with_family_id(fallback, family)))
+
+    family = result["family"] or family
+    child = result["child"]
+    old_unit = result["old_unit"]
+    old_label = old_unit.name if old_unit else "the previous site"
+    if result["changed"]:
+        messages.success(
+            request,
+            f"{child.name} now attends {new_unit.name}. They stay on this family account. "
+            f"Ledger and attendance history stay. New attendance and reports use {new_unit.name}.",
+        )
+        _log_activity(
+            request,
+            "save",
+            action_label="Changed child unit",
+            object_type="child",
+            object_label=child.name,
+            details=f"{family.name}: {old_label} → {new_unit.name}",
+            unit=new_unit,
+        )
+    else:
+        messages.success(request, f"{child.name} is already at {new_unit.name}.")
+
+    fallback = reverse(
+        "portal_admin_family_detail" if portal_area == "admin" else "portal_staff_family_detail",
+        kwargs={"family_slug": family.slug},
+    )
+    if unit and not family_visible_to_unit(family, unit):
+        default_next = families_page
+    else:
+        default_next = _with_family_id(fallback, family)
     return redirect(_portal_next_url(request, default_next))
 
 

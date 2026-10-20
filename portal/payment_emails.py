@@ -1,9 +1,11 @@
 """Whether automatic parent payment emails should go out for a family or charge.
 
-Child-level ``PortalChild.is_active=False`` is the main switch. Per-application
-inactive (before-care vs after-care) suppresses mail for that program's charges
-only. Staff-composed Email parent, approval, and password-reset mail are not
-gated here.
+Settings → Email ``send_charge_posted_emails`` (off by default) is the org switch
+for charge-posted notices. Child-level ``PortalChild.is_active=False`` still
+skips mail when that switch is on. Per-application inactive (before-care vs
+after-care) suppresses mail for that program's charges only. Staff-composed
+Email parent, approval, password-reset, receipts, and Friday late-fee reminders
+are not gated by the charge-posted toggle.
 """
 
 from decimal import Decimal
@@ -91,6 +93,22 @@ def charge_is_for_inactive_program(child, entry=None):
     if not active_keys:
         return True
     return False
+
+
+def charge_posted_emails_enabled():
+    """Settings → Email toggle. Off until staff turns automatic charge mail back on."""
+    from .models import PortalOrgSetting
+
+    return bool(PortalOrgSetting.load().send_charge_posted_emails)
+
+
+def set_charge_posted_emails_enabled(enabled=True):
+    from .models import PortalOrgSetting
+
+    setting = PortalOrgSetting.load()
+    setting.send_charge_posted_emails = bool(enabled)
+    setting.save(update_fields=["send_charge_posted_emails"])
+    return setting
 
 
 def should_send_automatic_payment_email(family, entry=None):

@@ -218,6 +218,29 @@ def billing_permissions_for_staff(account=None, portal_area="staff"):
     }
 
 
+def is_org_admin_account(account):
+    """Jakera's Portal admin role (not Program director or front desk)."""
+    return bool(
+        account
+        and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access)
+        and not is_program_director(account)
+        and not is_front_desk(account)
+    )
+
+
+def can_delete_attendance(account=None, portal_area="staff", user=None):
+    """Portal admin always can. Other staff only when the flag is granted."""
+    if portal_area == "admin":
+        return True
+    if portal_preview_mode():
+        return True
+    if user is not None and getattr(user, "is_superuser", False) and is_portal_admin(user):
+        return True
+    if is_org_admin_account(account):
+        return True
+    return bool(account and account.can_delete_attendance)
+
+
 def can_edit_enrollment_application(account, portal_area="staff"):
     """Fix names, school, contacts, and program fields on an application.
 
@@ -234,6 +257,15 @@ def can_edit_enrollment_application(account, portal_area="staff"):
     if account and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access):
         return True
     return False
+
+
+def can_switch_member_unit(account, portal_area="staff"):
+    """Move a child to another program site on the same family account.
+
+    Same people who can edit enrollment: portal admin and program director.
+    Front desk only if they can already edit enrollment.
+    """
+    return can_edit_enrollment_application(account, portal_area)
 
 
 def application_permissions_for_staff(account=None, portal_area="staff"):
