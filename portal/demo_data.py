@@ -811,6 +811,7 @@ PORTAL_STAFF_USERS = [
         "can_edit_family_plans": True,
         "can_approve_applications": True,
         "can_approve_waitlist": True,
+        "can_delete_attendance": True,
     },
     {
         "id": 2,
@@ -823,6 +824,7 @@ PORTAL_STAFF_USERS = [
         "can_add_charge": True,
         "can_delete_charge": True,
         "can_add_credit": False,
+        "can_delete_attendance": False,
     },
     {
         "id": 3,

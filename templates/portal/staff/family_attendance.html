@@ -124,7 +124,14 @@
           <dd>{{ record.program }}</dd>
           {% endif %}
         </dl>
+        {% if can_delete_attendance %}
+        {% include "portal/includes/attendance_delete_form.html" with child_id=attendance_child.pk day=attendance_calendar.selected.iso care=record.care button_label="Delete this mark" delete_message="Delete this attendance mark?" %}
+        {% endif %}
         {% endfor %}
+        {% if can_delete_attendance and attendance_calendar.selected.records|length > 1 %}
+        <p class="form-note">Both sessions are saved this day. Delete one above, or remove both.</p>
+        {% include "portal/includes/attendance_delete_form.html" with child_id=attendance_child.pk day=attendance_calendar.selected.iso care="both" button_label="Delete both sessions" delete_message="Delete both before-care and after-care marks for this day?" %}
+        {% endif %}
       {% else %}
       <p class="form-note">Not marked — no attendance is saved for this day.</p>
       {% endif %}

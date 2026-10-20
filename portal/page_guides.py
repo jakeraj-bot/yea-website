@@ -812,6 +812,10 @@ GUIDES = {
                 "body": "Click a date to see the session (before-care or after-care) plus the same check-in, check-out, method, and note that Review attendance has when a record exists.",
             },
             {
+                "title": "Delete a mistaken mark",
+                "body": "Organization admin can delete a saved mark from the day details. Confirm and enter a short reason — that reason is saved on the activity log. If before-care and after-care both exist that day, delete B, A, or both. Regular staff and front desk do not see Delete unless you grant Delete attendance on their staff account (Staff access or Billing permissions).",
+            },
+            {
                 "title": "Change month",
                 "body": "Use Previous month and Next month. Staff only see children at their unit.",
             },
@@ -986,6 +990,10 @@ GUIDES = {
             {
                 "title": "Turn Program director billing on",
                 "body": "Open Billing permissions. Use Program Director can see billing for every Program director, or edit one person and check Program Director can see billing (this person).",
+            },
+            {
+                "title": "Let someone delete attendance",
+                "body": "Organization admin can always delete a mistaken attendance mark. To let someone else do that, edit their staff account and check Delete attendance, or turn it on under Billing permissions. They confirm and give a reason, which is saved on the activity log.",
             },
         ],
     },

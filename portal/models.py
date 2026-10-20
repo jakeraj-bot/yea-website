@@ -351,6 +351,7 @@ class PortalBillingDefaultRule(models.Model):
     can_edit_family_plans = models.BooleanField(default=False)
     can_approve_applications = models.BooleanField(default=False)
     can_approve_waitlist = models.BooleanField(default=False)
+    can_delete_attendance = models.BooleanField(default=False)
     is_custom = models.BooleanField(default=False)
 
     class Meta:
@@ -377,6 +378,10 @@ class PortalStaffAccount(models.Model):
     can_edit_family_plans = models.BooleanField(default=False)
     can_approve_applications = models.BooleanField(default=False)
     can_approve_waitlist = models.BooleanField(default=False)
+    can_delete_attendance = models.BooleanField(
+        default=False,
+        help_text="Allow this person to delete a mistaken attendance mark. Portal admin can always delete attendance.",
+    )
     can_see_billing = models.BooleanField(
         default=False,
         help_text="When this person is a Program director, allow billing even if the org toggle is off.",

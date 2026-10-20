@@ -3,7 +3,7 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container">
     <h1>Staff permissions</h1>
-    <p class="lead">Yes/No per staff member — billing and application approval. Waitlist and application approval stay admin-only until you turn them on here.</p>
+    <p class="lead">Yes/No per staff member — billing, application approval, and attendance delete. Waitlist and application approval stay admin-only until you turn them on here. Organization admin can always delete attendance.</p>
   </div>
 </section>
 <section class="page-content">
@@ -53,6 +53,7 @@
               <th>Edit family plans</th>
               <th>Approve applications</th>
               <th>Approve waitlist</th>
+              <th>Delete attendance</th>
             </tr>
           </thead>
           <tbody>
@@ -97,10 +98,16 @@
                   <span data-yesno-label>{% if user.can_approve_waitlist %}Yes{% else %}No{% endif %}</span>
                 </label>
               </td>
+              <td>
+                <label class="portal-yesno-toggle">
+                  <input type="checkbox" name="delete_attendance_{{ user.id }}" {% if user.can_delete_attendance %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                  <span data-yesno-label>{% if user.can_delete_attendance %}Yes{% else %}No{% endif %}</span>
+                </label>
+              </td>
             </tr>
             {% if billing_charge_types %}
             <tr class="portal-table-subrow">
-              <td colspan="9">
+              <td colspan="10">
                 <strong class="portal-table-meta">Charge types for {{ user.name }}:</strong>
                 {% for ct in billing_charge_types %}
                 <label class="portal-check-label" style="margin-right:1rem;">
@@ -137,6 +144,7 @@
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_edit_family_plans" {% if rule.can_edit_family_plans %}checked{% endif %}> Edit family plans</label></li>
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_applications" {% if rule.can_approve_applications %}checked{% endif %}> Approve applications</label></li>
             <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_waitlist" {% if rule.can_approve_waitlist %}checked{% endif %}> Approve waitlist</label></li>
+            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_attendance" {% if rule.can_delete_attendance %}checked{% endif %}> Delete attendance</label></li>
           </ul>
           <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Save rule</button>
         </form>
@@ -148,6 +156,7 @@
           <li>{% if rule.can_edit_family_plans %}✓{% else %}✗{% endif %} Edit family plans</li>
           <li>{% if rule.can_approve_applications %}✓{% else %}✗{% endif %} Approve applications</li>
           <li>{% if rule.can_approve_waitlist %}✓{% else %}✗{% endif %} Approve waitlist</li>
+          <li>{% if rule.can_delete_attendance %}✓{% else %}✗{% endif %} Delete attendance</li>
         </ul>
         {% endif %}
       </section>

@@ -4,8 +4,10 @@ from django.utils.dateparse import parse_date, parse_time
 
 from .care_program import (
     attendance_care_values,
+    attendance_session_label,
     filter_children_by_care,
     persist_attendance_care,
+    record_attendance_session,
 )
 from .models import AttendanceRecord, PortalChild, PortalFamily, PortalProgram, PortalUnit
 from .unit_visibility import (
@@ -273,6 +275,29 @@ def undo_absent(child_id, program, attendance_date, care="after"):
     record.method = ""
     record.save()
     return record
+
+
+def delete_attendance_records(child, attendance_date, care="after"):
+    """Delete one session (or both) for a child on one day. Does not touch the child."""
+    qs = AttendanceRecord.objects.filter(child=child, date=attendance_date)
+    raw = (care or "").strip().lower()
+    if raw not in {"both", "all"}:
+        qs = qs.filter(care__in=attendance_care_values(care))
+    records = list(qs.select_related("program", "child"))
+    summaries = []
+    for record in records:
+        session = record_attendance_session(record)
+        summaries.append(
+            {
+                "child_name": record.child.name,
+                "date": record.date,
+                "care": session,
+                "session_label": attendance_session_label(session),
+                "status": record.status,
+            }
+        )
+    qs.delete()
+    return summaries
 
 
 def families_for_staff(unit, inactive=False):

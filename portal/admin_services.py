@@ -199,6 +199,7 @@ def get_staff_users_live():
                 "can_edit_family_plans": account.can_edit_family_plans,
                 "can_approve_applications": account.can_approve_applications,
                 "can_approve_waitlist": account.can_approve_waitlist,
+                "can_delete_attendance": account.can_delete_attendance,
                 "can_see_billing": account.can_see_billing,
                 "all_units_access": account.all_units_access,
                 "unit_slug": account.unit.slug,
@@ -468,6 +469,7 @@ def save_billing_permissions(
     charge_type_permissions=None,
     can_approve_applications=False,
     can_approve_waitlist=False,
+    can_delete_attendance=False,
 ):
     account = PortalStaffAccount.objects.filter(pk=staff_id).first()
     if not account:
@@ -478,6 +480,7 @@ def save_billing_permissions(
     account.can_edit_family_plans = can_edit_family_plans
     account.can_approve_applications = can_approve_applications
     account.can_approve_waitlist = can_approve_waitlist
+    account.can_delete_attendance = can_delete_attendance
     if charge_type_permissions is not None:
         account.charge_type_permissions = charge_type_permissions
     account.save(
@@ -488,6 +491,7 @@ def save_billing_permissions(
             "can_edit_family_plans",
             "can_approve_applications",
             "can_approve_waitlist",
+            "can_delete_attendance",
             "charge_type_permissions",
         ]
     )
@@ -503,6 +507,7 @@ def invite_staff_user(
     all_units_access=False,
     password=None,
     can_see_billing=False,
+    can_delete_attendance=None,
 ):
     import secrets
 
@@ -553,6 +558,11 @@ def invite_staff_user(
             "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else False,
             "can_approve_applications": default_rule.can_approve_applications if default_rule else False,
             "can_approve_waitlist": default_rule.can_approve_waitlist if default_rule else False,
+            "can_delete_attendance": (
+                bool(can_delete_attendance)
+                if can_delete_attendance is not None
+                else (default_rule.can_delete_attendance if default_rule else False)
+            ),
             "can_see_billing": bool(can_see_billing),
         },
     )
@@ -618,6 +628,7 @@ def invite_admin_user(name, username, email="", password=None):
             "can_edit_family_plans": default_rule.can_edit_family_plans if default_rule else True,
             "can_approve_applications": default_rule.can_approve_applications if default_rule else True,
             "can_approve_waitlist": default_rule.can_approve_waitlist if default_rule else True,
+            "can_delete_attendance": default_rule.can_delete_attendance if default_rule else True,
         },
     )
     account.accessible_units.clear()
@@ -642,6 +653,7 @@ def update_staff_user(staff_id, data):
     if role:
         account.role = role
     account.can_see_billing = data.get("can_see_billing") == "on"
+    account.can_delete_attendance = data.get("can_delete_attendance") == "on"
     all_units = data.get("all_units_access") == "on" or role == "Portal admin"
     account.all_units_access = all_units
     if role == "Portal admin":
