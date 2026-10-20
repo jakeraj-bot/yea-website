@@ -545,6 +545,75 @@ def set_child_active(child, active):
     return child
 
 
+@transaction.atomic
+def switch_child_unit(child, new_unit):
+    """Move this child to another program site without creating a duplicate.
+
+    Updates PortalChild.unit, matching enrollment application locations, and
+    the family home unit only when no active sibling remains at another site.
+    Ledger and attendance rows stay on this child.
+    """
+    from enrollment.locations import enrollment_key_for_unit
+    from enrollment.models import EnrollmentApplication
+
+    from .member_report import _match_apps_for_child
+    from .unit_visibility import (
+        assign_child_unit,
+        child_effective_unit,
+        family_can_move_home_unit,
+        set_family_home_unit,
+    )
+
+    if child is None:
+        raise ValueError("Child not found.")
+    if new_unit is None or is_placeholder_unit(new_unit):
+        raise ValueError("Choose a program site.")
+
+    family = child.family
+    old_unit = child_effective_unit(child)
+    if old_unit and old_unit.pk == new_unit.pk:
+        return {
+            "child": child,
+            "family": family,
+            "old_unit": old_unit,
+            "new_unit": new_unit,
+            "changed": False,
+            "family_moved": False,
+            "applications_updated": 0,
+        }
+
+    assign_child_unit(child, new_unit, save=True)
+    child.refresh_from_db()
+
+    location_key = enrollment_key_for_unit(new_unit)
+    apps = list(
+        EnrollmentApplication.objects.filter(portal_family=family).exclude(status="declined")
+    )
+    applications_updated = 0
+    for app in _match_apps_for_child(child, apps):
+        if (app.program_location or "") == location_key:
+            continue
+        app.program_location = location_key
+        app.save(update_fields=["program_location"])
+        applications_updated += 1
+
+    family_moved = False
+    if family and family_can_move_home_unit(family, new_unit):
+        set_family_home_unit(family, new_unit)
+        family.refresh_from_db()
+        family_moved = True
+
+    return {
+        "child": child,
+        "family": family,
+        "old_unit": old_unit,
+        "new_unit": new_unit,
+        "changed": True,
+        "family_moved": family_moved,
+        "applications_updated": applications_updated,
+    }
+
+
 def set_application_active(application, active):
     """Toggle one program application. The child account can stay active."""
     if application is None:

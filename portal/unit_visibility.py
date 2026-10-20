@@ -152,6 +152,21 @@ def family_can_move_home_unit(family, new_unit):
     return True
 
 
+def set_family_home_unit(family, unit):
+    """Change the family row's home unit. Does not rewrite sibling child units."""
+    from enrollment.portal_integration import _unique_family_slug
+
+    if not family or not unit or family.unit_id == unit.pk:
+        return family
+    new_slug = family.slug
+    if PortalFamily.objects.filter(unit=unit, slug=family.slug).exclude(pk=family.pk).exists():
+        new_slug = _unique_family_slug(unit, family.name)
+    family.unit = unit
+    family.slug = new_slug
+    family.save(update_fields=["unit", "slug"])
+    return family
+
+
 def assign_child_unit(child, unit, *, save=True):
     if not child or not unit:
         return child

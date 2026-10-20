@@ -1,0 +1,21 @@
+{% if can_edit_applications and child_id and program_units and portal_live %}
+<form method="post" action="{% if portal_area == 'admin' %}{% url 'portal_admin_family_child_unit' family_slug=family_slug %}{% else %}{% url 'portal_staff_family_child_unit' family_slug=family_slug %}{% endif %}" class="portal-child-unit-form portal-no-print" data-current-unit="{{ unit_slug }}" onsubmit="var sel=this.querySelector('select[name=unit_slug]'); var label=sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : ''; if (!sel.value) { alert('Choose a program site.'); return false; } if (sel.value === this.getAttribute('data-current-unit')) { alert(label + ' is already their program site.'); return false; } return confirm('Move {{ child_name|escapejs }} to ' + label + '? They stay on this family account. Ledger and attendance history stay. New attendance and reports use ' + label + '.');">
+  {% csrf_token %}
+  {% if family_id %}<input type="hidden" name="family_id" value="{{ family_id }}">{% endif %}
+  <input type="hidden" name="child_id" value="{{ child_id }}">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <label class="portal-child-unit-label">
+    <span class="portal-visually-hidden">Program site for {{ child_name }}</span>
+    <select name="unit_slug" class="portal-select portal-select-sm" required data-current-unit="{{ unit_slug }}">
+      {% for unit in program_units %}
+      <option value="{{ unit.slug }}"{% if unit.slug == unit_slug %} selected{% endif %}>{{ unit.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+</form>
+{% elif unit_name %}
+<span>{{ unit_name }}</span>
+{% else %}
+—
+{% endif %}

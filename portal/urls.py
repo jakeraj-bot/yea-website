@@ -574,6 +574,11 @@ urlpatterns = [
         name="portal_staff_family_child_status",
     ),
     path(
+        "staff/family/<slug:family_slug>/child-unit/",
+        views_actions.family_child_unit,
+        name="portal_staff_family_child_unit",
+    ),
+    path(
         "staff/family/<slug:family_slug>/parent-password/",
         views_actions.family_parent_password_reset,
         name="portal_staff_family_parent_password",
@@ -800,6 +805,11 @@ urlpatterns = [
         "admin/family/<slug:family_slug>/child-status/",
         views_actions.family_child_status,
         name="portal_admin_family_child_status",
+    ),
+    path(
+        "admin/family/<slug:family_slug>/child-unit/",
+        views_actions.family_child_unit,
+        name="portal_admin_family_child_unit",
     ),
     path(
         "admin/family/<slug:family_slug>/parent-password/",
