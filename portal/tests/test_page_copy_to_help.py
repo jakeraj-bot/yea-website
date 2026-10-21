@@ -143,3 +143,46 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         self.assertContains(permissions, "Turn on approval when needed")
         self.assertContains(permissions, "Yes/No per staff member")
         self.assertContains(permissions, "Organization admin can always delete attendance")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_permission_templates_drop_permission_essays(self):
+        from pathlib import Path
+
+        gone = (
+            "Add charge — post fees to a member account.",
+            "Off by default. When this is on, every Program director sees Member billing",
+            "Off on yeanj.org unless you turn this on.",
+        )
+        for rel in (
+            "templates/portal/admin/billing_permissions.html",
+            "templates/portal/admin/staff_users.html",
+        ):
+            text = Path(rel).read_text()
+            for snippet in gone:
+                self.assertNotIn(snippet, text, rel)
+            self.assertNotIn("<<<<<<<", text)
+            self.assertNotIn(">>>>>>>", text)
+
+        views = Path("portal/views.py").read_text()
+        self.assertNotIn("billing_permission_notes", views)
+
+        guide = guide_for("billing-permissions")
+        titles = [step["title"] for step in guide["steps"]]
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("What each permission does", titles)
+        self.assertIn("Turn Program Director billing on", titles)
+        self.assertIn("Show Practice parent", titles)
+        self.assertIn("Add charge", bodies)
+        self.assertIn("Member billing", bodies)
+        self.assertIn("Open practice parent", bodies)
+
+        self._login(self.admin_user, "admin")
+        permissions = self.client.get(reverse("portal_admin_page", kwargs={"page": "billing-permissions"}))
+        self.assertEqual(permissions.status_code, 200)
+        self.assertContains(permissions, "How to use this page")
+        self.assertContains(permissions, "portal-perm-wrap")
+        self.assertContains(permissions, "Add charge")
+        self.assertContains(permissions, "Delete attendance")
+        self.assertContains(permissions, "Program Director can see billing")
+        self.assertContains(permissions, "Show Practice parent")
+        self.assertNotContains(permissions, "billing_permission_notes")

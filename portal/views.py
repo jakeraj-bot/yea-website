@@ -5081,14 +5081,6 @@ def admin_page(request, page):
 
         context["program_director_can_see_billing"] = PortalOrgSetting.load().program_director_can_see_billing
         context["practice_parent_enabled"] = PortalOrgSetting.load().practice_parent_enabled
-        context["billing_permission_notes"] = [
-            "Add charge — post fees to a member account.",
-            "Delete charge — remove a posted charge.",
-            "Add credit — post a credit/adjustment that reduces balance.",
-            "Edit family plans — change billing plan and amount on a child account.",
-            "Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal.",
-            "Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
-        ]
     if page == "email-settings":
         from core.email_service import portal_bcc_email, portal_sending_email
 

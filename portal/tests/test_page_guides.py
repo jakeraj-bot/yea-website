@@ -189,11 +189,27 @@ class PageGuideCatalogTests(TestCase):
         self.assertIsNotNone(guide)
         self.assertIn("Yes/No per staff member", guide["intro"])
         titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("What each permission does", titles)
         self.assertIn("Turn on approval when needed", titles)
         self.assertIn("Let someone delete attendance", titles)
+        self.assertIn("Turn Program Director billing on", titles)
+        self.assertIn("Show Practice parent", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("admin-only", bodies)
         self.assertIn("Delete attendance", bodies)
+        self.assertIn("Add charge", bodies)
+        self.assertIn("Member billing", bodies)
+        self.assertIn("Open practice parent", bodies)
+        self.assertIn("yeanj.org", bodies)
+        self.assertIn("Stripe test mode", bodies)
+
+    def test_staff_guide_explains_program_director_billing_toggle(self):
+        guide = guide_for("staff")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Turn Program director billing on", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("Off by default", bodies)
+        self.assertIn("Member billing", bodies)
 
     def test_data_report_guide_uses_report_lead(self):
         guide = guide_from_report(
