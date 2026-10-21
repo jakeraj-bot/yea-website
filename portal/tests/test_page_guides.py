@@ -173,8 +173,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("with balance", bodies.lower())
         self.assertIn("Balances by unit", " ".join(step["title"] for step in guide["steps"]))
         self.assertIn("listed under Credits", bodies)
-        self.assertIn("does not reduce what another family owes", bodies)
-        self.assertIn("brother or sister", bodies)
+        self.assertIn("does not reduce what other children owe", bodies)
 
     def test_staff_guide_says_not_to_create_second_account(self):
         guide = guide_for("staff")
@@ -221,8 +220,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("sandbox family", bodies)
         self.assertIn("positive child balances", bodies)
         self.assertIn("listed under Credits", bodies)
-        self.assertIn("does not reduce what another family owes", bodies)
-        self.assertIn("brother or sister", bodies)
+        self.assertIn("does not reduce what other children owe", bodies)
 
     def test_families_guide_explains_inactive_tab_and_phone_search(self):
         guide = guide_for("families")

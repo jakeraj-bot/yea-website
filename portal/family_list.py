@@ -190,12 +190,12 @@ def unit_balance_summary(*, include_inactive=False):
     """Per-unit live ledger totals for Overview and the Account Balance report.
 
     Balance and Overdue are the sum of positive remaining amounts for active
-    approved children at that school (true money owed). Credits are leftover
-    after household FIFO — named money pays that child, then siblings on the
-    same family account. Leftover does not reduce Balance or what another
-    family owes. A child's remaining tuition counts on that child's unit, not
-    the family home unit when they differ. A multi-unit family is counted only
-    on units where a child still has a balance — not once on every site.
+    approved children at that school (true money owed). Credits are the sum of
+    negative remainings and stay named to those children — they do not reduce
+    Balance or what other children owe. A child's remaining tuition counts on
+    that child's unit, not the family home unit when they differ. A multi-unit
+    family is counted only on units where a child still has a balance — not
+    once on every site.
     """
     from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
@@ -341,43 +341,13 @@ def _apply_credit_fifo(charges, credit):
 def fifo_allocate_family_entries(entries, child_names=None):
     """Apply payments to the oldest unpaid charges first (date, then id).
 
-    Child-named payments, credits, and discounts cover that child's oldest
-    charges first. Leftover named money then pays siblings on the same family
-    account, oldest charges first. It never leaves this family's entries — a
-    child on another PortalFamily is not in this allocation. A blank-child
-    household payment then covers remaining family charges in the same
-    date/id order — it does not split leftover membership 50/50 across
-    siblings. Stripe ``fee_amount`` is ignored. Leftover credit stays on the
-    named child after household charges are paid.
+    Child-named payments, credits, and discounts cover that child's charges
+    first. A blank-child household payment then covers remaining family charges
+    in the same date/id order — it does not split leftover membership 50/50
+    across siblings. Stripe ``fee_amount`` is ignored.
 
     Returns ``{"balances": {display_name: Decimal}, "unpaid": {folded_name: [charge]}}``.
     """
-    grouped = defaultdict(list)
-    for entry in entries or []:
-        family_id = getattr(entry, "family_id", None)
-        if family_id is None:
-            family_id = getattr(getattr(entry, "family", None), "pk", None)
-        grouped[family_id].append(entry)
-    if len(grouped) > 1:
-        balances = defaultdict(lambda: Decimal("0"))
-        unpaid = defaultdict(list)
-        for family_id, group in grouped.items():
-            group_keys = {_child_name_key(getattr(entry, "child_name", "") or "") for entry in group}
-            group_keys.discard("")
-            group_names = [name for name in (child_names or []) if _child_name_key(name) in group_keys]
-            if not group_names:
-                group_names = [
-                    getattr(entry, "child_name", "")
-                    for entry in group
-                    if _normalize_child_name(getattr(entry, "child_name", "") or "")
-                ]
-            state = fifo_allocate_family_entries(group, group_names)
-            for name, amount in state["balances"].items():
-                balances[name] += amount
-            for key, charges in state["unpaid"].items():
-                unpaid[key].extend(charges)
-        return {"balances": balances, "unpaid": unpaid}
-
     display_by_key = {}
 
     def register_name(raw):
@@ -431,17 +401,6 @@ def fifo_allocate_family_entries(entries, child_names=None):
             )
         else:
             leftover_named[key] = credit
-
-    for key, leftover in leftover_named.items():
-        if leftover > 0:
-            leftover_named[key] = _apply_credit_fifo(
-                [
-                    charge
-                    for charge in charges
-                    if charge["remaining"] > 0 and charge["child_key"] != key
-                ],
-                leftover,
-            )
 
     leftover_unlabeled = unlabeled_credit
     if leftover_unlabeled > 0:
@@ -634,10 +593,9 @@ def child_balance_maps(family_ids):
     """One ledger query → {family_id: {child_name: Decimal}} after FIFO.
 
     Amounts are remaining unpaid charges minus leftover credits (tuition /
-    applied). Named leftover pays siblings on this family_id only. Stripe
-    processing fees live in ``fee_amount`` and are left out. Blank-child
-    household payments cover the oldest unpaid family charges first (date,
-    then id), not a split of leftover membership.
+    applied). Stripe processing fees live in ``fee_amount`` and are left out.
+    Blank-child household payments cover the oldest unpaid family charges
+    first (date, then id), not a split of leftover membership.
     """
     from .models import PortalChild, PortalLedgerEntry
 
