@@ -1,4 +1,4 @@
-"""Unit Balance is money still owed; named credits stay on that child."""
+"""Unit Balance is money still owed; leftover named credits stay on that family."""
 
 from datetime import date
 from decimal import Decimal
@@ -117,34 +117,50 @@ class AccountBalanceUnitCreditsTests(TestCase):
         self.assertEqual(overview["school-18"]["credits"], "238.55")
         self.assertEqual(overview["school-18"]["overdue"], "6280.10")
 
-    def test_named_credit_does_not_reduce_sibling_remaining_on_billing(self):
+    def test_named_credit_pays_sibling_then_keeps_leftover_on_family(self):
         family = self._family("siblings", "Siblings", self.school_18)
+        other = self._family("other-18", "Other18", self.school_18)
         ada = self._child(family, "Ada Sibling", self.school_18)
         ben = self._child(family, "Ben Sibling", self.school_18)
-        self._charge(family, ada, "100.00")
-        self._credit(family, ben, "40.00")
+        outsider = self._child(other, "Omar Other", self.school_18)
+        self._charge(family, ada, "50.00")
+        self._credit(family, ben, "20.00")
+        self._charge(other, outsider, "80.00")
 
-        self.assertEqual(child_balance(ada), Decimal("100.00"))
-        self.assertEqual(child_balance(ben), Decimal("-40.00"))
-        self.assertEqual(family_balance(family), Decimal("60.00"))
+        self.assertEqual(child_balance(ben), Decimal("0.00"))
+        self.assertEqual(child_balance(ada), Decimal("30.00"))
+        self.assertEqual(child_balance(outsider), Decimal("80.00"))
+        self.assertEqual(family_balance(family), Decimal("30.00"))
         billing = get_billing_live(family)
         by_name = {row["name"]: row for row in billing["children"]}
-        self.assertEqual(by_name["Ada Sibling"]["balance"], "100.00")
-        self.assertEqual(by_name["Ben Sibling"]["balance"], "-40.00")
-        self.assertTrue(by_name["Ben Sibling"]["has_credit"])
+        self.assertEqual(by_name["Ada Sibling"]["balance"], "30.00")
+        self.assertEqual(by_name["Ben Sibling"]["balance"], "0.00")
+        self.assertFalse(by_name["Ben Sibling"]["has_credit"])
         staff = prepare_billing_for_staff(family, {"can_add_credit": True})
         staff_by_name = {row["name"]: row for row in staff["children"]}
-        self.assertEqual(staff_by_name["Ada Sibling"]["balance"], "100.00")
-        self.assertEqual(staff_by_name["Ben Sibling"]["balance"], "-40.00")
+        self.assertEqual(staff_by_name["Ada Sibling"]["balance"], "30.00")
+        self.assertEqual(staff_by_name["Ben Sibling"]["balance"], "0.00")
         report = build_admin_report("balances", {"status": "Active"})
         ada_row = next(row for row in report["rows"] if row["child"] == "Ada Sibling")
         ben_row = next(row for row in report["rows"] if row["child"] == "Ben Sibling")
-        self.assertEqual(ada_row["amount_owe"], "100.00")
-        self.assertEqual(ben_row["amount_owe"], "-40.00")
+        omar_row = next(row for row in report["rows"] if row["child"] == "Omar Other")
+        self.assertEqual(ada_row["amount_owe"], "30.00")
+        self.assertEqual(ben_row["amount_owe"], "0.00")
+        self.assertEqual(omar_row["amount_owe"], "80.00")
         units = self._units()
-        self.assertEqual(units["school-18"]["balance"], "100.00")
-        self.assertEqual(units["school-18"]["credits"], "40.00")
-        self.assertEqual(units["school-18"]["overdue"], "100.00")
+        self.assertEqual(units["school-18"]["balance"], "110.00")
+        self.assertEqual(units["school-18"]["credits"], "0.00")
+        self.assertEqual(units["school-18"]["overdue"], "110.00")
+        self.assertEqual(units["school-18"]["family_count"], 2)
+
+        self._credit(family, ben, "40.00")
+        self.assertEqual(child_balance(ada), Decimal("0.00"))
+        self.assertEqual(child_balance(ben), Decimal("-10.00"))
+        self.assertEqual(child_balance(outsider), Decimal("80.00"))
+        units = self._units()
+        self.assertEqual(units["school-18"]["balance"], "80.00")
+        self.assertEqual(units["school-18"]["credits"], "10.00")
+        self.assertEqual(units["school-18"]["overdue"], "80.00")
         self.assertEqual(units["school-18"]["family_count"], 1)
 
     def test_credit_only_family_is_not_families_with_a_balance(self):
@@ -189,11 +205,12 @@ class AccountBalanceUnitCreditsTests(TestCase):
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_account_balance_and_overview_show_credits_column(self):
-        family = self._family("page-credits", "PageCredits", self.school_18)
-        owing = self._child(family, "Owen Page", self.school_18)
-        credited = self._child(family, "Cara Page", self.school_18)
-        self._charge(family, owing, "90.00")
-        self._credit(family, credited, "15.00")
+        owing_family = self._family("page-owing", "PageOwing", self.school_18)
+        credit_family = self._family("page-credits", "PageCredits", self.school_18)
+        owing = self._child(owing_family, "Owen Page", self.school_18)
+        credited = self._child(credit_family, "Cara Page", self.school_18)
+        self._charge(owing_family, owing, "90.00")
+        self._credit(credit_family, credited, "15.00")
         self.client.force_login(self.admin)
         session = self.client.session
         session[PORTAL_AUTH_SESSION_KEY] = "admin"
