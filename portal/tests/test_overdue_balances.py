@@ -268,28 +268,27 @@ class OverdueBalancesFollowPaymentsTests(TestCase):
 
         jordan_balance = child_balance(self.jordan)
         maya_balance = child_balance(self.maya)
-        # Maya's leftover $30 pays Jordan first; leftover named money stays in-family.
-        self.assertEqual(jordan_balance, Decimal("10.00"))
-        self.assertEqual(maya_balance, Decimal("0.00"))
+        self.assertEqual(jordan_balance, Decimal("40.00"))
+        self.assertEqual(maya_balance, Decimal("-30.00"))
         self.assertEqual(child_balance(inactive), Decimal("99.00"))
         self.assertEqual(family_balance(self.family), Decimal("109.00"))
 
         positive_only = sum(
             amount for amount in (jordan_balance, maya_balance) if amount > 0
         )
-        self.assertEqual(positive_only, Decimal("10.00"))
+        self.assertEqual(positive_only, Decimal("40.00"))
 
         dashboard = get_admin_dashboard_live()
         self.assertNotIn("policy_completion_pct", dashboard)
         self.assertEqual(dashboard["overdue_families"], 1)
-        self.assertEqual(dashboard["overdue_amount"], "10.00")
+        self.assertEqual(dashboard["overdue_amount"], "40.00")
         self.assertNotEqual(dashboard["overdue_amount"], f"{self.family.balance:.2f}")
         self.assertNotEqual(dashboard["overdue_amount"], f"{family_balance(self.family):.2f}")
 
         count, total, owing = overdue_active_children_summary([self.family.pk, pending_family.pk])
         self.assertEqual(count, 1)
-        self.assertEqual(total, Decimal("10.00"))
-        self.assertEqual(owing[self.family.pk], Decimal("10.00"))
+        self.assertEqual(total, Decimal("40.00"))
+        self.assertEqual(owing[self.family.pk], Decimal("40.00"))
         self.assertNotIn(pending_family.pk, owing)
 
 

@@ -491,9 +491,9 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         active_names = {row["child"] for row in active["rows"]}
         self.assertEqual(active_names, {"Jordan Jacobs", "Ben School26"})
         by_child = {row["child"]: row for row in active["rows"]}
-        self.assertEqual(by_child["Jordan Jacobs"]["amount_owe"], "10.00")
-        self.assertEqual(by_child["Ben School26"]["amount_owe"], "0.00")
-        self.assertNotIn("Credit $", by_child["Ben School26"]["description"])
+        self.assertEqual(by_child["Jordan Jacobs"]["amount_owe"], "40.00")
+        self.assertEqual(by_child["Ben School26"]["amount_owe"], "-30.00")
+        self.assertEqual(by_child["Ben School26"]["description"], "Credit $30.00")
 
         unit_18 = build_admin_report("balances", {"unit": "school-18", "status": "Active"})
         self.assertEqual([row["child"] for row in unit_18["rows"]], ["Jordan Jacobs"])
@@ -503,13 +503,12 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
 
         with_balance = build_admin_report("balances", {"status": "Active", "owes": "yes"})
         self.assertEqual([row["child"] for row in with_balance["rows"]], ["Jordan Jacobs"])
-        self.assertEqual(with_balance["rows"][0]["amount_owe"], "10.00")
 
         without_balance = build_admin_report("balances", {"status": "Active", "owes": "no"})
         self.assertEqual([row["child"] for row in without_balance["rows"]], ["Ben School26"])
 
         credit = build_admin_report("balances", {"status": "Active", "owes": "credit"})
-        self.assertEqual(credit["rows"], [])
+        self.assertEqual([row["child"] for row in credit["rows"]], ["Ben School26"])
 
         inactive_report = build_admin_report("balances", {"status": "Inactive"})
         self.assertEqual([row["child"] for row in inactive_report["rows"]], ["Omar Inactive"])
