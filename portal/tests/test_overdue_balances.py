@@ -472,4 +472,6 @@ class InactiveChildFortyDollarOverdueExclusionTests(TestCase):
         self.assertEqual(dashboard["overdue_amount"], "0.00")
         units = {row["slug"]: row for row in unit_balance_summary()}
         self.assertEqual(units["school-18"]["overdue"], "0.00")
-        self.assertTrue(units["school-18"]["has_credit"])
+        self.assertEqual(child_balance(self.active), Decimal("0.00"))
+        self.assertEqual(child_balance(self.inactive), Decimal("28.00"))
+        self.assertFalse(units["school-18"]["has_credit"])

@@ -6,11 +6,12 @@ from decimal import Decimal
 from django.test import TestCase
 
 from portal.admin_reports import build_admin_report
-from portal.billing_services import post_charge, post_payment, prepare_billing_for_staff
+from portal.billing_services import post_charge, post_credit, post_payment, prepare_billing_for_staff
 from portal.family_list import (
     child_balance,
     family_balance,
     fifo_allocate_family_entries,
+    unit_balance_summary,
 )
 from portal.models import PortalChild, PortalFamily, PortalLedgerEntry, PortalUnit
 from portal.owed_weeks import unpaid_charges_by_child, unpaid_charges_for_child
@@ -181,7 +182,7 @@ class FifoPaymentOldestChargesTests(TestCase):
         self.assertIn("CC WK 3 - weekly charge — Julie Bisono", julie_row["description"])
         self.assertNotIn("CC WK 1 - weekly charge — Julie Bisono", julie_row["description"])
 
-    def test_named_payment_stays_on_that_child(self):
+    def test_named_payment_without_leftover_does_not_touch_sibling(self):
         post_charge(
             self.family,
             "Marvin Bisono",
@@ -204,6 +205,150 @@ class FifoPaymentOldestChargesTests(TestCase):
         self.assertEqual(child_balance(self.marvin), Decimal("20.00"))
         self.assertEqual(child_balance(self.julie), Decimal("0.00"))
         self.assertEqual(family_balance(self.family), Decimal("20.00"))
+
+    def test_named_credit_leftover_pays_sibling_oldest_charges(self):
+        other = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="other-house",
+            name="Otherhouse",
+            billing_type="Private pay",
+            status="Active",
+        )
+        outsider = PortalChild.objects.create(
+            family=other,
+            name="Omar Other",
+            school="School 18",
+            is_active=True,
+        )
+        post_charge(
+            self.family,
+            "Julie Bisono",
+            "tuition",
+            "30.00",
+            date(2026, 9, 1),
+            "CC WK 1 - weekly charge — Julie Bisono",
+            notify=False,
+        )
+        post_charge(
+            self.family,
+            "Julie Bisono",
+            "tuition",
+            "20.00",
+            date(2026, 9, 8),
+            "CC WK 2 - weekly charge — Julie Bisono",
+            notify=False,
+        )
+        post_charge(
+            other,
+            outsider.name,
+            "tuition",
+            "80.00",
+            date(2026, 9, 8),
+            "Weekly tuition — Omar Other",
+            notify=False,
+        )
+        post_credit(self.family, "Marvin Bisono", "20.00", date(2026, 9, 9), "Scholarship — Marvin Bisono")
+
+        self.assertEqual(child_balance(self.marvin), Decimal("0.00"))
+        self.assertEqual(child_balance(self.julie), Decimal("30.00"))
+        self.assertEqual(child_balance(outsider), Decimal("80.00"))
+        self.assertEqual(family_balance(self.family), Decimal("30.00"))
+        self.assertEqual(family_balance(other), Decimal("80.00"))
+
+        julie_unpaid = unpaid_charges_for_child(
+            list(PortalLedgerEntry.objects.filter(family=self.family).order_by("date", "pk")),
+            "Julie Bisono",
+        )
+        self.assertEqual(sum((row["remaining"] for row in julie_unpaid), Decimal("0")), Decimal("30.00"))
+        self.assertEqual(julie_unpaid[0]["description"], "CC WK 1 - weekly charge — Julie Bisono")
+        self.assertEqual(julie_unpaid[0]["remaining"], Decimal("10.00"))
+        self.assertEqual(julie_unpaid[1]["description"], "CC WK 2 - weekly charge — Julie Bisono")
+        self.assertEqual(julie_unpaid[1]["remaining"], Decimal("20.00"))
+
+        julie_row = self._report_row("Julie Bisono")
+        omar_row = self._report_row("Omar Other")
+        self.assertEqual(julie_row["amount_owe"], "30.00")
+        self.assertEqual(omar_row["amount_owe"], "80.00")
+        units = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertEqual(units["school-18"]["balance"], "110.00")
+        self.assertEqual(units["school-18"]["credits"], "0.00")
+
+    def test_named_credit_leftover_stays_on_child_after_sibling_is_paid(self):
+        post_charge(
+            self.family,
+            "Julie Bisono",
+            "tuition",
+            "50.00",
+            date(2026, 9, 8),
+            "CC WK 2 - weekly charge — Julie Bisono",
+            notify=False,
+        )
+        post_credit(self.family, "Marvin Bisono", "80.00", date(2026, 9, 9), "Scholarship — Marvin Bisono")
+        self.assertEqual(child_balance(self.julie), Decimal("0.00"))
+        self.assertEqual(child_balance(self.marvin), Decimal("-30.00"))
+        self.assertEqual(family_balance(self.family), Decimal("-30.00"))
+        units = {row["slug"]: row for row in unit_balance_summary()}
+        self.assertEqual(units["school-18"]["balance"], "0.00")
+        self.assertEqual(units["school-18"]["credits"], "30.00")
+        self.assertEqual(units["school-18"]["overdue"], "0.00")
+
+    def test_named_stripe_payment_fee_does_not_inflate_sibling_remaining(self):
+        post_charge(
+            self.family,
+            "Julie Bisono",
+            "tuition",
+            "50.00",
+            date(2026, 9, 8),
+            "CC WK 2 - weekly charge — Julie Bisono",
+            notify=False,
+        )
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Marvin Bisono",
+            date=date(2026, 9, 9),
+            entry_type="payment",
+            description="Online payment — Visa ending 4242",
+            amount=Decimal("-20.00"),
+            fee_amount=Decimal("0.88"),
+        )
+        self.assertEqual(child_balance(self.marvin), Decimal("0.00"))
+        self.assertEqual(child_balance(self.julie), Decimal("30.00"))
+        self.assertEqual(family_balance(self.family), Decimal("30.00"))
+        self.assertNotEqual(family_balance(self.family), Decimal("30.88"))
+        julie_live, billing = self._child_live("Julie Bisono")
+        self.assertEqual(julie_live["balance"], "30.00")
+        self.assertEqual(billing["running_balance"], "30.00")
+
+    def test_named_credit_cannot_pay_another_family_even_if_entries_are_mixed(self):
+        other = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="mixed-house",
+            name="Mixedhouse",
+            billing_type="Private pay",
+            status="Active",
+        )
+        outsider = PortalChild.objects.create(
+            family=other,
+            name="Omar Mixed",
+            school="School 18",
+            is_active=True,
+        )
+        post_charge(
+            other,
+            outsider.name,
+            "tuition",
+            "50.00",
+            date(2026, 9, 8),
+            "Weekly tuition — Omar Mixed",
+            notify=False,
+        )
+        post_credit(self.family, "Marvin Bisono", "20.00", date(2026, 9, 9), "Scholarship — Marvin Bisono")
+        mixed = list(PortalLedgerEntry.objects.filter(family__in=[self.family, other]))
+        state = fifo_allocate_family_entries(mixed, ["Marvin Bisono", "Julie Bisono", "Omar Mixed"])
+        self.assertEqual(state["balances"]["Marvin Bisono"], Decimal("-20.00"))
+        self.assertEqual(state["balances"]["Omar Mixed"], Decimal("50.00"))
+        self.assertEqual(child_balance(outsider), Decimal("50.00"))
+        self.assertEqual(child_balance(self.marvin), Decimal("-20.00"))
 
     def test_account_balance_matches_billing_per_child_after_fifo(self):
         self._post_bisono_ledger()
