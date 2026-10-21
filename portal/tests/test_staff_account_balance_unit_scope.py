@@ -243,7 +243,9 @@ class StaffAccountBalanceUnitScopeTests(TestCase):
         self.assertNotIn("Practice Kid", html)
         self.assertNotIn("Ada Pending", html)
         self.assertNotIn("Omar Inactive", html)
-        self.assertNotIn("School 26", html)
+        table = html[html.find('id="unit-balance-table"') : html.find("</table>", html.find('id="unit-balance-table"'))]
+        self.assertIn("School 18", table)
+        self.assertNotIn("School 26", table)
         names = [row["child"] for row in page.context["report"]["rows"]]
         self.assertEqual(names, ["Child A Rivera", "Jordan Jacobs"])
         self.assertEqual(
@@ -263,7 +265,9 @@ class StaffAccountBalanceUnitScopeTests(TestCase):
         self.assertIn("Child B Rivera", html)
         self.assertNotIn("Jordan Jacobs", html)
         self.assertNotIn("Child A Rivera", html)
-        self.assertNotIn("School 18", html)
+        table = html[html.find('id="unit-balance-table"') : html.find("</table>", html.find('id="unit-balance-table"'))]
+        self.assertIn("School 26", table)
+        self.assertNotIn("School 18", table)
         names = [row["child"] for row in page.context["report"]["rows"]]
         self.assertEqual(names, ["Child B Rivera", "Nia Lee"])
         self.assertEqual(
@@ -305,9 +309,11 @@ class StaffAccountBalanceUnitScopeTests(TestCase):
         self.assertIn("Jordan Jacobs", html)
         self.assertNotIn("Nia Lee", html)
         self.assertNotIn("Child B Rivera", html)
-        self.assertNotIn("School 26", html)
+        table = html[html.find('id="unit-balance-table"') : html.find("</table>", html.find('id="unit-balance-table"'))]
+        self.assertIn("School 18", table)
+        self.assertNotIn("School 26", table)
         self.assertEqual(tamper.context["filters"]["unit"], "school-18")
-        self.assertNotIn('value="school-26"', html)
+        self.assertNotIn('id="account-balance-unit"', html)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_program_director_stays_on_assigned_unit(self):
