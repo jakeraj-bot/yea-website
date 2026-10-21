@@ -734,10 +734,21 @@ def balance_report_rows(filters=None):
     from .enrollment_counts import visible_member_children_qs
     from .family_list import _child_name_key, child_balance_from_map, child_balance_maps
     from .owed_weeks import unpaid_charges_by_child
-    from .unit_visibility import child_unit_slug_q, unit_label_for_child
+    from .unit_visibility import child_unit_slug_q, child_unit_slugs_q, unit_label_for_child
 
     children = visible_member_children_qs(active_only=False).order_by("name")
-    if unit:
+    allowed_slugs = filters.get("allowed_unit_slugs")
+    if allowed_slugs is not None:
+        allowed_slugs = [slug for slug in allowed_slugs if slug]
+        if unit and unit not in allowed_slugs:
+            unit = ""
+        if unit:
+            children = children.filter(child_unit_slug_q(unit))
+        elif allowed_slugs:
+            children = children.filter(child_unit_slugs_q(allowed_slugs))
+        else:
+            children = children.none()
+    elif unit:
         children = children.filter(child_unit_slug_q(unit))
     if query:
         children = children.filter(
@@ -1296,7 +1307,10 @@ def build_admin_report(slug, filters=None):
         ]
         from .family_list import unit_balance_summary
 
-        extra["unit_balances"] = unit_balance_summary()
+        allowed_slugs = filters.get("allowed_unit_slugs")
+        extra["unit_balances"] = unit_balance_summary(
+            unit_slugs=allowed_slugs if allowed_slugs is not None else None
+        )
     elif slug == "inactive-children":
         data = inactive_children_report_rows(filters)
         rows = data["rows"]
@@ -1384,6 +1398,9 @@ def build_admin_report(slug, filters=None):
     else:
         return None
     extra["units"] = unit_options()
+    if filters.get("allowed_unit_slugs") is not None:
+        allowed = {slug for slug in (filters.get("allowed_unit_slugs") or []) if slug}
+        extra["units"] = [(slug, name) for slug, name in extra["units"] if slug in allowed]
     extra.setdefault("layout", spec.get("layout") or "table")
     extra.setdefault("child_link", spec.get("child_link") or "")
     extra.setdefault("pending_rows", [])

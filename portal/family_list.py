@@ -186,7 +186,7 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
     return len(family_owing), total, family_owing
 
 
-def unit_balance_summary(*, include_inactive=False):
+def unit_balance_summary(*, include_inactive=False, unit_slugs=None):
     """Per-unit live ledger totals for Overview and the Account Balance report.
 
     Balance and Overdue are the sum of positive remaining amounts for active
@@ -196,6 +196,7 @@ def unit_balance_summary(*, include_inactive=False):
     family owes. A child's remaining tuition counts on that child's unit, not
     the family home unit when they differ. A multi-unit family is counted only
     on units where a child still has a balance — not once on every site.
+    Pass ``unit_slugs`` to hide other sites (staff Account Balance).
     """
     from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
@@ -207,6 +208,9 @@ def unit_balance_summary(*, include_inactive=False):
         .exclude(slug__in=("main-location", "main_location"))
         .order_by("name")
     )
+    if unit_slugs is not None:
+        allowed = {slug for slug in unit_slugs if slug}
+        units = [unit for unit in units if unit.slug in allowed]
     qs = visible_member_children_qs(active_only=not include_inactive).prefetch_related(
         "family__enrollment_applications"
     )

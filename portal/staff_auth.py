@@ -162,6 +162,38 @@ def can_manage_outside_programs(account, portal_area="staff"):
     return is_program_director(account) or (account and account.role == ROLE_PORTAL_ADMIN)
 
 
+def staff_assigned_units(account):
+    """Units on the staff record (home unit + accessible_units).
+
+    Does not expand for Program director or Portal admin roles. Account Balance
+    on the staff portal uses this so School 18 staff never see School 26.
+    """
+    if not account:
+        return PortalUnit.objects.none()
+    unit_ids = set()
+    extra = account.accessible_units.filter(is_active=True)
+    unit_ids.update(extra.values_list("pk", flat=True))
+    if account.unit_id:
+        unit_ids.add(account.unit_id)
+    return PortalUnit.objects.filter(pk__in=unit_ids, is_active=True).order_by("name")
+
+
+def staff_account_balance_unit_scope(account, requested_slug=""):
+    """Assigned units plus the unit slug to filter Account Balance.
+
+    A requested slug is honored only when it is assigned. Otherwise the report
+    stays on the one assigned unit, or all assigned units when there are several.
+    """
+    units = list(staff_assigned_units(account))
+    slugs = [unit.slug for unit in units]
+    requested = (requested_slug or "").strip()
+    if requested and requested in slugs:
+        return units, requested
+    if len(slugs) == 1:
+        return units, slugs[0]
+    return units, ""
+
+
 def staff_accessible_units(user):
     account = get_staff_account(user)
     if not account:

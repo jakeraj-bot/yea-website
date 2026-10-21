@@ -4538,18 +4538,25 @@ def staff_account_balance_report(request):
     from django.http import HttpResponse
 
     from .admin_reports import ADMIN_DATA_REPORTS, build_admin_report
-    from .staff_auth import staff_billing_forbidden
+    from .staff_auth import get_staff_account, staff_account_balance_unit_scope, staff_billing_forbidden
 
     blocked = staff_billing_forbidden(request)
     if blocked:
         return blocked
     spec = ADMIN_DATA_REPORTS["balances"]
-    unit = _staff_unit(request) if _portal_data_live() else None
+    account = get_staff_account(request.user)
+    assigned_units, unit_slug = staff_account_balance_unit_scope(
+        account, request.GET.get("unit", "")
+    )
+    assigned_slugs = [unit.slug for unit in assigned_units]
     filters = {key: request.GET.get(key, "").strip() for key in ("q", "status", "owes")}
     if "status" not in request.GET:
         filters["status"] = "Active"
-    if _portal_data_live() and unit:
-        report = build_admin_report("balances", {**filters, "unit": unit.slug})
+    filters["unit"] = unit_slug
+    report_filters = dict(filters)
+    report_filters["allowed_unit_slugs"] = assigned_slugs
+    if _portal_data_live() and assigned_slugs:
+        report = build_admin_report("balances", report_filters)
     else:
         report = {
             **spec,
@@ -4557,7 +4564,7 @@ def staff_account_balance_report(request):
             "rows": [],
             "summary": "Choose a unit to see the Account Balance report.",
             "outstanding": "0.00",
-            "units": [],
+            "units": [(unit.slug, unit.name) for unit in assigned_units],
             "statuses": ["Active", "Inactive"],
             "status_choices": [("Active", "Active"), ("Inactive", "Inactive")],
             "owes_choices": [
@@ -4572,7 +4579,10 @@ def staff_account_balance_report(request):
             "selected_status": filters.get("status") or "Active",
             "unit_balances": [],
         }
-    report = {**report, "slug": "balances", "filters": ("q", "status", "owes")}
+    visible_filters = ("q", "status", "owes")
+    if len(assigned_slugs) > 1:
+        visible_filters = ("q", "unit", "status", "owes")
+    report = {**report, "slug": "balances", "filters": visible_filters}
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{report["filename"]}"'
