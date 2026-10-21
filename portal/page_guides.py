@@ -473,7 +473,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Choose the unit",
-                "body": "Use the Filters card. Unit is School 18, School 26, or All — the same kind of control as weekly attendance. Staff printing from a unit uses the unit in the header.",
+                "body": "Use the Filters card. Portal admin can choose any unit or All. Staff only see the unit(s) assigned to their staff account and cannot open another school's balances.",
             },
             {
                 "title": "Match the paper report",

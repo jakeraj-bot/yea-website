@@ -31,6 +31,17 @@ def child_unit_slug_q(unit_slug, prefix=""):
     return Q(**{unit_field: unit_slug}) | Q(**{unit_isnull: True, family_unit: unit_slug})
 
 
+def child_unit_slugs_q(unit_slugs, prefix=""):
+    """Q matching children whose effective unit slug is one of `unit_slugs`."""
+    query = Q()
+    slugs = [slug for slug in (unit_slugs or []) if slug]
+    if not slugs:
+        return Q(pk__in=[])
+    for slug in slugs:
+        query |= child_unit_slug_q(slug, prefix)
+    return query
+
+
 def children_for_unit(unit, *, active_only=True):
     """Unit-scoped members. Unapproved-only children stay off rosters and reports."""
     from .enrollment_counts import visible_member_children_qs

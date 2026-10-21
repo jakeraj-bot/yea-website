@@ -546,6 +546,7 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         self.assertIn("overflow-wrap: anywhere", css)
         self.assertIn("table-layout: fixed", css)
         ab_css = css.split(".portal-account-balance-print-table {", 1)[1]
+        ab_css = ab_css.split(".portal-sr-only {", 1)[0]
         self.assertIn("col.portal-ab-col-row_num", ab_css)
         self.assertIn("width: 2.2rem", ab_css)
         self.assertIn("col.portal-ab-col-description", ab_css)
