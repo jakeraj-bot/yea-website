@@ -53,7 +53,7 @@ GUIDES = {
             },
             {
                 "title": "Enrollment and overdue hide inactive children",
-                "body": "Children enrolled and overdue balances count active children only, from the live ledger — not a stored family balance. When a child is inactive they leave those numbers. Unapproved applications are not in overdue. Overdue is the sum of positive child balances (charges minus payments minus credits). A credit is not overdue. Stripe card fees do not inflate it. Balances by unit shows which site still owes the most. Review inactive children on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
+                "body": "Children enrolled and overdue balances count active children only, from the live ledger — not a stored family balance. When a child is inactive they leave those numbers. Unapproved applications are not in overdue. Overdue is the sum of positive child balances (charges minus payments minus credits). A credit is not overdue. Stripe card fees do not inflate it. Balances by unit Balance is money still owed at the school. A child's credit stays on that child and is listed under Credits; it does not reduce what other children owe. Review inactive children on All families → Inactive, or Reports → Inactive children, including any remaining balance.",
             },
         ],
     },
@@ -486,6 +486,10 @@ GUIDES = {
             {
                 "title": "Filter members and balances, then print",
                 "body": "Members: Active, Inactive, or All. Balance: With balance (amount owed greater than $0), Without balance ($0 or credit), Credit, or All. Default Active + All balances is the useful roster; switch Balance to With balance for outstanding only. Apply filters, then Print / Save PDF. Names and descriptions wrap; columns do not run off the page.",
+            },
+            {
+                "title": "Balances by unit",
+                "body": "Balance is money still owed at the school. A child's credit stays on that child and is listed under Credits; it does not reduce what other children owe. Overdue is that same still-owed total. Families with a balance are households with at least one child remaining above $0.",
             },
         ],
     },

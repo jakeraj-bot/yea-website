@@ -189,9 +189,13 @@ def overdue_active_children_summary(family_ids=None, *, unit=None):
 def unit_balance_summary(*, include_inactive=False):
     """Per-unit live ledger totals for Overview and the Account Balance report.
 
-    A child's remaining tuition counts on that child's unit, not the family
-    home unit when they differ. A multi-unit family is counted only on units
-    where a child still has a balance — not once on every site.
+    Balance and Overdue are the sum of positive remaining amounts for active
+    approved children at that school (true money owed). Credits are the sum of
+    negative remainings and stay named to those children — they do not reduce
+    Balance or what other children owe. A child's remaining tuition counts on
+    that child's unit, not the family home unit when they differ. A multi-unit
+    family is counted only on units where a child still has a balance — not
+    once on every site.
     """
     from .enrollment_counts import visible_member_children_qs
     from .member_admin import is_placeholder_unit
@@ -224,8 +228,8 @@ def unit_balance_summary(*, include_inactive=False):
         unit.slug: {
             "slug": unit.slug,
             "unit": unit.name,
-            "balance": Decimal("0"),
-            "overdue": Decimal("0"),
+            "owed": Decimal("0"),
+            "credits": Decimal("0"),
             "owing_family_ids": set(),
         }
         for unit in units
@@ -234,27 +238,37 @@ def unit_balance_summary(*, include_inactive=False):
         unit = child_effective_unit(child)
         if not unit or unit.slug not in buckets:
             continue
-        balance = child_balance_from_map(maps.get(child.family_id, {}), child.name)
+        remaining = child_balance_from_map(maps.get(child.family_id, {}), child.name)
         bucket = buckets[unit.slug]
-        bucket["balance"] += balance
-        if balance > 0:
-            bucket["overdue"] += balance
+        if remaining > 0:
+            bucket["owed"] += remaining
             bucket["owing_family_ids"].add(child.family_id)
+        elif remaining < 0:
+            bucket["credits"] += abs(remaining)
     rows = []
     for bucket in buckets.values():
-        copy = credit_fields(bucket["balance"])
+        owed = bucket["owed"]
+        credits = bucket["credits"]
         rows.append(
             {
                 "slug": bucket["slug"],
                 "unit": bucket["unit"],
-                "balance": copy["running_balance"],
-                "overdue": f"{bucket['overdue']:.2f}",
+                "balance": f"{owed:.2f}",
+                "credits": f"{credits:.2f}",
+                "overdue": f"{owed:.2f}",
                 "family_count": len(bucket["owing_family_ids"]),
-                "has_credit": copy["has_credit"],
-                "account_credit": copy["account_credit"],
+                "has_credit": credits > 0,
+                "account_credit": f"{credits:.2f}",
             }
         )
-    rows.sort(key=lambda row: (-Decimal(row["overdue"]), -Decimal(row["balance"]), row["unit"].casefold()))
+    rows.sort(
+        key=lambda row: (
+            -Decimal(row["overdue"]),
+            -Decimal(row["balance"]),
+            -Decimal(row["credits"]),
+            row["unit"].casefold(),
+        )
+    )
     return rows
 
 

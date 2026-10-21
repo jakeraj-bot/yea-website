@@ -1,0 +1,22 @@
+<table class="portal-table portal-unit-balance-table" id="{{ table_id }}">
+  <thead>
+    <tr>
+      <th>Unit</th>
+      <th class="portal-cell-amount">Balance</th>
+      <th class="portal-cell-amount">Credits</th>
+      <th class="portal-cell-amount">Overdue</th>
+      <th>Families with a balance</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in unit_balances %}
+    <tr>
+      <td><strong>{{ row.unit }}</strong></td>
+      <td class="portal-cell-amount">${{ row.balance }}</td>
+      <td class="portal-cell-amount">${{ row.credits }}</td>
+      <td class="portal-cell-amount">${{ row.overdue }}</td>
+      <td>{{ row.family_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

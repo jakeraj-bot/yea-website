@@ -316,6 +316,7 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         self.assertContains(page, "yea-logo.png")
         self.assertContains(page, "Jordan Jacobs")
         self.assertContains(page, "Balances by unit")
+        self.assertContains(page, ">Credits<")
         self.assertContains(page, "portal-print-title-row")
         self.assertEqual(page.content.decode().count("portal-print-title-row"), 1)
         self.assertEqual(page.content.decode().count("portal-medical-report-header"), 1)

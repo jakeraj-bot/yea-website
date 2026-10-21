@@ -152,26 +152,7 @@
     <section class="card portal-profile-full portal-unit-balance-card">
       <h2>Balances by unit</h2>
       <div class="portal-table-wrap">
-        <table class="portal-table portal-unit-balance-table" id="overview-unit-balances">
-          <thead>
-            <tr>
-              <th>Unit</th>
-              <th class="portal-cell-amount">Balance</th>
-              <th class="portal-cell-amount">Overdue</th>
-              <th>Families with a balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in dashboard.unit_balances %}
-            <tr>
-              <td><strong>{{ row.unit }}</strong></td>
-              <td class="portal-cell-amount">{% if row.has_credit %}${{ row.account_credit }} credit{% else %}${{ row.balance }}{% endif %}</td>
-              <td class="portal-cell-amount">${{ row.overdue }}</td>
-              <td>{{ row.family_count }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        {% include "portal/admin/includes/unit_balance_table.html" with unit_balances=dashboard.unit_balances table_id="overview-unit-balances" %}
       </div>
       <p><a href="{% url 'portal_admin_data_report' report_slug='balances' %}">Print Account Balance report →</a></p>
     </section>
