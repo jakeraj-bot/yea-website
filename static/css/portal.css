@@ -6679,3 +6679,125 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     display: none !important;
   }
 }
+
+/* Compact staff permissions: labeled checkboxes wrap across each row. */
+.portal-perm-org-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.portal-perm-org-card.portal-panel {
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0;
+}
+
+.portal-perm-org-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+}
+
+.portal-perm-defaults-heading {
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.portal-permissions-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  max-height: calc(100vh - 11rem);
+  display: block;
+}
+
+.portal-permissions-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  font-size: 0.78rem;
+}
+
+.portal-permissions-table th,
+.portal-permissions-table td {
+  padding: 0.28rem 0.4rem;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.portal-permissions-table th {
+  white-space: normal;
+}
+
+.portal-permissions-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg-soft);
+  background-color: #f9fafb;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.portal-permissions-table th:nth-child(1),
+.portal-permissions-table td:nth-child(1) {
+  width: 22%;
+}
+
+.portal-permissions-table th:nth-child(2),
+.portal-permissions-table td:nth-child(2) {
+  width: 14%;
+}
+
+.portal-permissions-table th:nth-child(3),
+.portal-permissions-table td:nth-child(3) {
+  width: 16%;
+}
+
+.portal-perm-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.7rem;
+}
+
+.portal-perm-wrap--types {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed var(--border);
+}
+
+.portal-perm-wrap .portal-yesno-toggle,
+.portal-perm-wrap .portal-check-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.portal-perm-defaults .card {
+  padding: 0.75rem 0.85rem;
+}
+
+.portal-perm-defaults .card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.portal-perm-defaults .btn {
+  margin-top: 0.55rem;
+}
+
+@media print {
+  .portal-permissions-table-wrap {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .portal-permissions-table thead th {
+    position: static;
+    box-shadow: none;
+  }
+}

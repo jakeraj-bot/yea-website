@@ -43,12 +43,11 @@
           <p class="form-note">Program director = all programming, no billing unless you turn it on. Front desk staff = unit operations including billing and activities.</p>
         </div>
         <div class="form-group portal-form-full">
-          <label class="portal-check-label"><input type="checkbox" name="can_see_billing"> Program Director can see billing (this person)</label>
-          <p class="form-note">Only needed for Program director. Leave unchecked unless this person should see billing now.</p>
-        </div>
-        <div class="form-group portal-form-full">
-          <label class="portal-check-label"><input type="checkbox" name="can_delete_attendance"> Delete attendance</label>
-          <p class="form-note">Lets this person remove a mistaken attendance mark. Organization admin can always delete attendance. Regular staff and front desk cannot unless you check this.</p>
+          <label>Permissions</label>
+          <div class="portal-perm-wrap">
+            <label class="portal-check-label"><input type="checkbox" name="can_see_billing"> Program Director can see billing (this person)</label>
+            <label class="portal-check-label"><input type="checkbox" name="can_delete_attendance"> Delete attendance</label>
+          </div>
         </div>
         <div class="form-group" id="staff-primary-unit-group">
           <label for="staff-unit">Primary unit</label>
@@ -131,12 +130,11 @@
           </select>
         </div>
         <div class="form-group portal-form-full">
-          <label class="portal-check-label"><input type="checkbox" name="can_see_billing" {% if editing_staff.can_see_billing %}checked{% endif %}> Program Director can see billing (this person)</label>
-          <p class="form-note">Only needed for Program director. Front desk and other staff already have billing. You can also turn billing on for every Program director in Billing permissions.</p>
-        </div>
-        <div class="form-group portal-form-full">
-          <label class="portal-check-label"><input type="checkbox" name="can_delete_attendance" {% if editing_staff.can_delete_attendance %}checked{% endif %}> Delete attendance</label>
-          <p class="form-note">Lets this person remove a mistaken attendance mark. Organization admin can always delete attendance.</p>
+          <label>Permissions</label>
+          <div class="portal-perm-wrap">
+            <label class="portal-check-label"><input type="checkbox" name="can_see_billing" {% if editing_staff.can_see_billing %}checked{% endif %}> Program Director can see billing (this person)</label>
+            <label class="portal-check-label"><input type="checkbox" name="can_delete_attendance" {% if editing_staff.can_delete_attendance %}checked{% endif %}> Delete attendance</label>
+          </div>
         </div>
         <div class="form-group">
           <label>Status</label>

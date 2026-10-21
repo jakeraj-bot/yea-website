@@ -993,7 +993,7 @@ GUIDES = {
             },
             {
                 "title": "Turn Program director billing on",
-                "body": "Open Billing permissions. Use Program Director can see billing for every Program director, or edit one person and check Program Director can see billing (this person).",
+                "body": "Open Billing permissions. Off by default. When that toggle is on, every Program director sees Member billing, family Billing/Plans, 4Cs, and take-payment. You can also turn billing on for one person on their staff account.",
             },
             {
                 "title": "Let someone delete attendance",
@@ -1007,8 +1007,12 @@ GUIDES = {
     },
     "billing-permissions": {
         "title": "How to set staff permissions",
-        "intro": "Yes/No per staff member — billing, application approval, and attendance delete.",
+        "intro": "Yes/No per staff member — billing, application approval, and attendance delete. Checkboxes wrap across each row so every permission stays on the page.",
         "steps": [
+            {
+                "title": "What each permission does",
+                "body": "Add charge — post fees to a member account. Delete charge — remove a posted charge. Add credit — post a credit/adjustment that reduces balance. Edit family plans — change billing plan and amount on a child account. Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal. Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
+            },
             {
                 "title": "Turn on approval when needed",
                 "body": "Waitlist and application approval stay admin-only until you turn them on here.",
@@ -1016,6 +1020,14 @@ GUIDES = {
             {
                 "title": "Let someone delete attendance",
                 "body": "Organization admin can always delete attendance. Turn Delete attendance on for other staff who should be able to remove a mistaken mark. They confirm and give a reason, which is saved on the activity log.",
+            },
+            {
+                "title": "Turn Program Director billing on",
+                "body": "Off by default. When this is on, every Program director sees Member billing, family Billing/Plans, 4Cs, and take-payment. You can also turn billing on for one person on their staff account.",
+            },
+            {
+                "title": "Show Practice parent",
+                "body": "Off on yeanj.org unless you turn this on. When it is on, admins get Open practice parent — a sandbox family for paying (Stripe test mode only), emergency contacts, Spanish, and Help. It never uses a live family’s account. Local demo seed turns this on automatically.",
             },
         ],
     },

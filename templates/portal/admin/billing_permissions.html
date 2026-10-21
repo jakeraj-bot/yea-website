@@ -7,52 +7,33 @@
 </section>
 <section class="page-content">
   <div class="container">
-    <ul class="portal-link-list">
-      {% for note in billing_permission_notes %}
-      <li>{{ note }}</li>
-      {% endfor %}
-    </ul>
-
-    <div class="portal-panel card" style="margin-bottom:1.5rem;">
-      <h2>Program Director can see billing</h2>
-      <p class="form-note">Off by default. When this is on, every Program director sees Member billing, family Billing/Plans, 4Cs, and take-payment. You can also turn billing on for one person on their staff account.</p>
-      <form method="post" action="{% if portal_live %}{% url 'portal_admin_program_director_billing' %}{% else %}#{% endif %}">
-        {% if portal_live %}{% csrf_token %}{% endif %}
-        <label class="portal-check-label"><input type="checkbox" name="program_director_can_see_billing" {% if program_director_can_see_billing %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Program Director can see billing</label>
-        <div class="portal-form-actions" style="margin-top:0.75rem;">
-          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save Program Director billing</button>
-        </div>
-      </form>
+    <div class="portal-perm-org-grid">
+      <div class="portal-panel card portal-perm-org-card">
+        <form class="portal-perm-org-form" method="post" action="{% if portal_live %}{% url 'portal_admin_program_director_billing' %}{% else %}#{% endif %}">
+          {% if portal_live %}{% csrf_token %}{% endif %}
+          <label class="portal-check-label"><input type="checkbox" name="program_director_can_see_billing" {% if program_director_can_see_billing %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Program Director can see billing</label>
+          <button type="submit" class="btn btn-primary btn-sm"{% if not portal_live %} disabled{% endif %}>Save Program Director billing</button>
+        </form>
+      </div>
+      <div class="portal-panel card portal-perm-org-card">
+        <form class="portal-perm-org-form" method="post" action="{% if portal_live %}{% url 'portal_admin_practice_parent_toggle' %}{% else %}#{% endif %}">
+          {% if portal_live %}{% csrf_token %}{% endif %}
+          <label class="portal-check-label"><input type="checkbox" name="practice_parent_enabled" {% if practice_parent_enabled %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Show Practice parent</label>
+          <button type="submit" class="btn btn-primary btn-sm"{% if not portal_live %} disabled{% endif %}>Save Practice parent</button>
+        </form>
+      </div>
     </div>
 
-    <div class="portal-panel card" style="margin-bottom:1.5rem;">
-      <h2>Practice parent</h2>
-      <p class="form-note">Off on yeanj.org unless you turn this on. When it is on, admins get <strong>Open practice parent</strong> — a sandbox family for paying (Stripe test mode only), emergency contacts, Spanish, and Help. It never uses a live family’s account. Local demo seed turns this on automatically.</p>
-      <form method="post" action="{% if portal_live %}{% url 'portal_admin_practice_parent_toggle' %}{% else %}#{% endif %}">
-        {% if portal_live %}{% csrf_token %}{% endif %}
-        <label class="portal-check-label"><input type="checkbox" name="practice_parent_enabled" {% if practice_parent_enabled %}checked{% endif %}{% if not portal_live %} disabled{% endif %}> Show Practice parent</label>
-        <div class="portal-form-actions" style="margin-top:0.75rem;">
-          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save Practice parent</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="portal-table-wrap">
-      <form method="post" action="{% if portal_live %}{% url 'portal_admin_billing_permissions' %}{% else %}#{% endif %}">
-        {% if portal_live %}{% csrf_token %}{% endif %}
+    <form method="post" action="{% if portal_live %}{% url 'portal_admin_billing_permissions' %}{% else %}#{% endif %}">
+      {% if portal_live %}{% csrf_token %}{% endif %}
+      <div class="portal-table-wrap portal-permissions-table-wrap">
         <table class="portal-table portal-permissions-table">
           <thead>
             <tr>
               <th>Staff member</th>
               <th>Role</th>
               <th>Unit(s)</th>
-              <th>Add charge</th>
-              <th>Delete charge</th>
-              <th>Add credit</th>
-              <th>Edit family plans</th>
-              <th>Approve applications</th>
-              <th>Approve waitlist</th>
-              <th>Delete attendance</th>
+              <th>Permissions</th>
             </tr>
           </thead>
           <tbody>
@@ -62,73 +43,60 @@
               <td>{{ user.role }}</td>
               <td>{{ user.units }}</td>
               <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="add_charge_{{ user.id }}" {% if user.can_add_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_add_charge %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="delete_charge_{{ user.id }}" {% if user.can_delete_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_delete_charge %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="add_credit_{{ user.id }}" {% if user.can_add_credit %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_add_credit %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="edit_plans_{{ user.id }}" {% if user.can_edit_family_plans %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_edit_family_plans %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="approve_apps_{{ user.id }}" {% if user.can_approve_applications %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_approve_applications %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="approve_waitlist_{{ user.id }}" {% if user.can_approve_waitlist %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_approve_waitlist %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-              <td>
-                <label class="portal-yesno-toggle">
-                  <input type="checkbox" name="delete_attendance_{{ user.id }}" {% if user.can_delete_attendance %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
-                  <span data-yesno-label>{% if user.can_delete_attendance %}Yes{% else %}No{% endif %}</span>
-                </label>
-              </td>
-            </tr>
-            {% if billing_charge_types %}
-            <tr class="portal-table-subrow">
-              <td colspan="10">
-                <strong class="portal-table-meta">Charge types for {{ user.name }}:</strong>
-                {% for ct in billing_charge_types %}
-                <label class="portal-check-label" style="margin-right:1rem;">
-                  <input type="checkbox" name="charge_{{ ct.value }}_{{ user.id }}" checked{% if not portal_live %} disabled{% endif %}> {{ ct.label }}
-                </label>
-                {% endfor %}
+                <div class="portal-perm-wrap">
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="add_charge_{{ user.id }}" {% if user.can_add_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Add charge
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="delete_charge_{{ user.id }}" {% if user.can_delete_charge %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Delete charge
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="add_credit_{{ user.id }}" {% if user.can_add_credit %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Add credit
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="edit_plans_{{ user.id }}" {% if user.can_edit_family_plans %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Edit family plans
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="approve_apps_{{ user.id }}" {% if user.can_approve_applications %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Approve applications
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="approve_waitlist_{{ user.id }}" {% if user.can_approve_waitlist %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Approve waitlist
+                  </label>
+                  <label class="portal-yesno-toggle">
+                    <input type="checkbox" name="delete_attendance_{{ user.id }}" {% if user.can_delete_attendance %}checked{% endif %}{% if not portal_live %} disabled{% endif %}>
+                    Delete attendance
+                  </label>
+                </div>
+                {% if billing_charge_types %}
+                <div class="portal-perm-wrap portal-perm-wrap--types">
+                  {% for ct in billing_charge_types %}
+                  <label class="portal-check-label">
+                    <input type="checkbox" name="charge_{{ ct.value }}_{{ user.id }}" checked{% if not portal_live %} disabled{% endif %}> {{ ct.label }}
+                  </label>
+                  {% endfor %}
+                </div>
+                {% endif %}
               </td>
             </tr>
-            {% endif %}
             {% endfor %}
           </tbody>
         </table>
-        <div class="portal-form-actions" style="margin-top: 1.25rem;">
-          <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save permissions</button>
-          <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>
-        </div>
-      </form>
-    </div>
+      </div>
+      <div class="portal-form-actions">
+        <button type="submit" class="btn btn-primary"{% if not portal_live %} disabled{% endif %}>Save permissions</button>
+        <a class="btn btn-secondary" href="{% url 'portal_admin_page' page='member-billing' %}">Member billing</a>
+      </div>
+    </form>
 
-    <h2 style="margin-top: 2rem;">Default rules by role</h2>
+    <h2 class="portal-perm-defaults-heading">Default rules by role</h2>
     <p class="form-note">New staff accounts inherit these defaults. Customize and save your own rules.</p>
-    <div class="portal-profile-grid">
+    <div class="portal-profile-grid portal-perm-defaults">
       {% for rule in default_billing_rules %}
       <section class="card{% if rule.role_name == 'Portal admin' %} card-accent{% endif %}">
         <h3>{{ rule.role_name }}</h3>
@@ -136,27 +104,27 @@
         <form method="post" action="{% url 'portal_admin_default_rule_save' %}">
           {% csrf_token %}
           <input type="hidden" name="role_name" value="{{ rule.role_name }}">
-          <ul class="portal-link-list">
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_add_charge" {% if rule.can_add_charge %}checked{% endif %}> Add charge</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_charge" {% if rule.can_delete_charge %}checked{% endif %}> Delete charge</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_add_credit" {% if rule.can_add_credit %}checked{% endif %}> Add credit</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_edit_family_plans" {% if rule.can_edit_family_plans %}checked{% endif %}> Edit family plans</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_applications" {% if rule.can_approve_applications %}checked{% endif %}> Approve applications</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_waitlist" {% if rule.can_approve_waitlist %}checked{% endif %}> Approve waitlist</label></li>
-            <li><label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_attendance" {% if rule.can_delete_attendance %}checked{% endif %}> Delete attendance</label></li>
-          </ul>
-          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Save rule</button>
+          <div class="portal-perm-wrap">
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_add_charge" {% if rule.can_add_charge %}checked{% endif %}> Add charge</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_charge" {% if rule.can_delete_charge %}checked{% endif %}> Delete charge</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_add_credit" {% if rule.can_add_credit %}checked{% endif %}> Add credit</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_edit_family_plans" {% if rule.can_edit_family_plans %}checked{% endif %}> Edit family plans</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_applications" {% if rule.can_approve_applications %}checked{% endif %}> Approve applications</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_approve_waitlist" {% if rule.can_approve_waitlist %}checked{% endif %}> Approve waitlist</label>
+            <label class="portal-yesno-toggle"><input type="checkbox" name="can_delete_attendance" {% if rule.can_delete_attendance %}checked{% endif %}> Delete attendance</label>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Save rule</button>
         </form>
         {% else %}
-        <ul class="portal-link-list">
-          <li>{% if rule.can_add_charge %}✓{% else %}✗{% endif %} Add charge</li>
-          <li>{% if rule.can_delete_charge %}✓{% else %}✗{% endif %} Delete charge</li>
-          <li>{% if rule.can_add_credit %}✓{% else %}✗{% endif %} Add credit</li>
-          <li>{% if rule.can_edit_family_plans %}✓{% else %}✗{% endif %} Edit family plans</li>
-          <li>{% if rule.can_approve_applications %}✓{% else %}✗{% endif %} Approve applications</li>
-          <li>{% if rule.can_approve_waitlist %}✓{% else %}✗{% endif %} Approve waitlist</li>
-          <li>{% if rule.can_delete_attendance %}✓{% else %}✗{% endif %} Delete attendance</li>
-        </ul>
+        <div class="portal-perm-wrap">
+          <span>{% if rule.can_add_charge %}✓{% else %}✗{% endif %} Add charge</span>
+          <span>{% if rule.can_delete_charge %}✓{% else %}✗{% endif %} Delete charge</span>
+          <span>{% if rule.can_add_credit %}✓{% else %}✗{% endif %} Add credit</span>
+          <span>{% if rule.can_edit_family_plans %}✓{% else %}✗{% endif %} Edit family plans</span>
+          <span>{% if rule.can_approve_applications %}✓{% else %}✗{% endif %} Approve applications</span>
+          <span>{% if rule.can_approve_waitlist %}✓{% else %}✗{% endif %} Approve waitlist</span>
+          <span>{% if rule.can_delete_attendance %}✓{% else %}✗{% endif %} Delete attendance</span>
+        </div>
         {% endif %}
       </section>
       {% empty %}
