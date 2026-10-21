@@ -48,9 +48,11 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         self.assertNotContains(page, "Highest overdue first so you know which site to work down.")
         self.assertContains(page, "How to use this page")
         self.assertContains(page, "Balances by unit")
+        self.assertContains(page, "Credits")
         admin_guide = guide_for("admin-dashboard")
         bodies = " ".join(step["body"] for step in admin_guide["steps"])
         self.assertIn("Balances by unit", bodies)
+        self.assertIn("listed under Credits", bodies)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_families_pages_drop_click_through_blurb(self):

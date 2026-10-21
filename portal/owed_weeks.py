@@ -148,8 +148,9 @@ def unpaid_charges_by_child(entries):
     """Remaining charge/membership lines per child after payments, credits, and discounts.
 
     Same FIFO as Account Balance / billing child totals: named credits cover
-    that child's oldest charges, then blank-child household payments cover
-    remaining family charges by date, then id. Stripe fees are not credits.
+    that child's oldest charges, leftover named money covers siblings on the
+    same family, then blank-child household payments cover remaining family
+    charges by date, then id. Stripe fees are not credits.
     Agency 4Cs receipts live on the agency ledger.
     """
     state = fifo_allocate_family_entries(entries)
