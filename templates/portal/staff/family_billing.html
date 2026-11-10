@@ -270,7 +270,7 @@
               {% if row.reference_display %}<span class="portal-ledger-ref">{{ row.reference_display }}</span>{% endif %}
               <div class="portal-billing-ledger-actions">
               {% if row.editable and billing_live %}
-              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship description{% else %}Edit amount or description{% endif %}">Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship amount or description{% else %}Edit amount or description{% endif %}">Edit</button>
               {% endif %}
               {% if row.deletable and billing_live %}
               <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% else %}Remove this ledger entry?{% endif %}">
@@ -315,6 +315,10 @@
                 <label class="visually-hidden" for="ledger-date-{{ row.id }}">Credit date</label>
                 <input id="ledger-date-{{ row.id }}" name="date" type="date" class="portal-input portal-ledger-date" value="{{ row.date }}">
                 <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Credit amount</label>
+                <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount|cut:"-" }}" inputmode="decimal">
+                {% endif %}
+                {% if row.type == 'discount' %}
+                <label class="visually-hidden" for="ledger-amount-{{ row.id }}">Scholarship amount</label>
                 <input id="ledger-amount-{{ row.id }}" name="amount" type="text" class="portal-input" value="{{ row.amount|cut:"-" }}" inputmode="decimal">
                 {% endif %}
                 {% if row.type == 'charge' or row.type == 'membership' %}

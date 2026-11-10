@@ -20,6 +20,7 @@ from portal.billing_services import (
     post_payment,
     prepare_billing_for_staff,
     update_child_billing_plan,
+    update_ledger_amount,
     update_ledger_credit,
     update_offline_payment,
 )
@@ -464,6 +465,67 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(page, "After care — YEA General Scholarship scholarship")
         self.assertEqual(family_balance(self.family), Decimal("50.00"))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_edit_scholarship_amount_updates_family_balance(self):
+        today = timezone.localdate()
+        fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "70.00",
+            billing_type="Scholarship",
+            scholarship_fund_id=fund.pk,
+            scholarship_full_rate="70.00",
+            scholarship_parent_amount="50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=today.weekday(),
+        )
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertEqual(discount.amount, Decimal("-20.00"))
+        self.assertEqual(family_balance(self.family), Decimal("50.00"))
+        preview = prepare_billing_for_staff(self.family, {"can_delete_charge": True})
+        discount_row = next(row for row in preview["ledger"] if row["type"] == "discount")
+        self.assertTrue(discount_row["editable"])
+
+        update_ledger_amount(self.family, discount.pk, "5.00", notify=False)
+        discount.refresh_from_db()
+        self.assertEqual(discount.amount, Decimal("-5.00"))
+        self.assertEqual(family_balance(self.family), Decimal("65.00"))
+
+        self._login(self.admin, "admin")
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Edit scholarship amount or description")
+        self.assertContains(billing, "Scholarship amount")
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "edit_description",
+                "entry_id": str(discount.pk),
+                "description": discount.description,
+                "amount": "30.00",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        discount.refresh_from_db()
+        self.assertEqual(discount.amount, Decimal("-30.00"))
+        self.assertEqual(family_balance(self.family), Decimal("40.00"))
+        page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(page, "Scholarship updated.")
+        other = PortalFamily.objects.create(
+            unit=self.unit,
+            slug="martinez",
+            name="Martinez",
+            billing_type="Private pay",
+            status="Active",
+            balance=Decimal("80.00"),
+        )
+        PortalChild.objects.create(family=other, name="Sofia Martinez", is_active=True)
+        post_charge(other, "Sofia Martinez", "tuition", "80.00", date(2026, 9, 8), "Weekly tuition", notify=False)
+        self.assertEqual(family_balance(other), Decimal("80.00"))
 
     def test_account_balance_filters_unit_members_and_balance(self):
         at_26 = PortalChild.objects.create(

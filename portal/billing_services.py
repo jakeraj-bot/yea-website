@@ -1146,11 +1146,11 @@ def update_ledger_amount(family, entry_id, amount, notify=True):
     entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
     if not entry:
         raise ValueError("Ledger entry not found.")
-    if entry.entry_type not in ("charge", "membership", "credit"):
-        raise ValueError("Only charge, membership, and credit amounts can be edited.")
+    if entry.entry_type not in ("charge", "membership", "credit", "discount"):
+        raise ValueError("Only charge, membership, credit, and scholarship amounts can be edited.")
     previous = entry.amount
     parsed = _parse_amount(amount, allow_zero=True)
-    new_amount = -parsed if entry.entry_type == "credit" else parsed
+    new_amount = -parsed if entry.entry_type in ("credit", "discount") else parsed
     if new_amount == previous:
         return entry
     entry.amount = new_amount

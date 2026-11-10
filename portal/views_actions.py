@@ -1855,16 +1855,24 @@ def staff_billing_action(request, family_slug):
                     request.POST.get("description", ""),
                 )
                 new_amount = (request.POST.get("amount") or "").strip()
+                amount_changed = False
                 if new_amount:
+                    before_amount = entry.amount if entry else None
                     update_ledger_amount(
                         family,
                         request.POST.get("entry_id"),
                         new_amount,
                         notify=notify_update,
                     )
+                    if entry:
+                        entry.refresh_from_db()
+                        amount_changed = before_amount != entry.amount
                 kind = (entry.entry_type if entry else "") or "ledger"
                 if kind == "discount":
-                    messages.success(request, "Scholarship description updated.")
+                    messages.success(
+                        request,
+                        "Scholarship updated." if amount_changed else "Scholarship description updated.",
+                    )
                     action_label = "Edited a scholarship"
                 else:
                     messages.success(request, "Ledger entry updated.")
