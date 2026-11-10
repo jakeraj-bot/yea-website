@@ -6801,3 +6801,18 @@ html.portal-nav-collapsed .portal-sidebar-footer {
     box-shadow: none;
   }
 }
+
+.portal-status-current {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.portal-status-ended {
+  background: #eceff1;
+  color: #455a64;
+}
+
+.portal-status-upcoming {
+  background: #e3f2fd;
+  color: #1565c0;
+}

@@ -506,11 +506,11 @@ class PortalPayment(models.Model):
 
 
 class PortalAgencyProfile(models.Model):
-    """4Cs agency enrollment for one child — separate from regular family billing."""
+    """One 4Cs contract for a child. A child can have more than one (old + new)."""
 
     unit = models.ForeignKey(PortalUnit, on_delete=models.CASCADE, related_name="agency_profiles")
     family = models.ForeignKey(PortalFamily, on_delete=models.CASCADE, related_name="agency_profiles")
-    child = models.OneToOneField(PortalChild, on_delete=models.CASCADE, related_name="agency_profile")
+    child = models.ForeignKey(PortalChild, on_delete=models.CASCADE, related_name="agency_profiles")
     agency = models.ForeignKey(
         "PortalAgency",
         on_delete=models.SET_NULL,

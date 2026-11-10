@@ -30,13 +30,27 @@ STAFF_PAYMENT_METHOD_LABELS = {
 EDITABLE_LEDGER_TYPES = ("charge", "payment", "membership", "credit", "discount")
 
 
-def agency_profile_for(child):
-    if not child:
+def agency_profile_for(child, on_date=None):
+    """Return the 4Cs contract covering on_date (today by default).
+
+    A child can have more than one contract when 4Cs issues a new one mid-year.
+    Prefer the contract whose start/end includes on_date; otherwise the latest start.
+    """
+    if not child or not getattr(child, "pk", None):
         return None
-    try:
-        return child.agency_profile
-    except PortalAgencyProfile.DoesNotExist:
+    profiles = list(child.agency_profiles.all())
+    if not profiles:
         return None
+    when = on_date or timezone.localdate()
+    covering = []
+    for profile in profiles:
+        start_ok = profile.auth_start is None or profile.auth_start <= when
+        end_ok = profile.auth_end is None or profile.auth_end >= when
+        if start_ok and end_ok:
+            covering.append(profile)
+    if covering:
+        return max(covering, key=lambda row: (row.auth_start or date.min, row.pk))
+    return max(profiles, key=lambda row: (row.auth_start or date.min, row.pk))
 
 
 def child_uses_4cs_copay_plan(child):
@@ -1851,12 +1865,12 @@ def _post_4cs_copay_period(locked, today, plan=None):
         parent_period_for_weekly_thursday_post,
     )
 
-    profile = agency_profile_for(locked)
-    if not profile:
-        return False
     target = plan or locked
     key = cadence_key(target.billing_plan)
     scheduled = target.next_charge_date or today
+    profile = agency_profile_for(locked, on_date=scheduled)
+    if not profile:
+        return False
     if key == "weekly":
         period = parent_period_for_weekly_thursday_post(profile, target.billing_plan, scheduled)
     elif key == "biweekly":
@@ -2069,7 +2083,7 @@ def run_due_plan_charges(today=None, child=None, plan=None):
         next_charge_date__isnull=False,
         next_charge_date__lte=today,
         family__status="Active",
-    ).filter(Q(billing_amount__gt=0) | Q(agency_profile__isnull=False))
+    ).filter(Q(billing_amount__gt=0) | Q(agency_profiles__isnull=False)).distinct()
     if only_child is not None:
         due = due.filter(pk=only_child.pk)
     for due_child in due:
@@ -2137,7 +2151,7 @@ def run_due_plan_charges(today=None, child=None, plan=None):
         child__is_active=True,
         child__family__status="Active",
         sort_order__gt=1,
-    ).filter(Q(billing_amount__gt=0) | Q(child__agency_profile__isnull=False))
+    ).filter(Q(billing_amount__gt=0) | Q(child__agency_profiles__isnull=False)).distinct()
     if only_child is not None:
         extra = extra.filter(child=only_child)
     for extra_plan in extra:

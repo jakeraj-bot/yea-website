@@ -742,6 +742,121 @@ class WaitingAuthorizationAddAgencyTests(TestCase):
         )
         self.assertEqual(profile.contract_weeks.count(), 5)
 
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_second_contract_keeps_the_old_one(self):
+        self._login(self.admin, "admin")
+        first = self.client.post(
+            reverse("portal_admin_agency_member_add"),
+            self._agency_save_payload(),
+        )
+        self.assertEqual(first.status_code, 302)
+        first_profile = PortalAgencyProfile.objects.get(child=self.child)
+        second = self.client.post(
+            reverse("portal_admin_agency_member_add") + f"?child_id={self.child.pk}&new=1",
+            self._agency_save_payload(
+                create_new="1",
+                auth_start="2026-10-01",
+                auth_end="2026-10-30",
+                week_start=["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"],
+                week_end=["2026-10-09", "2026-10-16", "2026-10-23", "2026-10-30"],
+                week_agency=["110.00", "110.00", "110.00", "110.00"],
+                week_parent=["26.50", "26.50", "26.50", "26.50"],
+            ),
+        )
+        self.assertEqual(second.status_code, 302)
+        profiles = list(PortalAgencyProfile.objects.filter(child=self.child).order_by("auth_start"))
+        self.assertEqual(len(profiles), 2)
+        self.assertEqual(profiles[0].pk, first_profile.pk)
+        self.assertEqual(profiles[0].auth_start, date(2026, 9, 1))
+        self.assertEqual(profiles[1].auth_start, date(2026, 10, 1))
+        tab = self.client.get(reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(tab.status_code, 200)
+        self.assertContains(tab, "Contract start")
+        self.assertContains(tab, "Contract end")
+        self.assertContains(tab, "Add another contract")
+        self.assertContains(tab, "Save dates")
+        self.assertContains(tab, "Ada Rivera")
+        self.assertContains(tab, "9/1/2026")
+        self.assertContains(tab, "9/30/2026")
+        self.assertContains(tab, "10/1/2026")
+        self.assertContains(tab, "10/30/2026")
+        self.assertContains(tab, "new=1")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_add_another_contract_form_prefills_agency_and_next_start(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        profile.agency = None
+        profile.save(update_fields=["agency"])
+        form = self.client.get(
+            reverse("portal_admin_agency_member_add") + f"?child_id={self.child.pk}&new=1"
+        )
+        self.assertEqual(form.status_code, 200)
+        self.assertContains(form, "Add 4Cs contract")
+        self.assertContains(form, 'name="create_new"')
+        self.assertContains(form, "Passaic County 4Cs")
+        self.assertContains(form, 'value="2026-10-01"')
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_family_4cs_tab_can_edit_contract_dates(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        response = self.client.post(
+            reverse("portal_agency_contract_dates"),
+            {
+                "portal_area": "admin",
+                "profile_id": str(profile.pk),
+                "auth_start": "2026-09-01",
+                "auth_end": "2026-09-18",
+                "next": reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        profile.refresh_from_db()
+        self.assertEqual(profile.auth_end, date(2026, 9, 18))
+        starts = list(profile.contract_weeks.order_by("week_start").values_list("week_start", flat=True))
+        self.assertEqual(starts, [date(2026, 9, 1), date(2026, 9, 7), date(2026, 9, 14)])
+
+
+class FourCsMultipleContractTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="rivera", name="Rivera", billing_type="4Cs"
+        )
+        self.child = PortalChild.objects.create(family=self.family, name="Ada Rivera", is_active=True)
+
+    def test_agency_profile_for_picks_contract_covering_the_date(self):
+        from portal.billing_services import agency_profile_for
+
+        old = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 30),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+            create_new=True,
+        )
+        new = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+            daily_agency_rate="24.00",
+            daily_copay="6.00",
+            create_new=True,
+        )
+        self.assertEqual(PortalAgencyProfile.objects.filter(child=self.child).count(), 2)
+        self.assertEqual(agency_profile_for(self.child, on_date=date(2026, 9, 15)).pk, old.pk)
+        self.assertEqual(agency_profile_for(self.child, on_date=date(2026, 10, 15)).pk, new.pk)
+
 
 class ProgramCalendarFourCsTests(TestCase):
     def setUp(self):

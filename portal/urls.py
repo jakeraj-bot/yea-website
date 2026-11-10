@@ -329,6 +329,11 @@ urlpatterns = [
         name="portal_agency_week_received",
     ),
     path(
+        "agency/contract/dates/",
+        views_actions.agency_contract_dates,
+        name="portal_agency_contract_dates",
+    ),
+    path(
         "staff/member-policies/print/",
         views.staff_member_policies_print,
         name="portal_staff_member_policies_print",

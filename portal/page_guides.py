@@ -913,7 +913,15 @@ GUIDES = {
         "steps": [
             {
                 "title": "Add or edit the agency",
-                "body": "Use Add agency (or Edit agency) for the child. Set daily/weekly rates and adjust any week that is different.",
+                "body": "Use Add 4Cs contract (or Edit rates & weeks) for the child. Set daily/weekly rates and adjust any week that is different.",
+            },
+            {
+                "title": "Edit contract dates",
+                "body": "On this tab, change Contract start and Contract end, then Save dates. Use that when 4Cs ends one contract early.",
+            },
+            {
+                "title": "Keep the old contract and add a new one",
+                "body": "A child can have more than one 4Cs contract. End the old dates, then Add another contract for the new start and end. The old contract stays on this tab so you can still see it.",
             },
             {
                 "title": "Check Received when the check comes in",
