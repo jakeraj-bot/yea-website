@@ -865,7 +865,7 @@ GUIDES = {
             },
             {
                 "title": "Edit a scholarship or credit",
-                "body": "Use Edit on a Discount (scholarship) line to change the description parents and staff see. Use Edit on a Credit line to change the description, date, and amount — the family balance recalculates. Membership and charge lines still let you edit amount or description.",
+                "body": "Use Edit on a Discount (scholarship) line to change the amount or the description — the family balance recalculates. That change is for this posted scholarship only; it does not pay another family. Use Edit on a Credit line to change the description, date, and amount. Membership and charge lines still let you edit amount or description.",
             },
             {
                 "title": "Edit a membership charge",

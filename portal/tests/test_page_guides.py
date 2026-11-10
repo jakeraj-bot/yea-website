@@ -120,6 +120,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("amount", bodies.lower())
         self.assertIn("account credit", bodies.lower())
         self.assertIn("discount", bodies.lower())
+        self.assertIn("posted scholarship", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
