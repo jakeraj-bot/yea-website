@@ -2908,6 +2908,61 @@ def agency_week_received(request):
 
 
 @require_POST
+def agency_contract_dates(request):
+    from .agency_services import update_agency_contract_dates
+    from .models import PortalAgencyProfile
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
+
+    area = request.POST.get("portal_area", "staff")
+    fallback = reverse("portal_staff_page", kwargs={"page": "agency"})
+    if area == "admin":
+        fallback = reverse("portal_admin_page", kwargs={"page": "agencies"})
+    if not portal_preview_mode():
+        if area == "admin" and not is_admin_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+        if area != "admin" and not is_staff_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+    profile = (
+        PortalAgencyProfile.objects.select_related("family", "child")
+        .filter(pk=request.POST.get("profile_id"))
+        .first()
+    )
+    if not profile:
+        messages.error(request, "4Cs contract not found.")
+        return redirect(_portal_next_url(request, fallback))
+    try:
+        update_agency_contract_dates(
+            profile,
+            parse_date(request.POST.get("auth_start") or "") or None,
+            parse_date(request.POST.get("auth_end") or "") or None,
+        )
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(_portal_next_url(request, fallback))
+    messages.success(
+        request,
+        f"Updated {profile.child.name} contract dates. Weeks on this contract follow the new start and end.",
+    )
+    _log_activity(
+        request,
+        "agency",
+        action_label="Updated 4Cs contract dates",
+        object_type="agency",
+        object_label=f"{profile.child.name} {profile.auth_start}–{profile.auth_end}",
+    )
+    return redirect(_portal_next_url(request, fallback))
+
+
+@require_POST
 @parent_login_required_post
 def parent_profile_save(request):
     import json

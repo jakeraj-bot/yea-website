@@ -1,8 +1,10 @@
 """4Cs / agency billing services for staff portal."""
 
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from .agency_weeks import (
@@ -34,6 +36,37 @@ DEMO_AGENCY_AUTH_NUMBERS = frozenset({"4CS-2026-8841", "4CS-2026-9012"})
 DEMO_AGENCY_CHILDREN = frozenset({("martinez", "sofia martinez"), ("chen", "ethan chen")})
 
 
+def _display_contract_date(value):
+    if not value:
+        return ""
+    return f"{value.month}/{value.day}/{value.year}"
+
+
+def contract_status_for(profile, on_date=None):
+    when = on_date or timezone.localdate()
+    start = profile.auth_start
+    end = profile.auth_end
+    if start and start > when:
+        return "upcoming"
+    if end and end < when:
+        return "ended"
+    return "current"
+
+
+@transaction.atomic
+def update_agency_contract_dates(profile, auth_start, auth_end):
+    if not auth_start or not auth_end:
+        raise ValueError("Enter contract start and end dates.")
+    if auth_end < auth_start:
+        raise ValueError("Contract end cannot be before the start.")
+    profile.auth_start = auth_start
+    profile.auth_end = auth_end
+    profile.save(update_fields=["auth_start", "auth_end"])
+    sync_contract_weeks(profile)
+    refresh_agency_expected_balance(profile)
+    return profile
+
+
 def _agency_account_from_profile(profile, ledger=None):
     if ledger is None:
         ledger = [
@@ -45,6 +78,7 @@ def _agency_account_from_profile(profile, ledger=None):
             }
             for entry in profile.ledger_entries.all()
         ]
+    status = contract_status_for(profile)
     return {
         "family_name": profile.family.name,
         "slug": profile.family.slug,
@@ -59,6 +93,10 @@ def _agency_account_from_profile(profile, ledger=None):
         "weekly_copay": f"{profile.weekly_copay:.2f}",
         "contract_start": profile.auth_start.isoformat() if profile.auth_start else "",
         "contract_end": profile.auth_end.isoformat() if profile.auth_end else "",
+        "contract_start_display": _display_contract_date(profile.auth_start),
+        "contract_end_display": _display_contract_date(profile.auth_end),
+        "contract_status": status,
+        "contract_status_label": {"current": "Current", "ended": "Ended", "upcoming": "Upcoming"}.get(status, "Current"),
         "profile_id": profile.pk,
         "weeks": [serialize_week(week) for week in profile.contract_weeks.order_by("week_start")],
         "ledger": ledger,
@@ -96,7 +134,7 @@ def get_agency_accounts_for_family(family_slug, unit=None):
         PortalAgencyProfile.objects.filter(family__slug=family_slug)
         .select_related("child", "family", "agency")
         .prefetch_related("contract_weeks")
-        .order_by("child__name")
+        .order_by("child__name", "auth_start", "pk")
     )
     if profiles:
         return [_agency_account_from_profile(profile) for profile in profiles]
@@ -400,6 +438,7 @@ def save_agency_member(
     program_label="",
     notes="",
     profile=None,
+    create_new=False,
 ):
     family, child = _resolve_family_and_child(unit, family_slug, child_name, child_id=child_id, grade=grade)
     if unit is None:
@@ -436,9 +475,9 @@ def save_agency_member(
         "weekly_copay_overridden": bool(weekly_copay_overridden),
         "notes": notes or "",
     }
-    if profile is None:
-        profile = PortalAgencyProfile.objects.filter(child=child).first()
-    if profile:
+    if profile is None and not create_new:
+        profile = PortalAgencyProfile.objects.filter(child=child).order_by("-auth_start", "-pk").first()
+    if profile and not create_new:
         for key, value in defaults.items():
             setattr(profile, key, value)
         profile.save()
@@ -495,10 +534,10 @@ def add_agency_child(
     )
 
 
-def agency_form_context(profile=None, child=None, family=None, unit=None, data=None):
+def agency_form_context(profile=None, child=None, family=None, unit=None, data=None, create_new=False):
     agencies = list(PortalAgency.objects.filter(is_active=True).order_by("name"))
     form = {
-        "agency_name": "",
+        "agency_name": "Passaic County 4Cs",
         "family_slug": family.slug if family else "",
         "family_name": family.name if family else "",
         "child_name": child.name if child else "",
@@ -519,7 +558,26 @@ def agency_form_context(profile=None, child=None, family=None, unit=None, data=N
         "unit_name": (unit.name if unit else "") or (family.unit.name if family and family.unit_id else ""),
         "four_cs": True,
         "profile_id": profile.pk if profile else "",
+        "create_new": bool(create_new),
     }
+    if create_new and child and not profile:
+        latest = child.agency_profiles.select_related("agency").order_by("-auth_start", "-pk").first()
+        if latest:
+            next_start = (latest.auth_end + timedelta(days=1)) if latest.auth_end else ""
+            form.update(
+                {
+                    "agency_name": (
+                        latest.agency.name if latest.agency_id else form["agency_name"] or "Passaic County 4Cs"
+                    ),
+                    "daily_agency_rate": f"{latest.daily_agency_rate:.2f}",
+                    "weekly_agency_rate": f"{latest.weekly_agency_rate:.2f}",
+                    "weekly_agency_overridden": latest.weekly_agency_overridden,
+                    "daily_copay": f"{latest.daily_copay:.2f}",
+                    "weekly_copay": f"{latest.weekly_copay:.2f}",
+                    "weekly_copay_overridden": latest.weekly_copay_overridden,
+                    "auth_start": next_start.isoformat() if next_start else "",
+                }
+            )
     if profile:
         form.update(
             {

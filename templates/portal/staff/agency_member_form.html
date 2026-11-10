@@ -8,9 +8,9 @@
       {% else %}
       <a href="{% url 'portal_staff_page' page='agency' %}">4Cs / Agency</a> /
       {% endif %}
-      {% if editing %}Edit agency{% else %}Add agency{% endif %}
+      {% if editing %}Edit agency{% else %}Add 4Cs contract{% endif %}
     </p>
-    <h1>{% if editing %}Edit agency{% else %}Add agency{% endif %}{% if form.child_name %} — {{ form.child_name }}{% endif %}</h1>
+    <h1>{% if editing %}Edit agency{% else %}Add 4Cs contract{% endif %}{% if form.child_name %} — {{ form.child_name }}{% endif %}</h1>
 
   </div>
 </section>
@@ -20,6 +20,7 @@
       {% csrf_token %}
       {% if form.child_id %}<input type="hidden" name="child_id" value="{{ form.child_id }}">{% endif %}
       {% if form.locked_member %}<input type="hidden" name="family_slug" value="{{ form.family_slug }}">{% endif %}
+      {% if create_new %}<input type="hidden" name="create_new" value="1">{% endif %}
       <input type="hidden" name="weekly_agency_overridden" id="weekly-agency-overridden" value="{% if form.weekly_agency_overridden %}on{% endif %}">
       <input type="hidden" name="weekly_copay_overridden" id="weekly-parent-overridden" value="{% if form.weekly_copay_overridden %}on{% endif %}">
 

@@ -28,21 +28,50 @@
     {% include "portal/includes/family_account_tabs.html" %}
 
     {% if agency_accounts %}
+    <p class="portal-form-actions">
+      {% if portal_area == 'admin' %}
+      <a class="btn btn-primary btn-sm" href="{% url 'portal_admin_agency_member_add' %}?family_slug={{ family_slug }}&amp;new=1">Add 4Cs contract</a>
+      {% else %}
+      <a class="btn btn-primary btn-sm" href="{% url 'portal_staff_agency_member_add' %}?family_slug={{ family_slug }}&amp;new=1">Add 4Cs contract</a>
+      {% endif %}
+    </p>
     {% for billing in agency_accounts %}
     <section class="card">
-      <h2>{{ billing.child_name }}</h2>
-      <p class="form-note">{{ billing.agency_name }}{% if billing.auth_number %} · auth {{ billing.auth_number }}{% endif %}{% if billing.contract_start %} · {{ billing.contract_start }} to {{ billing.contract_end }}{% endif %}</p>
+      <h2>{{ billing.child_name }}{% if billing.contract_start_display %} · {{ billing.contract_start_display }}–{{ billing.contract_end_display }}{% endif %}
+        {% if billing.contract_status_label %}<span class="portal-status portal-status-{{ billing.contract_status }}">{{ billing.contract_status_label }}</span>{% endif %}
+      </h2>
+      <p class="form-note">{{ billing.agency_name }}{% if billing.auth_number %} · auth {{ billing.auth_number }}{% endif %}</p>
       <p class="form-note">Agency rate ${{ billing.weekly_agency_rate }}/week · parent copay ${{ billing.weekly_copay }}/week. Agency money stays here. Parent copay is on regular billing.</p>
-      <p class="portal-balance-total">${{ billing.running_balance }}</p>
       {% if billing.profile_id %}
+      <form class="portal-form-grid" method="post" action="{% url 'portal_agency_contract_dates' %}">
+        {% csrf_token %}
+        <input type="hidden" name="portal_area" value="{{ portal_area }}">
+        <input type="hidden" name="profile_id" value="{{ billing.profile_id }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="form-group">
+          <label for="contract-start-{{ billing.profile_id }}">Contract start</label>
+          <input id="contract-start-{{ billing.profile_id }}" name="auth_start" type="date" class="portal-input" value="{{ billing.contract_start }}" required>
+        </div>
+        <div class="form-group">
+          <label for="contract-end-{{ billing.profile_id }}">Contract end</label>
+          <input id="contract-end-{{ billing.profile_id }}" name="auth_end" type="date" class="portal-input" value="{{ billing.contract_end }}" required>
+        </div>
+        <div class="form-group portal-form-actions">
+          <button type="submit" class="btn btn-primary btn-sm">Save dates</button>
+        </div>
+      </form>
+      <p class="form-note">If 4Cs starts a new contract, save the old end date here, then Add another contract so both stay on this tab.</p>
       <p class="portal-form-actions">
         {% if portal_area == 'admin' %}
-        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_edit' profile_id=billing.profile_id %}">Edit agency</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_edit' profile_id=billing.profile_id %}">Edit rates &amp; weeks</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_add' %}?child_id={{ billing.child_id }}&amp;new=1">Add another contract</a>
         {% else %}
-        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_edit' profile_id=billing.profile_id %}">Edit agency</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_edit' profile_id=billing.profile_id %}">Edit rates &amp; weeks</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_add' %}?child_id={{ billing.child_id }}&amp;new=1">Add another contract</a>
         {% endif %}
       </p>
       {% endif %}
+      <p class="portal-balance-total">${{ billing.running_balance }}</p>
       {% if billing.weeks %}
       <h3>Agency expected weeks</h3>
       <div class="portal-table-wrap">
@@ -113,9 +142,9 @@
       <h2>No 4Cs account</h2>
       <p class="form-note">This family is not linked to a 4Cs agency account yet.</p>
       {% if portal_area == 'admin' %}
-      <a class="btn btn-primary" href="{% url 'portal_admin_agency_member_add' %}?family_slug={{ family_slug }}">Add agency</a>
+      <a class="btn btn-primary" href="{% url 'portal_admin_agency_member_add' %}?family_slug={{ family_slug }}">Add 4Cs contract</a>
       {% else %}
-      <a class="btn btn-primary" href="{% url 'portal_staff_agency_member_add' %}?family_slug={{ family_slug }}">Add agency</a>
+      <a class="btn btn-primary" href="{% url 'portal_staff_agency_member_add' %}?family_slug={{ family_slug }}">Add 4Cs contract</a>
       {% endif %}
     </section>
     {% endif %}

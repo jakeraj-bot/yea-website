@@ -330,6 +330,15 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("assistant", bodies.lower())
         self.assertIn("off until you check it", bodies.lower())
 
+    def test_family_agency_guide_explains_multiple_contracts(self):
+        guide = guide_for("family-agency")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Edit contract dates", titles)
+        self.assertIn("Keep the old contract and add a new one", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("Save dates", bodies)
+        self.assertIn("more than one 4Cs contract", bodies)
+
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")
         bodies = " ".join(step["body"] for step in guide["steps"])

@@ -2941,6 +2941,7 @@ def _render_agency_member_form(request, area, profile_id=None):
     profile = None
     child = None
     family = None
+    create_new = request.POST.get("create_new") == "1" or request.GET.get("new") == "1"
     if profile_id:
         qs = PortalAgencyProfile.objects.select_related("child", "family", "agency", "unit")
         if unit:
@@ -2962,9 +2963,10 @@ def _render_agency_member_form(request, area, profile_id=None):
             if child:
                 family = child.family
                 unit = unit or family.unit
-                profile = PortalAgencyProfile.objects.filter(child=child).select_related(
-                    "child", "family", "agency", "unit"
-                ).first()
+                if not create_new:
+                    profile = PortalAgencyProfile.objects.filter(child=child).select_related(
+                        "child", "family", "agency", "unit"
+                    ).order_by("-auth_start", "-pk").first()
         elif family_slug:
             family_qs = PortalFamily.objects.filter(slug=family_slug)
             if unit:
@@ -2998,13 +3000,21 @@ def _render_agency_member_form(request, area, profile_id=None):
                 program_label=request.POST.get("program", ""),
                 notes=request.POST.get("notes", ""),
                 profile=profile,
+                create_new=create_new,
             )
             messages.success(request, f"Agency saved for {saved.child.name}. Parent copay weeks feed the billing plan; agency weeks stay on the 4Cs tab.")
             return redirect(_agency_member_redirect(area, saved.family))
         except ValueError as exc:
             messages.error(request, str(exc))
 
-    extra = agency_form_context(profile=profile, child=child, family=family, unit=unit, data=request.POST or None)
+    extra = agency_form_context(
+        profile=profile,
+        child=child,
+        family=family,
+        unit=unit,
+        data=request.POST or None,
+        create_new=create_new,
+    )
     if area == "admin":
         families = PortalFamily.objects.select_related("unit").order_by("name")
     else:
@@ -3020,8 +3030,9 @@ def _render_agency_member_form(request, area, profile_id=None):
     extra["week_preview_url"] = reverse("portal_agency_week_preview")
     extra["form_action"] = request.path
     extra["cancel_url"] = _agency_member_redirect(area, family)
-    extra["editing"] = bool(profile)
-    title = "Edit agency" if profile else "Add agency"
+    extra["editing"] = bool(profile) and not create_new
+    extra["create_new"] = create_new
+    title = "Edit agency" if extra["editing"] else "Add 4Cs contract"
     if extra["form"].get("child_name"):
         title = f"{title} — {extra['form']['child_name']}"
     if area == "admin":
