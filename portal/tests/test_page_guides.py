@@ -340,10 +340,13 @@ class PageGuideCatalogTests(TestCase):
         guide = guide_for("family-agency")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Edit contract dates", titles)
+        self.assertIn("Delete a contract", titles)
         self.assertIn("Keep the old contract and add a new one", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("Save dates", bodies)
         self.assertIn("more than one 4Cs contract", bodies)
+        self.assertIn("member name", bodies.lower())
+        self.assertIn("Delete contract", bodies)
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")

@@ -49,6 +49,10 @@
         <input type="hidden" name="profile_id" value="{{ billing.profile_id }}">
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
         <div class="form-group">
+          <label for="contract-child-{{ billing.profile_id }}">Member (child) name</label>
+          <input id="contract-child-{{ billing.profile_id }}" name="child_name" type="text" class="portal-input" value="{{ billing.child_name }}" required>
+        </div>
+        <div class="form-group">
           <label for="contract-start-{{ billing.profile_id }}">Contract start</label>
           <input id="contract-start-{{ billing.profile_id }}" name="auth_start" type="date" class="portal-input" value="{{ billing.contract_start }}" required>
         </div>
@@ -60,8 +64,8 @@
           <button type="submit" class="btn btn-primary btn-sm">Save dates</button>
         </div>
       </form>
-      <p class="form-note">If 4Cs starts a new contract, save the old end date here, then Add another contract so both stay on this tab.</p>
-      <p class="portal-form-actions">
+      <p class="form-note">Change the member name to fix a typo or move this contract to a sibling on this family. If 4Cs starts a new contract, save the old end date here, then Add another contract so both stay on this tab.</p>
+      <div class="portal-form-actions">
         {% if portal_area == 'admin' %}
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_edit' profile_id=billing.profile_id %}">Edit rates &amp; weeks</a>
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_admin_agency_member_add' %}?child_id={{ billing.child_id }}&amp;new=1">Add another contract</a>
@@ -69,7 +73,14 @@
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_edit' profile_id=billing.profile_id %}">Edit rates &amp; weeks</a>
         <a class="btn btn-secondary btn-sm" href="{% url 'portal_staff_agency_member_add' %}?child_id={{ billing.child_id }}&amp;new=1">Add another contract</a>
         {% endif %}
-      </p>
+        <form method="post" action="{% url 'portal_agency_contract_delete' %}" class="portal-inline-form" onsubmit="return confirm('Delete this 4Cs contract? Agency weeks and the agency ledger for this contract are removed. Parent copay charges on Billing stay.');">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          <input type="hidden" name="profile_id" value="{{ billing.profile_id }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Delete contract</button>
+        </form>
+      </div>
       {% endif %}
       <p class="portal-balance-total">${{ billing.running_balance }}</p>
       {% if billing.weeks %}

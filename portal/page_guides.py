@@ -309,7 +309,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Add an agency",
-                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates.",
+                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates. You can change the member name later, or delete the contract if it was added by mistake.",
             },
             {
                 "title": "Set daily and weekly rates",
@@ -339,7 +339,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Add an agency",
-                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates. From the waiting list, Add agency opens with that child already filled in.",
+                "body": "Use Add agency. Enter the agency name, the child, and the contract start and end dates. From the waiting list, Add agency opens with that child already filled in. You can change the member name later, or delete the contract if it was added by mistake.",
             },
             {
                 "title": "Set daily and weekly rates",
@@ -883,7 +883,7 @@ GUIDES = {
             },
             {
                 "title": "4Cs vs private pay",
-                "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab.",
+                "body": "A 4Cs copay still belongs on this family’s regular billing. The plan adds up parent copay weeks. Agency remittance is on the 4Cs tab. Remove 4Cs copay plan takes this parent plan off the child; the 4Cs contract stays on the 4Cs tab. Change the child name on the 4Cs tab, not here.",
             },
             {
                 "title": "Enter a weekly rate on monthly plans",
@@ -913,11 +913,15 @@ GUIDES = {
         "steps": [
             {
                 "title": "Add or edit the agency",
-                "body": "Use Add 4Cs contract (or Edit rates & weeks) for the child. Set daily/weekly rates and adjust any week that is different.",
+                "body": "Use Add 4Cs contract (or Edit rates & weeks) for the child. Set daily/weekly rates and adjust any week that is different. Member name is editable — fix a typo or type a sibling's name to move this contract.",
             },
             {
                 "title": "Edit contract dates",
-                "body": "On this tab, change Contract start and Contract end, then Save dates. Use that when 4Cs ends one contract early.",
+                "body": "On this tab, change the member name, Contract start, and Contract end, then Save dates. Use that when 4Cs ends one contract early or the child name is wrong.",
+            },
+            {
+                "title": "Delete a contract",
+                "body": "Delete contract removes that 4Cs plan — agency weeks and the agency ledger for it. Parent copay charges on Billing stay. Other contracts on this child stay.",
             },
             {
                 "title": "Keep the old contract and add a new one",
