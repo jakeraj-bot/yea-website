@@ -515,6 +515,52 @@ class PaymentEditOverdueUnitBalanceTests(TestCase):
         self.assertEqual(family_balance(self.family), Decimal("40.00"))
         page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
         self.assertContains(page, "Scholarship updated.")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_delete_scholarship_updates_family_balance(self):
+        today = timezone.localdate()
+        fund = save_scholarship_fund({"name": "YEA General Scholarship", "description": "Need-based"})
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "70.00",
+            billing_type="Scholarship",
+            scholarship_fund_id=fund.pk,
+            scholarship_full_rate="70.00",
+            scholarship_parent_amount="50.00",
+            auto_charge=True,
+            next_charge_date=today,
+            charge_weekday=today.weekday(),
+        )
+        discount = PortalLedgerEntry.objects.get(family=self.family, entry_type="discount")
+        self.assertEqual(discount.amount, Decimal("-20.00"))
+        self.assertEqual(family_balance(self.family), Decimal("50.00"))
+        preview = prepare_billing_for_staff(self.family, {"can_delete_charge": True})
+        discount_row = next(row for row in preview["ledger"] if row["type"] == "discount")
+        self.assertTrue(discount_row["deletable"])
+        hidden = prepare_billing_for_staff(self.family, {"can_delete_charge": False})
+        hidden_row = next(row for row in hidden["ledger"] if row["type"] == "discount")
+        self.assertFalse(hidden_row["deletable"])
+
+        self._login(self.admin, "admin")
+        billing = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(billing, "Delete this scholarship")
+        response = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "jacobs"}),
+            {
+                "portal_area": "admin",
+                "action": "delete",
+                "entry_id": str(discount.pk),
+                "delete_reason": "Scholarship ended early",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(PortalLedgerEntry.objects.filter(pk=discount.pk).exists())
+        self.assertEqual(family_balance(self.family), Decimal("70.00"))
+        page = self.client.get(reverse("portal_admin_family_billing", kwargs={"family_slug": "jacobs"}))
+        self.assertContains(page, "Scholarship removed")
+
         other = PortalFamily.objects.create(
             unit=self.unit,
             slug="martinez",

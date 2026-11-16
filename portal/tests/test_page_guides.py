@@ -115,12 +115,13 @@ class PageGuideCatalogTests(TestCase):
         guide = guide_for("family-billing")
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("Edit a membership charge", titles)
-        self.assertIn("Edit a scholarship or credit", titles)
+        self.assertIn("Edit or delete a scholarship", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("amount", bodies.lower())
         self.assertIn("account credit", bodies.lower())
         self.assertIn("discount", bodies.lower())
         self.assertIn("posted scholarship", bodies.lower())
+        self.assertIn("delete", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")
@@ -191,13 +192,14 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Yes/No per staff member", guide["intro"])
         titles = [step["title"] for step in guide["steps"]]
         self.assertIn("What each permission does", titles)
-        self.assertIn("Turn on approval when needed", titles)
+        self.assertIn("Turn on approval or application edits when needed", titles)
         self.assertIn("Let someone delete attendance", titles)
         self.assertIn("Turn Program Director billing on", titles)
         self.assertIn("Show Practice parent", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("admin-only", bodies)
         self.assertIn("Delete attendance", bodies)
+        self.assertIn("Edit applications", bodies)
         self.assertIn("Add charge", bodies)
         self.assertIn("Member billing", bodies)
         self.assertIn("Open practice parent", bodies)
@@ -253,6 +255,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("tax statements", bodies.lower())
         self.assertIn("not a copy", bodies)
         self.assertIn("will not see that child on both tabs", bodies)
+        self.assertIn("Every program application", bodies)
         profile = guide_for("family-profile")
         titles = [step["title"] for step in profile["steps"]]
         self.assertIn("Make a child inactive or active", titles)
@@ -267,6 +270,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Program site", profile_bodies)
         self.assertIn("not a second child", profile_bodies)
         self.assertIn("stops attending altogether", profile_bodies)
+        self.assertIn("also marked inactive", profile_bodies)
+        self.assertIn("restores those applications", profile_bodies)
         inactive = guide_for("inactive-children")
         self.assertIsNotNone(inactive)
         self.assertIn("remaining balance", inactive["intro"].lower())
@@ -342,11 +347,14 @@ class PageGuideCatalogTests(TestCase):
 
     def test_family_applications_guide_covers_after_care_add(self):
         guide = guide_for("family-applications")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Edit the application if details are wrong", titles)
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("+ After-care", bodies)
         self.assertIn("No new enrollment application", bodies)
         self.assertIn("Approved", bodies)
         self.assertIn("second family", bodies)
+        self.assertIn("Edit applications", bodies)
 
     def test_parent_applications_guide_explains_after_care(self):
         guide = guide_for("parent-applications")

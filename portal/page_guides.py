@@ -247,7 +247,7 @@ GUIDES = {
             },
             {
                 "title": "Edit the application if details are wrong",
-                "body": "Portal admin and Program director can use Edit application on this page to fix names, school, grade, contacts, program, and payment details before or while they approve. That is program work — it does not use Django /admin/. Front desk staff can still approve when they have permission, but they cannot rewrite the application.",
+                "body": "Portal admin can always use Edit application on this page to fix names, school, grade, contacts, program, and payment details. Program director and other staff need Edit applications on Staff permissions. That is program work — it does not use Django /admin/. Front desk can still approve when they have permission, and they can rewrite the application only if that setting is on.",
             },
             {
                 "title": "Print if you need a paper copy",
@@ -269,11 +269,11 @@ GUIDES = {
             },
             {
                 "title": "Inactive tab",
-                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
+                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. Every program application for that child is also marked inactive. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
             },
             {
                 "title": "Make them active again",
-                "body": "Open the Inactive tab and use Make active, or open the family account and use Make active there. They return to this list and to attendance.",
+                "body": "Open the Inactive tab and use Make active, or open the family account and use Make active there. They return to this list and to attendance, and their program applications become active again.",
             },
             {
                 "title": "Parents can still pay and get tax forms",
@@ -463,7 +463,7 @@ GUIDES = {
             },
             {
                 "title": "Make them active again",
-                "body": "Open the child name, then use Make active on Program status at the top of the profile. They return to All families, attendance, and Overview counts.",
+                "body": "Open the child name, then use Make active on Program status at the top of the profile. They return to All families, attendance, and Overview counts. Their program applications become active again too.",
             },
         ],
     },
@@ -765,7 +765,7 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Every program application for that child (before-care, after-care, summer) is also marked inactive. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back — that restores those applications too. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
                 "title": "Move a child to another school",
@@ -773,7 +773,7 @@ GUIDES = {
             },
             {
                 "title": "Make one application inactive",
-                "body": "If a child has before-care and after-care, you can turn off one program without making the whole child inactive. On Program status, each application has Make this before-care application inactive or Make this after-care application inactive. That child leaves attendance and the before-care roster for that program only. Restore this application if they come back to that program. You can also do this from the application page or the Applications tab.",
+                "body": "If a child has before-care and after-care, you can turn off one program without making the whole child inactive. On Program status, each application has Make this before-care application inactive or Make this after-care application inactive. That child leaves attendance and the before-care roster for that program only. Restore this application if they come back to that program. You can also do this from the application page or the Applications tab. If they stop every program, use Make inactive on the whole child instead — that marks all of their applications inactive.",
             },
             {
                 "title": "Reset parent password",
@@ -864,8 +864,8 @@ GUIDES = {
                 "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete that payment (confirm and give a reason). Deleting a payment only removes that payment — remaining charges minus remaining payments and credits is the new balance. An overpayment still shows as account credit. Card payments through Stripe stay on the ledger unless you refund.",
             },
             {
-                "title": "Edit a scholarship or credit",
-                "body": "Use Edit on a Discount (scholarship) line to change the amount or the description — the family balance recalculates. That change is for this posted scholarship only; it does not pay another family. Use Edit on a Credit line to change the description, date, and amount. Membership and charge lines still let you edit amount or description.",
+                "title": "Edit or delete a scholarship",
+                "body": "Use Edit on a Discount (scholarship) line to change the amount or the description — the family balance recalculates. Use Delete to remove that posted scholarship from the ledger. That does not pay another family, and it does not turn the scholarship off on Plans — pick No scholarship there if you do not want it to post again. Use Edit on a Credit line to change the description, date, and amount. Membership and charge lines still let you edit amount or description.",
             },
             {
                 "title": "Edit a membership charge",
@@ -940,6 +940,10 @@ GUIDES = {
             {
                 "title": "Switch children if needed",
                 "body": "A family can have more than one child. Open the application you need, then print the PDF if you want a paper copy.",
+            },
+            {
+                "title": "Edit the application if details are wrong",
+                "body": "Staff with Edit applications on Staff permissions can open Edit application here and update names, school, contacts, and program. Portal admin can always do this.",
             },
             {
                 "title": "Add After-care for a waitlisted before-care child",
@@ -1019,15 +1023,15 @@ GUIDES = {
     },
     "billing-permissions": {
         "title": "How to set staff permissions",
-        "intro": "Yes/No per staff member — billing, application approval, and attendance delete. Checkboxes wrap across each row so every permission stays on the page.",
+        "intro": "Yes/No per staff member — billing, application approval, application edits, and attendance delete. Checkboxes wrap across each row so every permission stays on the page.",
         "steps": [
             {
                 "title": "What each permission does",
-                "body": "Add charge — post fees to a member account. Delete charge — remove a posted charge. Add credit — post a credit/adjustment that reduces balance. Edit family plans — change billing plan and amount on a child account. Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal. Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Admin can always approve.",
+                "body": "Add charge — post fees to a member account. Delete charge — remove a posted charge, credit, or scholarship. Add credit — post a credit/adjustment that reduces balance. Edit family plans — change billing plan and amount on a child account. Approve applications — let this staff member approve after-school and other enrollment applications in the staff portal. Approve waitlist — let this staff member approve before care waitlist applications in the staff portal. Edit applications — let this staff member change names, school, contacts, and program on a family’s application. Admin can always approve and edit.",
             },
             {
-                "title": "Turn on approval when needed",
-                "body": "Waitlist and application approval stay admin-only until you turn them on here.",
+                "title": "Turn on approval or application edits when needed",
+                "body": "Waitlist and application approval stay admin-only until you turn them on here. Edit applications is the same — turn it on for staff who should update a family’s application after it is submitted.",
             },
             {
                 "title": "Let someone delete attendance",

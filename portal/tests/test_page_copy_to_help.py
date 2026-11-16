@@ -128,6 +128,7 @@ class PortalPageCopyMovedToHelpTests(TestCase):
         self.assertIn("Make a child inactive or active", titles)
         self.assertIn("Move a child to another school", titles)
         self.assertIn("stops attending altogether", bodies)
+        self.assertIn("also marked inactive", bodies)
         self.assertIn("Program site", bodies)
         self.assertIn("another school", bodies)
 
@@ -140,7 +141,7 @@ class PortalPageCopyMovedToHelpTests(TestCase):
             html,
         )
         self.assertContains(permissions, "How to use this page")
-        self.assertContains(permissions, "Turn on approval when needed")
+        self.assertContains(permissions, "Turn on approval or application edits when needed")
         self.assertContains(permissions, "Yes/No per staff member")
         self.assertContains(permissions, "Organization admin can always delete attendance")
 

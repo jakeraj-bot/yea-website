@@ -48,6 +48,7 @@ class ApplicationEditPermissionTests(TestCase):
             role="Program director",
             can_approve_applications=True,
             can_approve_waitlist=True,
+            can_edit_applications=True,
             is_active=True,
         )
         self.desk_user = User.objects.create_user(username="staff:frontdesk", password="StaffPass123")
@@ -111,7 +112,7 @@ class ApplicationEditPermissionTests(TestCase):
             "payment_plan": self.app.payment_plan,
         }
 
-    def test_helper_grants_portal_admin_and_program_director_not_front_desk(self):
+    def test_helper_grants_portal_admin_and_flagged_staff_not_front_desk(self):
         self.assertFalse(self.admin_user.is_superuser)
         self.assertTrue(is_portal_admin(self.admin_user))
         self.assertTrue(can_edit_enrollment_application(self.admin_account, "admin"))
@@ -244,6 +245,47 @@ class ApplicationEditPermissionTests(TestCase):
         )
         self.assertEqual(desk.status_code, 200)
         self.assertNotContains(desk, "Save application changes")
+
+    def test_front_desk_with_edit_applications_can_update_family_application(self):
+        self.desk_account.can_edit_applications = True
+        self.desk_account.save(update_fields=["can_edit_applications"])
+        self.assertTrue(can_edit_enrollment_application(self.desk_account, "staff"))
+        self._login(self.desk_user, "staff")
+        page = self.client.get(
+            reverse("portal_staff_family_applications", kwargs={"family_slug": self.family.slug})
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Edit application")
+        self.assertContains(page, "Save application changes")
+        response = self.client.post(
+            reverse("portal_staff_application_review", kwargs={"app_slug": self.app_slug}),
+            self._edit_post("DeskAllowed"),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.student_first_name, "DeskAllowed")
+
+    def test_permissions_page_saves_edit_applications(self):
+        self._login(self.admin_user, "admin")
+        page = self.client.get(reverse("portal_admin_page", kwargs={"page": "billing-permissions"}))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Edit applications")
+        response = self.client.post(
+            reverse("portal_admin_billing_permissions"),
+            {
+                f"edit_apps_{self.staff_account.pk}": "on",
+                f"approve_apps_{self.desk_account.pk}": "on",
+                f"approve_waitlist_{self.desk_account.pk}": "on",
+                f"edit_apps_{self.pd_account.pk}": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.staff_account.refresh_from_db()
+        self.desk_account.refresh_from_db()
+        self.pd_account.refresh_from_db()
+        self.assertTrue(self.staff_account.can_edit_applications)
+        self.assertFalse(self.desk_account.can_edit_applications)
+        self.assertTrue(self.pd_account.can_edit_applications)
 
     def test_program_director_does_not_gain_django_admin(self):
         self.assertFalse(is_portal_admin(self.pd_user))

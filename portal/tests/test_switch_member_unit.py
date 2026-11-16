@@ -104,6 +104,7 @@ class SwitchMemberUnitTests(TestCase):
             display_name="Program Director",
             role="Program director",
             can_approve_applications=True,
+            can_edit_applications=True,
             is_active=True,
         )
         self.desk = User.objects.create_user(username="staff:frontdesk", password="StaffPass123")

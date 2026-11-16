@@ -79,6 +79,7 @@ class Command(BaseCommand):
                 "can_edit_family_plans": True,
                 "can_approve_applications": True,
                 "can_approve_waitlist": True,
+                "can_edit_applications": True,
                 "is_active": True,
             },
         )

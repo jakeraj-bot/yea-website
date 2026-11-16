@@ -811,6 +811,7 @@ PORTAL_STAFF_USERS = [
         "can_edit_family_plans": True,
         "can_approve_applications": True,
         "can_approve_waitlist": True,
+        "can_edit_applications": True,
         "can_delete_attendance": True,
     },
     {
@@ -882,7 +883,7 @@ def prepare_billing_preview(billing, permissions):
     enriched = {**billing}
     ledger = []
     for index, row in enumerate(billing.get("ledger", [])):
-        is_manual = row.get("manual") or row.get("type") in ("charge", "credit", "membership")
+        is_manual = row.get("manual") or row.get("type") in ("charge", "credit", "membership", "discount")
         is_offline_payment = bool(row.get("offline_payment")) or (
             row.get("type") == "payment" and bool(row.get("manual")) and not row.get("fee")
         )
