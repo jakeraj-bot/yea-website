@@ -269,7 +269,7 @@ GUIDES = {
             },
             {
                 "title": "Inactive tab",
-                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. Every program application for that child is also marked inactive. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
+                "body": "When a child stops attending, make them inactive on the family account. They move from Active to Inactive — the same child, not a copy. You will not see that child on both tabs. Every program application for that child is also marked inactive, and billing plans on that child are removed. The family account, ledger, and parent login stay. If a household has one attending child and one inactive sibling, Active shows only the attending child and Inactive shows only the sibling who left.",
             },
             {
                 "title": "Make them active again",
@@ -277,7 +277,7 @@ GUIDES = {
             },
             {
                 "title": "Parents can still pay and get tax forms",
-                "body": "Inactive does not delete anything. Parents can still see the balance, use Pay now if they owe, download receipts, and get tax statements.",
+                "body": "Inactive does not delete the account or the ledger. Billing plans on that child are removed so auto-charge stops. Parents can still see the balance, use Pay now if they owe, download receipts, and get tax statements.",
             },
             {
                 "title": "Save school attending",
@@ -765,7 +765,7 @@ GUIDES = {
             },
             {
                 "title": "Make a child inactive or active",
-                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Every program application for that child (before-care, after-care, summer) is also marked inactive. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back — that restores those applications too. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
+                "body": "Stay on the Profile tab. Program status is open at the top, under the tabs — do not use Parent view. Each child’s card also has Make inactive. Use it when a child stops attending altogether — not when they move to another school (change Program site for that). Confirm. They move from the Active tab to Inactive — this does not copy the account. Every program application for that child (before-care, after-care, summer) is also marked inactive, and billing plans on that child are removed so auto-charge stops. Ledger, receipts, and parent login stay. They leave Overview balances, enrollment, attendance, and the Active families list. Use Make active if they come back — that restores those applications too. Add a billing plan again on Plans if they return. Parents can still pay a remaining balance and download tax statements. Profile cards fold with the chevron; Program status stays open.",
             },
             {
                 "title": "Move a child to another school",
@@ -904,6 +904,10 @@ GUIDES = {
             {
                 "title": "When bi-weekly starts",
                 "body": "Parents bill from the program start in Settings → Program calendar (for example 9/8/2026–9/18/2026), even when the 4Cs contract starts 9/1. You can also check or uncheck weeks on this plan so only the weeks you pick get posted.",
+            },
+            {
+                "title": "Inactive children lose their plans",
+                "body": "Make inactive on the whole child removes every billing plan on that child — after-care, before-care, 4Cs copay, and scholarship schedules. Posted ledger charges stay. 4Cs agency contracts on the 4Cs tab stay. Add a plan again on this tab if they come back.",
             },
         ],
     },

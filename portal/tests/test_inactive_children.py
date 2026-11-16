@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -10,14 +10,18 @@ from enrollment.models import EnrollmentApplication
 from portal.admin_reports import build_admin_report
 from portal.admin_services import get_admin_families_live
 from portal.attendance_service import families_for_staff
-from portal.billing_services import post_charge
+from portal.billing_services import child_has_saved_plan, post_charge, update_child_billing_plan
+from portal.member_admin import set_child_active
 from portal.enrollment_counts import unit_enrollment_count
 from portal.family_list import phone_digits, query_matches_phones, row_matches_list_nav
 from portal.models import (
     PortalChild,
+    PortalChildBillingPlan,
     PortalFamily,
     PortalLedgerEntry,
     PortalParentAccount,
+    PortalScholarshipAssignment,
+    PortalScholarshipFund,
     PortalStaffAccount,
     PortalUnit,
 )
@@ -236,6 +240,144 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertTrue(self.maya.is_active)
         self.assertTrue(before.is_active)
         self.assertTrue(after.is_active)
+
+    def test_set_child_inactive_removes_plans_and_scholarships(self):
+        plan = PortalChildBillingPlan.objects.create(
+            child=self.maya,
+            description="After care",
+            billing_plan="Weekly",
+            billing_amount=Decimal("60.00"),
+            auto_charge=True,
+        )
+        fund = PortalScholarshipFund.objects.create(name="YEA General")
+        PortalScholarshipAssignment.objects.create(
+            child=self.maya,
+            billing_plan=plan,
+            fund=fund,
+            full_rate=Decimal("60.00"),
+            parent_amount=Decimal("40.00"),
+        )
+        sibling_plan = PortalChildBillingPlan.objects.create(
+            child=self.jordan,
+            description="After care",
+            billing_plan="Weekly",
+            billing_amount=Decimal("35.00"),
+        )
+        self.maya.billing_amount = Decimal("60.00")
+        self.maya.auto_charge = True
+        self.maya.save(update_fields=["billing_amount", "auto_charge"])
+
+        set_child_active(self.maya, False)
+        self.maya.refresh_from_db()
+        self.assertFalse(self.maya.is_active)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.maya).count(), 0)
+        self.assertEqual(PortalScholarshipAssignment.objects.filter(child=self.maya).count(), 0)
+        self.assertIsNone(self.maya.billing_amount)
+        self.assertFalse(self.maya.auto_charge)
+        self.assertIsNone(self.maya.next_charge_date)
+        self.assertFalse(child_has_saved_plan(self.maya))
+        self.assertTrue(PortalChildBillingPlan.objects.filter(pk=sibling_plan.pk).exists())
+
+        set_child_active(self.maya, True)
+        self.maya.refresh_from_db()
+        self.assertTrue(self.maya.is_active)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.maya).count(), 0)
+        self.assertFalse(child_has_saved_plan(self.maya))
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_make_inactive_removes_billing_plans_and_keeps_ledger(self):
+        future = timezone.localdate() + timedelta(days=7)
+        weekday = future.weekday()
+        update_child_billing_plan(
+            self.family,
+            "Maya Jacobs",
+            "Weekly",
+            "60.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=future,
+            charge_weekday=weekday,
+            description="After care",
+        )
+        update_child_billing_plan(
+            self.family,
+            "Maya Jacobs",
+            "Weekly",
+            "25.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=future,
+            charge_weekday=weekday,
+            description="Before care",
+            create_new=True,
+        )
+        update_child_billing_plan(
+            self.family,
+            "Jordan Jacobs",
+            "Weekly",
+            "35.00",
+            "Private pay",
+            auto_charge=True,
+            next_charge_date=future,
+            charge_weekday=weekday,
+            description="Jordan after care",
+        )
+        post_charge(
+            self.family,
+            "Maya Jacobs",
+            "tuition",
+            "40.00",
+            date(2026, 9, 1),
+            "Weekly tuition",
+            notify=False,
+        )
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.maya).count(), 2)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.jordan).count(), 1)
+
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"}),
+            {
+                "family_id": self.family.pk,
+                "child_id": self.maya.pk,
+                "active": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.maya.refresh_from_db()
+        self.assertFalse(self.maya.is_active)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.maya).count(), 0)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.jordan).count(), 1)
+        self.assertIsNone(self.maya.billing_amount)
+        self.assertFalse(self.maya.auto_charge)
+        self.assertFalse(child_has_saved_plan(self.maya))
+        self.assertTrue(
+            PortalLedgerEntry.objects.filter(
+                family=self.family, child_name="Maya Jacobs", entry_type="charge"
+            ).exists()
+        )
+
+        plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "jacobs"}))
+        self.assertEqual(plans.status_code, 200)
+        self.assertContains(plans, "Jordan after care")
+        self.assertContains(plans, 'data-amount="35.00"')
+        self.assertNotContains(plans, 'data-amount="60.00"')
+        self.assertNotContains(plans, 'data-amount="25.00"')
+        self.assertNotContains(plans, 'data-description="Before care"')
+
+        restore = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"}),
+            {
+                "family_id": self.family.pk,
+                "child_id": self.maya.pk,
+                "active": "1",
+            },
+        )
+        self.assertEqual(restore.status_code, 302)
+        self.assertEqual(PortalChildBillingPlan.objects.filter(child=self.maya).count(), 0)
+        self.maya.refresh_from_db()
+        self.assertTrue(self.maya.is_active)
+        self.assertFalse(child_has_saved_plan(self.maya))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_one_child_family_leaves_active_tab_when_made_inactive(self):

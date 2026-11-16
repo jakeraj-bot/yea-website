@@ -2399,7 +2399,7 @@ def family_child_status(request, family_slug):
     else:
         messages.success(
             request,
-            f"{child.name} is inactive. Their account stays. All of their program applications are also inactive. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
+            f"{child.name} is inactive. Their account stays. All of their program applications are also inactive, and billing plans on this child are removed. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
         )
         default_next = families_page + "?tab=inactive"
     _log_activity(

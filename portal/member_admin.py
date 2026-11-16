@@ -558,9 +558,13 @@ def set_child_active(child, active):
     """Keep the account; toggle whether this child is on the attending roster.
 
     Making the whole child inactive also marks every matching program
-    application inactive (before-care, after-care, summer). Making the child
-    active again restores those applications so they return to attendance.
+    application inactive (before-care, after-care, summer) and removes every
+    billing plan on that child. Making the child active again restores those
+    applications so they return to attendance. Billing plans stay off until
+    staff add one again.
     """
+    from .billing_services import clear_child_billing_plans
+
     if child is None:
         raise ValueError("Child not found.")
     wanted = bool(active)
@@ -571,6 +575,8 @@ def set_child_active(child, active):
             continue
         app.is_active = wanted
         app.save(update_fields=["is_active"])
+    if not wanted:
+        clear_child_billing_plans(child)
     return child
 
 

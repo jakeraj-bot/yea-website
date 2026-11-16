@@ -2234,6 +2234,41 @@ def get_scheduled_plan_charges(limit=50):
 
 
 @transaction.atomic
+def clear_child_billing_plans(child):
+    """Remove every billing schedule from this child. Ledger history stays.
+
+    Scholarship assignments on the child go with the plans. Auto-charge dates
+    and amounts on the child record are cleared so the Plans tab does not
+    keep showing a leftover weekly amount.
+    """
+    if child is None or not child.pk:
+        return child
+    PortalScholarshipAssignment.objects.filter(child=child).delete()
+    PortalChildBillingPlan.objects.filter(child=child).delete()
+    child.billing_plan = "Weekly"
+    child.billing_amount = None
+    child.weekly_rate = None
+    child.auto_charge = False
+    child.next_charge_date = None
+    child.last_auto_charge_date = None
+    child.charge_weekday = None
+    child.charge_month_day = None
+    child.save(
+        update_fields=[
+            "billing_plan",
+            "billing_amount",
+            "weekly_rate",
+            "auto_charge",
+            "next_charge_date",
+            "last_auto_charge_date",
+            "charge_weekday",
+            "charge_month_day",
+        ]
+    )
+    return child
+
+
+@transaction.atomic
 def delete_child_billing_plan(family, child_name, plan_id):
     child = family.children.filter(name=child_name, is_active=True).first()
     if not child:
