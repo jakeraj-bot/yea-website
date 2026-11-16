@@ -405,6 +405,7 @@ def admin_billing_permissions(request):
                 _perm_yes(request.POST, f"approve_apps_{sid}"),
                 _perm_yes(request.POST, f"approve_waitlist_{sid}"),
                 can_delete_attendance=_perm_yes(request.POST, f"delete_attendance_{sid}"),
+                can_edit_applications=_perm_yes(request.POST, f"edit_apps_{sid}"),
             )
             updated += 1
         messages.success(request, f"Billing permissions saved for {updated} staff member(s).")
@@ -1926,21 +1927,33 @@ def staff_billing_action(request, family_slug):
             entry_id = request.POST.get("entry_id")
             entry = PortalLedgerEntry.objects.filter(family=family, pk=entry_id).first()
             offline_payment = bool(entry and is_offline_staff_payment(entry))
+            is_scholarship = bool(entry and entry.entry_type == "discount")
             if not offline_payment and not permissions.get("can_delete_charge"):
                 raise ValueError("Your role cannot delete ledger entries.")
             reason = _require_delete_reason(request)
             notify_update = request.POST.get("notify_balance", "on") == "on"
             delete_ledger_entry(family, entry_id, notify=notify_update)
+            if offline_payment:
+                action_label = "Deleted payment"
+                object_type = "payment"
+            elif is_scholarship:
+                action_label = "Deleted a scholarship"
+                object_type = "discount"
+            else:
+                action_label = "Deleted charge"
+                object_type = "charge"
             _log_activity(
                 request,
                 "delete",
-                action_label="Deleted payment" if offline_payment else "Deleted charge",
-                object_type="payment" if offline_payment else "charge",
+                action_label=action_label,
+                object_type=object_type,
                 object_label=f"{family.name} ledger #{entry_id}",
                 delete_reason=reason,
             )
             if offline_payment:
                 messages.success(request, "Payment removed. The family balance was updated.")
+            elif is_scholarship:
+                messages.success(request, "Scholarship removed. The family balance was updated.")
             else:
                 messages.success(request, "Ledger entry removed.")
         elif action == "refund":
@@ -2380,13 +2393,13 @@ def family_child_status(request, family_slug):
     if make_active:
         messages.success(
             request,
-            f"{child.name} is active again. They are back on the Active families list.",
+            f"{child.name} is active again. They are back on the Active families list, and their program applications are active too.",
         )
         default_next = _with_family_id(fallback, family)
     else:
         messages.success(
             request,
-            f"{child.name} is inactive. Their account stays. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
+            f"{child.name} is inactive. Their account stays. All of their program applications are also inactive. Open the Inactive tab to find them, or make them active again here. Parents can still pay and download tax statements.",
         )
         default_next = families_page + "?tab=inactive"
     _log_activity(

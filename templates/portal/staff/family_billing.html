@@ -273,7 +273,7 @@
               <button type="button" class="btn btn-secondary btn-sm edit-ledger-desc" title="{% if row.offline_payment %}Edit date, check or money order number{% elif row.type == 'credit' %}Edit credit date, amount, or description{% elif row.type == 'discount' %}Edit scholarship amount or description{% else %}Edit amount or description{% endif %}">Edit</button>
               {% endif %}
               {% if row.deletable and billing_live %}
-              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% else %}Remove this ledger entry?{% endif %}">
+              <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form js-need-delete-reason" data-delete-message="{% if row.offline_payment %}Delete this payment? It comes off the ledger, then the family balance updates from remaining charges, payments, and credits. If they still overpaid, the account keeps that credit.{% elif row.type == 'discount' %}Delete this scholarship from the ledger? The family balance updates. If the child still has a scholarship on Plans, the next charge can post another one.{% else %}Remove this ledger entry?{% endif %}">
                 {% csrf_token %}
                 <input type="hidden" name="portal_area" value="{{ portal_area }}">
                 {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
@@ -285,10 +285,10 @@
                   Email updated balance
                 </label>
                 {% endif %}
-                <button type="submit" class="btn btn-secondary btn-sm" title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
+                <button type="submit" class="btn btn-secondary btn-sm" title="{% if row.offline_payment %}Delete this payment{% elif row.type == 'discount' %}Delete this scholarship{% else %}Remove this charge{% endif %}">Delete</button>
               </form>
               {% elif row.deletable %}
-              <button type="button" class="btn btn-secondary btn-sm" disabled title="{% if row.offline_payment %}Delete this payment{% else %}Remove this charge{% endif %}">Delete</button>
+              <button type="button" class="btn btn-secondary btn-sm" disabled title="{% if row.offline_payment %}Delete this payment{% elif row.type == 'discount' %}Delete this scholarship{% else %}Remove this charge{% endif %}">Delete</button>
               {% endif %}
               </div>
               {% if row.editable and billing_live %}

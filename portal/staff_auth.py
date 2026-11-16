@@ -276,19 +276,17 @@ def can_delete_attendance(account=None, portal_area="staff", user=None):
 def can_edit_enrollment_application(account, portal_area="staff"):
     """Fix names, school, contacts, and program fields on an application.
 
-    Portal admin (in either portal) and Program director can edit because
-    that is program work. Front desk and unit-scoped staff cannot. Admin
-    portal sessions are already portal-admin-authenticated.
+    Portal admin always can. Other staff need Edit applications on
+    Staff permissions — including front desk and program director.
+    Admin portal sessions are already portal-admin-authenticated.
     """
     if portal_area == "admin":
         return True
-    if is_front_desk(account):
-        return False
-    if is_program_director(account):
+    if portal_preview_mode():
         return True
-    if account and (account.role == ROLE_PORTAL_ADMIN or account.all_units_access):
+    if is_org_admin_account(account):
         return True
-    return False
+    return bool(account and account.can_edit_applications)
 
 
 def can_switch_member_unit(account, portal_area="staff"):

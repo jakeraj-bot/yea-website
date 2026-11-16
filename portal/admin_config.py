@@ -81,13 +81,23 @@ def ensure_admin_config_minimal():
     for role in PORTAL_STAFF_ROLES:
         PortalStaffRole.objects.update_or_create(name=role, defaults={"is_system": True})
     defaults = [
-        ("Unit staff", True, False, False, False, False, False, False),
-        ("Unit director", True, True, False, False, False, False, False),
-        ("Portal admin", True, True, True, True, True, True, True),
-        ("Front desk staff", True, False, True, True, True, True, False),
-        ("Program director", False, False, False, False, True, True, False),
+        ("Unit staff", True, False, False, False, False, False, False, False),
+        ("Unit director", True, True, False, False, False, False, False, False),
+        ("Portal admin", True, True, True, True, True, True, True, True),
+        ("Front desk staff", True, False, True, True, True, True, False, False),
+        ("Program director", False, False, False, False, True, True, True, False),
     ]
-    for role_name, add, delete, credit, plans, approve_apps, approve_waitlist, delete_attendance in defaults:
+    for (
+        role_name,
+        add,
+        delete,
+        credit,
+        plans,
+        approve_apps,
+        approve_waitlist,
+        edit_apps,
+        delete_attendance,
+    ) in defaults:
         PortalBillingDefaultRule.objects.get_or_create(
             role_name=role_name,
             defaults={
@@ -97,6 +107,7 @@ def ensure_admin_config_minimal():
                 "can_edit_family_plans": plans,
                 "can_approve_applications": approve_apps,
                 "can_approve_waitlist": approve_waitlist,
+                "can_edit_applications": edit_apps,
                 "can_delete_attendance": delete_attendance,
                 "is_custom": False,
             },
@@ -698,6 +709,7 @@ def save_custom_role(name):
             "can_edit_family_plans": False,
             "can_approve_applications": False,
             "can_approve_waitlist": False,
+            "can_edit_applications": False,
             "can_delete_attendance": False,
             "is_custom": True,
         },
@@ -721,6 +733,7 @@ def save_default_billing_rule(data):
     rule.can_edit_family_plans = data.get("can_edit_family_plans") == "on"
     rule.can_approve_applications = data.get("can_approve_applications") == "on"
     rule.can_approve_waitlist = data.get("can_approve_waitlist") == "on"
+    rule.can_edit_applications = data.get("can_edit_applications") == "on"
     rule.can_delete_attendance = data.get("can_delete_attendance") == "on"
     rule.save()
     return rule
