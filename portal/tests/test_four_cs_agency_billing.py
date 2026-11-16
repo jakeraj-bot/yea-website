@@ -1073,6 +1073,75 @@ class FourCsMultipleContractTests(TestCase):
         self.assertEqual(agency_profile_for(self.child, on_date=date(2026, 9, 15)).pk, old.pk)
         self.assertEqual(agency_profile_for(self.child, on_date=date(2026, 10, 15)).pk, new.pk)
 
+    def test_new_contract_reuses_child_when_name_case_differs(self):
+        save_agency_member(
+            self.unit,
+            "rivera",
+            "ADA RIVERA",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+            create_new=True,
+        )
+        self.assertEqual(self.family.children.filter(name="Ada Rivera").count(), 1)
+        self.assertEqual(self.family.children.count(), 1)
+        self.assertEqual(PortalAgencyProfile.objects.filter(child=self.child).count(), 1)
+
+    def test_new_contract_reuses_child_when_first_name_is_a_near_typo(self):
+        aileen = PortalChild.objects.create(
+            family=self.family, name="Aileen Batista Diaz", is_active=True
+        )
+        profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Aileeb Batista Diaz",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+            create_new=True,
+        )
+        self.assertEqual(profile.child_id, aileen.pk)
+        self.assertEqual(self.family.children.filter(name__icontains="aile").count(), 1)
+        self.assertEqual(aileen.agency_profiles.count(), 1)
+
+    def test_add_another_stays_on_child_id_even_if_a_typo_row_exists(self):
+        PortalChild.objects.create(family=self.family, name="Ada Typo Rivera", is_active=True)
+        profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+            child_id=self.child.pk,
+            create_new=True,
+        )
+        self.assertEqual(profile.child_id, self.child.pk)
+        self.assertEqual(self.family.children.count(), 2)
+        self.assertEqual(PortalAgencyProfile.objects.filter(child=self.child).count(), 1)
+
+    def test_new_sibling_still_creates_a_child(self):
+        profile = save_agency_member(
+            self.unit,
+            "rivera",
+            "Ben Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+            create_new=True,
+        )
+        self.assertNotEqual(profile.child_id, self.child.pk)
+        self.assertEqual(profile.child.name, "Ben Rivera")
+        self.assertEqual(self.family.children.count(), 2)
+
 
 class ProgramCalendarFourCsTests(TestCase):
     def setUp(self):
