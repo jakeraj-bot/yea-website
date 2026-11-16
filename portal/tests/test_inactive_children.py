@@ -6,6 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from enrollment.models import EnrollmentApplication
 from portal.admin_reports import build_admin_report
 from portal.admin_services import get_admin_families_live
 from portal.attendance_service import families_for_staff
@@ -187,6 +188,54 @@ class InactiveChildrenAndPhoneSearchTests(TestCase):
         self.assertContains(inactive_page, "Maya Jacobs")
         self.assertEqual(inactive_page.content.decode().count('data-child-name="maya jacobs"'), 1)
         self.assertNotContains(inactive_page, "Jordan Jacobs")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_make_inactive_marks_all_of_that_childs_applications(self):
+        before = self._named_application(self.family, self.maya, status="approved")
+        before.program = "before_care"
+        before.save(update_fields=["program"])
+        after = self._named_application(self.family, self.maya, status="enrolled")
+        after.program = "after_school"
+        after.save(update_fields=["program"])
+        sibling = EnrollmentApplication.objects.get(
+            portal_family=self.family, student_first_name="Jordan", student_last_name="Jacobs"
+        )
+        _staff_login(self.client, self.admin, "admin")
+        response = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"}),
+            {
+                "family_id": self.family.pk,
+                "child_id": self.maya.pk,
+                "active": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.maya.refresh_from_db()
+        before.refresh_from_db()
+        after.refresh_from_db()
+        sibling.refresh_from_db()
+        self.jordan.refresh_from_db()
+        self.assertFalse(self.maya.is_active)
+        self.assertFalse(before.is_active)
+        self.assertFalse(after.is_active)
+        self.assertTrue(self.jordan.is_active)
+        self.assertTrue(sibling.is_active)
+
+        restore = self.client.post(
+            reverse("portal_admin_family_child_status", kwargs={"family_slug": "jacobs"}),
+            {
+                "family_id": self.family.pk,
+                "child_id": self.maya.pk,
+                "active": "1",
+            },
+        )
+        self.assertEqual(restore.status_code, 302)
+        before.refresh_from_db()
+        after.refresh_from_db()
+        self.maya.refresh_from_db()
+        self.assertTrue(self.maya.is_active)
+        self.assertTrue(before.is_active)
+        self.assertTrue(after.is_active)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_one_child_family_leaves_active_tab_when_made_inactive(self):

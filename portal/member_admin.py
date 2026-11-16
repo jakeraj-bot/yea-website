@@ -536,12 +536,41 @@ def matching_prior_balances(family):
     return matches
 
 
+def _matching_child_applications(child):
+    """Enrollment applications for this child on the family account.
+
+    Declined applications stay out of the match so restoring a child does not
+    put a declined program back on the roster.
+    """
+    from .member_report import _match_apps_for_child
+
+    family = getattr(child, "family", None)
+    if child is None or family is None:
+        return []
+    apps = list(
+        EnrollmentApplication.objects.filter(portal_family=family).exclude(status="declined")
+    )
+    return _match_apps_for_child(child, apps)
+
+
+@transaction.atomic
 def set_child_active(child, active):
-    """Keep the account; toggle whether this child is on the attending roster."""
+    """Keep the account; toggle whether this child is on the attending roster.
+
+    Making the whole child inactive also marks every matching program
+    application inactive (before-care, after-care, summer). Making the child
+    active again restores those applications so they return to attendance.
+    """
     if child is None:
         raise ValueError("Child not found.")
-    child.is_active = bool(active)
+    wanted = bool(active)
+    child.is_active = wanted
     child.save(update_fields=["is_active"])
+    for app in _matching_child_applications(child):
+        if app.is_active == wanted:
+            continue
+        app.is_active = wanted
+        app.save(update_fields=["is_active"])
     return child
 
 

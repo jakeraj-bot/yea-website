@@ -9,6 +9,7 @@ from enrollment.models import EnrollmentApplication
 from enrollment.validators import format_us_phone
 from portal.care_program import before_care_roster_rows
 from portal.live_services import family_profile_live
+from portal.member_admin import set_child_active
 from portal.models import PortalChild, PortalFamily, PortalProgram, PortalStaffAccount, PortalUnit
 from portal.phone_format import format_us_phone as portal_format_us_phone
 from portal.report_sheets import signout_blank_context
@@ -185,6 +186,53 @@ class ApplicationInactiveAttendanceTests(TestCase):
             self.assertNotIn("Sam Jacobs", self._names(payload))
         self.assertNotIn("Sam Jacobs", [row["child"] for row in before_care_roster_rows(unit=self.unit)])
 
+    def test_set_child_inactive_marks_every_matching_application_inactive(self):
+        declined = _make_app(self.family, self.both, program="summer_camp", status="declined")
+        declined.is_active = True
+        declined.save(update_fields=["is_active"])
+
+        set_child_active(self.both, False)
+        self.both.refresh_from_db()
+        self.both_before.refresh_from_db()
+        self.both_after.refresh_from_db()
+        self.after_app.refresh_from_db()
+        self.before_app.refresh_from_db()
+        declined.refresh_from_db()
+
+        self.assertFalse(self.both.is_active)
+        self.assertFalse(self.both_before.is_active)
+        self.assertFalse(self.both_after.is_active)
+        self.assertTrue(self.after_app.is_active)
+        self.assertTrue(self.before_app.is_active)
+        self.assertTrue(declined.is_active)
+
+        after = weekly_attendance_report_data(
+            self.unit, self.program, self.today, filters={"care": "after"}
+        )
+        before = weekly_attendance_report_data(
+            self.unit, self.program, self.today, filters={"care": "before"}
+        )
+        all_kids = weekly_attendance_report_data(self.unit, self.program, self.today)
+        self.assertNotIn("Sam Jacobs", self._names(after))
+        self.assertNotIn("Sam Jacobs", self._names(before))
+        self.assertNotIn("Sam Jacobs", self._names(all_kids))
+        self.assertIn("Jordan Jacobs", self._names(after))
+        self.assertIn("Jordan Jacobs", self._names(all_kids))
+        self.assertIn("Maya Jacobs", self._names(before))
+        self.assertNotIn("Sam Jacobs", [row["child"] for row in before_care_roster_rows(unit=self.unit)])
+        self.assertIn("Maya Jacobs", [row["child"] for row in before_care_roster_rows(unit=self.unit)])
+
+        set_child_active(self.both, True)
+        self.both.refresh_from_db()
+        self.both_before.refresh_from_db()
+        self.both_after.refresh_from_db()
+        declined.refresh_from_db()
+        self.assertTrue(self.both.is_active)
+        self.assertTrue(self.both_before.is_active)
+        self.assertTrue(self.both_after.is_active)
+        self.assertTrue(declined.is_active)
+        self.assertEqual(declined.status, "declined")
+
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_staff_can_toggle_one_application_from_profile(self):
         self._login(self.staff_user, "staff")
@@ -232,6 +280,58 @@ class ApplicationInactiveAttendanceTests(TestCase):
         self.assertEqual(restore.status_code, 302)
         self.both_before.refresh_from_db()
         self.assertTrue(self.both_before.is_active)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_make_whole_child_inactive_marks_all_applications(self):
+        self._login(self.staff_user, "staff")
+        url = reverse("portal_staff_family_child_status", kwargs={"family_slug": "jacobs"})
+        response = self.client.post(
+            url,
+            {
+                "family_id": self.family.pk,
+                "child_id": self.both.pk,
+                "active": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.both.refresh_from_db()
+        self.both_before.refresh_from_db()
+        self.both_after.refresh_from_db()
+        self.after_app.refresh_from_db()
+        self.assertFalse(self.both.is_active)
+        self.assertFalse(self.both_before.is_active)
+        self.assertFalse(self.both_after.is_active)
+        self.assertTrue(self.after_app.is_active)
+        self.assertTrue(self.after_only.is_active)
+
+        weekly_before = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat(), "care": "before"},
+        )
+        self.assertNotContains(weekly_before, "<strong>Sam Jacobs</strong>")
+        self.assertContains(weekly_before, "<strong>Maya Jacobs</strong>")
+        weekly_after = self.client.get(
+            reverse("portal_staff_weekly_attendance_report"),
+            {"date": self.today.isoformat(), "care": "after"},
+        )
+        self.assertNotContains(weekly_after, "<strong>Sam Jacobs</strong>")
+        self.assertContains(weekly_after, "<strong>Jordan Jacobs</strong>")
+
+        restore = self.client.post(
+            url,
+            {
+                "family_id": self.family.pk,
+                "child_id": self.both.pk,
+                "active": "1",
+            },
+        )
+        self.assertEqual(restore.status_code, 302)
+        self.both.refresh_from_db()
+        self.both_before.refresh_from_db()
+        self.both_after.refresh_from_db()
+        self.assertTrue(self.both.is_active)
+        self.assertTrue(self.both_before.is_active)
+        self.assertTrue(self.both_after.is_active)
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_weekly_parent_contact_checkbox_and_phone_format(self):
