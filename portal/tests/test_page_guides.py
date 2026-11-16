@@ -345,6 +345,7 @@ class PageGuideCatalogTests(TestCase):
         bodies = " ".join(step["body"] for step in guide["steps"])
         self.assertIn("Save dates", bodies)
         self.assertIn("more than one 4Cs contract", bodies)
+        self.assertIn("same child", bodies)
         self.assertIn("member name", bodies.lower())
         self.assertIn("Delete contract", bodies)
 

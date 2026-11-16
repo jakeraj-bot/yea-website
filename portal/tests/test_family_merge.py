@@ -11,6 +11,8 @@ from enrollment.portal_integration import create_portal_account_from_enrollment,
 from enrollment.staff_application import create_staff_application
 from portal.family_merge import (
     children_are_same_person,
+    fix_batista_diaz_duplicate_children,
+    merge_children,
     merge_families,
     pick_survivor_family,
     search_families_for_merge,
@@ -19,7 +21,9 @@ from portal.family_merge import (
 from portal.member_admin import create_account_from_application
 from portal.models import (
     AttendanceRecord,
+    PortalAgencyProfile,
     PortalChild,
+    PortalChildBillingPlan,
     PortalFamily,
     PortalLedgerEntry,
     PortalParentAccount,
@@ -451,3 +455,112 @@ class FamilyMergeTests(TestCase):
         self.drop_app.save(update_fields=["student_first_name"])
         matches = suggested_merge_families(self.keep)
         self.assertEqual({family.pk for family in matches}, {self.drop.pk})
+
+
+class MergeChildrenKeepsAgencyContractsTests(TestCase):
+    def setUp(self):
+        self.unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        self.family = PortalFamily.objects.create(
+            unit=self.unit, slug="batista-diaz", name="Batista Diaz", billing_type="4Cs"
+        )
+
+    def test_merge_moves_both_4cs_contracts_onto_the_kept_child(self):
+        keep = self.family.children.create(name="Aileen Batista Diaz", is_active=True)
+        drop = self.family.children.create(name="Aileeb Batista Diaz", is_active=True)
+        old = PortalAgencyProfile.objects.create(
+            unit=self.unit,
+            family=self.family,
+            child=keep,
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 30),
+        )
+        new = PortalAgencyProfile.objects.create(
+            unit=self.unit,
+            family=self.family,
+            child=drop,
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+        )
+        keep_plan = PortalChildBillingPlan.objects.create(child=keep, description="After care")
+        drop_plan = PortalChildBillingPlan.objects.create(child=drop, description="4Cs copay")
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Aileeb Batista Diaz",
+            date=date(2026, 10, 1),
+            entry_type="charge",
+            description="Weekly 4Cs copay",
+            amount=Decimal("26.50"),
+        )
+        merged = merge_children(keep, drop)
+        self.assertEqual(merged.pk, keep.pk)
+        self.assertEqual(self.family.children.count(), 1)
+        self.assertEqual(set(merged.agency_profiles.values_list("pk", flat=True)), {old.pk, new.pk})
+        self.assertEqual(
+            set(merged.billing_plans.values_list("pk", flat=True)),
+            {keep_plan.pk, drop_plan.pk},
+        )
+        self.assertEqual(
+            PortalLedgerEntry.objects.get(family=self.family).child_name,
+            "Aileen Batista Diaz",
+        )
+
+
+class BatistaDiazCollapseTests(TestCase):
+    def test_collapses_typo_duplicates_onto_aileen_and_liam(self):
+        unit = PortalUnit.objects.create(slug="school-18", name="School 18", is_active=True)
+        family = PortalFamily.objects.create(
+            unit=unit, slug="batista-diaz", name="Batista Diaz", billing_type="4Cs"
+        )
+        aileen = family.children.create(name="Aileen Batista Diaz", is_active=True)
+        aileeb = family.children.create(name="Aileeb Batista Diaz", is_active=True)
+        liam = family.children.create(name="Liam Batista Diaz", is_active=True)
+        liam_typo = family.children.create(name="Liam Batist Diaz", is_active=True)
+        PortalAgencyProfile.objects.create(
+            unit=unit,
+            family=family,
+            child=aileen,
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 30),
+        )
+        PortalAgencyProfile.objects.create(
+            unit=unit,
+            family=family,
+            child=aileeb,
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+        )
+        PortalAgencyProfile.objects.create(
+            unit=unit,
+            family=family,
+            child=liam,
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 30),
+        )
+        PortalAgencyProfile.objects.create(
+            unit=unit,
+            family=family,
+            child=liam_typo,
+            auth_start=date(2026, 10, 1),
+            auth_end=date(2026, 12, 31),
+        )
+        app = _make_application(family)
+        app.student_first_name = "Aileeb"
+        app.student_last_name = "Batista Diaz"
+        app.save(update_fields=["student_first_name", "student_last_name"])
+        other = PortalFamily.objects.create(unit=unit, slug="rivera", name="Rivera")
+        other.children.create(name="Ada Rivera", is_active=True)
+
+        fix_batista_diaz_duplicate_children()
+
+        names = set(family.children.values_list("name", flat=True))
+        self.assertEqual(names, {"Aileen Batista Diaz", "Liam Batist Diaz"})
+        self.assertEqual(family.children.count(), 2)
+        aileen_row = family.children.get(name="Aileen Batista Diaz")
+        liam_row = family.children.get(name="Liam Batist Diaz")
+        self.assertEqual(aileen_row.agency_profiles.count(), 2)
+        self.assertEqual(liam_row.agency_profiles.count(), 2)
+        app.refresh_from_db()
+        self.assertEqual(app.student_first_name, "Aileen")
+        self.assertEqual(app.student_last_name, "Batista Diaz")
+        self.assertEqual(other.children.count(), 1)
+        self.assertEqual(other.children.get().name, "Ada Rivera")

@@ -16,7 +16,7 @@ from .agency_weeks import (
     weekly_from_daily,
 )
 from .demo_data import AGENCY_BILLING, AGENCY_UNIT_DATA
-from .child_identity import child_names_match, normalize_person_name
+from .child_identity import child_names_match, name_tokens, normalize_person_name
 from .models import (
     PortalAgency,
     PortalAgencyLedgerEntry,
@@ -55,17 +55,47 @@ def contract_status_for(profile, on_date=None):
     return "current"
 
 
-def _sibling_with_name(family, child, name):
+def _find_child_on_family(family, name, exclude_pk=None):
+    """Reuse an existing roster row instead of creating a duplicate child."""
+    label = " ".join((name or "").split())
+    if not family or not label:
+        return None
     qs = family.children.all()
-    if child is not None:
-        qs = qs.exclude(pk=child.pk)
-    exact = qs.filter(name__iexact=name).first()
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    exact = qs.filter(name__iexact=label).first()
     if exact:
         return exact
     for other in qs:
-        if child_names_match(other.name, name):
+        if child_names_match(other.name, label):
             return other
+    wanted = name_tokens(label)
+    if len(wanted) < 2:
+        return None
+    hits = []
+    for other in qs:
+        have = name_tokens(other.name)
+        if len(have) < 2:
+            continue
+        if have[-1] != wanted[-1]:
+            continue
+        if not (set(wanted[1:]) & set(have[1:])):
+            continue
+        first, other_first = wanted[0], have[0]
+        if first == other_first:
+            hits.append(other)
+            continue
+        prefix = min(len(first), len(other_first), 4)
+        if prefix >= 4 and first[:prefix] == other_first[:prefix]:
+            hits.append(other)
+    if len(hits) == 1:
+        return hits[0]
     return None
+
+
+def _sibling_with_name(family, child, name):
+    exclude = child.pk if child is not None else None
+    return _find_child_on_family(family, name, exclude_pk=exclude)
 
 
 def rename_agency_child(child, new_name):
@@ -481,7 +511,7 @@ def _resolve_family_and_child(unit, family_slug, child_name, child_id=None, grad
     name = (child_name or "").strip()
     if not name:
         raise ValueError("Member name is required.")
-    child = family.children.filter(name=name).first()
+    child = _find_child_on_family(family, name)
     if child is None:
         child = PortalChild.objects.create(
             family=family,
@@ -529,7 +559,7 @@ def save_agency_member(
         if profile and not create_new:
             child = resolve_agency_child_name(family, child, posted_name, profile=profile)
             family = child.family
-        else:
+        elif not create_new:
             sibling = _sibling_with_name(family, child, " ".join(posted_name.split()))
             if sibling:
                 child = sibling

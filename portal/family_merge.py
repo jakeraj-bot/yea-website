@@ -6,17 +6,17 @@ from django.db.models import Q
 from enrollment.models import EnrollmentApplication
 from enrollment.portal_integration import find_existing_family_for_parent
 
-from .child_identity import child_names_match
+from .child_identity import child_names_match, full_child_name, name_tokens, normalize_person_name
 from .member_admin import parent_email_for_family
 from .models import (
     AttendanceRecord,
-    PortalAgencyLedgerEntry,
-    PortalAgencyProfile,
-    PortalAgencyRemittanceAllocation,
+    PortalAccountBalancePaidMark,
+    PortalCalendarActivityMember,
     PortalChild,
     PortalFamily,
     PortalFieldTripSignup,
     PortalLedgerEntry,
+    PortalMemberGroupMember,
     PortalParentAccount,
     PortalPolicySignatureRequest,
     PortalWaivedAbsenceCharge,
@@ -215,7 +215,34 @@ def merge_children(keep_child, drop_child):
 
     drop_child.incidents.update(child=keep_child)
     drop_child.scholarships.update(child=keep_child)
+    drop_child.billing_plans.update(child=keep_child)
+    drop_child.staff_notes.update(child=keep_child)
     drop_child.drop_off_bookings.update(child=keep_child, family=keep_child.family)
+
+    for membership in list(drop_child.calendar_activity_memberships.all()):
+        if PortalCalendarActivityMember.objects.filter(activity=membership.activity, child=keep_child).exists():
+            membership.delete()
+        else:
+            membership.child = keep_child
+            membership.save(update_fields=["child"])
+    for membership in list(drop_child.group_memberships.all()):
+        if PortalMemberGroupMember.objects.filter(group=membership.group, child=keep_child).exists():
+            membership.delete()
+        else:
+            membership.child = keep_child
+            membership.save(update_fields=["child"])
+
+    drop_mark = PortalAccountBalancePaidMark.objects.filter(child=drop_child).first()
+    keep_mark = PortalAccountBalancePaidMark.objects.filter(child=keep_child).first()
+    if drop_mark and keep_mark:
+        if drop_mark.is_paid and not keep_mark.is_paid:
+            keep_mark.is_paid = True
+            keep_mark.save(update_fields=["is_paid"])
+        drop_mark.delete()
+    elif drop_mark:
+        drop_mark.child = keep_child
+        drop_mark.family = keep_child.family
+        drop_mark.save(update_fields=["child", "family"])
 
     for signup in list(drop_child.field_trip_signups.all()):
         if PortalFieldTripSignup.objects.filter(trip=signup.trip, child=keep_child).exists():
@@ -233,17 +260,17 @@ def merge_children(keep_child, drop_child):
             request_row.family = keep_child.family
             request_row.save(update_fields=["child", "family"])
 
-    keep_profile = PortalAgencyProfile.objects.filter(child=keep_child).first()
-    drop_profile = PortalAgencyProfile.objects.filter(child=drop_child).first()
-    if drop_profile and keep_profile:
-        drop_profile.contract_weeks.update(profile=keep_profile)
-        PortalAgencyLedgerEntry.objects.filter(profile=drop_profile).update(profile=keep_profile)
-        PortalAgencyRemittanceAllocation.objects.filter(profile=drop_profile).update(profile=keep_profile)
-        drop_profile.delete()
-    elif drop_profile:
-        drop_profile.child = keep_child
-        drop_profile.family = keep_child.family
-        drop_profile.save(update_fields=["child", "family"])
+    drop_child.agency_profiles.update(child=keep_child, family=keep_child.family)
+
+    if drop_child.name and drop_child.name != keep_child.name:
+        family_ids = {keep_child.family_id, drop_child.family_id}
+        slugs = {keep_child.family.slug, drop_child.family.slug}
+        PortalLedgerEntry.objects.filter(family_id__in=family_ids, child_name=drop_child.name).update(
+            child_name=keep_child.name
+        )
+        PortalWaivedAbsenceCharge.objects.filter(
+            family_slug__in=slugs, child_name=drop_child.name
+        ).update(child_name=keep_child.name)
 
     fields = []
     if not keep_child.grade and drop_child.grade:
@@ -262,6 +289,114 @@ def merge_children(keep_child, drop_child):
         keep_child.save(update_fields=fields)
     drop_child.delete()
     return keep_child
+
+
+BATISTA_DIAZ_CHILDREN = (
+    ("aileen", "Aileen Batista Diaz"),
+    ("liam", "Liam Batist Diaz"),
+)
+
+
+def _batista_diaz_person_key(name):
+    tokens = name_tokens(name)
+    if not tokens:
+        return None
+    first = tokens[0]
+    surnames = set(tokens[1:])
+    if "diaz" not in surnames and not (surnames & {"batista", "batist"}):
+        return None
+    if first.startswith("aile"):
+        return "aileen"
+    if first == "liam":
+        return "liam"
+    return None
+
+
+def _pick_keep_child(group, preferred_name=""):
+    preferred_norm = normalize_person_name(preferred_name)
+
+    def score(child):
+        return (
+            1 if preferred_norm and normalize_person_name(child.name) == preferred_norm else 0,
+            child.attendance_records.count(),
+            child.agency_profiles.count(),
+            child.billing_plans.count(),
+            1 if child.is_active else 0,
+            -child.pk,
+        )
+
+    return max(group, key=score)
+
+
+@transaction.atomic
+def collapse_duplicate_children_on_family(family, groups, preferred_names=None):
+    """Merge roster rows in each group onto one child. `groups` is {key: [children]}."""
+    preferred_names = preferred_names or {}
+    merged = []
+    for key, rows in groups.items():
+        if len(rows) < 2:
+            continue
+        keep = _pick_keep_child(rows, preferred_names.get(key, ""))
+        for drop in rows:
+            if drop.pk == keep.pk:
+                continue
+            keep = merge_children(keep, drop)
+            merged.append(keep)
+    return merged
+
+
+@transaction.atomic
+def fix_batista_diaz_duplicate_children():
+    """Put expired + new 4Cs contracts on Aileen and Liam, not extra child rows."""
+    from .agency_services import rename_agency_child
+
+    child_qs = PortalChild.objects.filter(
+        Q(name__icontains="diaz")
+        & (Q(name__icontains="batista") | Q(name__icontains="batist"))
+        & (
+            Q(name__icontains="aileen")
+            | Q(name__icontains="aileeb")
+            | Q(name__icontains="ailen")
+            | Q(name__icontains="liam")
+        )
+    ).select_related("family")
+    family_ids = set(child_qs.values_list("family_id", flat=True))
+    family_ids.update(
+        PortalFamily.objects.filter(
+            Q(name__icontains="batista") | Q(name__icontains="batist")
+        ).values_list("pk", flat=True)
+    )
+    preferred = dict(BATISTA_DIAZ_CHILDREN)
+    updated = []
+    for family in PortalFamily.objects.filter(pk__in=family_ids):
+        groups = {"aileen": [], "liam": []}
+        for child in family.children.all():
+            key = _batista_diaz_person_key(child.name)
+            if key:
+                groups[key].append(child)
+        collapse_duplicate_children_on_family(family, groups, preferred_names=preferred)
+        family = PortalFamily.objects.get(pk=family.pk)
+        for child in family.children.all():
+            key = _batista_diaz_person_key(child.name)
+            want = preferred.get(key)
+            if want and child.name != want:
+                rename_agency_child(child, want)
+                updated.append(want)
+            elif key:
+                updated.append(child.name)
+        for app in EnrollmentApplication.objects.filter(portal_family=family):
+            label = full_child_name(app.student_first_name, app.student_last_name)
+            want = preferred.get(_batista_diaz_person_key(label))
+            if not want:
+                continue
+            parts = want.split()
+            first, last = parts[0], " ".join(parts[1:])
+            if app.student_first_name == first and app.student_last_name == last:
+                continue
+            app.student_first_name = first
+            app.student_last_name = last
+            app.save(update_fields=["student_first_name", "student_last_name"])
+    return updated
 
 
 def _merge_parent_accounts(keep, drop):

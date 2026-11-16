@@ -925,7 +925,7 @@ GUIDES = {
             },
             {
                 "title": "Keep the old contract and add a new one",
-                "body": "A child can have more than one 4Cs contract. End the old dates, then Add another contract for the new start and end. The old contract stays on this tab so you can still see it.",
+                "body": "A child can have more than one 4Cs contract. End the old dates, then Add another contract for the new start and end — it stays on that same child, even if the first plan expired. Do not add a second child. The old contract stays on this tab so you can still see it.",
             },
             {
                 "title": "Check Received when the check comes in",
