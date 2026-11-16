@@ -62,6 +62,19 @@ def _portal_next_url(request, fallback):
     return fallback
 
 
+def _posted_agency_profile(request, area):
+    from .models import PortalAgencyProfile
+    from .staff_auth import resolve_staff_unit
+
+    qs = PortalAgencyProfile.objects.select_related("family", "child", "unit")
+    if area != "admin":
+        unit = resolve_staff_unit(request)
+        if not unit:
+            return None
+        qs = qs.filter(unit=unit)
+    return qs.filter(pk=request.POST.get("profile_id")).first()
+
+
 def _log_activity(request, action, **kwargs):
     from .activity_log import log_activity
 
@@ -2931,7 +2944,6 @@ def agency_week_received(request):
 @require_POST
 def agency_contract_dates(request):
     from .agency_services import update_agency_contract_dates
-    from .models import PortalAgencyProfile
     from .parent_auth import portal_preview_mode
     from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
 
@@ -2952,11 +2964,7 @@ def agency_contract_dates(request):
             return redirect(f"{login_url}?next={request.get_full_path()}")
     if not _needs_live(request):
         return redirect(_portal_next_url(request, fallback))
-    profile = (
-        PortalAgencyProfile.objects.select_related("family", "child")
-        .filter(pk=request.POST.get("profile_id"))
-        .first()
-    )
+    profile = _posted_agency_profile(request, area)
     if not profile:
         messages.error(request, "4Cs contract not found.")
         return redirect(_portal_next_url(request, fallback))
@@ -2965,21 +2973,71 @@ def agency_contract_dates(request):
             profile,
             parse_date(request.POST.get("auth_start") or "") or None,
             parse_date(request.POST.get("auth_end") or "") or None,
+            child_name=request.POST.get("child_name"),
         )
     except ValueError as exc:
         messages.error(request, str(exc))
         return redirect(_portal_next_url(request, fallback))
+    profile.refresh_from_db()
     messages.success(
         request,
-        f"Updated {profile.child.name} contract dates. Weeks on this contract follow the new start and end.",
+        f"Updated {profile.child.name} contract. Weeks on this contract follow the start and end dates.",
     )
     _log_activity(
         request,
         "agency",
-        action_label="Updated 4Cs contract dates",
+        action_label="Updated 4Cs contract",
         object_type="agency",
         object_label=f"{profile.child.name} {profile.auth_start}–{profile.auth_end}",
     )
+    return redirect(_portal_next_url(request, fallback))
+
+
+@require_POST
+def agency_contract_delete(request):
+    from .agency_services import delete_agency_profile
+    from .parent_auth import portal_preview_mode
+    from .staff_auth import is_admin_portal_authenticated, is_staff_portal_authenticated
+
+    area = request.POST.get("portal_area", "staff")
+    fallback = reverse("portal_staff_page", kwargs={"page": "agency"})
+    if area == "admin":
+        fallback = reverse("portal_admin_page", kwargs={"page": "agencies"})
+    if not portal_preview_mode():
+        if area == "admin" and not is_admin_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_ADMIN_LOGIN_URL", "/portal/admin/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+        if area != "admin" and not is_staff_portal_authenticated(request):
+            from django.conf import settings
+
+            login_url = getattr(settings, "PORTAL_STAFF_LOGIN_URL", "/portal/staff/login/")
+            return redirect(f"{login_url}?next={request.get_full_path()}")
+    if not _needs_live(request):
+        return redirect(_portal_next_url(request, fallback))
+    profile = _posted_agency_profile(request, area)
+    if not profile:
+        messages.error(request, "4Cs contract not found.")
+        return redirect(_portal_next_url(request, fallback))
+    family, _child, label = delete_agency_profile(profile)
+    messages.success(
+        request,
+        f"Deleted the 4Cs contract for {label}. Agency weeks and the agency ledger for that contract are gone. Parent copay charges on Billing stay.",
+    )
+    _log_activity(
+        request,
+        "agency",
+        action_label="Deleted 4Cs contract",
+        object_type="agency",
+        object_label=label,
+    )
+    if family:
+        if area == "admin":
+            fallback = reverse("portal_admin_family_agency", kwargs={"family_slug": family.slug})
+            fallback = f"{fallback}?id={family.pk}"
+        else:
+            fallback = reverse("portal_staff_family_agency", kwargs={"family_slug": family.slug})
     return redirect(_portal_next_url(request, fallback))
 
 

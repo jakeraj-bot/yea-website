@@ -201,6 +201,18 @@
           </div>
           <button type="submit" class="btn btn-primary btn-sm"{% if not billing_live %} disabled{% endif %}>Save 4Cs copay plan</button>
         </form>
+        {% if child.plans.0.id %}
+        <form method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" class="portal-inline-form" onsubmit="return confirm('Remove this 4Cs copay plan? Parent ledger charges stay. The 4Cs contract on the 4Cs tab stays.');">
+          {% csrf_token %}
+          <input type="hidden" name="portal_area" value="{{ portal_area }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if billing.id %}<input type="hidden" name="family_id" value="{{ billing.id }}">{% endif %}
+          <input type="hidden" name="action" value="delete_plan">
+          <input type="hidden" name="child_name" value="{{ child.name }}">
+          <input type="hidden" name="plan_id" value="{{ child.plans.0.id }}">
+          <button type="submit" class="btn btn-secondary btn-sm"{% if not billing_live %} disabled{% endif %}>Remove 4Cs copay plan</button>
+        </form>
+        {% endif %}
         {% else %}
         {% with plan=child.plans.0 %}
         <form class="portal-form-grid portal-form-grid-single" method="post" action="{% url 'portal_staff_billing_action' family_slug=billing.slug %}" style="margin-top: 0.75rem;">

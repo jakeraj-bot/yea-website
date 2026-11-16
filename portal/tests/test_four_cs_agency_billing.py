@@ -27,8 +27,10 @@ from portal.agency_weeks import (
 )
 from portal.admin_config import save_scholarship_fund
 from portal.models import (
+    PortalAgencyContractWeek,
     PortalAgencyProfile,
     PortalChild,
+    PortalChildBillingPlan,
     PortalFamily,
     PortalLedgerEntry,
     PortalProgramCalendar,
@@ -42,6 +44,7 @@ from portal.billing_services import (
     update_child_billing_plan,
 )
 from portal.staff_auth import PORTAL_AUTH_SESSION_KEY
+from portal.tests.test_family_units import _make_application
 
 
 class SchoolWeekGenerationTests(TestCase):
@@ -818,6 +821,219 @@ class WaitingAuthorizationAddAgencyTests(TestCase):
         self.assertEqual(profile.auth_end, date(2026, 9, 18))
         starts = list(profile.contract_weeks.order_by("week_start").values_list("week_start", flat=True))
         self.assertEqual(starts, [date(2026, 9, 1), date(2026, 9, 7), date(2026, 9, 14)])
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_family_4cs_tab_can_edit_member_name(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Ada Rivera",
+            date=date(2026, 9, 10),
+            entry_type="charge",
+            description="Weekly 4Cs copay",
+            amount=Decimal("26.50"),
+        )
+        app = _make_application(self.family)
+        tab = self.client.get(reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(tab.status_code, 200)
+        self.assertContains(tab, "Member (child) name")
+        self.assertContains(tab, "Delete contract")
+        response = self.client.post(
+            reverse("portal_agency_contract_dates"),
+            {
+                "portal_area": "admin",
+                "profile_id": str(profile.pk),
+                "child_name": "Ada Rivera-Smith",
+                "auth_start": "2026-09-01",
+                "auth_end": "2026-09-30",
+                "next": reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.child.refresh_from_db()
+        profile.refresh_from_db()
+        self.assertEqual(self.child.name, "Ada Rivera-Smith")
+        self.assertEqual(profile.child_id, self.child.pk)
+        self.assertEqual(
+            PortalLedgerEntry.objects.get(family=self.family).child_name,
+            "Ada Rivera-Smith",
+        )
+        app.refresh_from_db()
+        self.assertEqual(app.student_first_name, "Ada")
+        self.assertEqual(app.student_last_name, "Rivera-Smith")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_family_4cs_tab_can_move_contract_to_sibling(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        sibling = PortalChild.objects.create(family=self.family, name="Ben Rivera", is_active=True)
+        response = self.client.post(
+            reverse("portal_agency_contract_dates"),
+            {
+                "portal_area": "admin",
+                "profile_id": str(profile.pk),
+                "child_name": "Ben Rivera",
+                "auth_start": "2026-09-01",
+                "auth_end": "2026-09-30",
+                "next": reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        profile.refresh_from_db()
+        self.child.refresh_from_db()
+        self.assertEqual(profile.child_id, sibling.pk)
+        self.assertEqual(self.child.name, "Ada Rivera")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_edit_form_member_name_is_editable_and_saves(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        profile = PortalAgencyProfile.objects.get(child=self.child)
+        form = self.client.get(
+            reverse("portal_admin_agency_member_edit", kwargs={"profile_id": profile.pk})
+        )
+        self.assertEqual(form.status_code, 200)
+        self.assertContains(form, 'id="locked-child"')
+        self.assertContains(form, 'name="child_name"')
+        self.assertNotContains(form, "readonly")
+        self.assertContains(form, "Delete contract")
+        saved = self.client.post(
+            reverse("portal_admin_agency_member_edit", kwargs={"profile_id": profile.pk}),
+            self._agency_save_payload(child_name="Ada Lee Rivera"),
+        )
+        self.assertEqual(saved.status_code, 302)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.name, "Ada Lee Rivera")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_family_4cs_tab_can_delete_a_contract(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        first = PortalAgencyProfile.objects.get(child=self.child)
+        self.client.post(
+            reverse("portal_admin_agency_member_add") + f"?child_id={self.child.pk}&new=1",
+            self._agency_save_payload(
+                create_new="1",
+                auth_start="2026-10-01",
+                auth_end="2026-10-30",
+                week_start=["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"],
+                week_end=["2026-10-09", "2026-10-16", "2026-10-23", "2026-10-30"],
+                week_agency=["110.00", "110.00", "110.00", "110.00"],
+                week_parent=["26.50", "26.50", "26.50", "26.50"],
+            ),
+        )
+        self.assertEqual(PortalAgencyProfile.objects.filter(child=self.child).count(), 2)
+        PortalLedgerEntry.objects.create(
+            family=self.family,
+            child_name="Ada Rivera",
+            date=date(2026, 9, 10),
+            entry_type="charge",
+            description="Weekly 4Cs copay",
+            amount=Decimal("26.50"),
+        )
+        deleted = self.client.post(
+            reverse("portal_agency_contract_delete"),
+            {
+                "portal_area": "admin",
+                "profile_id": str(first.pk),
+                "next": reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}),
+            },
+        )
+        self.assertEqual(deleted.status_code, 302)
+        remaining = list(PortalAgencyProfile.objects.filter(child=self.child))
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(remaining[0].auth_start, date(2026, 10, 1))
+        self.assertFalse(PortalAgencyContractWeek.objects.filter(profile_id=first.pk).exists())
+        self.assertTrue(PortalLedgerEntry.objects.filter(family=self.family, child_name="Ada Rivera").exists())
+        tab = self.client.get(reverse("portal_admin_family_agency", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(tab.status_code, 200)
+        self.assertNotContains(tab, "9/1/2026")
+        self.assertContains(tab, "10/1/2026")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_add_another_contract_does_not_rename_the_child(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        second = self.client.post(
+            reverse("portal_admin_agency_member_add") + f"?child_id={self.child.pk}&new=1",
+            self._agency_save_payload(
+                create_new="1",
+                child_name="Ada Typo Rivera",
+                auth_start="2026-10-01",
+                auth_end="2026-10-30",
+                week_start=["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"],
+                week_end=["2026-10-09", "2026-10-16", "2026-10-23", "2026-10-30"],
+                week_agency=["110.00", "110.00", "110.00", "110.00"],
+                week_parent=["26.50", "26.50", "26.50", "26.50"],
+            ),
+        )
+        self.assertEqual(second.status_code, 302)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.name, "Ada Rivera")
+        self.assertEqual(PortalAgencyProfile.objects.filter(child=self.child).count(), 2)
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_staff_cannot_delete_another_unit_contract(self):
+        other_unit = PortalUnit.objects.create(slug="school-26", name="School 26", is_active=True)
+        other_family = PortalFamily.objects.create(
+            unit=other_unit, slug="other-rivera", name="Other Rivera", billing_type="4Cs"
+        )
+        other_child = PortalChild.objects.create(family=other_family, name="Ada Rivera", is_active=True)
+        other_profile = save_agency_member(
+            other_unit,
+            "other-rivera",
+            "Ada Rivera",
+            "Passaic County 4Cs",
+            auth_start=date(2026, 9, 1),
+            auth_end=date(2026, 9, 30),
+            daily_agency_rate="22.00",
+            daily_copay="5.30",
+        )
+        self._login(self.staff, "staff")
+        session = self.client.session
+        session["staff_unit_slug"] = self.unit.slug
+        session.save()
+        blocked = self.client.post(
+            reverse("portal_agency_contract_delete"),
+            {
+                "portal_area": "staff",
+                "profile_id": str(other_profile.pk),
+                "next": reverse("portal_staff_page", kwargs={"page": "agency"}),
+            },
+        )
+        self.assertEqual(blocked.status_code, 302)
+        self.assertTrue(PortalAgencyProfile.objects.filter(pk=other_profile.pk).exists())
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_tab_can_remove_4cs_copay_plan(self):
+        self._login(self.admin, "admin")
+        self.client.post(reverse("portal_admin_agency_member_add"), self._agency_save_payload())
+        plan = PortalChildBillingPlan.objects.create(
+            child=self.child,
+            billing_plan="Weekly",
+            auto_charge=True,
+            next_charge_date=date(2026, 9, 10),
+            description="After care",
+        )
+        plans = self.client.get(reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}))
+        self.assertEqual(plans.status_code, 200)
+        self.assertContains(plans, "Remove 4Cs copay plan")
+        removed = self.client.post(
+            reverse("portal_staff_billing_action", kwargs={"family_slug": "rivera"}),
+            {
+                "portal_area": "admin",
+                "action": "delete_plan",
+                "child_name": "Ada Rivera",
+                "plan_id": str(plan.pk),
+                "next": reverse("portal_admin_family_plans", kwargs={"family_slug": "rivera"}),
+            },
+        )
+        self.assertEqual(removed.status_code, 302)
+        self.assertFalse(PortalChildBillingPlan.objects.filter(pk=plan.pk).exists())
+        self.assertTrue(PortalAgencyProfile.objects.filter(child=self.child).exists())
 
 
 class FourCsMultipleContractTests(TestCase):

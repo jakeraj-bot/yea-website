@@ -16,6 +16,7 @@ from .agency_weeks import (
     weekly_from_daily,
 )
 from .demo_data import AGENCY_BILLING, AGENCY_UNIT_DATA
+from .child_identity import child_names_match, normalize_person_name
 from .models import (
     PortalAgency,
     PortalAgencyLedgerEntry,
@@ -24,6 +25,7 @@ from .models import (
     PortalAgencyRemittanceAllocation,
     PortalChild,
     PortalFamily,
+    PortalLedgerEntry,
     PortalProgram,
 )
 
@@ -53,8 +55,78 @@ def contract_status_for(profile, on_date=None):
     return "current"
 
 
+def _sibling_with_name(family, child, name):
+    qs = family.children.all()
+    if child is not None:
+        qs = qs.exclude(pk=child.pk)
+    exact = qs.filter(name__iexact=name).first()
+    if exact:
+        return exact
+    for other in qs:
+        if child_names_match(other.name, name):
+            return other
+    return None
+
+
+def rename_agency_child(child, new_name):
+    """Correct the child's account name, matching applications, and ledger labels."""
+    name = " ".join((new_name or "").split())
+    if not name:
+        raise ValueError("Member name is required.")
+    old_name = child.name
+    if old_name == name:
+        return child
+    from enrollment.models import EnrollmentApplication
+
+    from .member_report import _match_apps_for_child
+
+    apps = _match_apps_for_child(
+        child, list(EnrollmentApplication.objects.filter(portal_family=child.family))
+    )
+    child.name = name
+    child.save(update_fields=["name"])
+    parts = name.split()
+    first = parts[0]
+    last = " ".join(parts[1:]) if len(parts) > 1 else ""
+    for app in apps:
+        app.student_first_name = first
+        updates = ["student_first_name"]
+        if last:
+            app.student_last_name = last
+            updates.append("student_last_name")
+        app.save(update_fields=updates)
+    PortalLedgerEntry.objects.filter(family=child.family, child_name=old_name).update(child_name=name)
+    return child
+
+
+def resolve_agency_child_name(family, child, child_name, profile=None):
+    """Rename this child, or move the contract to a sibling with that name."""
+    name = " ".join((child_name or "").split())
+    if not name:
+        raise ValueError("Member name is required.")
+    if child and (
+        child_names_match(child.name, name) or normalize_person_name(child.name) == normalize_person_name(name)
+    ):
+        if child.name != name:
+            rename_agency_child(child, name)
+        return child
+    sibling = _sibling_with_name(family, child, name)
+    if sibling:
+        if profile is not None:
+            profile.child = sibling
+            profile.family = sibling.family
+            profile.save(update_fields=["child", "family"])
+        return sibling
+    if child:
+        return rename_agency_child(child, name)
+    raise ValueError("Member not found.")
+
+
 @transaction.atomic
-def update_agency_contract_dates(profile, auth_start, auth_end):
+def update_agency_contract_dates(profile, auth_start, auth_end, child_name=None):
+    if child_name is not None:
+        resolve_agency_child_name(profile.family, profile.child, child_name, profile=profile)
+        profile.refresh_from_db()
     if not auth_start or not auth_end:
         raise ValueError("Enter contract start and end dates.")
     if auth_end < auth_start:
@@ -65,6 +137,17 @@ def update_agency_contract_dates(profile, auth_start, auth_end):
     sync_contract_weeks(profile)
     refresh_agency_expected_balance(profile)
     return profile
+
+
+@transaction.atomic
+def delete_agency_profile(profile):
+    family = profile.family
+    child = profile.child
+    label = child.name
+    if profile.auth_start and profile.auth_end:
+        label = f"{child.name} {profile.auth_start}–{profile.auth_end}"
+    profile.delete()
+    return family, child, label
 
 
 def _agency_account_from_profile(profile, ledger=None):
@@ -441,6 +524,16 @@ def save_agency_member(
     create_new=False,
 ):
     family, child = _resolve_family_and_child(unit, family_slug, child_name, child_id=child_id, grade=grade)
+    posted_name = (child_name or "").strip()
+    if posted_name:
+        if profile and not create_new:
+            child = resolve_agency_child_name(family, child, posted_name, profile=profile)
+            family = child.family
+        else:
+            sibling = _sibling_with_name(family, child, " ".join(posted_name.split()))
+            if sibling:
+                child = sibling
+                family = child.family
     if unit is None:
         unit = family.unit
     family.billing_type = "4Cs"

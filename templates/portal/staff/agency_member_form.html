@@ -38,10 +38,9 @@
           </div>
           {% if form.locked_member %}
           <div class="form-group">
-            <label for="locked-child">Member (child)</label>
-            <input id="locked-child" type="text" class="portal-input" value="{{ form.child_name }}" readonly>
-            <input type="hidden" name="child_name" value="{{ form.child_name }}">
-            <p class="form-note">{{ form.family_name }}{% if form.unit_name %} · {{ form.unit_name }}{% endif %} · 4Cs</p>
+            <label for="locked-child">Member (child) name</label>
+            <input id="locked-child" name="child_name" type="text" class="portal-input" value="{{ form.child_name }}" required>
+            <p class="form-note">{{ form.family_name }}{% if form.unit_name %} · {{ form.unit_name }}{% endif %} · 4Cs. Change the name to fix a typo, or type a sibling's name to move this contract.</p>
           </div>
           {% else %}
           <div class="form-group">
@@ -167,6 +166,15 @@
         <a class="btn btn-secondary" href="{{ cancel_url }}">Cancel</a>
       </div>
     </form>
+    {% if editing and form.profile_id %}
+    <form method="post" action="{% url 'portal_agency_contract_delete' %}" class="portal-form-actions" onsubmit="return confirm('Delete this 4Cs contract? Agency weeks and the agency ledger for this contract are removed. Parent copay charges on Billing stay.');">
+      {% csrf_token %}
+      <input type="hidden" name="portal_area" value="{{ portal_area }}">
+      <input type="hidden" name="profile_id" value="{{ form.profile_id }}">
+      <input type="hidden" name="next" value="{{ cancel_url }}">
+      <button type="submit" class="btn btn-secondary"{% if not portal_live %} disabled{% endif %}>Delete contract</button>
+    </form>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
