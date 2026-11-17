@@ -100,6 +100,18 @@ class PortalCollapseCssTests(SimpleTestCase):
         self.assertTrue(member_info, "member-info table cells must be a closed CSS rule")
         self.assertEqual(member_info[0][1], 0)
 
+    def test_plans_child_columns_stay_inside_the_card(self):
+        css = PORTAL_CSS.read_text()
+        self.assertIn("minmax(min(100%, 22rem), 1fr)", css)
+        self.assertIn(".portal-plans-page .portal-child-billing-grid", css)
+        self.assertIn("repeat(2, minmax(0, 1fr))", css)
+        self.assertIn(".portal-plans-page .portal-plan-row-actions", css)
+        self.assertIn(".portal-plans-page .portal-plan-card-actions", css)
+        rules = _css_rule_depths(css)
+        plans_grid = [rule for rule in rules if rule[0] == ".portal-plans-page .portal-child-billing-grid"]
+        self.assertTrue(plans_grid)
+        self.assertEqual(plans_grid[0][1], 0)
+
     def test_waitlist_compact_rules_are_closed_and_sticky(self):
         css = PORTAL_CSS.read_text()
         rules = _css_rule_depths(css)

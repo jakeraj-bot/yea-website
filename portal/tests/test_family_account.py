@@ -1687,3 +1687,45 @@ class FamilyPlansTabStatusTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Ada Rivera")
         self.assertContains(page, "4Cs")
+
+    @override_settings(PORTAL_PREVIEW_MODE=False)
+    def test_plans_page_keeps_remove_actions_in_compact_child_columns(self):
+        family = PortalFamily.objects.create(
+            unit=self.unit, slug="jacobs", name="Jacobs", billing_type="Private pay", status="Active"
+        )
+        PortalChild.objects.create(family=family, name="Jordan Jacobs", is_active=True, billing_plan="Weekly")
+        PortalChild.objects.create(family=family, name="Maya Jacobs", is_active=True, billing_plan="Weekly")
+        today = date(2026, 9, 9)
+        with patch("portal.billing_services.timezone.localdate", return_value=today):
+            update_child_billing_plan(
+                family,
+                "Jordan Jacobs",
+                "Weekly",
+                "70.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+                description="After care",
+            )
+            update_child_billing_plan(
+                family,
+                "Maya Jacobs",
+                "Weekly",
+                "60.00",
+                "Private pay",
+                auto_charge=True,
+                next_charge_date=today,
+                charge_weekday=today.weekday(),
+                description="After care",
+            )
+        page = self._get_plans(family, "admin")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "portal-plans-page")
+        self.assertContains(page, "portal-plan-row-actions")
+        self.assertContains(page, "portal-plan-card-actions")
+        self.assertContains(page, "Jordan Jacobs")
+        self.assertContains(page, "Maya Jacobs")
+        self.assertContains(page, ">Remove<")
+        self.assertContains(page, ">Edit<")
+        self.assertContains(page, "Save plan")
