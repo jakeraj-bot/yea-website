@@ -1991,18 +1991,140 @@ nav.portal-nav-admin-groups {
 
 .portal-child-billing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 0.85rem;
   margin-bottom: 1.5rem;
+  align-items: start;
 }
 
 .portal-child-billing-grid .card {
-  padding: 1rem 1.15rem;
+  padding: 0.85rem 1rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .portal-child-billing-grid h3 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
   font-size: 1.05rem;
+}
+
+.portal-plans-page .portal-child-billing-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  .portal-plans-page .portal-child-billing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.portal-plans-page .portal-child-billing-grid .card {
+  padding: 0.7rem 0.8rem;
+}
+
+.portal-plans-page .portal-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.6rem;
+  row-gap: 0.15rem;
+  align-items: baseline;
+}
+
+.portal-plans-page .portal-dl dt {
+  margin: 0;
+}
+
+.portal-plans-page .portal-dl dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.portal-plans-page h4 {
+  margin: 0.55rem 0 0.3rem;
+  font-size: 0.92rem;
+}
+
+.portal-plans-page .form-note {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0.2rem 0 0;
+}
+
+.portal-plans-page .portal-form-grid {
+  gap: 0.5rem 0.65rem;
+}
+
+.portal-plans-page .form-group label {
+  margin-bottom: 0.2rem;
+}
+
+.portal-plans-page .btn-sm {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+
+.portal-plans-page .portal-plan-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.portal-plans-page .portal-plan-list {
+  gap: 0;
+}
+
+.portal-plans-page .portal-plan-list > li {
+  display: grid;
+  gap: 0.3rem;
+  justify-content: stretch;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.portal-plans-page .portal-plan-list > li:last-child {
+  border-bottom: none;
+}
+
+.portal-plans-page .portal-plan-row-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.portal-plans-page .portal-plan-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.portal-plans-page .portal-plan-row-actions .portal-inline-form {
+  display: inline-flex;
+}
+
+.portal-plans-page .add-plan-btn {
+  margin-top: 0.45rem;
+}
+
+.portal-plans-page .portal-table-wrap {
+  max-width: 100%;
+}
+
+.portal-plans-page .portal-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.portal-plans-page .portal-table th,
+.portal-plans-page .portal-table td {
+  overflow-wrap: anywhere;
+}
+
+.portal-plans-page .portal-week-pick-label {
+  min-width: 0;
+  flex: 1 1 8rem;
 }
 
 .portal-reports-grid {

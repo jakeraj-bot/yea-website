@@ -879,7 +879,7 @@ GUIDES = {
         "steps": [
             {
                 "title": "Read, don’t guess",
-                "body": "Staff can view the plan, amount, and schedule here. Changing the plan itself is an admin task.",
+                "body": "Staff can view the plan, amount, and schedule here. With more than one child, each card stays in its own compact column so Save, Edit, and Remove stay on the card. Changing the plan itself is an admin task.",
             },
             {
                 "title": "4Cs vs private pay",
