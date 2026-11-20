@@ -861,7 +861,7 @@ GUIDES = {
             },
             {
                 "title": "Credits and deletes",
-                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete that payment (confirm and give a reason). Deleting a payment only removes that payment — remaining charges minus remaining payments and credits is the new balance. An overpayment still shows as account credit. Card payments through Stripe stay on the ledger unless you refund.",
+                "body": "Adding credit or deleting a charge may require permission. If a button is missing, an organization admin can turn that on under Billing permissions. Anyone who can record a cash, check, or money order payment can edit that payment’s date and check or money order number, or delete that payment (confirm and give a reason). Deleting a payment only removes that payment — remaining charges minus remaining payments and credits is the new balance. An overpayment still shows as account credit. Card payments through Stripe stay on the ledger unless you refund. Refund also posts a check you already printed in QuickBooks — enter that check number; it does not go through Stripe.",
             },
             {
                 "title": "Edit or delete a scholarship",
@@ -870,6 +870,20 @@ GUIDES = {
             {
                 "title": "Edit a membership charge",
                 "body": "Use Edit on a membership line to change the amount or the description. Deletes still ask for a reason.",
+            },
+        ],
+    },
+    "family-refund": {
+        "title": "How to refund a family",
+        "intro": "Refund is for sending money back. Check refunds you printed in QuickBooks stay off Stripe. Card refunds still go through Stripe.",
+        "steps": [
+            {
+                "title": "Post a QuickBooks check refund",
+                "body": "Use Check refund when you already printed a check in QuickBooks. Enter the amount, the check date, and the check number. The number stays in its own field — not in the description — and shows on the ledger as Check #. This does not go through Stripe.",
+            },
+            {
+                "title": "Refund a card payment",
+                "body": "Process refund lists payments that can still be refunded. Refund to card sends the money back through Stripe. Record refund is for a ledger-only payment that is not a card.",
             },
         ],
     },

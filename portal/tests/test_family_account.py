@@ -134,6 +134,9 @@ class FamilyAccountHubTests(TestCase):
         self.assertContains(billing, reverse("portal_admin_family_refund", kwargs={"family_slug": "jacobs"}))
         self.assertNotContains(billing, "Already refunded")
         self.assertContains(refund, "Process refund")
+        self.assertContains(refund, "Check refund")
+        self.assertContains(refund, "check_number")
+        self.assertContains(refund, "Post check refund")
         self.assertContains(refund, "portal-account-narrow")
 
     @override_settings(PORTAL_PREVIEW_MODE=False)

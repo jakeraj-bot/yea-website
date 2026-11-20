@@ -122,6 +122,17 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("discount", bodies.lower())
         self.assertIn("posted scholarship", bodies.lower())
         self.assertIn("delete", bodies.lower())
+        self.assertIn("quickbooks", bodies.lower())
+        self.assertIn("check number", bodies.lower())
+
+    def test_family_refund_guide_explains_quickbooks_check(self):
+        guide = guide_for("family-refund")
+        titles = [step["title"] for step in guide["steps"]]
+        self.assertIn("Post a QuickBooks check refund", titles)
+        self.assertIn("Refund a card payment", titles)
+        bodies = " ".join(step["body"] for step in guide["steps"])
+        self.assertIn("check number", bodies.lower())
+        self.assertIn("does not go through stripe", bodies.lower())
 
     def test_family_plans_guide_explains_4cs_and_regular_scholarships(self):
         guide = guide_for("family-plans")

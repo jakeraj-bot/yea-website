@@ -301,6 +301,13 @@ def get_billing_live(family):
                     entry.reference_number,
                     method_label_for_reference(payments, entry.reference_number),
                 )
+            elif entry.entry_type == "refund":
+                attach_ledger_reference(
+                    row,
+                    entry.description,
+                    entry.reference_number,
+                    "Check",
+                )
             ledger.append(row)
     else:
         from .payment_refs import attach_ledger_reference
@@ -314,6 +321,13 @@ def get_billing_live(family):
                     item.get("description", ""),
                     item.get("reference_number", ""),
                     item.get("method", ""),
+                )
+            elif item.get("type") == "refund":
+                attach_ledger_reference(
+                    item,
+                    item.get("description", ""),
+                    item.get("reference_number", ""),
+                    "Check",
                 )
             ledger.append(item)
 
