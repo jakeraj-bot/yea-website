@@ -270,6 +270,10 @@ def ledger_report_rows(filters=None):
             from .payment_refs import attach_ledger_reference
 
             attach_ledger_reference(row, entry.description, entry.reference_number)
+        elif entry.entry_type == "refund":
+            from .payment_refs import attach_ledger_reference
+
+            attach_ledger_reference(row, entry.description, entry.reference_number, "Check")
         rows.append(row)
     return {
         "rows": rows,

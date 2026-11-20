@@ -586,6 +586,13 @@ def prepare_billing_for_staff(family, permissions, unit=None):
                         row["payment_method"] = kind
                     elif offline_payment:
                         row["payment_method"] = _offline_method_from_entry(entry)
+            elif entry.entry_type == "refund":
+                attach_ledger_reference(
+                    row,
+                    entry.description,
+                    entry.reference_number,
+                    "Check",
+                )
             ledger.append(row)
         billing["ledger"] = ledger
     if unit:
@@ -1377,6 +1384,8 @@ def get_org_ledger_live(limit=150, unit_slug=None):
         }
         if entry.entry_type == "payment":
             attach_ledger_reference(row, entry.description, entry.reference_number)
+        elif entry.entry_type == "refund":
+            attach_ledger_reference(row, entry.description, entry.reference_number, "Check")
         entries.append(row)
     return entries
 
@@ -2315,3 +2324,28 @@ def refund_family_payment(family, payment_id, amount, reason=""):
 
     sync_family_balance_from_ledger(family)
     return payment
+
+
+@transaction.atomic
+def post_check_refund(family, amount, check_number, entry_date=None, reason="", child_name=""):
+    """Post a QuickBooks check refund. Does not go through Stripe."""
+    amount = _parse_amount(amount)
+    number = (check_number or "").strip()
+    if not number:
+        raise ValueError("Enter the QuickBooks check number.")
+    if entry_date is None:
+        entry_date = default_entry_date()
+    note = (reason or "").strip() or "Check refund"
+    PortalLedgerEntry.objects.create(
+        family=family,
+        child_name=(child_name or "").strip(),
+        date=entry_date,
+        entry_type="refund",
+        description=note,
+        amount=amount,
+        is_manual=True,
+        reference_number=number,
+    )
+    from .family_list import sync_family_balance_from_ledger
+
+    sync_family_balance_from_ledger(family)

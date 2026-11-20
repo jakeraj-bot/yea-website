@@ -1981,6 +1981,30 @@ def staff_billing_action(request, family_slug):
                 request.POST.get("reason", ""),
             )
             messages.success(request, "Refund sent and the family balance was updated.")
+        elif action == "check_refund":
+            if area != "admin":
+                raise ValueError("Only portal admin can post check refunds.")
+            from .payment_refs import reject_raw_card_fields
+            from .billing_services import post_check_refund
+
+            reject_raw_card_fields(request.POST)
+            post_check_refund(
+                family,
+                request.POST.get("amount", ""),
+                request.POST.get("check_number", ""),
+                entry_date,
+                request.POST.get("reason", ""),
+                request.POST.get("child_name", "").strip(),
+            )
+            messages.success(request, "Check refund posted to the family ledger.")
+            _log_activity(
+                request,
+                "other",
+                action_label="Posted a check refund",
+                object_type="family",
+                object_label=family.name,
+                details=request.POST.get("check_number", ""),
+            )
         elif action == "update_4cs_plan":
             from .agency_weeks import apply_week_includes_from_form
             from .billing_services import agency_profile_for

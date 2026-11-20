@@ -5147,6 +5147,10 @@ nav.portal-nav-admin-groups {
   max-width: 28rem;
 }
 
+.page-content .portal-account-narrow + .portal-account-narrow {
+  margin-top: 1.25rem;
+}
+
 .portal-form-grid-single {
   grid-template-columns: 1fr;
 }
