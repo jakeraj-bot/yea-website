@@ -4594,6 +4594,10 @@ nav.portal-nav-admin-groups {
   flex: 1 1 16rem;
 }
 
+.portal-family-hero-actions {
+  margin: 0.5rem 0 0;
+}
+
 .portal-account-children {
   margin: 0 0 0.85rem;
   padding: 0.55rem 0.8rem;

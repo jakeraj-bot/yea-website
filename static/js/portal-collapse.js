@@ -150,4 +150,18 @@
       persist(section, collapseAll);
     });
   });
+
+  function revealHashTarget() {
+    var id = (window.location.hash || "").replace(/^#/, "");
+    if (!id) return;
+    var target = document.getElementById(id);
+    if (!target) return;
+    var section = target.closest(".portal-collapse");
+    if (section) applyCollapsed(section, false);
+    if (target.tagName === "DETAILS") target.open = true;
+    var nested = target.closest("details");
+    if (nested) nested.open = true;
+  }
+  revealHashTarget();
+  window.addEventListener("hashchange", revealHashTarget);
 })();
