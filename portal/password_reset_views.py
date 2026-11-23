@@ -66,6 +66,7 @@ class PortalPasswordResetView(PasswordResetView):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
         context["login_url_name"] = self.login_url_name
+        context["portal_type"] = self.portal_type
         context["portal_area"] = "public"
         return context
 
@@ -85,11 +86,14 @@ class PortalPasswordResetDoneView(PasswordResetDoneView):
     portal_type = "parent"
     portal_label = "parent portal"
     login_url_name = "portal_parent_login"
+    reset_request_url_name = "portal_parent_password_reset"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["portal_label"] = self.portal_label
         context["login_url_name"] = self.login_url_name
+        context["reset_request_url_name"] = self.reset_request_url_name
+        context["portal_type"] = self.portal_type
         context["portal_area"] = "public"
         return context
 
@@ -140,6 +144,7 @@ class ParentPasswordResetDoneView(PortalPasswordResetDoneView):
     portal_type = "parent"
     portal_label = "parent portal"
     login_url_name = "portal_parent_login"
+    reset_request_url_name = "portal_parent_password_reset"
 
 
 class ParentPasswordResetConfirmView(PortalPasswordResetConfirmView):
@@ -166,6 +171,7 @@ class StaffPasswordResetDoneView(PortalPasswordResetDoneView):
     portal_type = "staff"
     portal_label = "staff portal"
     login_url_name = "portal_staff_login"
+    reset_request_url_name = "portal_staff_password_reset"
 
 
 class StaffPasswordResetConfirmView(PortalPasswordResetConfirmView):
@@ -193,6 +199,7 @@ class AdminPasswordResetDoneView(PortalPasswordResetDoneView):
     portal_type = "admin"
     portal_label = "portal admin"
     login_url_name = "portal_admin_login"
+    reset_request_url_name = "portal_admin_password_reset"
 
 
 class AdminPasswordResetConfirmView(PortalPasswordResetConfirmView):

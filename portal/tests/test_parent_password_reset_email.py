@@ -247,6 +247,7 @@ class ParentPasswordResetEmailTests(TestCase):
         self.assertNotContains(again, "TempOncePass123!")
 
 
+@override_settings(PORTAL_PASSWORD_RESET_RATE_LIMIT=50)
 class ParentForgotPasswordTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -290,7 +291,9 @@ class ParentForgotPasswordTests(TestCase):
         response = self.client.get(reverse("portal_parent_password_reset"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Forgot password")
+        self.assertContains(response, "Username or email")
         self.assertContains(response, "Send reset link")
+        self.assertContains(response, "609-357-8608")
         self.assertContains(response, reverse("portal_parent_login"))
 
     @override_settings(SITE_URL="https://yeanj.org")
@@ -304,6 +307,8 @@ class ParentForgotPasswordTests(TestCase):
         done = self.client.get(response.url)
         self.assertEqual(done.status_code, 200)
         self.assertContains(done, "Check your email")
+        self.assertContains(done, "609-357-8608")
+        self.assertContains(done, "Try a different username or email")
         self.assertEqual(len(mail.outbox), 1)
         sent = mail.outbox[0]
         self.assertEqual(sent.to, ["alize@example.com"])
@@ -311,6 +316,7 @@ class ParentForgotPasswordTests(TestCase):
         self.assertIn("/portal/login/password-reset/confirm/", sent.body)
         self.assertIn("/portal/login/", sent.body)
         self.assertIn("https://yeanj.org", sent.body)
+        self.assertIn("Your username is: orengo", sent.body)
         self.assertNotIn("ParentPass123", sent.body)
         self.assertNotIn("pbkdf2_", sent.body)
         reset_url = self._reset_url_from_message(sent.body)
@@ -337,6 +343,36 @@ class ParentForgotPasswordTests(TestCase):
         )
         self.assertEqual(login_ok.status_code, 302)
         self.assertTrue(authenticate(username="parent:orengo", password="ParentNewPass456!"))
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_parent_can_reset_with_username(self):
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "orengo"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["alize@example.com"])
+        self.assertIn("Your username is: orengo", mail.outbox[0].body)
+
+    @override_settings(SITE_URL="https://yeanj.org")
+    def test_parent_can_reset_with_application_email(self):
+        from portal.tests.test_family_units import _make_application
+
+        self.parent_user.email = "old-login@example.com"
+        self.parent_user.save(update_fields=["email"])
+        app = _make_application(self.family)
+        app.primary_email = "current-parent@example.com"
+        app.primary_email_address = "current-parent@example.com"
+        app.save(update_fields=["primary_email", "primary_email_address"])
+        response = self.client.post(
+            reverse("portal_parent_password_reset"),
+            {"email": "current-parent@example.com"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["current-parent@example.com"])
+        self.assertNotIn("old-login@example.com", mail.outbox[0].to)
 
     def test_unknown_email_still_shows_check_email(self):
         response = self.client.post(

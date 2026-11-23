@@ -17,7 +17,7 @@
         </div>
         {% endif %}
         <div class="form-group portal-form-full">
-          <label for="{{ form.username.id_for_label }}">Username</label>
+          <label for="{{ form.username.id_for_label }}">Username or email</label>
           {{ form.username }}
           {% if form.username.errors %}<p class="form-note" style="color:var(--danger);">{{ form.username.errors.0 }}</p>{% endif %}
         </div>

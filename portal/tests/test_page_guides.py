@@ -161,6 +161,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("Email create-password link", bodies)
         self.assertIn("temporary password", bodies)
         self.assertIn("Forgot password", bodies)
+        self.assertIn("username or email", bodies.lower())
+        self.assertIn("did not get the email", bodies)
 
     def test_reports_exports_keep_owed_weeks_and_program_director_note(self):
         reports = guide_for("reports")
@@ -319,6 +321,7 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("one-time link to create a new password", bodies)
         self.assertIn("Email create-password link", bodies)
         self.assertIn("temporary password", bodies)
+        self.assertIn("username or email", bodies.lower())
 
     def test_email_guides_explain_collapsing_sections(self):
         family = guide_for("family-email")
