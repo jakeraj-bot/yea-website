@@ -284,6 +284,7 @@ class MemberInfoViewTests(TestCase):
         self.assertContains(response, "You cannot see the current password")
         self.assertContains(response, "Email create-password link")
         self.assertContains(response, "one-time link to create a new password")
+        self.assertContains(response, "They didn't get the email? Set a temporary password")
         self.assertContains(response, reverse("portal_admin_family_parent_password", kwargs={"family_slug": "orengo"}))
         self.assertNotContains(response, self.parent_user.password)
         self.assertNotContains(response, "ParentPass123")

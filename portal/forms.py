@@ -160,17 +160,113 @@ class ParentSignupForm(forms.Form):
 
 
 class PortalPasswordResetForm(PasswordResetForm):
+    """Accept username or email. Parents often type the login name, not the inbox."""
+
+    email = forms.CharField(
+        label="Username or email",
+        max_length=254,
+        widget=forms.TextInput(
+            attrs={
+                "class": "portal-input",
+                "autocomplete": "username",
+                "autocapitalize": "none",
+                "spellcheck": "false",
+                "placeholder": "Username or email",
+            }
+        ),
+    )
+
     def __init__(self, *args, portal_type="parent", **kwargs):
         self.portal_type = portal_type
         super().__init__(*args, **kwargs)
-        self.fields["email"].widget.attrs.setdefault("class", "portal-input")
-        self.fields["email"].widget.attrs.setdefault("placeholder", "you@email.com")
 
     def get_users(self, email):
-        active_users = get_user_model().objects.filter(email__iexact=email, is_active=True)
-        for user in active_users:
-            if self._user_matches_portal(user):
-                yield user
+        identifier = (email or "").strip()
+        for user in self._lookup_users(identifier):
+            delivery = self._delivery_email(user, identifier)
+            if not delivery:
+                continue
+            if (user.email or "").strip() != delivery:
+                user.email = delivery
+            yield user
+
+    def _lookup_users(self, identifier):
+        User = get_user_model()
+        seen = set()
+
+        def add(user):
+            if not user or user.pk in seen or not user.is_active:
+                return
+            if not self._user_matches_portal(user):
+                return
+            seen.add(user.pk)
+            users.append(user)
+
+        users = []
+        if not identifier:
+            return users
+        for user in User.objects.filter(email__iexact=identifier, is_active=True):
+            add(user)
+        from .usernames import resolve_auth_username
+
+        stored = resolve_auth_username(self.portal_type, identifier)
+        add(User.objects.filter(username__iexact=stored, is_active=True).first())
+        if self.portal_type == "parent" and "@" in identifier:
+            from django.db.models import Q
+
+            from enrollment.models import EnrollmentApplication
+            from .models import PortalParentAccount
+
+            family_ids = EnrollmentApplication.objects.filter(
+                Q(primary_email__iexact=identifier) | Q(primary_email_address__iexact=identifier),
+                portal_family_id__isnull=False,
+            ).values_list("portal_family_id", flat=True)
+            for account in PortalParentAccount.objects.filter(family_id__in=family_ids).select_related(
+                "user"
+            ):
+                add(account.user)
+        return users
+
+    def _delivery_email(self, user, identifier):
+        typed = (identifier or "").strip()
+        stored = (user.email or "").strip()
+        family_emails = self._family_emails(user)
+        if "@" in typed:
+            typed_key = typed.lower()
+            if stored.lower() == typed_key:
+                return stored
+            for candidate in family_emails:
+                if candidate.lower() == typed_key:
+                    return typed
+        return stored or (family_emails[0] if family_emails else "")
+
+    def _family_emails(self, user):
+        if self.portal_type != "parent":
+            return []
+        from .parent_auth import get_parent_account
+
+        account = get_parent_account(user)
+        family = getattr(account, "family", None) if account else None
+        if not family:
+            return []
+        emails = []
+        seen = set()
+
+        def add(value):
+            email = (value or "").strip()
+            key = email.lower()
+            if not email or key in seen:
+                return
+            seen.add(key)
+            emails.append(email)
+
+        add(getattr(user, "email", ""))
+        from enrollment.models import EnrollmentApplication
+
+        for app in EnrollmentApplication.objects.filter(portal_family=family).order_by("-submitted_at"):
+            add(app.primary_email)
+            add(getattr(app, "primary_email_address", ""))
+        return emails
 
     def _user_matches_portal(self, user):
         from .parent_auth import get_parent_account
@@ -194,7 +290,13 @@ class PortalPasswordResetForm(PasswordResetForm):
         html_email_template_name=None,
     ):
         from core.email_service import formatted_portal_from, parent_copy_bcc
+        from .usernames import display_username
 
+        user = context.get("user")
+        context = {
+            **context,
+            "username": display_username(getattr(user, "username", "") or ""),
+        }
         subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
         body = loader.render_to_string(email_template_name, context)
         email_message = EmailMultiAlternatives(

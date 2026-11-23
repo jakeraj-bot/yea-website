@@ -777,7 +777,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the current password. On this family account, scroll to Reset parent password and click Email create-password link. The parent gets a one-time link to create a new password (it expires in 72 hours), then they sign in on Parent login. If you need to tell them a password right now, open Set a temporary password instead — that password is shown once. If they forget again, send another link. Parents can also use Forgot password on the Parent login page themselves.",
+                "body": "You cannot look up the current password. On this family account, scroll to Reset parent password and click Email create-password link. Confirm the email on file first — that is where the link goes. The parent gets a one-time link to create a new password (it expires in 72 hours), then they sign in on Parent login. If they did not get the email, check spam, or open They didn't get the email? Set a temporary password and tell them the password by phone (shown once). Parents can also use Forgot password on Parent login with their username or email.",
             },
             {
                 "title": "Email the parent",
@@ -1247,7 +1247,7 @@ GUIDES = {
             },
             {
                 "title": "Reset parent password",
-                "body": "You cannot look up the old password. Open the family profile, then Email create-password link for a one-time link to create a new password. Optional: set a temporary password that is shown once. Parents can also use Forgot password on Parent login.",
+                "body": "You cannot look up the old password. Open the family profile, then Email create-password link for a one-time link to create a new password. If they did not get the email, set a temporary password and tell them by phone. Parents can also use Forgot password on Parent login with their username or email.",
             },
         ],
     },

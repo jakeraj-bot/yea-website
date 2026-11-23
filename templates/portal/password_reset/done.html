@@ -3,16 +3,22 @@
 <section class="page-hero portal-hero portal-hero-compact">
   <div class="container portal-auth-heading">
     <h1>Check your email</h1>
-    <p class="lead">If an account exists for that address, we sent a password reset link for the {{ portal_label }}.</p>
+    <p class="lead">If an account exists, we sent a password reset link for the {{ portal_label }}.</p>
   </div>
 </section>
 <section class="page-content">
   <div class="container portal-auth-card">
     <section class="card">
-      <p>Open the link in the email to choose a new password. The link expires after a short time.</p>
-      <p class="form-note">Did not receive it? Confirm the email matches your account, check spam, or ask your administrator to verify your email on file.</p>
+      <p>Open the link in the email to choose a new password. The link expires after a short time.{% if portal_type == "parent" %} The email also lists your username.{% endif %}</p>
+      <p class="form-note">Did not receive it? Check spam and promotions. Confirm you used the username or email on your account, then try again.</p>
+      {% if portal_type == "parent" %}
+      <p class="form-note">Still nothing? Call Youth Education Academy at <a href="tel:6093578608">609-357-8608</a> or email <a href="mailto:info@yeanj.org">info@yeanj.org</a>. Staff can set a temporary password so you can sign in without waiting for the email.</p>
+      {% endif %}
       <div class="portal-form-actions" style="margin-top:1rem;">
         <a class="btn btn-primary" href="{% url login_url_name %}">Back to login</a>
+        {% if reset_request_url_name %}
+        <a class="btn btn-secondary" href="{% url reset_request_url_name %}">Try a different username or email</a>
+        {% endif %}
       </div>
     </section>
   </div>

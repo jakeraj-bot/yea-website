@@ -126,7 +126,7 @@
           <input type="hidden" name="action" value="send_link">
           <div class="form-group portal-form-full">
             <h3>Reset parent password</h3>
-            <p class="form-note">You cannot see the current password. Email the parent a one-time link to create a new password for the parent portal. The link expires in 72 hours. Staff never sees the old password.</p>
+            <p class="form-note">You cannot see the current password. Email the parent a one-time link to create a new password. The link expires in 72 hours.{% if member_info.primary_email %} Sends to <strong>{{ member_info.primary_email }}</strong>.{% endif %} If they did not get the email, confirm that address in Edit member info, or set a temporary password below and tell them by phone.</p>
           </div>
           <div class="form-group portal-form-full portal-member-info-actions">
             <button type="submit" class="btn btn-primary">Email create-password link</button>
@@ -139,8 +139,8 @@
           <input type="hidden" name="action" value="set_password">
           <div class="form-group portal-form-full">
             <details>
-              <summary>Set a temporary password instead</summary>
-              <p class="form-note">Optional. Use this only if you need to read a temporary password to the parent. It is shown once. You still cannot see the old password.</p>
+              <summary>They didn't get the email? Set a temporary password</summary>
+              <p class="form-note">Use this when they are on the phone and the reset email did not arrive. Generate a password, copy it, and tell them. It is shown once. You still cannot see the old password.</p>
               <div class="portal-form-grid">
                 <div class="form-group">
                   <label for="reset-parent-pass">New temporary password</label>

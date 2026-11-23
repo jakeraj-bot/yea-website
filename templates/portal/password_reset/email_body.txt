@@ -1,7 +1,9 @@
 Hello,
 
 You requested a password reset for your {{ portal_label }} account at Youth Education Academy.
-
+{% if username %}
+Your username is: {{ username }}
+{% endif %}
 Open this link to create a new password (this link expires and can be used once):
 {{ protocol }}://{{ domain }}{% url reset_confirm_url_name uidb64=uid token=token %}
 
