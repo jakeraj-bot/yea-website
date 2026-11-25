@@ -162,7 +162,8 @@ class PageGuideCatalogTests(TestCase):
         self.assertIn("temporary password", bodies)
         self.assertIn("Forgot password", bodies)
         self.assertIn("username or email", bodies.lower())
-        self.assertIn("did not get the email", bodies)
+        self.assertIn("under Program status", bodies)
+        self.assertIn("admin or staff", bodies)
 
     def test_reports_exports_keep_owed_weeks_and_program_director_note(self):
         reports = guide_for("reports")

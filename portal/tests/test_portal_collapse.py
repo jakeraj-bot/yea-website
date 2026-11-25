@@ -194,6 +194,8 @@ class PortalCollapseScriptTests(SimpleTestCase):
         self.assertIn("data-collapse-keep-open", source)
         self.assertIn("Expand all", source)
         self.assertIn("Collapse all", source)
+        self.assertIn("location.hash", source)
+        self.assertIn("revealHashTarget", source)
 
     def test_admin_reports_hub_does_not_mash_member_and_emergency_ifs(self):
         template = ADMIN_REPORTS_TEMPLATE.read_text()

@@ -228,6 +228,9 @@ class MemberInfoViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Edit member info")
         self.assertContains(response, reverse("portal_staff_family_member_update", kwargs={"family_slug": "orengo"}))
+        self.assertContains(response, "Email create-password link")
+        self.assertContains(response, "Generate password")
+        self.assertContains(response, reverse("portal_staff_family_parent_password", kwargs={"family_slug": "orengo"}))
 
     @override_settings(PORTAL_PREVIEW_MODE=False)
     def test_admin_can_save_corrected_email(self):
@@ -283,9 +286,15 @@ class MemberInfoViewTests(TestCase):
         self.assertContains(response, "Reset parent password")
         self.assertContains(response, "You cannot see the current password")
         self.assertContains(response, "Email create-password link")
-        self.assertContains(response, "one-time link to create a new password")
-        self.assertContains(response, "They didn't get the email? Set a temporary password")
+        self.assertContains(response, "Set a temporary password")
+        self.assertContains(response, "Generate password")
         self.assertContains(response, reverse("portal_admin_family_parent_password", kwargs={"family_slug": "orengo"}))
+        html = response.content.decode()
+        self.assertLess(html.find('id="reset-parent-password"'), html.find('id="edit-member-info"'))
+        self.assertRegex(
+            html,
+            r'id="reset-parent-password"[^>]*portal-collapse-skip|portal-collapse-skip[^>]*id="reset-parent-password"',
+        )
         self.assertNotContains(response, self.parent_user.password)
         self.assertNotContains(response, "ParentPass123")
         self.assertNotContains(response, "pbkdf2_")
